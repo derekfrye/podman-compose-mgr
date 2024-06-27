@@ -1,10 +1,9 @@
 use clap::Parser;
+use walkdir::WalkDir;
 use regex::Regex;
 use std::fs::File;
-use std::io::{self, BufRead, Write};
-use walkdir::WalkDir;
-// use std::path::Path;
-use std::process::Command;
+use std::io::{self, BufRead, Write, BufReader};
+use std::process::{Command, Stdio};
 
 /// Struct to handle command-line arguments
 #[derive(Parser)]
@@ -20,8 +19,9 @@ fn main() -> io::Result<()> {
 
     // Define the pattern to match image names
     let pattern = Regex::new(r"^\s*image:\s*(.*)").unwrap();
-    let djf_pattern = Regex::new(r"^\s*djf/[\w\d:._-]+$").unwrap();
+    // Update the pattern to match the required image format with tags
     // let djf_pattern = Regex::new(r"^djf/[\w]+(:[\w][\w.-]{0,127})?$").unwrap();
+    let djf_pattern = Regex::new(r"^\s*djf/[\w\d:._-]+$").unwrap();
 
     // Traverse the specified directory and subdirectories
     for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
@@ -36,6 +36,7 @@ fn main() -> io::Result<()> {
                             let image = captures.get(1).unwrap().as_str().trim();
                             // Check if the image matches the djf pattern
                             if !djf_pattern.is_match(image) {
+                                // Ask user if they want to refresh the image
                                 // Ask user if they want to refresh the image
                                 let z = entry
                                     .path()
@@ -56,16 +57,25 @@ fn main() -> io::Result<()> {
                                 io::stdin().read_line(&mut input).unwrap();
                                 let input = input.trim();
                                 if input.eq_ignore_ascii_case("y") {
-                                    // Pull the image using podman
+                                    // Pull the image using podman and stream the output
                                     println!("Pulling image: {}", image);
-                                    let output = Command::new("podman")
+                                    let mut child = Command::new("podman")
                                         .arg("pull")
                                         .arg(image)
-                                        .output()
+                                        .stdout(Stdio::piped())
+                                        .spawn()
                                         .expect("Failed to execute podman pull");
-                                    io::stdout().write_all(&output.stdout).unwrap();
-                                } else {
-                                    println!("Skipping image: {}", image);
+
+                                    if let Some(stdout) = child.stdout.take() {
+                                        let reader = BufReader::new(stdout);
+                                        for line in reader.lines() {
+                                            if let Ok(line) = line {
+                                                println!("{}", line);
+                                            }
+                                        }
+                                    }
+
+                                    let _ = child.wait().expect("Command wasn't running");
                                 }
                             }
                         }
