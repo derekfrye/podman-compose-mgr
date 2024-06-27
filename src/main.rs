@@ -23,21 +23,15 @@ fn main() -> io::Result<()> {
     // let djf_pattern = Regex::new(r"^djf/[\w]+(:[\w][\w.-]{0,127})?$").unwrap();
     let djf_pattern = Regex::new(r"^\s*djf/[\w\d:._-]+$").unwrap();
 
-    // Traverse the specified directory and subdirectories
     for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
-        // Check if the file is docker-compose.yml
         if entry.file_type().is_file() && entry.file_name() == "docker-compose.yml" {
-            // Open the file and read it line by line
             if let Ok(file) = File::open(entry.path()) {
                 for line in io::BufReader::new(file).lines() {
                     if let Ok(line) = line {
-                        // Check if the line matches the image pattern
                         if let Some(captures) = pattern.captures(&line) {
                             let image = captures.get(1).unwrap().as_str().trim();
                             // Check if the image matches the djf pattern
                             if !djf_pattern.is_match(image) {
-                                // Ask user if they want to refresh the image
-                                // Ask user if they want to refresh the image
                                 let z = entry
                                     .path()
                                     .parent()
