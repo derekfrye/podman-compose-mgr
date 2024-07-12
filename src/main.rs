@@ -6,6 +6,8 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
 use walkdir::WalkDir;
+use std::path::PathBuf;
+use std::fs;
 
 /// Struct to handle command-line arguments
 #[derive(Parser)]
@@ -16,10 +18,25 @@ struct Args {
     /// Mode to run the program in
     #[arg(short = 'm', long, default_value = "Rebuild", value_parser = clap::value_parser!(Mode))]
     mode: Mode,
+    /// Optional secrets file path, must be readable if supplied
+    #[arg(short = 's', long, value_name = "SECRETS_FILE", value_parser = check_readable)]
+    secrets_file: Option<PathBuf>,
+    /// Optional verbose flag
+    #[arg(short, long)]
+    verbose: bool,
+}
+
+fn check_readable(file: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(file);
+    if path.is_file() && fs::metadata(&path).is_ok() && fs::File::open(&path).is_ok() {
+        Ok(path)
+    } else {
+        Err(format!("The file '{}' is not readable", file))
+    }
 }
 
 /// Enumeration of possible modes
-#[derive(Clone, ValueEnum)]
+#[derive(Clone, ValueEnum, Debug)]
 enum Mode {
     Rebuild,
     Secrets,
@@ -29,6 +46,14 @@ enum Mode {
 fn main() -> io::Result<()> {
     // Parse command-line arguments
     let args = Args::parse();
+
+    // if args.verbose {
+    //     println!("Path: {}", args.path);
+    //     println!("Mode: {:?}", args.mode);
+    //     if let Some(secrets_file) = &args.secrets_file {
+    //         println!("Secrets file: {}", secrets_file.display());
+    //     }
+    // }
 
     match args.mode {
         Mode::Rebuild => rebuild(&args),
@@ -44,6 +69,10 @@ fn rebuild(args: &Args){
     // Update the pattern to match the required image format with tags
     // let djf_pattern = Regex::new(r"^djf/[\w]+(:[\w][\w.-]{0,127})?$").unwrap();
     let djf_pattern = Regex::new(r"^\s*djf/[\w\d:._-]+$").unwrap();
+
+    if args.verbose {
+        println!("Rebuild images in path: {}", args.path);
+    }
 
     for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_file() && entry.file_name() == "docker-compose.yml" {
