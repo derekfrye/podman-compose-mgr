@@ -7,3 +7,4 @@ edition = "2021"
 walkdir = "2.3.2"
 regex = "1.7.1"
 clap = { version = "4.0", features = ["derive"] }
+term_size = "0.3.2"
