@@ -104,7 +104,7 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) -> String {
 
     let docker_compose_pth_fmtted = format!("{}", docker_compose_pth);
     // let displayed_image_path_len = docker_compose_pth_fmtted.len();
-    let refresh_static = format!("Refresh from? y/N/d: ");
+    let refresh_static = format!("Refresh  from ? y/N/d: ");
     println!("refresh_static len: {}", refresh_static.len());
     let refresh_prompt = format!(
         "Refresh {} from {}? y/N/d: ",
@@ -123,19 +123,30 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) -> String {
     println!("refresh_prompt len: {}", refresh_prompt.len());
     let mut docker_compose_pth_shortened = docker_compose_pth_fmtted;
     let mut image_shortened = image.to_string();
-    if refresh_prompt.len() > term_width {
+    // 1 char for a little buffer so it doesnt wrap after user input
+    if refresh_prompt.len() > term_width - 1 {
         let truncated_symbols = "...";
         let mut max_avail_chars_for_image_and_path =
-            max(term_width, 47) - refresh_static.len() - (2 * truncated_symbols.len());
+            max(term_width, 47) - refresh_static.len() - (2 * truncated_symbols.len()) - 1;
         if max_avail_chars_for_image_and_path % 2 != 0 {
             max_avail_chars_for_image_and_path -= 1;
         }
-        println!("max_avail_chars_for_image_and_path: {} each", max_avail_chars_for_image_and_path / 2);
-        println!("total chars used: {}", refresh_static.len() + 2 * truncated_symbols.len() + max_avail_chars_for_image_and_path );
+        println!(
+            "max_avail_chars_for_image_and_path: {} each",
+            max_avail_chars_for_image_and_path / 2
+        );
+        println!(
+            "total chars used: {}",
+            refresh_static.len() + 2 * truncated_symbols.len() + max_avail_chars_for_image_and_path
+        );
 
         if docker_compose_pth_shortened.len() > max_avail_chars_for_image_and_path / 2 {
-            docker_compose_pth_shortened =
-                format!("...{}", docker_compose_pth_shortened[max_avail_chars_for_image_and_path / 2..].to_string());
+            docker_compose_pth_shortened = format!(
+                "...{}",
+                docker_compose_pth_shortened
+                    [docker_compose_pth_shortened.len() - max_avail_chars_for_image_and_path / 2..]
+                    .to_string()
+            );
 
             //     let start = &docker_compose_pth_fmtted[..max_avail_chars_for_image_and_path / 2];
             //     let end = &docker_compose_pth_fmtted[docker_compose_pth_fmtted.len() - max_avail_chars_for_image_and_path / 2..];
@@ -145,8 +156,12 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) -> String {
             // docker_compose_pth_fmtted = format!("{}{}", start, end);
         }
 
-        if image_shortened.len() > max_avail_chars_for_image_and_path / 2{
-            image_shortened = format!("...{}", image_shortened[max_avail_chars_for_image_and_path / 2..].to_string());
+        if image_shortened.len() > max_avail_chars_for_image_and_path / 2 {
+            image_shortened = format!(
+                "...{}",
+                image_shortened[image_shortened.len() - max_avail_chars_for_image_and_path / 2..]
+                    .to_string()
+            );
         }
 
         // println!("{}", result);
