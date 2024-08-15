@@ -13,16 +13,16 @@ pub fn args_checks() -> Args {
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
-    /// Path to the directory to traverse
+    /// Search path for docker-compose files
     #[arg(short = 'p', long, value_name = "PATH", default_value = ".", value_parser = check_readable_dir)]
-    pub path: String,
-    /// Mode to run the program in
+    pub path: PathBuf,
+    /// rebuild = pull images, secrets = refresh secrets files (not impl yet)
     #[arg(short = 'm', long, default_value = "Rebuild", value_parser = clap::value_parser!(Mode))]
     pub mode: Mode,
-    /// Optional secrets file path, must be readable if supplied
+    /// Optional secrets file path, must be readable if supplied (not impl yet)
     #[arg(short = 's', long, value_name = "SECRETS_FILE", value_parser = check_readable)]
-    pub secrets_file: Option<String>,
-    /// Optional verbose flag
+    pub secrets_file: Option<PathBuf>,
+    /// Print extra stuff
     #[arg(short, long)]
     pub verbose: bool,
 }
@@ -36,20 +36,20 @@ pub enum Mode {
     Secrets,
 }
 
-fn check_readable(file: &str) -> Result<String, String> {
+fn check_readable(file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file);
     if path.is_file() && fs::metadata(&path).is_ok() && fs::File::open(&path).is_ok() {
-        Ok(file.to_string())
+        Ok(path)
     } else {
-        Err(format!("The file '{}' is not readable", file))
+        Err(format!("The file '{}' is not readable.", file))
     }
 }
 
-fn check_readable_dir(dir: &str) -> Result<String, String> {
+fn check_readable_dir(dir: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(dir);
     if path.is_dir() && fs::metadata(&path).is_ok() && fs::read_dir(&path).is_ok() {
-        Ok(dir.to_string())
+        Ok(path)
     } else {
-        Err(format!("The dir '{}' is not readable", dir))
+        Err(format!("The dir '{}' is not readable.", dir))
     }
 }

@@ -45,7 +45,7 @@ fn rebuild(args: &Args) {
     // let djf_pattern = Regex::new(r"^\s*djf/[\w\d:._-]+$").unwrap();
 
     if args.verbose {
-        println!("Rebuild images in path: {}", args.path);
+        println!("Rebuild images in path: {}", args.path.display());
     }
 
     for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
