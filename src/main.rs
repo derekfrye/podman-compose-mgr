@@ -157,6 +157,11 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) {
         } else if input.eq_ignore_ascii_case("d") {
             println!("Image: {}", image);
             println!("Compose file: {}", docker_compose_pth_fmtted);
+            println!("Last refreshed: {}", podman::get_podman_image_refresh_time(image).unwrap());
+            print!(
+                "Refresh {} from {}? y/N/d: ",
+                image_shortened, docker_compose_pth_shortened
+            );
         } else {
             break;
         }
