@@ -1,4 +1,5 @@
-// use clap::builder::Str;
+mod args;
+mod podman;
 
 use args::Args;
 use regex::Regex;
@@ -10,12 +11,6 @@ use std::path::Path;
 
 use std::process::{Command, Stdio};
 use walkdir::{DirEntry, WalkDir};
-
-mod args;
-
-
-
-
 
 fn main() -> io::Result<()> {
     // Parse command-line arguments

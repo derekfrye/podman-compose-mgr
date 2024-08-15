@@ -1,13 +1,13 @@
 // use clap::builder::Str;
 use clap::{Parser, ValueEnum};
 // use std::io::{self, BufRead, BufReader, Write};
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
 
 pub fn args_checks() -> Args {
     let xx = Args::parse();
-   
- xx
+
+    xx
 }
 
 #[derive(Parser)]
@@ -26,8 +26,6 @@ pub struct Args {
     #[arg(short, long)]
     pub verbose: bool,
 }
-
-
 
 /// Enumeration of possible modes
 #[derive(Clone, ValueEnum, Debug)]
