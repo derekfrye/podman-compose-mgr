@@ -1,51 +1,25 @@
 // use clap::builder::Str;
-use clap::{Parser, ValueEnum};
+
+use args::Args;
 use regex::Regex;
 use std::cmp::max;
-use std::fs;
+
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
-use std::path::PathBuf;
+
 use std::process::{Command, Stdio};
 use walkdir::{DirEntry, WalkDir};
 
-/// Struct to handle command-line arguments
-#[derive(Parser)]
-struct Args {
-    /// Path to the directory to traverse
-    #[arg(short = 'p', long, value_name = "PATH", default_value = ".")]
-    path: String,
-    /// Mode to run the program in
-    #[arg(short = 'm', long, default_value = "Rebuild", value_parser = clap::value_parser!(Mode))]
-    mode: Mode,
-    /// Optional secrets file path, must be readable if supplied
-    #[arg(short = 's', long, value_name = "SECRETS_FILE", value_parser = check_readable)]
-    secrets_file: Option<PathBuf>,
-    /// Optional verbose flag
-    #[arg(short, long)]
-    verbose: bool,
-}
+mod args;
 
-fn check_readable(file: &str) -> Result<PathBuf, String> {
-    let path = PathBuf::from(file);
-    if path.is_file() && fs::metadata(&path).is_ok() && fs::File::open(&path).is_ok() {
-        Ok(path)
-    } else {
-        Err(format!("The file '{}' is not readable", file))
-    }
-}
 
-/// Enumeration of possible modes
-#[derive(Clone, ValueEnum, Debug)]
-enum Mode {
-    Rebuild,
-    Secrets,
-}
+
+
 
 fn main() -> io::Result<()> {
     // Parse command-line arguments
-    let args = Args::parse();
+    let args = args::args_checks();
 
     // if args.verbose {
     //     println!("Path: {}", args.path);
@@ -56,8 +30,8 @@ fn main() -> io::Result<()> {
     // }
 
     match args.mode {
-        Mode::Rebuild => rebuild(&args),
-        Mode::Secrets => secrets(&args),
+        args::Mode::Rebuild => rebuild(&args),
+        args::Mode::Secrets => secrets(&args),
     }
 
     Ok(())
@@ -95,7 +69,7 @@ fn rebuild(args: &Args) {
     }
 }
 
-fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) -> String {
+fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) {
     let docker_compose_pth = entry
         .path()
         .parent()
@@ -119,10 +93,12 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) -> String {
     // This means total display chars is 23 + 12 + 12 = 47 at a min
     // if user has less than 47 wide, well then we'll have to let the terminal word-wrap.
     let term_width = get_terminal_display_width();
-    println!("term_width: {}", term_width);
-    println!("refresh_prompt len: {}", refresh_prompt.len());
-    let mut docker_compose_pth_shortened = docker_compose_pth_fmtted;
+    // println!("term_width: {}", term_width);
+    // println!("refresh_prompt len: {}", refresh_prompt.len());
+    let mut docker_compose_pth_shortened = docker_compose_pth_fmtted.to_string();
+    // let docker_compose_path_orig = docker_compose_pth_shortened.to_string();
     let mut image_shortened = image.to_string();
+    // let image_orig = image.to_string();
     // 1 char for a little buffer so it doesnt wrap after user input
     if refresh_prompt.len() > term_width - 1 {
         let truncated_symbols = "...";
@@ -131,14 +107,14 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) -> String {
         if max_avail_chars_for_image_and_path % 2 != 0 {
             max_avail_chars_for_image_and_path -= 1;
         }
-        println!(
-            "max_avail_chars_for_image_and_path: {} each",
-            max_avail_chars_for_image_and_path / 2
-        );
-        println!(
-            "total chars used: {}",
-            refresh_static.len() + 2 * truncated_symbols.len() + max_avail_chars_for_image_and_path
-        );
+        // println!(
+        //     "max_avail_chars_for_image_and_path: {} each",
+        //     max_avail_chars_for_image_and_path / 2
+        // );
+        // println!(
+        //     "total chars used: {}",
+        //     refresh_static.len() + 2 * truncated_symbols.len() + max_avail_chars_for_image_and_path
+        // );
 
         if docker_compose_pth_shortened.len() > max_avail_chars_for_image_and_path / 2 {
             docker_compose_pth_shortened = format!(
@@ -179,6 +155,11 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) -> String {
         if input.eq_ignore_ascii_case("y") {
             // Pull the image using podman and stream the output
             pull_it(image);
+        } else if input.eq_ignore_ascii_case("d") {
+            println!("Image: {}", image);
+            println!("Compose file: {}", docker_compose_pth_fmtted);
+        } else {
+            break;
         }
     }
 }
