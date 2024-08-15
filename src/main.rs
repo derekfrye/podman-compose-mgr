@@ -67,6 +67,10 @@ fn rebuild(args: &Args) {
             }
         }
     }
+
+    if args.verbose {
+        println!("Done.");
+    }
 }
 
 fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) {
@@ -79,7 +83,7 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) {
     let docker_compose_pth_fmtted = format!("{}", docker_compose_pth);
     // let displayed_image_path_len = docker_compose_pth_fmtted.len();
     let refresh_static = format!("Refresh  from ? y/N/d: ");
-    println!("refresh_static len: {}", refresh_static.len());
+    // println!("refresh_static len: {}", refresh_static.len());
     let refresh_prompt = format!(
         "Refresh {} from {}? y/N/d: ",
         image, docker_compose_pth_fmtted
