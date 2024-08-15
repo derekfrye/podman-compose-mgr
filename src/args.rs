@@ -1,4 +1,4 @@
-use clap::builder::Str;
+// use clap::builder::Str;
 use clap::{Parser, ValueEnum};
 // use std::io::{self, BufRead, BufReader, Write};
 use std::path::PathBuf;
@@ -36,19 +36,19 @@ pub enum Mode {
     Secrets,
 }
 
-fn check_readable(file: &str) -> Result<PathBuf, String> {
+fn check_readable(file: &str) -> Result<String, String> {
     let path = PathBuf::from(file);
     if path.is_file() && fs::metadata(&path).is_ok() && fs::File::open(&path).is_ok() {
-        Ok(path)
+        Ok(file.to_string())
     } else {
         Err(format!("The file '{}' is not readable", file))
     }
 }
 
-fn check_readable_dir(dir: &str) -> Result<PathBuf, String> {
+fn check_readable_dir(dir: &str) -> Result<String, String> {
     let path = PathBuf::from(dir);
     if path.is_dir() && fs::metadata(&path).is_ok() && fs::read_dir(&path).is_ok() {
-        Ok(path)
+        Ok(dir.to_string())
     } else {
         Err(format!("The dir '{}' is not readable", dir))
     }

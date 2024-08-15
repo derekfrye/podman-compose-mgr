@@ -19,7 +19,12 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": [
+                "--path",
+                "${workspaceFolder}/tmp/",
+                "--mode",
+                "rebuild",
+            ],
             "cwd": "${workspaceFolder}"
         },
         {
