@@ -21,7 +21,8 @@
             },
             "args": [
                 "--path",
-                "${workspaceFolder}/tmp/",
+                // "${workspaceFolder}/tmp/",
+                "/home/dfrye/docker",
                 "--mode",
                 "rebuild",
                 "--verbose",

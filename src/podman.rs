@@ -1,9 +1,10 @@
 use std::process::Command;
-use chrono::{DateTime, TimeZone, Utc};
+//use dateparser::parse;
+use chrono::{DateTime, TimeZone, Local, Utc};
+use regex::Regex;
 
 
-
-pub fn get_podman_image_refresh_time(img: &str ) -> Result<DateTime<Utc>, String> {
+pub fn get_podman_image_refresh_time(img: &str ) -> Result<DateTime<Local>, String> {
     let mut cmd = Command::new("podman");
     cmd.arg("image");
     cmd.arg("inspect");
@@ -18,7 +19,7 @@ pub fn get_podman_image_refresh_time(img: &str ) -> Result<DateTime<Utc>, String
     } else {
         // if error = image not known, then just return 1/1/1900
         if std::str::from_utf8(&output.stderr).unwrap().contains("image not known") {
-            let dt = Utc.with_ymd_and_hms(1900, 1, 1, 0, 0, 0).unwrap();
+            let dt = Local.with_ymd_and_hms(1900, 1, 1, 0, 0, 0).unwrap();
             return Ok(dt);
         }
         let stderr = String::from_utf8(output.stderr).map_err(|e| format!("Failed to parse podman output: {}", e))?;
@@ -26,7 +27,22 @@ pub fn get_podman_image_refresh_time(img: &str ) -> Result<DateTime<Utc>, String
     }
 }
 
-fn convert_str_to_date(date_str: &str) -> Result<DateTime<Utc>, String> {
-    let date = DateTime::parse_from_rfc3339(date_str).map_err(|e| format!("Failed to parse date: {}", e))?;
-    Ok(date.with_timezone(&chrono::Utc))
+fn convert_str_to_date(date_str: &str) -> Result<DateTime<Local>, String> {
+    let re = Regex::new(r"(?P<datetime>.+)(?P<tz_offset>[+-]\d{4}) (?P<tz_name>\w+)$").unwrap();
+    let cleaned_date_str = re.replace(date_str, "$datetime$tz_offset");
+
+    // Now try to parse the cleaned string
+    match cleaned_date_str.parse::<DateTime<Utc>>() {
+        Ok(parsed_date) => {
+            //println!("Parsed DateTime: '{}'", parsed_date);
+                Ok(parsed_date.with_timezone(&Local))
+        }
+        Err(e) => {
+            println!("Failed to parse '{}': {:?}", date_str, e);
+            todo!()
+        }
+    }
+
+    //let date = DateTime::parse_from_rfc3339(date_str).map_err(|e| format!("Failed to parse date: {}", e))?;
+    //Ok(date.with_timezone(&chrono::Utc))
 }
