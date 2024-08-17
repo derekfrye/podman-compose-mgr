@@ -25,6 +25,8 @@ pub struct Args {
     /// Print extra stuff
     #[arg(short, long)]
     pub verbose: bool,
+    #[arg(short, long)]
+    pub exclude_path_patterns: Vec<String>,
 }
 
 /// Enumeration of possible modes

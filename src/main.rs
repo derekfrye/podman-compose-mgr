@@ -44,8 +44,22 @@ fn rebuild(args: &Args) {
         println!("Rebuild images in path: {}", args.path.display());
     }
 
+    let mut exclude_patterns = Vec::new();
+
+    if args.exclude_path_patterns.len() > 0 {
+        if args.verbose {
+            println!("Excluding paths: {:?}", args.exclude_path_patterns);
+        }
+        for pattern in &args.exclude_path_patterns {
+            exclude_patterns.push(Regex::new(pattern).unwrap());
+        }
+    }
+
     for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_file() && entry.file_name() == "docker-compose.yml" {
+            if exclude_patterns.len()>0&& exclude_patterns.iter().any(|pattern| pattern.is_match(entry.path().to_str().unwrap())) {
+                continue;
+            }
             if let Ok(file) = File::open(entry.path()) {
                 for line in io::BufReader::new(file).lines() {
                     if let Ok(line) = line {
