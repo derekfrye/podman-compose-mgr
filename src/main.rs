@@ -154,6 +154,7 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) {
         if input.eq_ignore_ascii_case("y") {
             // Pull the image using podman and stream the output
             pull_it(image);
+            break;
         } else if input.eq_ignore_ascii_case("d") {
             println!("Image: {}", image);
             println!("Compose file: {}", docker_compose_pth_fmtted);
