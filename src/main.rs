@@ -1,5 +1,6 @@
 mod args;
 mod podman;
+mod docker_build;
 
 use args::Args;
 use regex::Regex;
@@ -76,11 +77,9 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) {
         .display();
 
     let docker_compose_pth_fmtted = format!("{}", docker_compose_pth);
-    // let displayed_image_path_len = docker_compose_pth_fmtted.len();
-    let refresh_static = format!("Refresh  from ? y/N/d: ");
-    // println!("refresh_static len: {}", refresh_static.len());
+    let refresh_static = format!("Refresh  from ? y/N/d/b: ");
     let refresh_prompt = format!(
-        "Refresh {} from {}? y/N/d: ",
+        "Refresh {} from {}? y/N/d/b: ",
         image, docker_compose_pth_fmtted
     );
 
@@ -106,14 +105,6 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) {
         if max_avail_chars_for_image_and_path % 2 != 0 {
             max_avail_chars_for_image_and_path -= 1;
         }
-        // println!(
-        //     "max_avail_chars_for_image_and_path: {} each",
-        //     max_avail_chars_for_image_and_path / 2
-        // );
-        // println!(
-        //     "total chars used: {}",
-        //     refresh_static.len() + 2 * truncated_symbols.len() + max_avail_chars_for_image_and_path
-        // );
 
         if docker_compose_pth_shortened.len() > max_avail_chars_for_image_and_path / 2 {
             docker_compose_pth_shortened = format!(
@@ -122,13 +113,6 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) {
                     [docker_compose_pth_shortened.len() - max_avail_chars_for_image_and_path / 2..]
                     .to_string()
             );
-
-            //     let start = &docker_compose_pth_fmtted[..max_avail_chars_for_image_and_path / 2];
-            //     let end = &docker_compose_pth_fmtted[docker_compose_pth_fmtted.len() - max_avail_chars_for_image_and_path / 2..];
-            //     docker_compose_pth_fmtted = format!("{}{}{}", start, truncated_symbols, end);
-
-            // let dck_compose_pth_shortened = &docker_compose_pth_fmtted[docker_compose_pth_fmtted.len() - 23..];
-            // docker_compose_pth_fmtted = format!("{}{}", start, end);
         }
 
         if image_shortened.len() > max_avail_chars_for_image_and_path / 2 {
@@ -138,12 +122,11 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) {
                     .to_string()
             );
         }
-
-        // println!("{}", result);
     }
-    // make sure 23 chars stays in here or it won't match wrap logic above
+    // make sure this str matches str refresh_prompt above or the wrap logic above breaks
+    // also, this same string is also used near end of this loop, make sure it matches there too
     print!(
-        "Refresh {} from {}? y/N/d: ",
+        "Refresh {} from {}? y/N/d/b: ",
         image_shortened, docker_compose_pth_shortened
     );
     loop {
@@ -163,10 +146,15 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) {
                 podman::get_podman_image_refresh_time(image).unwrap()
             );
             print!(
-                "Refresh {} from {}? y/N/d: ",
+                "Refresh {} from {}? y/N/d/b: ",
                 image_shortened, docker_compose_pth_shortened
             );
-        } else {
+        } else if input.eq_ignore_ascii_case("b") {
+            docker_build::build_image_from_dockerfile(
+                entry,
+                image,
+            );
+    }else {
             break;
         }
     }
