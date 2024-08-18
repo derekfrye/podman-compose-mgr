@@ -1,7 +1,7 @@
 mod args;
 mod docker_build;
-mod podman;
 mod image_cmd;
+mod podman;
 
 use args::Args;
 use image_cmd::exec_cmd;
@@ -13,6 +13,7 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 
 use std::process::{Command, Stdio};
+use std::vec;
 use walkdir::{DirEntry, WalkDir};
 
 fn main() -> io::Result<()> {
@@ -37,7 +38,7 @@ fn main() -> io::Result<()> {
 
 fn rebuild(args: &Args) {
     // Define the pattern to match image names
-    let pattern = Regex::new(r"^\s*image:\s*([a-zA-Z0-9_\.-/:]+)").unwrap();
+    let pattern = Regex::new(r"^\s*image:\s*([a-zA-Z0-9_\.\-/:]+)").unwrap();
     // Update the pattern to match the required image format with tags
     // let djf_pattern = Regex::new(r"^djf/[\w]+(:[\w][\w.-]{0,127})?$").unwrap();
     // let djf_pattern = Regex::new(r"^\s*djf/[\w\d:._-]+$").unwrap();
@@ -47,6 +48,7 @@ fn rebuild(args: &Args) {
     }
 
     let mut exclude_patterns = Vec::new();
+    let mut images_checked = vec![];
 
     if args.exclude_path_patterns.len() > 0 {
         if args.verbose {
@@ -67,15 +69,20 @@ fn rebuild(args: &Args) {
                 continue;
             }
             if let Ok(file) = File::open(entry.path()) {
-                for line in io::BufReader::new(file).lines() {
-                    if let Ok(line) = line {
-                        if let Some(captures) = pattern.captures(&line) {
-                            for x in 0..captures.len() {
-                                let image = captures.get(x).unwrap().as_str().trim();
-                                // Check if the image matches the djf pattern
-                                if !pattern.is_match(image) {
-                                    read_val_from_cmd_line_and_proceed(&entry, image, args.build_args.clone() );
-                                }
+                let reader = BufReader::new(file);
+                for line_orig in reader.lines() {
+                    let line = line_orig.unwrap();
+                    if let Some(captures) = pattern.captures(&line) {
+                        for x in 0..captures.len() {
+                            let image = captures.get(x).unwrap().as_str().trim().to_string();
+                            // don't use x = 0, becuase that's the full image: xyz/xyx:latest
+                            if x != 0 && !images_checked.contains(&image) {
+                                read_val_from_cmd_line_and_proceed(
+                                    &entry,
+                                    &image,
+                                    args.build_args.clone(),
+                                );
+                                images_checked.push(image);
                             }
                         }
                     }
@@ -162,15 +169,25 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args:
             println!("Image: {}", image);
             println!("Compose file: {}", docker_compose_pth_fmtted);
             println!(
-                "Last refreshed: {}",
-                podman::get_podman_image_refresh_time(image).unwrap()
+                "Created: {}",
+                podman::format_time_ago(
+                    podman::get_podman_image_upstream_create_time(image).unwrap()
+                )
+            );
+            println!(
+                "Pulled: {}",
+                podman::format_time_ago(podman::get_podman_ondisk_modify_time(image).unwrap())
             );
             print!(
                 "Refresh {} from {}? y/N/d/b: ",
                 image_shortened, docker_compose_pth_shortened
             );
         } else if input.eq_ignore_ascii_case("b") {
-            docker_build::build_image_from_dockerfile(entry, image, build_args.iter().map(|s| s.as_str()).collect::<Vec<&str>>());
+            docker_build::build_image_from_dockerfile(
+                entry,
+                image,
+                build_args.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
+            );
             break;
         } else {
             break;
