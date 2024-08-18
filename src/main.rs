@@ -1,10 +1,10 @@
 mod args;
 mod docker_build;
 mod podman;
-mod cmx;
+mod image_cmd;
 
 use args::Args;
-use cmx::exec_cmd;
+use image_cmd::exec_cmd;
 use regex::Regex;
 use std::cmp::max;
 
@@ -74,7 +74,7 @@ fn rebuild(args: &Args) {
                                 let image = captures.get(x).unwrap().as_str().trim();
                                 // Check if the image matches the djf pattern
                                 if !pattern.is_match(image) {
-                                    read_val_from_cmd_line_and_proceed(&entry, image);
+                                    read_val_from_cmd_line_and_proceed(&entry, image, args.build_args.clone() );
                                 }
                             }
                         }
@@ -89,7 +89,7 @@ fn rebuild(args: &Args) {
     }
 }
 
-fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) {
+fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args: Vec<String>) {
     let docker_compose_pth = entry
         .path()
         .parent()
@@ -170,7 +170,7 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) {
                 image_shortened, docker_compose_pth_shortened
             );
         } else if input.eq_ignore_ascii_case("b") {
-            docker_build::build_image_from_dockerfile(entry, image);
+            docker_build::build_image_from_dockerfile(entry, image, build_args.iter().map(|s| s.as_str()).collect::<Vec<&str>>());
             break;
         } else {
             break;

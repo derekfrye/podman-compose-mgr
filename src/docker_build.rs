@@ -1,9 +1,10 @@
-use crate::cmx as cmd;
+use crate::image_cmd as cmd;
 
 use std::fs;
+// use clap::builder::Str;
 use walkdir::DirEntry;
 
-pub fn build_image_from_dockerfile(dir: &DirEntry, image_name: &str) {
+pub fn build_image_from_dockerfile(dir: &DirEntry, image_name: &str, build_args: Vec<&str>) {
     let mut dockerfile = dir.path().to_path_buf().parent().unwrap().to_path_buf();
     dockerfile.push("Dockerfile");
 
@@ -23,6 +24,12 @@ pub fn build_image_from_dockerfile(dir: &DirEntry, image_name: &str) {
     x.push(image_name);
     x.push("-f");
     x.push(&z);
+
+    // let mut abc = string::String::new();
+    for arg in build_args {
+        x.push("--build-arg");
+        x.push(&arg);
+    }
 
     cmd::exec_cmd("podman", x);
 }
