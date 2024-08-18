@@ -1,8 +1,10 @@
 mod args;
-mod podman;
 mod docker_build;
+mod podman;
+mod cmx;
 
 use args::Args;
+use cmx::exec_cmd;
 use regex::Regex;
 use std::cmp::max;
 
@@ -57,7 +59,11 @@ fn rebuild(args: &Args) {
 
     for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_file() && entry.file_name() == "docker-compose.yml" {
-            if exclude_patterns.len()>0&& exclude_patterns.iter().any(|pattern| pattern.is_match(entry.path().to_str().unwrap())) {
+            if exclude_patterns.len() > 0
+                && exclude_patterns
+                    .iter()
+                    .any(|pattern| pattern.is_match(entry.path().to_str().unwrap()))
+            {
                 continue;
             }
             if let Ok(file) = File::open(entry.path()) {
@@ -164,11 +170,9 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str) {
                 image_shortened, docker_compose_pth_shortened
             );
         } else if input.eq_ignore_ascii_case("b") {
-            docker_build::build_image_from_dockerfile(
-                entry,
-                image,
-            );
-    }else {
+            docker_build::build_image_from_dockerfile(entry, image);
+            break;
+        } else {
             break;
         }
     }
@@ -180,24 +184,11 @@ fn get_terminal_display_width() -> usize {
 }
 
 fn pull_it(image: &str) {
-    println!("Pulling image: {}", image);
-    let mut child = Command::new("podman")
-        .arg("pull")
-        .arg(image)
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Failed to execute podman pull");
+    let mut x = vec![];
 
-    if let Some(stdout) = child.stdout.take() {
-        let reader = BufReader::new(stdout);
-        for line in reader.lines() {
-            if let Ok(line) = line {
-                println!("{}", line);
-            }
-        }
-    }
-
-    let _ = child.wait().expect("Command wasn't running");
+    x.push("pull");
+    x.push(image);
+    exec_cmd("podman", x);
 }
 
 fn secrets(args: &Args) {

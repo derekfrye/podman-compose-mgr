@@ -1,27 +1,28 @@
-use walkdir::DirEntry;
+use crate::cmx as cmd;
+
 use std::fs;
-use std::process::Command;
+use walkdir::DirEntry;
 
 pub fn build_image_from_dockerfile(dir: &DirEntry, image_name: &str) {
-
-    let mut dockerfile = dir.path().to_path_buf();
+    let mut dockerfile = dir.path().to_path_buf().parent().unwrap().to_path_buf();
     dockerfile.push("Dockerfile");
 
-    if !dockerfile.is_file() || !fs::metadata(&dockerfile).is_ok() || !fs::File::open(&dockerfile).is_ok() {
+    if !dockerfile.is_file()
+        || !fs::metadata(&dockerfile).is_ok()
+        || !fs::File::open(&dockerfile).is_ok()
+    {
         eprintln!("No Dockerfile found at '{}'", dockerfile.display());
         std::process::exit(1);
     }
 
-    let mut cmd = Command::new("podman");
-    cmd.arg("build");
-    cmd.arg("-t");
-    cmd.arg(image_name);
-    cmd.arg(dockerfile);
+    let z = dockerfile.display().to_string();
 
-    let status = cmd.status().expect("Failed to execute podman build");
-    if !status.success() {
-        eprintln!("Failed to build podman image");
-        std::process::exit(1);
-    }
-    
+    let mut x = vec![];
+    x.push("build");
+    x.push("-t");
+    x.push(image_name);
+    x.push("-f");
+    x.push(&z);
+
+    cmd::exec_cmd("podman", x);
 }

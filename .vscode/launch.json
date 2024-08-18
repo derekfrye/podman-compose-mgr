@@ -21,7 +21,9 @@
         "/home/dfrye/docker",
         "--mode",
         "rebuild",
-        "--verbose"
+        "--verbose",
+        "--exclude-path-patterns",
+        "docker/archive",
       ],
       "cwd": "${workspaceFolder}"
     },
