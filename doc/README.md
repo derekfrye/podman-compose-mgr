@@ -11,9 +11,13 @@ image_refresh --path ~/docker --mode rebuild -e "docker/archive" --build-args US
 ## Options
 
 ### Exclude Path Patterns
-Pass in a string, like `docker/archive`, and in `rebuild` mode it'll exclude any `docker-compose.yml` files where the passed in string is contained somewhere within the path. Does *not* use regex.
+Passing in a string, like `docker/archive`, and in `rebuild` mode it'll exclude any `docker-compose.yml` files it finds where the passed string matches within the path. Simple text match, *not* a regex.
 
 ### Build args
-Any strings passed here are passed to `podman build` as `--build-arg`. For example, passing the option on the command-line call to the program <code>--build-args USERNAME=&grave;id -un 1000&grave;</code> will first use your shell to interpret `id -un 1000` and will thus pass something like `--build-arg USERNAME=dfrye` to `podman`.
+Any strings passed here are passed to `podman build` as `--build-arg`. For example, passing the option on the command-line call to the program <code>--build-args USERNAME=&grave;id -un 1000&grave;</code> will first use your shell to interpret `id -un 1000` and will pass `--build-arg USERNAME=dfrye` to `podman`.
 
-Notice the argument to this program is `--build-args` whereas it passes each item to `podman build` as `--build-arg arg1`, `--build-arg arg2`, etc.
+Notice the argument to this program is `--build-args`. You can pass multiple options, like so:
+``` shell
+image_refresh --build-args USERNAME=`id -un 1000` --build-args VERSION=1.2.3
+```
+And each one will be passed down to `podman build`.
