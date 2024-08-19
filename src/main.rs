@@ -104,9 +104,9 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args:
         .display();
 
     let docker_compose_pth_fmtted = format!("{}", docker_compose_pth);
-    let refresh_static = format!("Refresh  from ? y/N/d/b: ");
+    let refresh_static = format!("Refresh  from ? p/N/d/b/?: ");
     let refresh_prompt = format!(
-        "Refresh {} from {}? y/N/d/b: ",
+        "Refresh {} from {}? p/N/d/b/?: ",
         image, docker_compose_pth_fmtted
     );
 
@@ -153,7 +153,7 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args:
     // make sure this str matches str refresh_prompt above or the wrap logic above breaks
     // also, this same string is also used near end of this loop, make sure it matches there too
     print!(
-        "Refresh {} from {}? y/N/d/b: ",
+        "Refresh {} from {}? p/N/d/b/?: ",
         image_shortened, docker_compose_pth_shortened
     );
     loop {
@@ -161,7 +161,7 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args:
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut input).unwrap();
         let input = input.trim();
-        if input.eq_ignore_ascii_case("y") {
+        if input.eq_ignore_ascii_case("p") {
             // Pull the image using podman and stream the output
             pull_it(image);
             break;
@@ -179,7 +179,17 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args:
                 podman::format_time_ago(podman::get_podman_ondisk_modify_time(image).unwrap())
             );
             print!(
-                "Refresh {} from {}? y/N/d/b: ",
+                "Refresh {} from {}? p/N/d/b/?: ",
+                image_shortened, docker_compose_pth_shortened
+            );
+        } else if input.eq_ignore_ascii_case("?") {
+            println!("p = Pull image from upstream.");
+            println!("N = Do nothing, skip this image.");
+            println!("d = Display info (image name, docker-compose.yml path, upstream img create date, and img on-disk modify date).");
+            println!("b = Build image from the Dockerfile residing in same path as the docker-compose.yml.");
+            println!("? = Display this help.");
+            print!(
+                "Refresh {} from {}? p/N/d/b/?: ",
                 image_shortened, docker_compose_pth_shortened
             );
         } else if input.eq_ignore_ascii_case("b") {
