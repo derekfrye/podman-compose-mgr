@@ -7,14 +7,13 @@ use args::Args;
 use image_cmd::exec_cmd;
 use regex::Regex;
 use std::cmp::max;
-
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
-
 use std::process::{Command, Stdio};
 use std::vec;
 use walkdir::{DirEntry, WalkDir};
+use serde_yaml::Value;
 
 fn main() -> io::Result<()> {
     // Parse command-line arguments
@@ -36,13 +35,13 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn rebuild(args: &Args) {
-    // Define the pattern to match image names
-    let pattern = Regex::new(r"^\s*image:\s*([a-zA-Z0-9_\.\-/:]+)").unwrap();
-    // Update the pattern to match the required image format with tags
-    // let djf_pattern = Regex::new(r"^djf/[\w]+(:[\w][\w.-]{0,127})?$").unwrap();
-    // let djf_pattern = Regex::new(r"^\s*djf/[\w\d:._-]+$").unwrap();
+fn read_yaml_file(file: &str) -> Value {
+    let file = File::open(file).expect("file not found");
+    let yaml: Value = serde_yaml::from_reader(file).expect("Error reading file");
+    yaml
+}
 
+fn rebuild(args: &Args) {
     if args.verbose {
         println!("Rebuild images in path: {}", args.path.display());
     }
@@ -68,21 +67,21 @@ fn rebuild(args: &Args) {
             {
                 continue;
             }
-            if let Ok(file) = File::open(entry.path()) {
-                let reader = BufReader::new(file);
-                for line_orig in reader.lines() {
-                    let line = line_orig.unwrap();
-                    if let Some(captures) = pattern.captures(&line) {
-                        for x in 0..captures.len() {
-                            let image = captures.get(x).unwrap().as_str().trim().to_string();
-                            // don't use x = 0, becuase that's the full image: xyz/xyx:latest
-                            if x != 0 && !images_checked.contains(&image) {
+
+            let yaml = read_yaml_file(entry.path().to_str().unwrap());
+            if let Some(services) = yaml.get("services") {
+                if let Some(services_map) = services.as_mapping() {
+                    for (_, service_config) in services_map {
+                        // println!("Service: {:?}", service_name);
+                        if let Some(image) = service_config.get("image") {
+                            // println!("  Image: {:?}", image);
+                            if !images_checked.contains(&image.as_str().unwrap().to_string()) {
                                 read_val_from_cmd_line_and_proceed(
                                     &entry,
-                                    &image,
+                                    &image.as_str().unwrap().to_string(),
                                     args.build_args.clone(),
                                 );
-                                images_checked.push(image);
+                                images_checked.push(image.as_str().unwrap().to_string());
                             }
                         }
                     }
