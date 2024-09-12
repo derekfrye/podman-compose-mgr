@@ -1,6 +1,4 @@
-// use clap::builder::Str;
 use clap::{Parser, ValueEnum};
-// use std::io::{self, BufRead, BufReader, Write};
 use std::fs;
 use std::path::PathBuf;
 
@@ -16,7 +14,7 @@ pub struct Args {
     /// Search path for docker-compose files
     #[arg(short = 'p', long, value_name = "PATH", default_value = ".", value_parser = check_readable_dir)]
     pub path: PathBuf,
-    /// rebuild = pull images, secrets = refresh secrets files (not impl yet)
+    /// rebuild = pull latest docker.io images and rebuild custom images, secrets = refresh secrets files (not impl yet)
     #[arg(short = 'm', long, default_value = "Rebuild", value_parser = clap::value_parser!(Mode))]
     pub mode: Mode,
     /// Optional secrets file path, must be readable if supplied (not impl yet)
@@ -36,6 +34,7 @@ pub struct Args {
 pub enum Mode {
     Rebuild,
     Secrets,
+    RestartSvcs,
 }
 
 fn check_readable(file: &str) -> Result<PathBuf, String> {
