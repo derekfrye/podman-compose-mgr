@@ -1,6 +1,6 @@
-use crate::image_cmd as cmd;
+use crate::helpers::cmd_helper_fns as cmd;
 use crate::args::Args;
-use crate::podman;
+use crate::helpers::podman_helper_fns;
 
 use regex::Regex;
 use walkdir::{DirEntry, WalkDir};
@@ -182,11 +182,11 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args:
             println!("Compose file: {}", docker_compose_pth_fmtted);
             println!(
                 "Created: {}",
-                format_time_ago(podman::get_podman_image_upstream_create_time(image).unwrap())
+                format_time_ago(podman_helper_fns::get_podman_image_upstream_create_time(image).unwrap())
             );
             println!(
                 "Pulled: {}",
-                format_time_ago(podman::get_podman_ondisk_modify_time(image).unwrap())
+                format_time_ago(podman_helper_fns::get_podman_ondisk_modify_time(image).unwrap())
             );
             print!(
                 "Refresh {} from {}? p/N/d/b/?: ",

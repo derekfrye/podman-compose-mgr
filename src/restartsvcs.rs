@@ -1,5 +1,5 @@
 use crate::args::Args;
-use crate::image_cmd as cmd;
+use crate::helpers::cmd_helper_fns as cmd;
 
 pub fn restart_services(args: &Args) {
     let mut x = vec![];

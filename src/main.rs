@@ -1,8 +1,10 @@
 mod args;
 mod rebuild;
-mod image_cmd;
-mod podman;
-mod image_restart;
+mod helpers {
+    pub mod cmd_helper_fns;
+    pub mod podman_helper_fns;
+}
+mod restartsvcs;
 
 use args::Args;
 
@@ -32,7 +34,7 @@ fn main() -> io::Result<()> {
     match args.mode {
         args::Mode::Rebuild => rebuild::rebuild(&args),
         args::Mode::Secrets => secrets(&args),
-        args::Mode::RestartSvcs => image_restart::restart_services(&args),
+        args::Mode::RestartSvcs => restartsvcs::restart_services(&args),
     }
 
     Ok(())
