@@ -1,11 +1,13 @@
 mod args;
-mod docker_build;
+mod image_build;
 mod image_cmd;
 mod podman;
 
 use args::Args;
+use chrono::{DateTime, Local};
 use image_cmd::exec_cmd;
 use regex::Regex;
+use serde_yaml::Value;
 use std::cmp::max;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
@@ -13,7 +15,6 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::vec;
 use walkdir::{DirEntry, WalkDir};
-use serde_yaml::Value;
 
 fn main() -> io::Result<()> {
     // Parse command-line arguments
@@ -169,13 +170,11 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args:
             println!("Compose file: {}", docker_compose_pth_fmtted);
             println!(
                 "Created: {}",
-                podman::format_time_ago(
-                    podman::get_podman_image_upstream_create_time(image).unwrap()
-                )
+                format_time_ago(podman::get_podman_image_upstream_create_time(image).unwrap())
             );
             println!(
                 "Pulled: {}",
-                podman::format_time_ago(podman::get_podman_ondisk_modify_time(image).unwrap())
+                format_time_ago(podman::get_podman_ondisk_modify_time(image).unwrap())
             );
             print!(
                 "Refresh {} from {}? p/N/d/b/?: ",
@@ -192,7 +191,7 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args:
                 image_shortened, docker_compose_pth_shortened
             );
         } else if input.eq_ignore_ascii_case("b") {
-            docker_build::build_image_from_dockerfile(
+            image_build::build_image_from_dockerfile(
                 entry,
                 image,
                 build_args.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
@@ -273,5 +272,23 @@ fn secrets(args: &Args) {
                 }
             }
         }
+    }
+}
+
+fn format_time_ago(dt: DateTime<Local>) -> String {
+    let now = Local::now();
+    let duration = now.signed_duration_since(dt);
+    let days = duration.num_days();
+    let hours = duration.num_hours();
+    let minutes = duration.num_minutes();
+    let seconds = duration.num_seconds();
+    if days > 0 {
+        format!("{} days ago", days)
+    } else if hours > 0 {
+        format!("{} hours ago", hours)
+    } else if minutes > 0 {
+        format!("{} minutes ago", minutes)
+    } else {
+        format!("{} seconds ago", seconds)
     }
 }

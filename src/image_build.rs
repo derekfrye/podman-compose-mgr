@@ -16,6 +16,8 @@ pub fn build_image_from_dockerfile(dir: &DirEntry, image_name: &str, build_args:
         std::process::exit(1);
     }
 
+    let _ = cmd::pull_base_image(&dockerfile);
+
     let z = dockerfile.display().to_string();
 
     let mut x = vec![];

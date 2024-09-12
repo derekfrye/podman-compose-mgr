@@ -1,5 +1,33 @@
-use std::io::{BufRead, BufReader};
+use dockerfile_parser::Dockerfile;
+use std::io::{BufRead, BufReader, Read};
 use std::process::{Command, Stdio};
+
+pub fn pull_base_image(dockerfile: &std::path::PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    let file = std::fs::File::open(dockerfile).unwrap();
+    let mut reader = BufReader::new(file);
+
+    let mut content = String::new();
+    reader.read_to_string(&mut content)?;
+    let dockerfile = Dockerfile::parse(&content)?;
+
+    let mut x = vec![];
+    x.push("pull");
+    let mut img_nm = vec![];
+    let fromimg = dockerfile.instructions;
+    for i in fromimg {
+        match i {
+            dockerfile_parser::Instruction::From(image, ..) => {
+                img_nm.push(image.image.clone());
+            }
+            _ => {}
+        }
+    }
+    x.push(&img_nm[0]);
+
+    exec_cmd("podman", x);
+
+    Ok(())
+}
 
 pub fn exec_cmd(cmd: &str, args: Vec<&str>) {
     let mut cmd = Command::new(cmd);

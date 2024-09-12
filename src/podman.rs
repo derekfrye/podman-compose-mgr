@@ -108,21 +108,3 @@ fn convert_str_to_date(date_str: &str) -> Result<DateTime<Local>, String> {
     //let date = DateTime::parse_from_rfc3339(date_str).map_err(|e| format!("Failed to parse date: {}", e))?;
     //Ok(date.with_timezone(&chrono::Utc))
 }
-
-pub fn format_time_ago(dt: DateTime<Local>) -> String {
-    let now = Local::now();
-    let duration = now.signed_duration_since(dt);
-    let days = duration.num_days();
-    let hours = duration.num_hours();
-    let minutes = duration.num_minutes();
-    let seconds = duration.num_seconds();
-    if days > 0 {
-        format!("{} days ago", days)
-    } else if hours > 0 {
-        format!("{} hours ago", hours)
-    } else if minutes > 0 {
-        format!("{} minutes ago", minutes)
-    } else {
-        format!("{} seconds ago", seconds)
-    }
-}
