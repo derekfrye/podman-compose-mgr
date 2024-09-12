@@ -1,5 +1,5 @@
 mod args;
-mod image_build;
+mod rebuild;
 mod image_cmd;
 mod podman;
 mod image_restart;
@@ -30,7 +30,7 @@ fn main() -> io::Result<()> {
     // }
 
     match args.mode {
-        args::Mode::Rebuild => image_build::rebuild(&args),
+        args::Mode::Rebuild => rebuild::rebuild(&args),
         args::Mode::Secrets => secrets(&args),
         args::Mode::RestartSvcs => image_restart::restart_services(&args),
     }

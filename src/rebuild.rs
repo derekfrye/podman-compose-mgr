@@ -12,7 +12,7 @@ use std::io::{self, Write};
 use std::vec;
 use chrono::{DateTime, Local};
 
-pub fn build_image_from_dockerfile(dir: &DirEntry, image_name: &str, build_args: Vec<&str>) {
+fn build_image_from_dockerfile(dir: &DirEntry, image_name: &str, build_args: Vec<&str>) {
     let mut dockerfile = dir.path().to_path_buf().parent().unwrap().to_path_buf();
     dockerfile.push("Dockerfile");
 
