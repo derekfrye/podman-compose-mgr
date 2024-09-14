@@ -24,11 +24,7 @@ fn main() -> io::Result<()> {
     //     }
     // }
 
-    match args.mode {
-        args::Mode::Rebuild | args::Mode::Secrets => walk_dirs(&args),
-        // args::Mode::Secrets => secrets(&args),
-        args::Mode::RestartSvcs => restartsvcs::restart_services(&args),
-    }
+    walk_dirs(&args);
 
     Ok(())
 }

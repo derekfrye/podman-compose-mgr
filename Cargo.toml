@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-walkdir = "2.3.2"
-regex = "1.7.1"
-clap = { version = "4.0", features = ["derive"] }
-term_size = "0.3.2"
+walkdir = "2"
+regex = "1"
+clap = { version = "4", features = ["derive"] }
+term_size = "0.3"
 chrono = "0.4"
 serde_yaml = "0.9"
 dateparser = "0.2"
-dockerfile-parser = "0.2"
+dockerfile-parser = "0.8"

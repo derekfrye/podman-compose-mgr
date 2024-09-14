@@ -17,7 +17,7 @@ pub fn pull_base_image(dockerfile: &std::path::PathBuf) -> Result<(), Box<dyn st
     for i in fromimg {
         match i {
             dockerfile_parser::Instruction::From(image, ..) => {
-                img_nm.push(image.image.clone());
+                img_nm.push(image.image.clone().to_string());
             }
             _ => {}
         }
