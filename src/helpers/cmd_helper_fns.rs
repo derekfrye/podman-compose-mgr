@@ -29,6 +29,10 @@ pub fn pull_base_image(dockerfile: &std::path::PathBuf) -> Result<(), Box<dyn st
     Ok(())
 }
 
+pub fn dockerfile_exists_and_readable(dockerfile: &std::path::PathBuf) -> bool {
+    dockerfile.exists() && dockerfile.is_file() && dockerfile.metadata().is_ok()
+}
+
 pub fn exec_cmd(cmd: &str, args: Vec<&str>) {
     let mut cmd = Command::new(cmd);
 

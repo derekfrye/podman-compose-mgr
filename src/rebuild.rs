@@ -81,7 +81,7 @@ fn read_val_from_cmd_line_and_proceed(
         .display();
 
     let docker_compose_pth_fmtted = format!("{}", docker_compose_pth);
-    // this is in 3 diff places in this fn, keep it in sync
+    // this is in like 4 or 5 diff places in this fn, keep it in sync, or move this shit to a helper fn
     let refresh_static = format!("Refresh  from ? p/N/d/b/s/?: ");
     let refresh_prompt = format!(
         "Refresh {} from {}? p/N/d/b/s/?: ",
@@ -156,8 +156,19 @@ fn read_val_from_cmd_line_and_proceed(
                 "Pulled: {}",
                 format_time_ago(podman_helper_fns::get_podman_ondisk_modify_time(image).unwrap())
             );
+            println!(
+                "Dockerfile exists: {}",
+                cmd::dockerfile_exists_and_readable(
+                    &entry
+                        .path()
+                        .parent()
+                        .unwrap()
+                        .join("Dockerfile")
+                        .to_path_buf()
+                )
+            );
             print!(
-                "Refresh {} from {}? p/N/d/b/?: ",
+                "Refresh {} from {}? p/N/d/b/s/?: ",
                 image_shortened, docker_compose_pth_shortened
             );
         } else if input.eq_ignore_ascii_case("?") {
@@ -168,7 +179,7 @@ fn read_val_from_cmd_line_and_proceed(
             println!("s = Skip all subsequent images with this same name (regardless of container name).");
             println!("? = Display this help.");
             print!(
-                "Refresh {} from {}? p/N/d/b/?: ",
+                "Refresh {} from {}? p/N/d/b/s/?: ",
                 image_shortened, docker_compose_pth_shortened
             );
         } else if input.eq_ignore_ascii_case("b") {
