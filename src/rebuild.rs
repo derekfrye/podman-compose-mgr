@@ -30,18 +30,27 @@ pub fn rebuild(args: &Args, entry: &DirEntry, images_checked: &mut Vec<Image>) {
                     if let Some(container_name) = service_config.get("container_name") {
                         let image_string = image.as_str().unwrap().to_string();
                         let container_nm_string = container_name.as_str().unwrap().to_string();
-                        // if this is the first image, continue
-                        if images_checked.is_empty()
-                        // if this image is not in the list of images we've already checked
-                            || !images_checked.iter().any(|i| {
+                        // image ck is only empty on first check, so as long as we're non-empty, we might skip this image_string, move to next test
+                        if !images_checked.is_empty()
+                            && (
+                                // if this image is in the vec as a skippable image, skip this iter entry (aka continue)
+                                images_checked.iter().any(|i| {
+                                i.name == image_string && i.skipall_by_this_name
+                            })
+                            // or, if this image is not in the list of images we've already checked, continue
+                            || images_checked.iter().any(|i| {
                                 i.name == image_string && i.container == container_nm_string
                             })
+                            )
                         {
+                            continue;
+                        } else {
                             read_val_from_cmd_line_and_proceed(
                                 &entry,
                                 &image_string,
                                 args.build_args.clone(),
                                 &container_nm_string,
+                                images_checked,
                             );
                             let c = Image {
                                 name: image_string,
@@ -63,6 +72,7 @@ fn read_val_from_cmd_line_and_proceed(
     image: &str,
     build_args: Vec<String>,
     container_name: &str,
+    images_checked: &mut Vec<Image>,
 ) {
     let docker_compose_pth = entry
         .path()
@@ -169,6 +179,12 @@ fn read_val_from_cmd_line_and_proceed(
             );
             break;
         } else if input.eq_ignore_ascii_case("s") {
+            let c = Image {
+                name: image.to_string(),
+                container: container_name.to_string(),
+                skipall_by_this_name: true,
+            };
+            images_checked.push(c);
             break;
         } else {
             break;
