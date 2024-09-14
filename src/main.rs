@@ -35,7 +35,7 @@ fn main() -> io::Result<()> {
 
 fn walk_dirs(args: &Args) {
     let mut exclude_patterns = Vec::new();
-    let images_checked: &mut Vec<String> = &mut vec![];
+    let images_checked: &mut Vec< rebuild:: Image> = &mut vec![];
 
     if args.exclude_path_patterns.len() > 0 {
         if args.verbose {
@@ -44,6 +44,10 @@ fn walk_dirs(args: &Args) {
         for pattern in &args.exclude_path_patterns {
             exclude_patterns.push(Regex::new(pattern).unwrap());
         }
+    }
+
+    if args.verbose {
+        println!("Rebuild images in path: {}", args.path.display());
     }
 
     for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
@@ -61,5 +65,9 @@ fn walk_dirs(args: &Args) {
                 args::Mode::RestartSvcs => restartsvcs::restart_services(&args),
             }
         }
+    }
+
+    if args.verbose {
+        println!("Done.");
     }
 }

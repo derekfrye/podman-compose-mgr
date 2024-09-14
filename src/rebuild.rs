@@ -12,43 +12,14 @@ use std::io::{self, Write};
 use std::vec;
 use walkdir::DirEntry;
 
-fn build_image_from_dockerfile(dir: &DirEntry, image_name: &str, build_args: Vec<&str>) {
-    let mut dockerfile = dir.path().to_path_buf().parent().unwrap().to_path_buf();
-    dockerfile.push("Dockerfile");
-
-    if !dockerfile.is_file()
-        || !fs::metadata(&dockerfile).is_ok()
-        || !fs::File::open(&dockerfile).is_ok()
-    {
-        eprintln!("No Dockerfile found at '{}'", dockerfile.display());
-        std::process::exit(1);
-    }
-
-    let _ = cmd::pull_base_image(&dockerfile);
-
-    let z = dockerfile.display().to_string();
-
-    let mut x = vec![];
-    x.push("build");
-    x.push("-t");
-    x.push(image_name);
-    x.push("-f");
-    x.push(&z);
-
-    // let mut abc = string::String::new();
-    for arg in build_args {
-        x.push("--build-arg");
-        x.push(&arg);
-    }
-
-    cmd::exec_cmd("podman", x);
+#[derive(Debug, PartialEq)]
+pub struct Image {
+    name: String,
+    container: String,
+    skipall_by_this_name: bool,
 }
 
-pub fn rebuild(args: &Args, entry: &DirEntry, images_checked: &mut Vec<String>) {
-    if args.verbose {
-        println!("Rebuild images in path: {}", args.path.display());
-    }
-
+pub fn rebuild(args: &Args, entry: &DirEntry, images_checked: &mut Vec<Image>) {
     let yaml = read_yaml_file(entry.path().to_str().unwrap());
     if let Some(services) = yaml.get("services") {
         if let Some(services_map) = services.as_mapping() {
@@ -56,25 +27,43 @@ pub fn rebuild(args: &Args, entry: &DirEntry, images_checked: &mut Vec<String>) 
                 // println!("Service: {:?}", service_name);
                 if let Some(image) = service_config.get("image") {
                     // println!("  Image: {:?}", image);
-                    if !images_checked.contains(&image.as_str().unwrap().to_string()) {
-                        read_val_from_cmd_line_and_proceed(
-                            &entry,
-                            &image.as_str().unwrap().to_string(),
-                            args.build_args.clone(),
-                        );
-                        images_checked.push(image.as_str().unwrap().to_string());
+                    if let Some(container_name) = service_config.get("container_name") {
+                        let image_string = image.as_str().unwrap().to_string();
+                        let container_nm_string = container_name.as_str().unwrap().to_string();
+                        // if this is the first image, continue
+                        if images_checked.is_empty()
+                        // if this image is not in the list of images we've already checked
+                            || !images_checked.iter().any(|i| {
+                                i.name == image_string && i.container == container_nm_string
+                            })
+                        {
+                            read_val_from_cmd_line_and_proceed(
+                                &entry,
+                                &image_string,
+                                args.build_args.clone(),
+                                &container_nm_string,
+                            );
+                            let c = Image {
+                                name: image_string,
+                                container: container_nm_string,
+                                skipall_by_this_name: false,
+                            };
+                            images_checked.push(c);
+                        }
                     }
                 }
             }
         }
     }
-
-    if args.verbose {
-        println!("Done.");
-    }
 }
 
-fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args: Vec<String>) {
+// this really shoudl move back to main, i've got to believe i'll use it for secrets and restartsvcs too
+fn read_val_from_cmd_line_and_proceed(
+    entry: &DirEntry,
+    image: &str,
+    build_args: Vec<String>,
+    container_name: &str,
+) {
     let docker_compose_pth = entry
         .path()
         .parent()
@@ -82,14 +71,14 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args:
         .display();
 
     let docker_compose_pth_fmtted = format!("{}", docker_compose_pth);
-    let refresh_static = format!("Refresh  from ? p/N/d/b/?: ");
+    // this is in 3 diff places in this fn, keep it in sync
+    let refresh_static = format!("Refresh  from ? p/N/d/b/s/?: ");
     let refresh_prompt = format!(
-        "Refresh {} from {}? p/N/d/b/?: ",
+        "Refresh {} from {}? p/N/d/b/s/?: ",
         image, docker_compose_pth_fmtted
     );
 
     // if the prompt is too long, we need to shorten some stuff.
-    //
     // At a minimum, we'll display our 23 chars of "refresh ... from ?" stuff.
     // Then we divide remaining space equally between image name and path name.
     // We're not going to go less than 12 chars for path and image name, anything less feels like we're cutting too much off maybe.
@@ -131,7 +120,7 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args:
     // make sure this str matches str refresh_prompt above or the wrap logic above breaks
     // also, this same string is also used near end of this loop, make sure it matches there too
     print!(
-        "Refresh {} from {}? p/N/d/b/?: ",
+        "Refresh {} from {}? p/N/d/b/s/?: ",
         image_shortened, docker_compose_pth_shortened
     );
     loop {
@@ -145,6 +134,7 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args:
             break;
         } else if input.eq_ignore_ascii_case("d") {
             println!("Image: {}", image);
+            println!("Container name: {}", container_name);
             println!("Compose file: {}", docker_compose_pth_fmtted);
             println!(
                 "Created: {}",
@@ -165,6 +155,7 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args:
             println!("N = Do nothing, skip this image.");
             println!("d = Display info (image name, docker-compose.yml path, upstream img create date, and img on-disk modify date).");
             println!("b = Build image from the Dockerfile residing in same path as the docker-compose.yml.");
+            println!("s = Skip all subsequent images with this same name (regardless of container name).");
             println!("? = Display this help.");
             print!(
                 "Refresh {} from {}? p/N/d/b/?: ",
@@ -177,10 +168,44 @@ fn read_val_from_cmd_line_and_proceed(entry: &DirEntry, image: &str, build_args:
                 build_args.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
             );
             break;
+        } else if input.eq_ignore_ascii_case("s") {
+            break;
         } else {
             break;
         }
     }
+}
+
+fn build_image_from_dockerfile(dir: &DirEntry, image_name: &str, build_args: Vec<&str>) {
+    let mut dockerfile = dir.path().to_path_buf().parent().unwrap().to_path_buf();
+    dockerfile.push("Dockerfile");
+
+    if !dockerfile.is_file()
+        || !fs::metadata(&dockerfile).is_ok()
+        || !fs::File::open(&dockerfile).is_ok()
+    {
+        eprintln!("No Dockerfile found at '{}'", dockerfile.display());
+        std::process::exit(1);
+    }
+
+    let _ = cmd::pull_base_image(&dockerfile);
+
+    let z = dockerfile.display().to_string();
+
+    let mut x = vec![];
+    x.push("build");
+    x.push("-t");
+    x.push(image_name);
+    x.push("-f");
+    x.push(&z);
+
+    // let mut abc = string::String::new();
+    for arg in build_args {
+        x.push("--build-arg");
+        x.push(&arg);
+    }
+
+    cmd::exec_cmd("podman", x);
 }
 
 fn read_yaml_file(file: &str) -> Value {
