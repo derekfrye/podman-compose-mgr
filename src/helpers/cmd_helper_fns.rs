@@ -50,3 +50,8 @@ pub fn exec_cmd(cmd: &str, args: Vec<&str>) {
 
     let _ = x.wait().expect("Command wasn't running");
 }
+
+pub fn get_terminal_display_width() -> usize {
+    let (width, _) = term_size::dimensions().unwrap_or((80, 24));
+    width
+}
