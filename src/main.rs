@@ -6,6 +6,7 @@ mod helpers {
 }
 mod restartsvcs;
 mod secrets;
+mod read_val;
 
 use args::Args;
 use regex::Regex;
@@ -31,7 +32,6 @@ fn main() -> io::Result<()> {
 
 fn walk_dirs(args: &Args) {
     let mut exclude_patterns = Vec::new();
-    let images_checked: &mut Vec< rebuild:: Image> = &mut vec![];
 
     if args.exclude_path_patterns.len() > 0 {
         if args.verbose {
@@ -56,7 +56,12 @@ fn walk_dirs(args: &Args) {
                 continue;
             }
             match args.mode {
-                args::Mode::Rebuild => rebuild::rebuild(&args, &entry, images_checked),
+                args::Mode::Rebuild => {
+                    let mut manager = rebuild::RebuildManager::new();
+                    manager.rebuild(&entry, &args);
+
+                    // rebuild::rebuild(&args, &entry, );
+                },
                 args::Mode::Secrets => secrets::secrets(&args, &entry),
                 args::Mode::RestartSvcs => restartsvcs::restart_services(&args),
             }
