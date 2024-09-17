@@ -24,7 +24,8 @@ ContainerName,
 
 #[derive(Debug, PartialEq)]
 pub struct Grammer {
-    pub word: String,
+    pub original_val_for_prompt: Option<String>,
+    pub shortend_val_for_prompt: Option<String>,
     pub pos: u8,
 pub prefix: Option<String>,
 pub suffix: Option<String>,
@@ -32,6 +33,27 @@ pub grammer_type: GrammerType,
 pub include_in_base_string: bool,
 pub display_at_all: bool,
 }
+
+impl Default for Grammer {
+    fn default() -> Self {
+        Grammer {
+            original_val_for_prompt: None,
+            shortend_val_for_prompt: None,
+            pos: 0,
+            prefix: None,
+            suffix: None,
+            grammer_type: GrammerType::Verbiage,
+            include_in_base_string: false,
+            display_at_all: false,
+        }
+    }
+}
+
+// impl Grammer {
+//     fn new() -> Self {
+//         Self::default()
+//     }
+// }
 
 // fn unroll_vecs_into_string(v: &Vec<&str> ,separtor: &str,termintor: &str) -> String {
 //     let mut x = String::new();
@@ -46,20 +68,20 @@ pub display_at_all: bool,
 //     x
 // }
 
-fn unroll_grammer_into_string(v: &Vec<Grammer> , xa: bool ) -> String {
+fn unroll_grammer_into_string(v: &Vec<Grammer> , excl_if_not_in_base_prompt: bool ) -> String {
     let mut x = String::new();
     // lets loop through based on the pos
     // let mut t = v.clone();
     // t.sort_by(|a, b| a.pos.cmp(&b.pos));
     for i in v.iter() {
-        if xa&& !i.include_in_base_string {
+        if excl_if_not_in_base_prompt&& !i.include_in_base_string {
             x.push_str(" ");
             continue;
         }
         if let Some(prefix) = &i.prefix {
             x.push_str(prefix);
         }
-        x.push_str(&i.word);
+        x.push_str(i.original_val_for_prompt.as_ref().unwrap().as_str());
         if let Some(suffix) = &i.suffix  {
             x.push_str(suffix);
         }
@@ -79,11 +101,15 @@ pub fn read_val_from_cmd_line_and_proceed(
 )-> Result 
 {
 
+// let nm = grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.original_val_for_prompt).unwrap();
+let containera=grammers.iter().find(|x| x.grammer_type == GrammerType::ContainerName).map(|f| f.original_val_for_prompt.clone()).unwrap().unwrap();
+let cmp_path=grammers.iter().find(|x| x.grammer_type == GrammerType::DockerComposePath).map(|f| f.original_val_for_prompt.clone()).unwrap();
+let iiimmmggg= grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.original_val_for_prompt.clone()).unwrap().unwrap();
 let mut x = Result {
     user_entered_val: None,
     img: Image {
-        name: grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.word.clone()),
-        container: grammers.iter().find(|x| x.grammer_type == GrammerType::DockerComposePath).map(|f| f.word.clone()),
+        name: grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.original_val_for_prompt.clone()).unwrap(),
+        container:Some( containera.clone()),
         skipall_by_this_name: false,
     },
 };
@@ -108,9 +134,9 @@ let mut x = Result {
     let term_width = cmd::get_terminal_display_width();
     // println!("term_width: {}", term_width);
     // println!("refresh_prompt len: {}", refresh_prompt.len());
-    let mut docker_compose_pth_shortened = grammers.iter().find(|x| x.grammer_type == GrammerType::DockerComposePath).map(|f| f.word.clone()).unwrap();
+    let mut docker_compose_pth_shortened = cmp_path.clone().unwrap();
     // let docker_compose_path_orig = docker_compose_pth_shortened.to_string();
-    let mut image_shortened = grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.word.clone()).unwrap();
+    let mut image_shortened = grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.original_val_for_prompt.clone()).unwrap().unwrap();
     // let image_orig = image.to_string();
     // 1 char for a little buffer so it doesnt wrap after user input
     if refresh_prompt.len() > term_width - 1 {
@@ -146,7 +172,7 @@ let mut x = Result {
         image_shortened, docker_compose_pth_shortened
     );
     loop {
-        let iiimmmggg= grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.word.clone()).unwrap();
+        
         let mut input = String::new();
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut input).unwrap();
@@ -158,8 +184,8 @@ let mut x = Result {
             break;
         } else if input.eq_ignore_ascii_case("d") {
             println!("Image: {}", iiimmmggg);
-            println!("Container name: {}", grammers.iter().find(|x| x.grammer_type == GrammerType::ContainerName).map(|f| f.word.clone()).unwrap());
-            println!("Compose file: {}", grammers.iter().find(|x| x.grammer_type == GrammerType::DockerComposePath).map(|f| f.word.clone()).unwrap());
+            println!("Container name: {}", containera);
+            println!("Compose file: {}", cmp_path.as_ref().unwrap());
             println!(
                 "Created: {}",
                 format_time_ago(
@@ -203,7 +229,7 @@ let mut x = Result {
             x.user_entered_val = Some("s".to_string());
             let c = Image {
                 name: Some(iiimmmggg.to_string()),
-                container: Some(grammers.iter().find(|x| x.grammer_type == GrammerType::ContainerName).map(|f| f.word.clone()).unwrap()),
+                container: Some(containera.to_string()),
                 skipall_by_this_name: true,
             };
             x.img = c;

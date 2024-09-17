@@ -88,22 +88,24 @@ fn read_val_loop(&mut self, entry: &DirEntry, image: &str, build_args: &Vec<Stri
     // let mut images_checked: Vec<Image> = vec![];
 
     // let sentence = vec!["Refresh", "from"];
-let choices = vec!["p", "N", "d", "b", "s", "?"];
+
 let mut grammes: Vec<Grammer> = vec![];
 
-let grm1 = Grammer {
-    word: "Refresh".to_string(),
-    pos: 0,
-    prefix: None,
-    suffix: Some(" ".to_string()),
-    grammer_type: GrammerType::Verbiage,
-    include_in_base_string: true,
-    display_at_all:true,
-};
+let grm1 =  Grammer {
+original_val_for_prompt:Some( "Refresh".to_string()),
+shortend_val_for_prompt: None,
+pos: 0,
+prefix: None,
+suffix: Some(" ".to_string()),
+grammer_type: GrammerType::Verbiage,
+include_in_base_string: true,
+display_at_all:true};
+
 grammes.push(grm1);
 
 let grm2 = Grammer {
-    word: image.to_string(),
+    original_val_for_prompt:Some( image.to_string()),
+    shortend_val_for_prompt: None,
     pos: 1,
     prefix: None,
     suffix: Some(" ".to_string()),
@@ -113,7 +115,8 @@ let grm2 = Grammer {
 grammes.push(grm2);
 
 let grm3 = Grammer {
-    word: "from".to_string(),
+    original_val_for_prompt:Some( "from".to_string()),
+    shortend_val_for_prompt: None,
     pos: 2,
     prefix: None,
     suffix: Some(" ".to_string()),
@@ -133,8 +136,8 @@ let docker_compose_pth = entry
 
 
     let grm4 = Grammer {
-        word: docker_compose_pth_fmtted,
-        pos: 3,
+        original_val_for_prompt:Some( docker_compose_pth_fmtted),
+        shortend_val_for_prompt: None,pos: 3,
         prefix: None,
         suffix: Some("? ".to_string()),
         grammer_type: GrammerType::DockerComposePath,
@@ -142,32 +145,30 @@ let docker_compose_pth = entry
     };
     grammes.push(grm4);
 
-for i in 0..choices.len()-1 {
+    let grm5 = Grammer {
+        original_val_for_prompt: Some(container_name.to_string()),
+        shortend_val_for_prompt: None,   pos: 4,
+        prefix: None,
+        suffix: None,
+        grammer_type: GrammerType::ContainerName,
+        include_in_base_string: false,display_at_all:false,
+    };
+    grammes.push(grm5);
+
+    let choices = vec!["p", "N", "d", "b", "s", "?"];
+for i in 0..choices.len() {
     let mut xsuffix = Some("/".to_string());
     if i==choices.len()-1{
         xsuffix = Some(": ".to_string());}
   let abd=  Grammer {
-        word: choices[i].to_string(),
-        pos: (i+3) as u8,
+        original_val_for_prompt: Some(choices[i].to_string()),
+        shortend_val_for_prompt: None,  pos: (i+5) as u8,
         prefix: None,
         suffix: xsuffix,
         grammer_type: GrammerType::UserChoice,
         include_in_base_string: true,display_at_all:true,
     };
     grammes.push(abd);
-}
-
-let grm5 = Grammer {
-    word: container_name.to_string(),
-    pos: 3,
-    prefix: None,
-    suffix: None,
-    grammer_type: GrammerType::ContainerName,
-    include_in_base_string: false,display_at_all:false,
-};
-grammes.push(grm5);
-
-
 
     loop {
         let result = read_val::read_val_from_cmd_line_and_proceed(
@@ -211,7 +212,7 @@ grammes.push(grm5);
             }
         }
     }
-}
+}}
 
 
 fn build_image_from_dockerfile(&mut self, dir: &DirEntry, image_name: &str, build_args: Vec<&str>) {
@@ -246,11 +247,15 @@ fn build_image_from_dockerfile(&mut self, dir: &DirEntry, image_name: &str, buil
     cmd::exec_cmd("podman", x);
 }
 
-fn read_yaml_file(&mut self, file: &str) -> Value {
-    let file = File::open(file).expect("file not found");
-    let yaml: Value = serde_yaml::from_reader(file).expect("Error reading file");
-    yaml
-}
+
+    // other methods...
+
+    fn read_yaml_file(&mut self, file: &str) -> Value {
+        let file = File::open(file).expect("file not found");
+        let yaml: Value = serde_yaml::from_reader(file).expect("Error reading file");
+        yaml
+    }
+
 
 fn pull_it(&mut self,image: &str) {
     let mut x = vec![];
@@ -260,3 +265,4 @@ fn pull_it(&mut self,image: &str) {
     cmd::exec_cmd("podman", x);
 }
 }
+
