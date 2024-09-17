@@ -1,8 +1,7 @@
 use crate::args::Args;
 use crate::helpers::cmd_helper_fns as cmd;
-use crate::read_val;
+use crate::read_val::{self, Grammer, GrammerType};
 
-use chrono::{DateTime, Local};
 // use regex::Regex;
 use serde_yaml::Value;
 use std::fs;
@@ -12,8 +11,8 @@ use walkdir::DirEntry;
 
 #[derive(Debug, PartialEq)]
 pub struct Image {
-    pub name: String,
-    pub container: String,
+    pub name: Option<String>,
+    pub container: Option<String>,
     pub skipall_by_this_name: bool,
 }
 
@@ -44,11 +43,11 @@ pub fn rebuild(&mut self,entry: &DirEntry, args: &Args) {
                             && (
                                 // if this image is in the vec as a skippable image, skip this iter entry (aka continue)
                                 self.images_checked.iter().any(|i| {
-                                i.name == image_string && i.skipall_by_this_name
+                                i.name == Some(image_string.clone()) && i.skipall_by_this_name
                             })
                             // or, if this image is not in the list of images we've already checked, continue
                             || self.images_checked.iter().any(|i| {
-                                i.name == image_string && i.container == container_nm_string
+                                i.name == Some(image_string.clone()) && i.container == Some(container_nm_string.clone())
                             })
                             )
                         {
@@ -72,8 +71,8 @@ self.read_val_loop(entry, &image_string,& args.build_args, &container_nm_string)
 
 
                             let c = Image {
-                                name: image_string,
-                                container: container_nm_string,
+                                name:Some( image_string),
+                                container: Some(container_nm_string),
                                 skipall_by_this_name: false,
                             };
                          self.   images_checked.push(c);
@@ -88,8 +87,41 @@ self.read_val_loop(entry, &image_string,& args.build_args, &container_nm_string)
 fn read_val_loop(&mut self, entry: &DirEntry, image: &str, build_args: &Vec<String>, container_name: &str) {
     // let mut images_checked: Vec<Image> = vec![];
 
-    let sentence = vec!["Refresh", "from"];
+    // let sentence = vec!["Refresh", "from"];
 let choices = vec!["p", "N", "d", "b", "s", "?"];
+let mut grammes: Vec<Grammer> = vec![];
+
+let grm1 = Grammer {
+    word: "Refresh".to_string(),
+    pos: 0,
+    prefix: None,
+    suffix: Some(" ".to_string()),
+    grammer_type: GrammerType::Verbiage,
+    include_in_base_string: true,
+    display_at_all:true,
+};
+grammes.push(grm1);
+
+let grm2 = Grammer {
+    word: image.to_string(),
+    pos: 1,
+    prefix: None,
+    suffix: Some(" ".to_string()),
+    grammer_type: GrammerType::Image,
+    include_in_base_string: false,display_at_all:true,
+};
+grammes.push(grm2);
+
+let grm3 = Grammer {
+    word: "from".to_string(),
+    pos: 2,
+    prefix: None,
+    suffix: Some(" ".to_string()),
+    grammer_type: GrammerType::Verbiage,
+    include_in_base_string: true,display_at_all:true,
+};
+grammes.push(grm3);
+
 
 let docker_compose_pth = entry
         .path()
@@ -99,15 +131,54 @@ let docker_compose_pth = entry
 
     let docker_compose_pth_fmtted = format!("{}", docker_compose_pth);
 
+
+    let grm4 = Grammer {
+        word: docker_compose_pth_fmtted,
+        pos: 3,
+        prefix: None,
+        suffix: Some("? ".to_string()),
+        grammer_type: GrammerType::DockerComposePath,
+        include_in_base_string: false,display_at_all:true,
+    };
+    grammes.push(grm4);
+
+for i in 0..choices.len()-1 {
+    let mut xsuffix = Some("/".to_string());
+    if i==choices.len()-1{
+        xsuffix = Some(": ".to_string());}
+  let abd=  Grammer {
+        word: choices[i].to_string(),
+        pos: (i+3) as u8,
+        prefix: None,
+        suffix: xsuffix,
+        grammer_type: GrammerType::UserChoice,
+        include_in_base_string: true,display_at_all:true,
+    };
+    grammes.push(abd);
+}
+
+let grm5 = Grammer {
+    word: container_name.to_string(),
+    pos: 3,
+    prefix: None,
+    suffix: None,
+    grammer_type: GrammerType::ContainerName,
+    include_in_base_string: false,display_at_all:false,
+};
+grammes.push(grm5);
+
+
+
     loop {
         let result = read_val::read_val_from_cmd_line_and_proceed(
             &entry,
-            image,
-           & build_args,
-            container_name,
-            &sentence
-            ,&choices,
+            // image,
+        //    & build_args,
+            // container_name,
+            // &sentence
+            // ,&choices,
             // &mut images_checked,
+            &grammes,
         );
         if let Some(user_entered_val) = result.user_entered_val {
             match user_entered_val.as_str() {
@@ -187,23 +258,5 @@ fn pull_it(&mut self,image: &str) {
     x.push("pull");
     x.push(image);
     cmd::exec_cmd("podman", x);
-}
-
-fn format_time_ago(dt: DateTime<Local>) -> String {
-    let now = Local::now();
-    let duration = now.signed_duration_since(dt);
-    let days = duration.num_days();
-    let hours = duration.num_hours();
-    let minutes = duration.num_minutes();
-    let seconds = duration.num_seconds();
-    if days > 0 {
-        format!("{} days ago", days)
-    } else if hours > 0 {
-        format!("{} hours ago", hours)
-    } else if minutes > 0 {
-        format!("{} minutes ago", minutes)
-    } else {
-        format!("{} seconds ago", seconds)
-    }
 }
 }

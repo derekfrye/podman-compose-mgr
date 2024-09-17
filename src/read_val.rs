@@ -5,21 +5,63 @@ use crate::helpers::cmd_helper_fns as cmd;
 use std::io::{self, Write};
 use walkdir::DirEntry;
 use std::cmp::max;
+use chrono::{DateTime, Local};
 
 pub struct Result {
     pub user_entered_val: Option<String>,
     pub img: Image,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum GrammerType{
+Verbiage,
+UserChoice,
+Image,
+DockerComposePath,
+// BuildArgs,
+ContainerName,
+}
 
-fn unroll_vecs_into_string(v: &Vec<&str> ,separtor: &str,termintor: &str) -> String {
+#[derive(Debug, PartialEq)]
+pub struct Grammer {
+    pub word: String,
+    pub pos: u8,
+pub prefix: Option<String>,
+pub suffix: Option<String>,
+pub grammer_type: GrammerType,
+pub include_in_base_string: bool,
+pub display_at_all: bool,
+}
+
+// fn unroll_vecs_into_string(v: &Vec<&str> ,separtor: &str,termintor: &str) -> String {
+//     let mut x = String::new();
+//     for i in  v.iter() {
+//         x.push_str(&i.to_string());
+//         if i != &v[v.len() - 1] {
+//         x.push_str(separtor);}
+//         else {
+//             x.push_str(termintor);
+//         }
+//     }
+//     x
+// }
+
+fn unroll_grammer_into_string(v: &Vec<Grammer> , xa: bool ) -> String {
     let mut x = String::new();
-    for i in  v.iter() {
-        x.push_str(&i.to_string());
-        if i != &v[v.len() - 1] {
-        x.push_str(separtor);}
-        else {
-            x.push_str(termintor);
+    // lets loop through based on the pos
+    // let mut t = v.clone();
+    // t.sort_by(|a, b| a.pos.cmp(&b.pos));
+    for i in v.iter() {
+        if xa&& !i.include_in_base_string {
+            x.push_str(" ");
+            continue;
+        }
+        if let Some(prefix) = &i.prefix {
+            x.push_str(prefix);
+        }
+        x.push_str(&i.word);
+        if let Some(suffix) = &i.suffix  {
+            x.push_str(suffix);
         }
     }
     x
@@ -28,19 +70,20 @@ fn unroll_vecs_into_string(v: &Vec<&str> ,separtor: &str,termintor: &str) -> Str
 // moved from main, i've got to believe i'll use it for secrets and restartsvcs too
 pub fn read_val_from_cmd_line_and_proceed(
     entry: &DirEntry,
-    image: &str,
-    build_args: &Vec<String>,
-    container_name: &str,
-    display_verbiage: &Vec<&str>,
-    choices: &Vec<&str>,
+    // image: &str,
+    // build_args: &Vec<String>,
+    // container_name: &str,
+    // display_verbiage: &Vec<&str>,
+    // choices: &Vec<&str>,
+    grammers: &Vec<Grammer>,
 )-> Result 
 {
 
 let mut x = Result {
     user_entered_val: None,
     img: Image {
-        name: image.to_string(),
-        container: container_name.to_string(),
+        name: grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.word.clone()),
+        container: grammers.iter().find(|x| x.grammer_type == GrammerType::DockerComposePath).map(|f| f.word.clone()),
         skipall_by_this_name: false,
     },
 };
@@ -48,16 +91,13 @@ let mut x = Result {
     
     
     // let refresh_static = format!("Refresh  from ? p/N/d/b/s/?: ");
-    let refresh_static = unroll_vecs_into_string(display_verbiage, " ", "? ").push_str(
-        &unroll_vecs_into_string(choices, "/", ": ")
-    );
+    let refresh_static = unroll_grammer_into_string(grammers, true);
+
     // let refresh_prompt = format!(
     //     "Refresh {} from {}? p/N/d/b/s/?: ",
     //     image, docker_compose_pth_fmtted
     // );
-    let refresh_prompt = unroll_vecs_into_string(display_verbiage, " ", " ").push_str(
-        &unroll_vecs_into_string(choices, "/", ": ")
-    );
+    let refresh_prompt = unroll_grammer_into_string(grammers, false);
 
     // if the prompt is too long, we need to shorten some stuff.
     // At a minimum, we'll display our 23 chars of "refresh ... from ?" stuff.
@@ -68,9 +108,9 @@ let mut x = Result {
     let term_width = cmd::get_terminal_display_width();
     // println!("term_width: {}", term_width);
     // println!("refresh_prompt len: {}", refresh_prompt.len());
-    let mut docker_compose_pth_shortened = docker_compose_pth_fmtted.to_string();
+    let mut docker_compose_pth_shortened = grammers.iter().find(|x| x.grammer_type == GrammerType::DockerComposePath).map(|f| f.word.clone()).unwrap();
     // let docker_compose_path_orig = docker_compose_pth_shortened.to_string();
-    let mut image_shortened = image.to_string();
+    let mut image_shortened = grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.word.clone()).unwrap();
     // let image_orig = image.to_string();
     // 1 char for a little buffer so it doesnt wrap after user input
     if refresh_prompt.len() > term_width - 1 {
@@ -100,32 +140,35 @@ let mut x = Result {
     }
     // make sure this str matches str refresh_prompt above or the wrap logic above breaks
     // also, this same string is also used near end of this loop, make sure it matches there too
+    // TODO FIXME
     print!(
         "Refresh {} from {}? p/N/d/b/s/?: ",
         image_shortened, docker_compose_pth_shortened
     );
     loop {
+        let iiimmmggg= grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.word.clone()).unwrap();
         let mut input = String::new();
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut input).unwrap();
         let input = input.trim();
         if input.eq_ignore_ascii_case("p") {
             // Pull the image using podman and stream the output
-            pull_it(image);
+            // pull_it(image);
+            x.user_entered_val = Some("p".to_string());
             break;
         } else if input.eq_ignore_ascii_case("d") {
-            println!("Image: {}", image);
-            println!("Container name: {}", container_name);
-            println!("Compose file: {}", docker_compose_pth_fmtted);
+            println!("Image: {}", iiimmmggg);
+            println!("Container name: {}", grammers.iter().find(|x| x.grammer_type == GrammerType::ContainerName).map(|f| f.word.clone()).unwrap());
+            println!("Compose file: {}", grammers.iter().find(|x| x.grammer_type == GrammerType::DockerComposePath).map(|f| f.word.clone()).unwrap());
             println!(
                 "Created: {}",
                 format_time_ago(
-                    podman_helper_fns::get_podman_image_upstream_create_time(image).unwrap()
+                    podman_helper_fns::get_podman_image_upstream_create_time(&iiimmmggg).unwrap()
                 )
             );
             println!(
                 "Pulled: {}",
-                format_time_ago(podman_helper_fns::get_podman_ondisk_modify_time(image).unwrap())
+                format_time_ago(podman_helper_fns::get_podman_ondisk_modify_time(&iiimmmggg).unwrap())
             );
             println!(
                 "Dockerfile exists: {}",
@@ -154,19 +197,17 @@ let mut x = Result {
                 image_shortened, docker_compose_pth_shortened
             );
         } else if input.eq_ignore_ascii_case("b") {
-            build_image_from_dockerfile(
-                entry,
-                image,
-                build_args.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
-            );
+            x.user_entered_val = Some("b".to_string());
             break;
         } else if input.eq_ignore_ascii_case("s") {
+            x.user_entered_val = Some("s".to_string());
             let c = Image {
-                name: image.to_string(),
-                container: container_name.to_string(),
+                name: Some(iiimmmggg.to_string()),
+                container: Some(grammers.iter().find(|x| x.grammer_type == GrammerType::ContainerName).map(|f| f.word.clone()).unwrap()),
                 skipall_by_this_name: true,
             };
-            images_checked.push(c);
+            x.img = c;
+            // images_checked.push(c);
             break;
         } else {
             break;
@@ -174,4 +215,23 @@ let mut x = Result {
     }
 
     x
+}
+
+
+fn format_time_ago(dt: DateTime<Local>) -> String {
+    let now = Local::now();
+    let duration = now.signed_duration_since(dt);
+    let days = duration.num_days();
+    let hours = duration.num_hours();
+    let minutes = duration.num_minutes();
+    let seconds = duration.num_seconds();
+    if days > 0 {
+        format!("{} days ago", days)
+    } else if hours > 0 {
+        format!("{} hours ago", hours)
+    } else if minutes > 0 {
+        format!("{} minutes ago", minutes)
+    } else {
+        format!("{} seconds ago", seconds)
+    }
 }
