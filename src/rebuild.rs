@@ -1,3 +1,4 @@
+use crate::helpers::podman_helper_fns;
 use crate::args::Args;
 use crate::helpers::cmd_helper_fns as cmd;
 use crate::read_val::{self, Grammer, GrammerType};
@@ -8,6 +9,7 @@ use std::fs;
 use std::fs::File;
 use std::vec;
 use walkdir::DirEntry;
+use chrono::{DateTime, Local};
 
 #[derive(Debug, PartialEq)]
 pub struct Image {
@@ -136,7 +138,7 @@ let docker_compose_pth = entry
 
 
     let grm4 = Grammer {
-        original_val_for_prompt:Some( docker_compose_pth_fmtted),
+        original_val_for_prompt:Some( docker_compose_pth_fmtted.clone()),
         shortend_val_for_prompt: None,pos: 3,
         prefix: None,
         suffix: Some("? ".to_string()),
@@ -168,11 +170,11 @@ for i in 0..choices.len() {
         grammer_type: GrammerType::UserChoice,
         include_in_base_string: true,display_at_all:true,
     };
-    grammes.push(abd);
+    grammes.push(abd);}
 
     loop {
         let result = read_val::read_val_from_cmd_line_and_proceed(
-            &entry,
+            // &entry,
             // image,
         //    & build_args,
             // container_name,
@@ -181,18 +183,58 @@ for i in 0..choices.len() {
             // &mut images_checked,
             &grammes,
         );
-        if let Some(user_entered_val) = result.user_entered_val {
-            match user_entered_val.as_str() {
+        // if let Some(user_entered_val) = result.user_entered_val {
+            match result.user_entered_val {
+                None => break,
+                Some(user_entered_val) => {
+                    match user_entered_val.as_str() {
+                        
                 "p" => {
                     self. pull_it(image);
+                    break;
                 }
                 "N" => {
                     break;
                 }
-                "d" => {
-                self.    build_image_from_dockerfile(&entry, image, build_args.iter().map(|s| s.as_str()).collect());
-                }
+                "d"|"?" => {
+                    match result.user_entered_val {
+
+                    
+                    println!("Image: {}", image.to_string());
+                    println!("Container name: {}", container_name);
+                    println!("Compose file: {}", docker_compose_pth_fmtted);
+                    println!(
+                        "Created: {}",
+                  self.      format_time_ago(
+                            podman_helper_fns::get_podman_image_upstream_create_time(&image).unwrap()
+                        )
+                    );
+                    println!(
+                        "Pulled: {}",
+                     self.   format_time_ago(podman_helper_fns::get_podman_ondisk_modify_time(&image).unwrap())
+                    );
+                    println!(
+                        "Dockerfile exists: {}",
+                        cmd::dockerfile_exists_and_readable(
+                            &entry
+                                .path()
+                                .parent()
+                                .unwrap()
+                                .join("Dockerfile")
+                                .to_path_buf()
+                        )
+                    );
+
+                    let image_shortened = result.gm.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.shortend_val_for_prompt.clone()).unwrap().unwrap();
+                    let docker_compose_pth_shortened = result.gm.iter().find(|x| x.grammer_type == GrammerType::DockerComposePath).map(|f| f.shortend_val_for_prompt.clone()).unwrap().unwrap();
+
+                    print!(
+                        "Refresh {} from {}? p/N/d/b/s/?: ",
+                        image_shortened, docker_compose_pth_shortened
+                    );
+                }}
                 "b" => {
+                    self.    build_image_from_dockerfile(&entry, image, build_args.iter().map(|s| s.as_str()).collect());
                     break;
                 }
                 "s" => {
@@ -210,10 +252,32 @@ for i in 0..choices.len() {
                     println!("Invalid input. Please enter p/N/d/b/s/?: ");
                 }
             }
-        }
+        }}
+        // }
+        // else {
+        //     break;
+        // }
     }
-}}
+}
 
+
+fn format_time_ago(&mut self, dt: DateTime<Local>) -> String {
+    let now = Local::now();
+    let duration = now.signed_duration_since(dt);
+    let days = duration.num_days();
+    let hours = duration.num_hours();
+    let minutes = duration.num_minutes();
+    let seconds = duration.num_seconds();
+    if days > 0 {
+        format!("{} days ago", days)
+    } else if hours > 0 {
+        format!("{} hours ago", hours)
+    } else if minutes > 0 {
+        format!("{} minutes ago", minutes)
+    } else {
+        format!("{} seconds ago", seconds)
+    }
+}
 
 fn build_image_from_dockerfile(&mut self, dir: &DirEntry, image_name: &str, build_args: Vec<&str>) {
     let mut dockerfile = dir.path().to_path_buf().parent().unwrap().to_path_buf();
