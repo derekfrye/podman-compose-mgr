@@ -1,11 +1,9 @@
-
-use crate::rebuild::Image;
 use crate::helpers::cmd_helper_fns as cmd;
+use crate::rebuild::Image;
 
 use std::io::{self, Write};
 // use walkdir::DirEntry;
 use std::cmp::max;
-
 
 pub struct Result {
     pub user_entered_val: Option<String>,
@@ -14,13 +12,13 @@ pub struct Result {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum GrammerType{
-Verbiage,
-UserChoice,
-Image,
-DockerComposePath,
-// BuildArgs,
-ContainerName,
+pub enum GrammerType {
+    Verbiage,
+    UserChoice,
+    Image,
+    DockerComposePath,
+    // BuildArgs,
+    ContainerName,
 }
 
 #[derive(Debug, PartialEq)]
@@ -28,11 +26,11 @@ pub struct Grammer {
     pub original_val_for_prompt: Option<String>,
     pub shortend_val_for_prompt: Option<String>,
     pub pos: u8,
-pub prefix: Option<String>,
-pub suffix: Option<String>,
-pub grammer_type: GrammerType,
-pub include_in_base_string: bool,
-pub display_at_all: bool,
+    pub prefix: Option<String>,
+    pub suffix: Option<String>,
+    pub grammer_type: GrammerType,
+    pub include_in_base_string: bool,
+    pub display_at_all: bool,
 }
 
 impl Default for Grammer {
@@ -69,13 +67,13 @@ impl Default for Grammer {
 //     x
 // }
 
-fn unroll_grammer_into_string(v: &Vec<Grammer> , excl_if_not_in_base_prompt: bool ) -> String {
+fn unroll_grammer_into_string(v: &Vec<Grammer>, excl_if_not_in_base_prompt: bool) -> String {
     let mut x = String::new();
     // lets loop through based on the pos
     // let mut t = v.clone();
     // t.sort_by(|a, b| a.pos.cmp(&b.pos));
     for i in v.iter() {
-        if excl_if_not_in_base_prompt&& !i.include_in_base_string {
+        if excl_if_not_in_base_prompt && !i.include_in_base_string {
             x.push_str(" ");
             continue;
         }
@@ -83,7 +81,7 @@ fn unroll_grammer_into_string(v: &Vec<Grammer> , excl_if_not_in_base_prompt: boo
             x.push_str(prefix);
         }
         x.push_str(i.original_val_for_prompt.as_ref().unwrap().as_str());
-        if let Some(suffix) = &i.suffix  {
+        if let Some(suffix) = &i.suffix {
             x.push_str(suffix);
         }
     }
@@ -99,25 +97,39 @@ pub fn read_val_from_cmd_line_and_proceed(
     // display_verbiage: &Vec<&str>,
     // choices: &Vec<&str>,
     grammers: &Vec<Grammer>,
-)-> Result 
-{
+) -> Result {
+    // let nm = grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.original_val_for_prompt).unwrap();
+    let containera = grammers
+        .iter()
+        .find(|x| x.grammer_type == GrammerType::ContainerName)
+        .map(|f| f.original_val_for_prompt.clone())
+        .unwrap()
+        .unwrap();
+    let cmp_path = grammers
+        .iter()
+        .find(|x| x.grammer_type == GrammerType::DockerComposePath)
+        .map(|f| f.original_val_for_prompt.clone())
+        .unwrap();
+    let iiimmmggg = grammers
+        .iter()
+        .find(|x| x.grammer_type == GrammerType::Image)
+        .map(|f| f.original_val_for_prompt.clone())
+        .unwrap()
+        .unwrap();
+    let mut x = Result {
+        user_entered_val: None,
+        img: Image {
+            name: grammers
+                .iter()
+                .find(|x| x.grammer_type == GrammerType::Image)
+                .map(|f| f.original_val_for_prompt.clone())
+                .unwrap(),
+            container: Some(containera.clone()),
+            skipall_by_this_name: false,
+        },
+        gm: Vec::new(),
+    };
 
-// let nm = grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.original_val_for_prompt).unwrap();
-let containera=grammers.iter().find(|x| x.grammer_type == GrammerType::ContainerName).map(|f| f.original_val_for_prompt.clone()).unwrap().unwrap();
-let cmp_path=grammers.iter().find(|x| x.grammer_type == GrammerType::DockerComposePath).map(|f| f.original_val_for_prompt.clone()).unwrap();
-let iiimmmggg= grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.original_val_for_prompt.clone()).unwrap().unwrap();
-let mut x = Result {
-    user_entered_val: None,
-    img: Image {
-        name: grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.original_val_for_prompt.clone()).unwrap(),
-        container:Some( containera.clone()),
-        skipall_by_this_name: false,
-    },
-    gm: Vec::new(),
-};
-
-    
-    
     // let refresh_static = format!("Refresh  from ? p/N/d/b/s/?: ");
     let refresh_static = unroll_grammer_into_string(grammers, true);
 
@@ -167,29 +179,29 @@ let mut x = Result {
         }
     }
 
-let gmrr = Grammer {
-    original_val_for_prompt: Some(cmp_path.clone().unwrap()),
-    shortend_val_for_prompt: Some(docker_compose_pth_shortened.clone()),
-    pos: 0,
-    prefix: None,
-    suffix: None,
-    grammer_type: GrammerType::DockerComposePath,
-    include_in_base_string: true,
-    display_at_all: true,
-};
+    let gmrr = Grammer {
+        original_val_for_prompt: Some(cmp_path.clone().unwrap()),
+        shortend_val_for_prompt: Some(docker_compose_pth_shortened.clone()),
+        pos: 0,
+        prefix: None,
+        suffix: None,
+        grammer_type: GrammerType::DockerComposePath,
+        include_in_base_string: true,
+        display_at_all: true,
+    };
 
-let gmrr1 = Grammer {
-    original_val_for_prompt: Some(iiimmmggg.clone()),
-    shortend_val_for_prompt: Some(image_shortened.clone()),
-    pos: 0,
-    prefix: None,
-    suffix: None,
-    grammer_type: GrammerType::Image,
-    include_in_base_string: true,
-    display_at_all: true,
-};
-x.gm.push(gmrr);
-x.gm.push(gmrr1);
+    let gmrr1 = Grammer {
+        original_val_for_prompt: Some(iiimmmggg.clone()),
+        shortend_val_for_prompt: Some(image_shortened.clone()),
+        pos: 0,
+        prefix: None,
+        suffix: None,
+        grammer_type: GrammerType::Image,
+        include_in_base_string: true,
+        display_at_all: true,
+    };
+    x.gm.push(gmrr);
+    x.gm.push(gmrr1);
 
     // make sure this str matches str refresh_prompt above or the wrap logic above breaks
     // also, this same string is also used near end of this loop, make sure it matches there too
@@ -199,7 +211,6 @@ x.gm.push(gmrr1);
         image_shortened, docker_compose_pth_shortened
     );
     loop {
-        
         let mut input = String::new();
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut input).unwrap();
@@ -235,6 +246,3 @@ x.gm.push(gmrr1);
 
     x
 }
-
-
-

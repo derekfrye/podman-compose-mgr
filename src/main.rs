@@ -4,9 +4,9 @@ mod helpers {
     pub mod cmd_helper_fns;
     pub mod podman_helper_fns;
 }
+mod read_val;
 mod restartsvcs;
 mod secrets;
-mod read_val;
 
 use args::Args;
 use regex::Regex;
@@ -61,7 +61,7 @@ fn walk_dirs(args: &Args) {
                     manager.rebuild(&entry, &args);
 
                     // rebuild::rebuild(&args, &entry, );
-                },
+                }
                 args::Mode::Secrets => secrets::secrets(&args, &entry),
                 args::Mode::RestartSvcs => restartsvcs::restart_services(&args),
             }

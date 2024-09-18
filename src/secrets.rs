@@ -67,5 +67,4 @@ pub fn secrets(args: &Args, entry: &DirEntry) {
     //         }
     //     }
     // }
-
 }

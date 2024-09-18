@@ -9,6 +9,6 @@ pub fn restart_services(args: &Args) {
     x.push("restart");
     x.push("-f");
     x.push("docker-compose.yml");
-    
+
     cmd::exec_cmd("podman", x);
 }
