@@ -8,7 +8,7 @@ use std::cmp::max;
 pub struct Result {
     pub user_entered_val: Option<String>,
     pub img: Image,
-    pub gm: Vec<Grammer>,
+    pub gm: Vec<Grammar>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -22,7 +22,7 @@ pub enum GrammerType {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Grammer {
+pub struct Grammar {
     pub original_val_for_prompt: Option<String>,
     pub shortend_val_for_prompt: Option<String>,
     pub pos: u8,
@@ -33,9 +33,9 @@ pub struct Grammer {
     pub display_at_all: bool,
 }
 
-impl Default for Grammer {
+impl Default for Grammar {
     fn default() -> Self {
-        Grammer {
+        Grammar {
             original_val_for_prompt: None,
             shortend_val_for_prompt: None,
             pos: 0,
@@ -67,7 +67,7 @@ impl Default for Grammer {
 //     x
 // }
 
-fn unroll_grammer_into_string(v: &Vec<Grammer>, excl_if_not_in_base_prompt: bool) -> String {
+fn unroll_grammer_into_string(v: &Vec<Grammar>, excl_if_not_in_base_prompt: bool) -> String {
     let mut x = String::new();
     // lets loop through based on the pos
     // let mut t = v.clone();
@@ -96,7 +96,7 @@ pub fn read_val_from_cmd_line_and_proceed(
     // container_name: &str,
     // display_verbiage: &Vec<&str>,
     // choices: &Vec<&str>,
-    grammers: &Vec<Grammer>,
+    grammers: &Vec<Grammar>,
 ) -> Result {
     // let nm = grammers.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.original_val_for_prompt).unwrap();
     let containera = grammers
@@ -179,7 +179,7 @@ pub fn read_val_from_cmd_line_and_proceed(
         }
     }
 
-    let gmrr = Grammer {
+    let gmrr = Grammar {
         original_val_for_prompt: Some(cmp_path.clone().unwrap()),
         shortend_val_for_prompt: Some(docker_compose_pth_shortened.clone()),
         pos: 0,
@@ -190,7 +190,7 @@ pub fn read_val_from_cmd_line_and_proceed(
         display_at_all: true,
     };
 
-    let gmrr1 = Grammer {
+    let gmrr1 = Grammar {
         original_val_for_prompt: Some(iiimmmggg.clone()),
         shortend_val_for_prompt: Some(image_shortened.clone()),
         pos: 0,

@@ -1,7 +1,7 @@
 use crate::args::Args;
 use crate::helpers::cmd_helper_fns as cmd;
 use crate::helpers::podman_helper_fns;
-use crate::read_val::{self, Grammer, GrammerType};
+use crate::read_val::{self, Grammar, GrammerType};
 
 // use regex::Regex;
 use chrono::{DateTime, Local};
@@ -101,9 +101,9 @@ impl RebuildManager {
 
         // let sentence = vec!["Refresh", "from"];
 
-        let mut grammes: Vec<Grammer> = vec![];
+        let mut grammes: Vec<Grammar> = vec![];
 
-        let grm1 = Grammer {
+        let grm1 = Grammar {
             original_val_for_prompt: Some("Refresh".to_string()),
             shortend_val_for_prompt: None,
             pos: 0,
@@ -116,7 +116,7 @@ impl RebuildManager {
 
         grammes.push(grm1);
 
-        let grm2 = Grammer {
+        let grm2 = Grammar {
             original_val_for_prompt: Some(image.to_string()),
             shortend_val_for_prompt: None,
             pos: 1,
@@ -128,7 +128,7 @@ impl RebuildManager {
         };
         grammes.push(grm2);
 
-        let grm3 = Grammer {
+        let grm3 = Grammar {
             original_val_for_prompt: Some("from".to_string()),
             shortend_val_for_prompt: None,
             pos: 2,
@@ -148,7 +148,7 @@ impl RebuildManager {
 
         let docker_compose_pth_fmtted = format!("{}", docker_compose_pth);
 
-        let grm4 = Grammer {
+        let grm4 = Grammar {
             original_val_for_prompt: Some(docker_compose_pth_fmtted.clone()),
             shortend_val_for_prompt: None,
             pos: 3,
@@ -160,7 +160,7 @@ impl RebuildManager {
         };
         grammes.push(grm4);
 
-        let grm5 = Grammer {
+        let grm5 = Grammar {
             original_val_for_prompt: Some(container_name.to_string()),
             shortend_val_for_prompt: None,
             pos: 4,
@@ -178,7 +178,7 @@ impl RebuildManager {
             if i == choices.len() - 1 {
                 xsuffix = Some(": ".to_string());
             }
-            let abd = Grammer {
+            let abd = Grammar {
                 original_val_for_prompt: Some(choices[i].to_string()),
                 shortend_val_for_prompt: None,
                 pos: (i + 5) as u8,
