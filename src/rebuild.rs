@@ -197,9 +197,9 @@ for i in 0..choices.len() {
                     break;
                 }
                 "d"|"?" => {
-                    match result.user_entered_val {
+                    match user_entered_val.as_str() {
 
-                    
+                    "d"=>{
                     println!("Image: {}", image.to_string());
                     println!("Container name: {}", container_name);
                     println!("Compose file: {}", docker_compose_pth_fmtted);
@@ -225,14 +225,20 @@ for i in 0..choices.len() {
                         )
                     );
 
-                    let image_shortened = result.gm.iter().find(|x| x.grammer_type == GrammerType::Image).map(|f| f.shortend_val_for_prompt.clone()).unwrap().unwrap();
-                    let docker_compose_pth_shortened = result.gm.iter().find(|x| x.grammer_type == GrammerType::DockerComposePath).map(|f| f.shortend_val_for_prompt.clone()).unwrap().unwrap();
-
-                    print!(
-                        "Refresh {} from {}? p/N/d/b/s/?: ",
-                        image_shortened, docker_compose_pth_shortened
-                    );
-                }}
+                    
+                }
+                    "?"=>{
+                        println!("p = Pull image from upstream.");
+                        println!("N = Do nothing, skip this image.");
+                        println!("d = Display info (image name, docker-compose.yml path, upstream img create date, and img on-disk modify date).");
+                        println!("b = Build image from the Dockerfile residing in same path as the docker-compose.yml.");
+                        println!("s = Skip all subsequent images with this same name (regardless of container name).");
+                        println!("? = Display this help.");
+                        
+                    }
+                    _=>{}
+                    }
+                }
                 "b" => {
                     self.    build_image_from_dockerfile(&entry, image, build_args.iter().map(|s| s.as_str()).collect());
                     break;

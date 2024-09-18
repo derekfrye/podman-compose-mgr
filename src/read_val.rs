@@ -213,7 +213,8 @@ x.gm.push(gmrr1);
             x.user_entered_val = Some("d".to_string());
             break;
         } else if input.eq_ignore_ascii_case("?") {
-            
+            x.user_entered_val = Some("?".to_string());
+            break;
         } else if input.eq_ignore_ascii_case("b") {
             x.user_entered_val = Some("b".to_string());
             break;
