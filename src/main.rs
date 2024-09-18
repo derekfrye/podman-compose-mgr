@@ -46,6 +46,8 @@ fn walk_dirs(args: &Args) {
         println!("Rebuild images in path: {}", args.path.display());
     }
 
+    let mut manager = rebuild::RebuildManager::new();
+
     for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_file() && entry.file_name() == "docker-compose.yml" {
             if exclude_patterns.len() > 0
@@ -57,7 +59,7 @@ fn walk_dirs(args: &Args) {
             }
             match args.mode {
                 args::Mode::Rebuild => {
-                    let mut manager = rebuild::RebuildManager::new();
+                    // let mut manager = rebuild::RebuildManager::new();
                     manager.rebuild(&entry, &args);
 
                     // rebuild::rebuild(&args, &entry, );

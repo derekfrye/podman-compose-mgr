@@ -40,35 +40,36 @@ impl RebuildManager {
                         if let Some(container_name) = service_config.get("container_name") {
                             let image_string = image.as_str().unwrap().to_string();
                             let container_nm_string = container_name.as_str().unwrap().to_string();
+
+                            // if this image is in the vec as a skippable image, skip this iter entry (aka continue)
+                            let img_is_set_to_skip = self.images_checked.iter().any(|i| {
+                                if let Some(ref name) = i.name {
+                                    name == &image_string && i.skipall_by_this_name
+                                } else {
+                                    false
+                                }
+                            });
+
+                            // or, if this image is not in the list of images we've already checked, continue
+                            let img_and_container_previously_reviewed =
+                                self.images_checked.iter().any(|i| {
+                                    if let Some(ref name) = i.name {
+                                        if let Some(ref contner) = i.container {
+                                            name == &image_string && contner == &container_nm_string
+                                        } else {
+                                            false
+                                        }
+                                    } else {
+                                        false
+                                    }
+                                });
+
                             // image ck is only empty on first check, so as long as we're non-empty, we might skip this image_string, move to next test
                             if !self.images_checked.is_empty()
-                                && (
-                                    // if this image is in the vec as a skippable image, skip this iter entry (aka continue)
-                                    self.images_checked.iter().any(|i| {
-                                i.name == Some(image_string.clone()) && i.skipall_by_this_name
-                            })
-                            // or, if this image is not in the list of images we've already checked, continue
-                            || self.images_checked.iter().any(|i| {
-                                i.name == Some(image_string.clone()) && i.container == Some(container_nm_string.clone())
-                            })
-                                )
+                                && (img_is_set_to_skip || img_and_container_previously_reviewed)
                             {
                                 continue;
                             } else {
-                                // read_val_loop(
-                                //     &entry,
-                                //     &image_string,
-                                //     args.build_args.clone(),
-                                //     &container_nm_string,
-                                //     images_checked,
-                                // );
-                                //                         let docker_compose_pth = entry
-                                //     .path()
-                                //     .parent()
-                                //     .unwrap_or(std::path::Path::new("/"))
-                                //     .display();
-                                // println!("docker_compose_pth: {}", docker_compose_pth);
-
                                 self.read_val_loop(
                                     entry,
                                     &image_string,
@@ -192,17 +193,8 @@ impl RebuildManager {
         }
 
         loop {
-            let result = read_val::read_val_from_cmd_line_and_proceed(
-                // &entry,
-                // image,
-                //    & build_args,
-                // container_name,
-                // &sentence
-                // ,&choices,
-                // &mut images_checked,
-                &grammes,
-            );
-            // if let Some(user_entered_val) = result.user_entered_val {
+            let result = read_val::read_val_from_cmd_line_and_proceed(&grammes);
+
             match result.user_entered_val {
                 None => break,
                 Some(user_entered_val) => match user_entered_val.as_str() {
@@ -265,29 +257,19 @@ impl RebuildManager {
                         break;
                     }
                     "s" => {
-                        let mut x = vec![];
-                        x.push("stop");
-                        x.push(container_name);
-                        cmd::exec_cmd("podman", x);
-                        let mut x = vec![];
-                        x.push("rm");
-                        x.push(container_name);
-                        cmd::exec_cmd("podman", x);
-                        self.build_image_from_dockerfile(
-                            &entry,
-                            image,
-                            build_args.iter().map(|s| s.as_str()).collect(),
-                        );
+                        let c = Image {
+                            name: Some(image.to_string()),
+                            container: Some(container_name.to_string()),
+                            skipall_by_this_name: true,
+                        };
+                        self.images_checked.push(c);
+                        break;
                     }
                     _ => {
                         println!("Invalid input. Please enter p/N/d/b/s/?: ");
                     }
                 },
             }
-            // }
-            // else {
-            //     break;
-            // }
         }
     }
 
