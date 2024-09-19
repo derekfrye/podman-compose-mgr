@@ -9,8 +9,9 @@ mod restartsvcs;
 mod secrets;
 
 use args::Args;
+use rebuild::RebuildManager;
 use regex::Regex;
-use std::io;
+use std::{io, mem};
 use walkdir::WalkDir;
 
 fn main() -> io::Result<()> {
@@ -46,7 +47,7 @@ fn walk_dirs(args: &Args) {
         println!("Rebuild images in path: {}", args.path.display());
     }
 
-    let mut manager = rebuild::RebuildManager::new();
+    let mut manager: Option<RebuildManager> = Some(rebuild::RebuildManager::new());
 
     for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_file() && entry.file_name() == "docker-compose.yml" {
@@ -60,17 +61,26 @@ fn walk_dirs(args: &Args) {
             match args.mode {
                 args::Mode::Rebuild => {
                     // let mut manager = rebuild::RebuildManager::new();
-                    manager.rebuild(&entry, &args);
-
-                    // rebuild::rebuild(&args, &entry, );
+                    if let Some(ref mut manager) = manager {
+                        manager.rebuild(&entry, &args);
+                    }
                 }
                 args::Mode::Secrets => secrets::secrets(&args, &entry),
-                args::Mode::RestartSvcs => restartsvcs::restart_services(&args),
+                args::Mode::RestartSvcs => {
+                   drop_mgr(&mut manager);
+                    restartsvcs::restart_services(&args)
+                }
             }
         }
     }
 
     if args.verbose {
         println!("Done.");
+    }
+}
+
+fn drop_mgr(manager: &mut Option<RebuildManager>) {
+    if let Some(manager) = manager.take() {
+        mem::drop(manager);
     }
 }
