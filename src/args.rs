@@ -4,7 +4,6 @@ use std::path::PathBuf;
 
 pub fn args_checks() -> Args {
     let xx = Args::parse();
-
     xx
 }
 
@@ -23,6 +22,7 @@ pub struct Args {
     /// Print extra stuff
     #[arg(short, long)]
     pub verbose: bool,
+    /// Regex pattern(s) to exclude paths, e.g., docker/archive or [^\.]+/archive
     #[arg(short, long)]
     pub exclude_path_patterns: Vec<String>,
     #[arg(short, long)]

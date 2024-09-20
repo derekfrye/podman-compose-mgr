@@ -18,14 +18,6 @@ fn main() -> io::Result<()> {
     // Parse command-line arguments
     let args = args::args_checks();
 
-    // if args.verbose {
-    //     println!("Path: {}", args.path);
-    //     println!("Mode: {:?}", args.mode);
-    //     if let Some(secrets_file) = &args.secrets_file {
-    //         println!("Secrets file: {}", secrets_file.display());
-    //     }
-    // }
-
     walk_dirs(&args);
 
     Ok(())

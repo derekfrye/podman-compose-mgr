@@ -1,5 +1,5 @@
 [package]
-name = "image_refresh"
+name = "podman-compose-mgr"
 version = "0.1.0"
 edition = "2021"
 
