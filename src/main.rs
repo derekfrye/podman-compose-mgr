@@ -11,12 +11,17 @@ mod secrets;
 use args::Args;
 use rebuild::RebuildManager;
 use regex::Regex;
+// use futures::executor;
 use std::{io, mem};
 use walkdir::WalkDir;
 
 fn main() -> io::Result<()> {
     // Parse command-line arguments
     let args = args::args_checks();
+    if let Err(e) = args.validate() {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
 
     walk_dirs(&args);
 
@@ -57,7 +62,16 @@ fn walk_dirs(args: &Args) {
                         manager.rebuild(&entry, &args);
                     }
                 }
-                args::Mode::Secrets => secrets::secrets(&args, &entry),
+                args::Mode::SecretRefresh => {
+                    if let Err(e) = futures::executor::block_on(secrets::update_mode(&args)) {
+                        eprintln!("Error refreshing secrets: {}", e);
+                    }
+                }
+                args::Mode::SecretRetrieve => {
+                    if let Err(e) = futures::executor::block_on(secrets::retrieve_mode(&args)) {
+                        eprintln!("Error retrieving secrets: {}", e);
+                    }
+                }
                 args::Mode::RestartSvcs => {
                    drop_mgr(&mut manager);
                     restartsvcs::restart_services(&args)

@@ -1,6 +1,8 @@
 use clap::{Parser, ValueEnum};
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 use std::path::PathBuf;
+// use clap::builder::ValueParser;
 
 pub fn args_checks() -> Args {
     let xx = Args::parse();
@@ -16,9 +18,9 @@ pub struct Args {
     /// rebuild = pull latest docker.io images and rebuild custom images, secrets = refresh secrets files (not impl yet)
     #[arg(short = 'm', long, default_value = "Rebuild", value_parser = clap::value_parser!(Mode))]
     pub mode: Mode,
-    /// Optional secrets file path, must be readable if supplied (not impl yet)
-    #[arg(short = 's', long, value_name = "SECRETS_FILE", value_parser = check_readable)]
-    pub secrets_file: Option<PathBuf>,
+    /// Optional path for storing intermediate secrets file, must be rw if supplied, and ideally secured to this user's group
+    #[arg(short = 's', long, value_name = "SECRETS_FILE", value_parser = check_readable_dir)]
+    pub secrets_tmp_dir: Option<PathBuf>,
     /// Print extra stuff
     #[arg(short, long)]
     pub verbose: bool,
@@ -27,19 +29,81 @@ pub struct Args {
     pub exclude_path_patterns: Vec<String>,
     #[arg(short, long)]
     pub build_args: Vec<String>,
+    #[arg(long)]
+    pub secrets_client_id: Option<String>,
+    #[arg(long)]
+    pub secrets_client_secret_path: Option<PathBuf>,
+    #[arg(long)]
+    pub secrets_tenant_id: Option<String>,
+    #[arg(long)]
+    pub secrets_vault_name: Option<String>,
+    #[arg(long, value_parser = check_parent_dir_is_writeable)]
+    pub secrets_output_json: Option<PathBuf>,
+}
+
+impl Args {
+    /// Validate the secrets based on the mode
+    pub fn validate(&self) -> Result<(), String> {
+        if let Mode::SecretRefresh = self.mode {
+            if let Some(client_id) = &self.secrets_client_id {
+                if client_id.len() != 8 {
+                    return Err(
+                        "secrets_client_id must be exactly 8 characters long when Mode is Secrets."
+                            .to_string(),
+                    );
+                }
+            }
+
+            if let Some(client_secret) = &self.secrets_client_secret_path {
+                if let Err(e) = check_readable_file(client_secret.to_str().unwrap()) {
+                    return Err(e);
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Enumeration of possible modes
-#[derive(Clone, ValueEnum, Debug)]
+#[derive(Clone, ValueEnum, Debug, Copy)]
 pub enum Mode {
     Rebuild,
-    Secrets,
+    SecretRefresh,
+    SecretRetrieve,
     RestartSvcs,
 }
 
-fn check_readable(file: &str) -> Result<PathBuf, String> {
+// for a passed PathBuf, get the parent dir, check if it exists and is writable
+fn check_parent_dir_is_writeable(existing_file: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(existing_file).to_owned();
+    let parent_path = path.parent().unwrap();
+    if parent_path.is_dir()
+        && fs::metadata(&parent_path).is_ok()
+        && fs::read_dir(&parent_path).is_ok()
+    {
+        let temp_file_path = parent_path.join(".temp_write_check");
+        match OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&temp_file_path)
+        {
+            Ok(mut file) => {
+                let _ = file
+                    .write_all(b"test")
+                    .map_err(|e| format!("Failed to write to temp file: {}", e));
+                let _ = fs::remove_file(&temp_file_path); // Clean up the temporary file
+                Ok(path)
+            }
+            Err(_) => Err(format!("The dir '{}' is not writable.", existing_file)),
+        }
+    } else {
+        Err(format!("The dir '{}' is not writable.", existing_file))
+    }
+}
+
+fn check_readable_file(file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file);
-    if path.is_file() && fs::metadata(&path).is_ok() && fs::File::open(&path).is_ok() {
+    if path.is_file() && fs::metadata(&path).is_ok() {
         Ok(path)
     } else {
         Err(format!("The file '{}' is not readable.", file))

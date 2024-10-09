@@ -196,7 +196,9 @@ impl RebuildManager {
             let result = read_val::read_val_from_cmd_line_and_proceed(&grammes);
 
             match result.user_entered_val {
-                None => break,
+                None => {
+                    break;
+                }
                 Some(user_entered_val) => match user_entered_val.as_str() {
                     "p" => {
                         self.pull_it(image);
@@ -241,9 +243,15 @@ impl RebuildManager {
                         "?" => {
                             println!("p = Pull image from upstream.");
                             println!("N = Do nothing, skip this image.");
-                            println!("d = Display info (image name, docker-compose.yml path, upstream img create date, and img on-disk modify date).");
-                            println!("b = Build image from the Dockerfile residing in same path as the docker-compose.yml.");
-                            println!("s = Skip all subsequent images with this same name (regardless of container name).");
+                            println!(
+                                        "d = Display info (image name, docker-compose.yml path, upstream img create date, and img on-disk modify date)."
+                                    );
+                            println!(
+                                        "b = Build image from the Dockerfile residing in same path as the docker-compose.yml."
+                                    );
+                            println!(
+                                        "s = Skip all subsequent images with this same name (regardless of container name)."
+                                    );
                             println!("? = Display this help.");
                         }
                         _ => {}
