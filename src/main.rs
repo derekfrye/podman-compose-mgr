@@ -12,7 +12,7 @@ use args::Args;
 use rebuild::RebuildManager;
 use regex::Regex;
 // use futures::executor;
-use std::{io, mem};
+use std::{ io, mem };
 use walkdir::WalkDir;
 
 fn main() -> io::Result<()> {
@@ -23,7 +23,21 @@ fn main() -> io::Result<()> {
         std::process::exit(1);
     }
 
-    walk_dirs(&args);
+    match args.mode {
+        args::Mode::SecretRefresh => {
+            if let Err(e) = secrets::update_mode(&args) {
+                eprintln!("Error refreshing secrets: {}", e);
+            }
+        }
+        args::Mode::SecretRetrieve => {
+            if let Err(e) = secrets::retrieve_mode(&args) {
+                eprintln!("Error retrieving secrets: {}", e);
+            }
+        }
+        _ => {
+            walk_dirs(&args);
+        }
+    }
 
     Ok(())
 }
@@ -46,10 +60,13 @@ fn walk_dirs(args: &Args) {
 
     let mut manager: Option<RebuildManager> = Some(rebuild::RebuildManager::new());
 
-    for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(&args.path)
+        .into_iter()
+        .filter_map(|e| e.ok()) {
         if entry.file_type().is_file() && entry.file_name() == "docker-compose.yml" {
-            if exclude_patterns.len() > 0
-                && exclude_patterns
+            if
+                exclude_patterns.len() > 0 &&
+                exclude_patterns
                     .iter()
                     .any(|pattern| pattern.is_match(entry.path().to_str().unwrap()))
             {
@@ -62,20 +79,11 @@ fn walk_dirs(args: &Args) {
                         manager.rebuild(&entry, &args);
                     }
                 }
-                args::Mode::SecretRefresh => {
-                    if let Err(e) = futures::executor::block_on(secrets::update_mode(&args)) {
-                        eprintln!("Error refreshing secrets: {}", e);
-                    }
-                }
-                args::Mode::SecretRetrieve => {
-                    if let Err(e) = futures::executor::block_on(secrets::retrieve_mode(&args)) {
-                        eprintln!("Error retrieving secrets: {}", e);
-                    }
-                }
                 args::Mode::RestartSvcs => {
-                   drop_mgr(&mut manager);
-                    restartsvcs::restart_services(&args)
+                    drop_mgr(&mut manager);
+                    restartsvcs::restart_services(&args);
                 }
+                _ => {}
             }
         }
     }

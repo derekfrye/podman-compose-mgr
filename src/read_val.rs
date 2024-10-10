@@ -156,7 +156,7 @@ pub fn read_val_from_cmd_line_and_proceed(
     if refresh_prompt.len() > term_width - 1 {
         let truncated_symbols = "...";
         let mut max_avail_chars_for_image_and_path =
-            max(term_width, 47) - refresh_static.len() - (2 * truncated_symbols.len()) - 1;
+            max(term_width, 47) - refresh_static.len() - 2 * truncated_symbols.len() - 1;
         if max_avail_chars_for_image_and_path % 2 != 0 {
             max_avail_chars_for_image_and_path -= 1;
         }

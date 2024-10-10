@@ -1,6 +1,7 @@
 use clap::{Parser, ValueEnum};
-use std::fs::{self, OpenOptions};
-use std::io::Write;
+use serde_json::Value;
+use std::fs::{self, File, OpenOptions};
+use std::io::{Read, Write};
 use std::path::PathBuf;
 // use clap::builder::ValueParser;
 
@@ -13,7 +14,13 @@ pub fn args_checks() -> Args {
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     /// Search path for docker-compose files
-    #[arg(short = 'p', long, value_name = "PATH", default_value = ".", value_parser = check_readable_dir)]
+    #[arg(
+        short = 'p',
+        long,
+        value_name = "PATH",
+        default_value = ".",
+        value_parser = check_readable_dir
+    )]
     pub path: PathBuf,
     /// rebuild = pull latest docker.io images and rebuild custom images, secrets = refresh secrets files (not impl yet)
     #[arg(short = 'm', long, default_value = "Rebuild", value_parser = clap::value_parser!(Mode))]
@@ -39,6 +46,8 @@ pub struct Args {
     pub secrets_vault_name: Option<String>,
     #[arg(long, value_parser = check_parent_dir_is_writeable)]
     pub secrets_output_json: Option<PathBuf>,
+    #[arg(long, value_parser = check_readable_file)]
+    pub secrets_input_json: Option<PathBuf>,
 }
 
 impl Args {
@@ -56,6 +65,30 @@ impl Args {
 
             if let Some(client_secret) = &self.secrets_client_secret_path {
                 if let Err(e) = check_readable_file(client_secret.to_str().unwrap()) {
+                    return Err(e);
+                }
+            }
+        } else if let Mode::SecretRetrieve = self.mode {
+            if let Some(client_id) = &self.secrets_client_id {
+                if client_id.len() != 36 {
+                    return Err("Azure client_id must be 36 characters long.".to_string());
+                }
+            }
+
+            if let Some(client_secret) = &self.secrets_client_secret_path {
+                if let Err(e) = check_readable_file(client_secret.to_str().unwrap()) {
+                    return Err(e);
+                }
+            }
+
+            if let Some(output_json) = &self.secrets_output_json {
+                if let Err(e) = check_parent_dir_is_writeable(output_json.to_str().unwrap()) {
+                    return Err(e);
+                }
+            }
+
+            if let Some(input_json) = &self.secrets_input_json {
+                if let Err(e) = check_valid_json_file(input_json.to_str().unwrap()) {
                     return Err(e);
                 }
             }
@@ -108,6 +141,22 @@ fn check_readable_file(file: &str) -> Result<PathBuf, String> {
     } else {
         Err(format!("The file '{}' is not readable.", file))
     }
+}
+
+fn check_valid_json_file(file: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(file);
+    let mut file = File::open(&path).map_err(|e| e.to_string())?;
+    let mut file_content = String::new();
+    file.read_to_string(&mut file_content)
+        .map_err(|e| e.to_string())?;
+    let mut entries = Vec::new();
+    let mut deserializer = serde_json::Deserializer::from_str(&file_content).into_iter::<Value>();
+
+    while let Some(entry) = deserializer.next() {
+        let entry = entry.map_err(|e| e.to_string())?;
+        entries.push(entry);
+    }
+    Ok(path)
 }
 
 fn check_readable_dir(dir: &str) -> Result<PathBuf, String> {
