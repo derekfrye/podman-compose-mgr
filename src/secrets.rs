@@ -274,6 +274,7 @@ fn read_val_loop(entry: Value, client: &SecretClient, args: &Args) -> Result<(),
                     } else if args.verbose {
                         println!("Azure ID match for file: {}", filenm);
                     }
+                    break;
                 }
                 "?" => {
                     println!("N = Do nothing, skip this secret.");
