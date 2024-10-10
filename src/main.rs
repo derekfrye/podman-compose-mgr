@@ -39,6 +39,10 @@ fn main() -> io::Result<()> {
         }
     }
 
+    if args.verbose {
+        println!("Done.");
+    }
+
     Ok(())
 }
 
@@ -86,10 +90,6 @@ fn walk_dirs(args: &Args) {
                 _ => {}
             }
         }
-    }
-
-    if args.verbose {
-        println!("Done.");
     }
 }
 

@@ -1,24 +1,23 @@
 use crate::helpers::cmd_helper_fns as cmd;
-use crate::rebuild::Image;
 
-use std::io::{ self, Write };
-// use walkdir::DirEntry;
 use std::cmp::max;
+use std::collections::HashSet;
+use std::io::{self, Write};
 
 pub struct Result {
     pub user_entered_val: Option<String>,
-    pub img: Image,
     pub grammar: Vec<Grammar>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum GrammerType {
     Verbiage,
     UserChoice,
     Image,
     DockerComposePath,
-    // BuildArgs,
     ContainerName,
+    AzureSecretName,
+    None,
 }
 
 #[derive(Debug, PartialEq)]
@@ -51,7 +50,7 @@ impl Default for Grammar {
 fn unroll_grammer_into_string(
     grammars: &Vec<Grammar>,
     excl_if_not_in_base_prompt: bool,
-    use_shortened_val: bool
+    use_shortened_val: bool,
 ) -> String {
     let mut return_result = String::new();
     // lets loop through based on the position
@@ -78,40 +77,29 @@ fn unroll_grammer_into_string(
 }
 
 // moved from main, i've got to believe i'll use it for secrets and restartsvcs too
-pub fn read_val_from_cmd_line_and_proceed(grammars: &mut Vec<Grammar>) -> Result {
-    let container_name = grammars
+pub fn read_val_from_cmd_line_and_proceed(
+    grammars: &mut Vec<Grammar>,
+    grammar_type_1_to_shorten: GrammerType,
+    grammar_type_2_to_shorten: GrammerType,
+) -> Result {
+    let type_1_to_shorten = grammars
         .iter()
-        .find(|x| x.grammer_type == GrammerType::ContainerName)
+        .find(|x| x.grammer_type == grammar_type_1_to_shorten)
         .map(|f| f.original_val_for_prompt.clone())
         .unwrap()
         .unwrap();
-    let docker_compose_path = grammars
+    let type_2_to_shorten = grammars
         .iter()
-        .find(|x| x.grammer_type == GrammerType::DockerComposePath)
+        .find(|x| x.grammer_type == grammar_type_2_to_shorten)
         .map(|f| f.original_val_for_prompt.clone())
-        .unwrap();
-    let image = grammars
-        .iter()
-        .find(|x| x.grammer_type == GrammerType::Image)
-        .map(|f| f.original_val_for_prompt.clone())
-        .unwrap()
-        .unwrap();
+        .unwrap_or_else(|| Some(String::new()))
+        .unwrap_or_else(String::new);
+
     let mut return_result = Result {
         user_entered_val: None,
-        img: Image {
-            name: grammars
-                .iter()
-                .find(|x| x.grammer_type == GrammerType::Image)
-                .map(|f| f.original_val_for_prompt.clone())
-                .unwrap(),
-            container: Some(container_name.clone()),
-            skipall_by_this_name: false,
-        },
         grammar: Vec::new(),
     };
 
-    // let refresh_static = format!("Refresh  from ? p/N/d/b/s/?: ");
-    //
     let refresh_static = unroll_grammer_into_string(grammars, true, false);
     let refresh_prompt = unroll_grammer_into_string(grammars, false, false);
 
@@ -124,9 +112,9 @@ pub fn read_val_from_cmd_line_and_proceed(grammars: &mut Vec<Grammar>) -> Result
     let term_width = cmd::get_terminal_display_width();
     // println!("term_width: {}", term_width);
     // println!("refresh_prompt len: {}", refresh_prompt.len());
-    let mut docker_compose_pth_shortened = docker_compose_path.clone().unwrap();
+    let mut type_1_shortened = type_1_to_shorten.clone();
     // let docker_compose_path_orig = docker_compose_pth_shortened.to_string();
-    let mut image_shortened = image.clone();
+    let mut type_2_shortened = type_2_to_shorten.clone();
     // let image_orig = image.to_string();
     // 1 char for a little buffer so it doesnt wrap after user input
     if refresh_prompt.len() > term_width - 1 {
@@ -137,99 +125,85 @@ pub fn read_val_from_cmd_line_and_proceed(grammars: &mut Vec<Grammar>) -> Result
             max_avail_chars_for_image_and_path -= 1;
         }
 
-        if docker_compose_pth_shortened.len() > max_avail_chars_for_image_and_path / 2 {
-            docker_compose_pth_shortened = format!(
+        if type_1_shortened.len() > max_avail_chars_for_image_and_path / 2 {
+            type_1_shortened = format!(
                 "...{}",
-                docker_compose_pth_shortened[
-                    docker_compose_pth_shortened.len() - max_avail_chars_for_image_and_path / 2..
-                ].to_string()
+                type_1_shortened[type_1_shortened.len() - max_avail_chars_for_image_and_path / 2..]
+                    .to_string()
             );
         }
 
-        if image_shortened.len() > max_avail_chars_for_image_and_path / 2 {
-            image_shortened = format!(
+        if type_2_shortened.len() > max_avail_chars_for_image_and_path / 2 {
+            type_2_shortened = format!(
                 "...{}",
-                image_shortened[
-                    image_shortened.len() - max_avail_chars_for_image_and_path / 2..
-                ].to_string()
+                type_2_shortened[type_2_shortened.len() - max_avail_chars_for_image_and_path / 2..]
+                    .to_string()
             );
         }
     }
 
-    let docker_compose_grammar = Grammar {
-        original_val_for_prompt: Some(docker_compose_path.clone().unwrap()),
-        shortend_val_for_prompt: Some(docker_compose_pth_shortened.clone()),
+    let type_1_grammar = Grammar {
+        original_val_for_prompt: Some(type_1_to_shorten.clone()),
+        shortend_val_for_prompt: Some(type_1_shortened.clone()),
         pos: 0,
         prefix: None,
         suffix: None,
-        grammer_type: GrammerType::DockerComposePath,
+        grammer_type: grammar_type_1_to_shorten.clone(),
         part_of_static_prompt: true,
         display_at_all: true,
     };
 
-    let image_grammar = Grammar {
-        original_val_for_prompt: Some(image.clone()),
-        shortend_val_for_prompt: Some(image_shortened.clone()),
+    let type_2_grammar = Grammar {
+        original_val_for_prompt: Some(type_2_to_shorten.clone()),
+        shortend_val_for_prompt: Some(type_2_shortened.clone()),
         pos: 0,
         prefix: None,
         suffix: None,
-        grammer_type: GrammerType::Image,
+        grammer_type: grammar_type_2_to_shorten.clone(),
         part_of_static_prompt: true,
         display_at_all: true,
     };
-    return_result.grammar.push(docker_compose_grammar);
-    return_result.grammar.push(image_grammar);
+    return_result.grammar.push(type_1_grammar);
+    return_result.grammar.push(type_2_grammar);
 
-    let x = return_result.grammar
+    // put the shortened values into the input grammar, so when we prompt the user from the unrolled grammar, we use the shortend values
+    let x = return_result
+        .grammar
         .iter()
-        .find(|x| x.grammer_type == GrammerType::DockerComposePath)
+        .find(|x| x.grammer_type == grammar_type_1_to_shorten)
         .and_then(|x| x.shortend_val_for_prompt.clone());
-    let z = return_result.grammar
+    let z = return_result
+        .grammar
         .iter()
-        .find(|x| x.grammer_type == GrammerType::Image)
+        .find(|x| x.grammer_type == grammar_type_2_to_shorten)
         .and_then(|x| x.shortend_val_for_prompt.clone());
     grammars.iter_mut().for_each(|y| {
-        if y.grammer_type == GrammerType::DockerComposePath {
+        if y.grammer_type == grammar_type_1_to_shorten {
             y.shortend_val_for_prompt = x.clone();
         }
-        if y.grammer_type == GrammerType::Image {
+        if y.grammer_type == grammar_type_2_to_shorten {
             y.shortend_val_for_prompt = z.clone();
         }
     });
 
     print!("{}", unroll_grammer_into_string(grammars, false, true));
-    // make sure this str matches str refresh_prompt above or the wrap logic above breaks
-    // also, this same string is also used near end of this loop, make sure it matches there too
-    // TODO FIXME
-    // print!("Refresh {} from {}? p/N/d/b/s/?: ", image_shortened, docker_compose_pth_shortened);
+
+    let user_choices: HashSet<String> = grammars
+        .iter()
+        .filter(|x| x.grammer_type == GrammerType::UserChoice)
+        .collect::<Vec<&Grammar>>()
+        .iter()
+        .map(|x| x.original_val_for_prompt.clone().unwrap())
+        .collect();
 
     loop {
         let mut input = String::new();
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut input).unwrap();
         let input = input.trim();
-        if input.eq_ignore_ascii_case("p") {
-            // Pull the image using podman and stream the output
-            // pull_it(image);
-            return_result.user_entered_val = Some("p".to_string());
-            break;
-        } else if input.eq_ignore_ascii_case("d") {
-            return_result.user_entered_val = Some("d".to_string());
-            break;
-        } else if input.eq_ignore_ascii_case("?") {
-            return_result.user_entered_val = Some("?".to_string());
-            break;
-        } else if input.eq_ignore_ascii_case("b") {
-            return_result.user_entered_val = Some("b".to_string());
-            break;
-        } else if input.eq_ignore_ascii_case("s") {
-            return_result.user_entered_val = Some("s".to_string());
-            let c = Image {
-                name: Some(image.to_string()),
-                container: Some(container_name.to_string()),
-                skipall_by_this_name: true,
-            };
-            return_result.img = c;
+
+        if user_choices.contains(input) {
+            return_result.user_entered_val = Some(input.to_string());
             break;
         } else {
             break;
