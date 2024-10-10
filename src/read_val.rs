@@ -16,7 +16,7 @@ pub enum GrammerType {
     Image,
     DockerComposePath,
     ContainerName,
-    AzureSecretName,
+    FileName,
     None,
 }
 

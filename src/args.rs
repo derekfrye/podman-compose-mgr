@@ -34,6 +34,9 @@ pub struct Args {
     /// Regex pattern(s) to exclude paths, e.g., docker/archive or [^\.]+/archive
     #[arg(short, long)]
     pub exclude_path_patterns: Vec<String>,
+    /// Regex pattern(s) to include paths. If both incl. and excl. are specified, excl. is applied first.
+    #[arg(short, long)]
+    pub include_path_patterns: Vec<String>,
     #[arg(short, long)]
     pub build_args: Vec<String>,
     #[arg(long)]

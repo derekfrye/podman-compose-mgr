@@ -30,7 +30,7 @@ fn main() -> io::Result<()> {
             }
         }
         args::Mode::SecretRetrieve => {
-            if let Err(e) = secrets::retrieve_mode(&args) {
+            if let Err(e) = secrets::validate(&args) {
                 eprintln!("Error retrieving secrets: {}", e);
             }
         }
@@ -48,6 +48,7 @@ fn main() -> io::Result<()> {
 
 fn walk_dirs(args: &Args) {
     let mut exclude_patterns = Vec::new();
+    let mut include_patterns = Vec::new();
 
     if args.exclude_path_patterns.len() > 0 {
         if args.verbose {
@@ -55,6 +56,14 @@ fn walk_dirs(args: &Args) {
         }
         for pattern in &args.exclude_path_patterns {
             exclude_patterns.push(Regex::new(pattern).unwrap());
+        }
+    }
+    if args.include_path_patterns.len() > 0 {
+        if args.verbose {
+            println!("Including paths: {:?}", args.include_path_patterns);
+        }
+        for pattern in &args.include_path_patterns {
+            include_patterns.push(Regex::new(pattern).unwrap());
         }
     }
 
@@ -73,6 +82,14 @@ fn walk_dirs(args: &Args) {
                 exclude_patterns
                     .iter()
                     .any(|pattern| pattern.is_match(entry.path().to_str().unwrap()))
+            {
+                continue;
+            }
+            if
+                include_patterns.len() > 0 &&
+                include_patterns
+                    .iter()
+                    .any(|pattern| !pattern.is_match(entry.path().to_str().unwrap()))
             {
                 continue;
             }

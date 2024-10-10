@@ -90,8 +90,45 @@ pub fn get_podman_ondisk_modify_time(img: &str) -> Result<DateTime<Local>, Strin
 }
 
 fn convert_str_to_date(date_str: &str) -> Result<DateTime<Local>, String> {
-    let re = Regex::new(r"(?P<datetime>.+)(?P<tz_offset>[+-]\d{4}) (?P<tz_name>\w+)$").unwrap();
-    let cleaned_date_str = re.replace(date_str, "$datetime$tz_offset");
+    // Had to fix this up based on this create date gunk
+    // Is that set upstream? Whether its upstream or my computer, let's just fix it in parse 😑
+    // $ podman image inspect --format {{.Created}} docker.io/linuxserver/wireguard:arm64v8-latest
+    // 2024-10-03 12:28:30.701255218 +0100 +0100
+
+    let re = Regex::new(r"(?P<datetime>[0-9:\-\s\.]+)(?P<tz_offset>[+-]\d{4})").unwrap();
+    let captures = re.captures(date_str);
+    // dbg!(&captures);
+    let tz_offset = match captures.as_ref() {
+        Some(caps) => caps["tz_offset"].to_string(),
+        None => {
+            return Err(format!(
+                "Failed to parse timezone offset from '{}'",
+                date_str
+            ));
+        }
+    };
+    // dbg!(&tz_offset);
+    let mut cleaned_date_str;
+    match captures {
+        Some(caps) => {
+            if !caps["datetime"].is_empty() {
+                cleaned_date_str = caps["datetime"].replace("T", " ");
+            } else {
+                return Err(format!(
+                    "Failed to parse timezone offset from '{}'",
+                    date_str
+                ));
+            }
+            if !tz_offset.is_empty() {
+                cleaned_date_str = format!("{}{}", cleaned_date_str, tz_offset);
+            } else {
+                cleaned_date_str = format!("{}{}", cleaned_date_str, "+0000");
+            }
+        }
+        None => {
+            return Err(format!("Failed to parse date from '{}'", date_str));
+        }
+    }
 
     // Now try to parse the cleaned string
     match cleaned_date_str.parse::<DateTime<Utc>>() {
@@ -104,7 +141,4 @@ fn convert_str_to_date(date_str: &str) -> Result<DateTime<Local>, String> {
             todo!()
         }
     }
-
-    //let date = DateTime::parse_from_rfc3339(date_str).map_err(|e| format!("Failed to parse date: {}", e))?;
-    //Ok(date.with_timezone(&chrono::Utc))
 }
