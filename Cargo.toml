@@ -10,16 +10,14 @@ clap = { version = "4", features = ["derive"] }
 term_size = "0.3"
 chrono = "0.4"
 serde_yaml = "0.9"
-dateparser = "0.2"
+#dateparser = "0.2"
 dockerfile-parser = "0.8"
-tempfile = "3.3.0"
+#tempfile = "3.3.0"
 reqwest = { version = "0.12", features = ["json", "blocking"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 md-5 = "0.10"
-tokio = { version = "1", features = ["full", "rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["full"] }
 azure_identity = "0.20"
 azure_security_keyvault = "0.20"
-futures-executor = "0.3"
-futures = "0.3"
 time = "0.3"

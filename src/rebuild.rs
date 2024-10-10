@@ -1,10 +1,10 @@
 use crate::args::Args;
 use crate::helpers::cmd_helper_fns as cmd;
 use crate::helpers::podman_helper_fns;
-use crate::read_val::{self, Grammar, GrammerType};
+use crate::read_val::{ self, Grammar, GrammerType };
 
 // use regex::Regex;
-use chrono::{DateTime, Local};
+use chrono::{ DateTime, Local };
 use serde_yaml::Value;
 use std::fs;
 use std::fs::File;
@@ -51,8 +51,9 @@ impl RebuildManager {
                             });
 
                             // or, if this image is not in the list of images we've already checked, continue
-                            let img_and_container_previously_reviewed =
-                                self.images_checked.iter().any(|i| {
+                            let img_and_container_previously_reviewed = self.images_checked
+                                .iter()
+                                .any(|i| {
                                     if let Some(ref name) = i.name {
                                         if let Some(ref contner) = i.container {
                                             name == &image_string && contner == &container_nm_string
@@ -65,8 +66,9 @@ impl RebuildManager {
                                 });
 
                             // image ck is only empty on first check, so as long as we're non-empty, we might skip this image_string, move to next test
-                            if !self.images_checked.is_empty()
-                                && (img_is_set_to_skip || img_and_container_previously_reviewed)
+                            if
+                                !self.images_checked.is_empty() &&
+                                (img_is_set_to_skip || img_and_container_previously_reviewed)
                             {
                                 continue;
                             } else {
@@ -74,7 +76,7 @@ impl RebuildManager {
                                     entry,
                                     &image_string,
                                     &args.build_args,
-                                    &container_nm_string,
+                                    &container_nm_string
                                 );
 
                                 let c = Image {
@@ -96,13 +98,13 @@ impl RebuildManager {
         entry: &DirEntry,
         image: &str,
         build_args: &Vec<String>,
-        container_name: &str,
+        container_name: &str
     ) {
         // let mut images_checked: Vec<Image> = vec![];
 
         // let sentence = vec!["Refresh", "from"];
 
-        let mut grammes: Vec<Grammar> = vec![];
+        let mut grammars: Vec<Grammar> = vec![];
 
         let grm1 = Grammar {
             original_val_for_prompt: Some("Refresh".to_string()),
@@ -111,11 +113,11 @@ impl RebuildManager {
             prefix: None,
             suffix: Some(" ".to_string()),
             grammer_type: GrammerType::Verbiage,
-            include_in_base_string: true,
+            part_of_static_prompt: true,
             display_at_all: true,
         };
 
-        grammes.push(grm1);
+        grammars.push(grm1);
 
         let grm2 = Grammar {
             original_val_for_prompt: Some(image.to_string()),
@@ -124,10 +126,10 @@ impl RebuildManager {
             prefix: None,
             suffix: Some(" ".to_string()),
             grammer_type: GrammerType::Image,
-            include_in_base_string: false,
+            part_of_static_prompt: false,
             display_at_all: true,
         };
-        grammes.push(grm2);
+        grammars.push(grm2);
 
         let grm3 = Grammar {
             original_val_for_prompt: Some("from".to_string()),
@@ -136,10 +138,10 @@ impl RebuildManager {
             prefix: None,
             suffix: Some(" ".to_string()),
             grammer_type: GrammerType::Verbiage,
-            include_in_base_string: true,
+            part_of_static_prompt: true,
             display_at_all: true,
         };
-        grammes.push(grm3);
+        grammars.push(grm3);
 
         let docker_compose_pth = entry
             .path()
@@ -156,10 +158,10 @@ impl RebuildManager {
             prefix: None,
             suffix: Some("? ".to_string()),
             grammer_type: GrammerType::DockerComposePath,
-            include_in_base_string: false,
+            part_of_static_prompt: false,
             display_at_all: true,
         };
-        grammes.push(grm4);
+        grammars.push(grm4);
 
         let grm5 = Grammar {
             original_val_for_prompt: Some(container_name.to_string()),
@@ -168,115 +170,120 @@ impl RebuildManager {
             prefix: None,
             suffix: None,
             grammer_type: GrammerType::ContainerName,
-            include_in_base_string: false,
+            part_of_static_prompt: false,
             display_at_all: false,
         };
-        grammes.push(grm5);
+        grammars.push(grm5);
 
         let choices = vec!["p", "N", "d", "b", "s", "?"];
         for i in 0..choices.len() {
-            let mut xsuffix = Some("/".to_string());
+            let mut choice_separator = Some("/".to_string());
             if i == choices.len() - 1 {
-                xsuffix = Some(": ".to_string());
+                choice_separator = Some(": ".to_string());
             }
-            let abd = Grammar {
+            let choice_grammar = Grammar {
                 original_val_for_prompt: Some(choices[i].to_string()),
                 shortend_val_for_prompt: None,
                 pos: (i + 5) as u8,
                 prefix: None,
-                suffix: xsuffix,
+                suffix: choice_separator,
                 grammer_type: GrammerType::UserChoice,
-                include_in_base_string: true,
+                part_of_static_prompt: true,
                 display_at_all: true,
             };
-            grammes.push(abd);
+            grammars.push(choice_grammar);
         }
 
         loop {
-            let result = read_val::read_val_from_cmd_line_and_proceed(&grammes);
+            let result = read_val::read_val_from_cmd_line_and_proceed(&mut grammars);
 
             match result.user_entered_val {
                 None => {
                     break;
                 }
-                Some(user_entered_val) => match user_entered_val.as_str() {
-                    "p" => {
-                        self.pull_it(image);
-                        break;
-                    }
-                    "N" => {
-                        break;
-                    }
-                    "d" | "?" => match user_entered_val.as_str() {
-                        "d" => {
-                            println!("Image: {}", image.to_string());
-                            println!("Container name: {}", container_name);
-                            println!("Compose file: {}", docker_compose_pth_fmtted);
-                            println!(
-                                "Created: {}",
-                                self.format_time_ago(
-                                    podman_helper_fns::get_podman_image_upstream_create_time(
-                                        &image
-                                    )
-                                    .unwrap()
-                                )
-                            );
-                            println!(
-                                "Pulled: {}",
-                                self.format_time_ago(
-                                    podman_helper_fns::get_podman_ondisk_modify_time(&image)
-                                        .unwrap()
-                                )
-                            );
-                            println!(
-                                "Dockerfile exists: {}",
-                                cmd::dockerfile_exists_and_readable(
-                                    &entry
-                                        .path()
-                                        .parent()
-                                        .unwrap()
-                                        .join("Dockerfile")
-                                        .to_path_buf()
-                                )
-                            );
+                Some(user_entered_val) =>
+                    match user_entered_val.as_str() {
+                        "p" => {
+                            self.pull_it(image);
+                            break;
                         }
-                        "?" => {
-                            println!("p = Pull image from upstream.");
-                            println!("N = Do nothing, skip this image.");
-                            println!(
+                        "N" => {
+                            break;
+                        }
+                        "d" | "?" =>
+                            match user_entered_val.as_str() {
+                                "d" => {
+                                    println!("Image: {}", image.to_string());
+                                    println!("Container name: {}", container_name);
+                                    println!("Compose file: {}", docker_compose_pth_fmtted);
+                                    println!(
+                                        "Created: {}",
+                                        self.format_time_ago(
+                                            podman_helper_fns
+                                                ::get_podman_image_upstream_create_time(&image)
+                                                .unwrap()
+                                        )
+                                    );
+                                    println!(
+                                        "Pulled: {}",
+                                        self.format_time_ago(
+                                            podman_helper_fns
+                                                ::get_podman_ondisk_modify_time(&image)
+                                                .unwrap()
+                                        )
+                                    );
+                                    println!(
+                                        "Dockerfile exists: {}",
+                                        cmd::dockerfile_exists_and_readable(
+                                            &entry
+                                                .path()
+                                                .parent()
+                                                .unwrap()
+                                                .join("Dockerfile")
+                                                .to_path_buf()
+                                        )
+                                    );
+                                }
+                                "?" => {
+                                    println!("p = Pull image from upstream.");
+                                    println!("N = Do nothing, skip this image.");
+                                    println!(
                                         "d = Display info (image name, docker-compose.yml path, upstream img create date, and img on-disk modify date)."
                                     );
-                            println!(
+                                    println!(
                                         "b = Build image from the Dockerfile residing in same path as the docker-compose.yml."
                                     );
-                            println!(
+                                    println!(
                                         "s = Skip all subsequent images with this same name (regardless of container name)."
                                     );
-                            println!("? = Display this help.");
+                                    println!("? = Display this help.");
+                                }
+                                _ => {}
+                            }
+                        "b" => {
+                            self.build_image_from_dockerfile(
+                                &entry,
+                                image,
+                                build_args
+                                    .iter()
+                                    .map(|s| s.as_str())
+                                    .collect()
+                            );
+                            break;
                         }
-                        _ => {}
-                    },
-                    "b" => {
-                        self.build_image_from_dockerfile(
-                            &entry,
-                            image,
-                            build_args.iter().map(|s| s.as_str()).collect(),
-                        );
-                        break;
+                        "s" => {
+                            let c = Image {
+                                name: Some(image.to_string()),
+                                container: Some(container_name.to_string()),
+                                skipall_by_this_name: true,
+                            };
+                            self.images_checked.push(c);
+                            break;
+                        }
+                        _ => {
+                            println!("Invalid input. Please enter p/N/d/b/s/?: ");
+                        }
                     }
-                    "s" => {
-                        let c = Image {
-                            name: Some(image.to_string()),
-                            container: Some(container_name.to_string()),
-                            skipall_by_this_name: true,
-                        };
-                        self.images_checked.push(c);
-                        break;
-                    }
-                    _ => {
-                        println!("Invalid input. Please enter p/N/d/b/s/?: ");
-                    }
-                },
             }
         }
     }
@@ -303,14 +310,15 @@ impl RebuildManager {
         &mut self,
         dir: &DirEntry,
         image_name: &str,
-        build_args: Vec<&str>,
+        build_args: Vec<&str>
     ) {
         let mut dockerfile = dir.path().to_path_buf().parent().unwrap().to_path_buf();
         dockerfile.push("Dockerfile");
 
-        if !dockerfile.is_file()
-            || !fs::metadata(&dockerfile).is_ok()
-            || !fs::File::open(&dockerfile).is_ok()
+        if
+            !dockerfile.is_file() ||
+            !fs::metadata(&dockerfile).is_ok() ||
+            !fs::File::open(&dockerfile).is_ok()
         {
             eprintln!("No Dockerfile found at '{}'", dockerfile.display());
             std::process::exit(1);

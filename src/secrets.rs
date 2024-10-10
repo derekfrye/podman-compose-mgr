@@ -1,19 +1,20 @@
 use crate::args::Args;
+use crate::read_val::{ self, Grammar, GrammerType };
 
-use md5::{Digest, Md5};
+use md5::{ Digest, Md5 };
 use regex::Regex;
 // use reqwest::Client;
-use serde_json::{json, Value};
+use serde_json::{ json, Value };
 use std::error::Error;
 use std::fs::File;
-use std::{env, fs};
+use std::{ env, fs };
 // use std::io::{BufRead, BufReader};
-use std::io::{Read, Write};
+use std::io::{ Read, Write };
 // use std::path::PathBuf;
 use azure_identity::DefaultAzureCredentialBuilder;
-use azure_security_keyvault::{KeyvaultClient, SecretClient};
+use azure_security_keyvault::{ KeyvaultClient, SecretClient };
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{ SystemTime, UNIX_EPOCH };
 use tokio::runtime::Runtime;
 use walkdir::WalkDir;
 // use chrono::{DateTime, FixedOffset};
@@ -54,15 +55,10 @@ pub fn update_mode(args: &Args) -> Result<(), Box<dyn Error>> {
 
     let credential = Arc::new(DefaultAzureCredentialBuilder::new().build().unwrap());
     // let credential = azure_identity::create_credential().unwrap();
-    let client = KeyvaultClient::new(kev_vault_name, credential)
-        .unwrap()
-        .secret_client();
+    let client = KeyvaultClient::new(kev_vault_name, credential).unwrap().secret_client();
     let rt = Runtime::new().unwrap();
 
-    for entry in WalkDir::new(args.path.clone())
-        .into_iter()
-        .filter_map(Result::ok)
-    {
+    for entry in WalkDir::new(args.path.clone()).into_iter().filter_map(Result::ok) {
         if entry.file_name() == ".env" && entry.file_type().is_file() {
             let full_path = entry.path().to_string_lossy().to_string();
             // strip out the platform-dependent path separator
@@ -77,15 +73,17 @@ pub fn update_mode(args: &Args) -> Result<(), Box<dyn Error>> {
 
             // Insert secret into Azure Key Vault
             let azure_response = rt
-                .block_on(set_secret_value(
-                    // args.secrets_client_id.as_ref().unwrap().as_str(),
-                    // args.secrets_client_secret_path.as_ref().unwrap(),
-                    // args.secrets_tenant_id.as_ref().unwrap().as_str(),
-                    // args.secrets_vault_name.as_ref().unwrap().as_str(),
-                    &secret_name,
-                    &client,
-                    &content,
-                ))
+                .block_on(
+                    set_secret_value(
+                        // args.secrets_client_id.as_ref().unwrap().as_str(),
+                        // args.secrets_client_secret_path.as_ref().unwrap(),
+                        // args.secrets_tenant_id.as_ref().unwrap().as_str(),
+                        // args.secrets_vault_name.as_ref().unwrap().as_str(),
+                        &secret_name,
+                        &client,
+                        &content
+                    )
+                )
                 .unwrap();
 
             // Get current timestamp
@@ -93,7 +91,8 @@ pub fn update_mode(args: &Args) -> Result<(), Box<dyn Error>> {
             let ins_ts = start.duration_since(UNIX_EPOCH).unwrap().as_secs();
 
             // Build output entry
-            let output_entry = json!({
+            let output_entry =
+                json!({
                 "filenm": full_path,
                 "md5": md5_checksum,
                 "ins_ts": ins_ts,
@@ -108,7 +107,8 @@ pub fn update_mode(args: &Args) -> Result<(), Box<dyn Error>> {
     }
 
     // Append entries to output_file.txt
-    let mut file = fs::OpenOptions::new()
+    let mut file = fs::OpenOptions
+        ::new()
         .create(true)
         .append(true)
         .open(args.secrets_output_json.as_ref().unwrap().clone())
@@ -133,18 +133,9 @@ pub fn retrieve_mode(args: &Args) -> Result<(), Box<dyn Error>> {
         // let string_representation = serde_json::to_string(&entry).unwrap();
         // dbg!(&string_representation);
 
-        let az_id = entry["az_id"]
-            .as_str()
-            .ok_or("az_id missing in entry")
-            .unwrap();
-        let filenm = entry["filenm"]
-            .as_str()
-            .ok_or("filenm missing in entry")
-            .unwrap();
-        let az_name = entry["az_name"]
-            .as_str()
-            .ok_or("az_name missing in entry")
-            .unwrap();
+        let az_id = entry["az_id"].as_str().ok_or("az_id missing in entry").unwrap();
+        let filenm = entry["filenm"].as_str().ok_or("filenm missing in entry").unwrap();
+        let az_name = entry["az_name"].as_str().ok_or("az_name missing in entry").unwrap();
 
         let client_id = args.secrets_client_id.as_ref().unwrap();
         let client_secret = args.secrets_client_secret_path.as_ref().unwrap();
@@ -165,27 +156,28 @@ pub fn retrieve_mode(args: &Args) -> Result<(), Box<dyn Error>> {
         env::set_var("AZURE_CLIENT_SECRET", secret);
 
         let credential = Arc::new(DefaultAzureCredentialBuilder::new().build().unwrap());
-        let client = KeyvaultClient::new(kev_vault_name, credential)
-            .unwrap()
-            .secret_client();
+        let client = KeyvaultClient::new(kev_vault_name, credential).unwrap().secret_client();
 
         let rt = Runtime::new().unwrap();
         let secret_value = rt.block_on(get_secret_value(az_name, &client)).unwrap();
         let md5 = calculate_md5(&secret_value.value);
-        let md5_of_file = calculate_md5(&fs::read_to_string(filenm).unwrap_or_else(|err| {
-            panic!("md5 prb: {}, file {}", err, filenm);
-        }));
+        let md5_of_file = calculate_md5(
+            &fs::read_to_string(filenm).unwrap_or_else(|err| {
+                panic!("md5 prb: {}, file {}", err, filenm);
+            })
+        );
         if md5 != md5_of_file {
             eprintln!("MD5 mismatch for file: {}", filenm);
-        } else {
+        } else if args.verbose {
             println!("MD5 match for file: {}", filenm);
         }
         if az_id != secret_value.id {
             eprintln!(
                 "Azure ID mismatch: id from azure {}, id from file {}",
-                az_id, secret_value.id
+                secret_value.id,
+                az_id
             );
-        } else {
+        } else if args.verbose {
             println!("Azure ID match for file: {}", filenm);
         }
     }
@@ -193,9 +185,83 @@ pub fn retrieve_mode(args: &Args) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn read_val_loop() -> Result<(), Box<dyn Error>> {
+    let mut grammars: Vec<Grammar> = vec![];
+    let grm1 = Grammar {
+        original_val_for_prompt: Some("Check".to_string()),
+        shortend_val_for_prompt: None,
+        pos: 0,
+        prefix: None,
+        suffix: Some(" ".to_string()),
+        grammer_type: GrammerType::Verbiage,
+        part_of_static_prompt: true,
+        display_at_all: true,
+    };
+    grammars.push(grm1);
+    let choices = vec!["p", "N", "d", "b", "s", "?"];
+    for i in 0..choices.len() {
+        let mut choice_separator = Some("/".to_string());
+        if i == choices.len() - 1 {
+            choice_separator = Some(": ".to_string());
+        }
+        let choice_grammar = Grammar {
+            original_val_for_prompt: Some(choices[i].to_string()),
+            shortend_val_for_prompt: None,
+            pos: (i + 5) as u8,
+            prefix: None,
+            suffix: choice_separator,
+            grammer_type: GrammerType::UserChoice,
+            part_of_static_prompt: true,
+            display_at_all: true,
+        };
+        grammars.push(choice_grammar);
+    }
+
+    loop {
+        let result = read_val::read_val_from_cmd_line_and_proceed(&mut grammars);
+
+        match result.user_entered_val {
+            None => {
+                break;
+            }
+            Some(user_entered_val) =>
+                match user_entered_val.as_str() {
+                    "p" => {
+                        println!("p");
+                    }
+                    "d" => {
+                        println!("d");
+                    }
+                    "b" => {
+                        println!("b");
+                    }
+                    "s" => {
+                        println!("s");
+                    }
+                    "?" => {
+                        println!("?");
+                    }
+                    "N" | _ => {
+                        break;
+                    }
+                }
+        }
+    }
+
+    let mut input = String::new();
+    loop {
+        std::io::stdin().read_line(&mut input)?;
+        if input.trim() == "exit" {
+            break;
+        }
+        input.clear();
+    }
+    Ok(())
+}
+
 async fn get_secret_value(
     secret_name: &str,
-    kv_client: &SecretClient,
+    kv_client: &SecretClient
 ) -> Result<SetSecretResponse, Box<dyn Error>> {
     let secret = kv_client.get(secret_name).await.unwrap();
     // dbg!(&secret);
@@ -217,7 +283,7 @@ async fn get_secret_value(
 async fn set_secret_value(
     secret_name: &str,
     kv_client: &SecretClient,
-    secret_value: &str,
+    secret_value: &str
 ) -> Result<SetSecretResponse, Box<dyn Error>> {
     kv_client.set(secret_name, secret_value).await.unwrap();
     Ok(get_secret_value(secret_name, kv_client).await.unwrap())
