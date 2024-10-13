@@ -1,28 +1,32 @@
 # podman-compose-mgr
 
-This program helps me manage podman containers, defined in `docker-compose.yml` files, recursively under a directory. I built this to have cli regex pattern flexiblity to selectively start/stop `podman-compose`-managed containers, pulling or building updating images, and (eventually) managing secrets.
+This program helps manage containers and secrets referenced in `docker-compose.yml` files in a directory tree. 
+
+Features:
+- **Regex flexibility** for inclusion and exclusion of paths to process.
 
 By default, the program prompts the user before taking action on any image.
 
 This program has three modes:
 1. [Rebuild](#rebuild-mode) (pull or build) select images in `docker-compose.yml` files.
-2. [Start/stop] services within `docker-compose.yml` files.
-3. Secret management (which isn't implmented yet)
+2. [Start/stop] services within `docker-compose.yml` files. (Not yet implemented.)
+3. [Secret management](#secret-management-mode).
 
 ## Examples
 
-### Refresh (pull or build) all images, excluding a pattern
+### Pull or build images, including and excluding a pattern
 ``` shell
 podman-compose-mgr --path ~/docker --mode rebuild -e "docker/archive" --build-args USERNAME=`id -un 1000`
 ```
-- Recursively pull or build (prompting the user each time) for all images defined in `docker-compose.yml` files under subdirectories of `~/docker`,
-- skipping any `docker-compose.yml` files that match `docker/archive` anywhere within their path,
+- Recursively pull or build (prompting the user each time) images defined in `docker-compose.yml` files under subdirectories of `~/docker`,
+- skip any `docker-compose.yml` files that match `docker/archive` anywhere within their path,
 - passing `--build-arg` to `podman`, after your shell evaluates `id -un 1000`.
+- **Note:** exclusion takes precedence over inclusion
 
 ## Rebuild mode
 Walks the specified path and refreshes all images contained in `docker-compose.yml` files.
 
-## Start/stop mode
+## Secret management mode
 
 ## Options
 

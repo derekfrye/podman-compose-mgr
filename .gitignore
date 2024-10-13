@@ -1,7 +1,5 @@
 target
 Cargo.lock
-.vscode/launch.json
-secret.txt
 peer1.conf
 outfile.json
 outfile.txt

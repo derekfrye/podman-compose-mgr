@@ -1,0 +1,87 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Rebuild",
+      "cargo": {
+        "args": ["build", "--bin=podman-compose-mgr", "--package=podman-compose-mgr"],
+        "filter": {
+          "name": "podman-compose-mgr",
+          "kind": "bin"
+        }
+      },
+      "args": [
+        "--path",
+        "${env:HOME}/docker",
+        "--mode",
+        "rebuild",
+        "--verbose",
+        "--exclude-path-patterns",
+        "docker/archive",
+        "--include-path-patterns",
+        "docker/wireguard",
+        "--build-args",
+        "USERNAME=`id -un 1000`",
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Secret refresh",
+      "cargo": {
+        "args": ["build", "--bin=podman-compose-mgr", "--package=podman-compose-mgr"],
+        "filter": {
+          "name": "podman-compose-mgr",
+          "kind": "bin"
+        }
+      },
+      "args": [
+        "--path",
+        "${env:HOME}/docker",
+        "--mode", 
+        "secret-retrieve",
+        "--verbose",
+        "--exclude-path-patterns",
+        "docker/archive",
+        "--secrets-client-id",
+        "${workspaceFolder}/client_id",
+        "--secrets-client-secret-path",
+        "${workspaceFolder}/secret",
+        "--secrets-tenant-id",
+        "${workspaceFolder}/tenant_id", // from azure portal -> entra id -> tenant. Not the same as subscription id
+        "--secrets-vault-name",
+        "${workspaceFolder}/kv",
+        "--secrets-output-json",
+        "${workspaceFolder}/outfile.json",
+        "--secrets-input-json",
+        "${env:HOME}/docker/input.json",
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'image_refresh'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bin=image_refresh",
+          "--package=image_refresh"
+        ],
+        "filter": {
+          "name": "image_refresh",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

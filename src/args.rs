@@ -1,7 +1,7 @@
-use clap::{ Parser, ValueEnum };
+use clap::{Parser, ValueEnum};
 use serde_json::Value;
-use std::fs::{ self, File, OpenOptions };
-use std::io::{ Read, Write };
+use std::fs::{self, File, OpenOptions};
+use std::io::{Read, Write};
 use std::path::PathBuf;
 // use clap::builder::ValueParser;
 
@@ -39,18 +39,22 @@ pub struct Args {
     pub include_path_patterns: Vec<String>,
     #[arg(short, long)]
     pub build_args: Vec<String>,
+    /// Pass as guid or filepath
     #[arg(long)]
     pub secrets_client_id: Option<String>,
+    /// Pass as filepath
     #[arg(long)]
     pub secrets_client_secret_path: Option<PathBuf>,
+    /// Pass as guid or filepath
     #[arg(long)]
     pub secrets_tenant_id: Option<String>,
+    /// Pass as guid or filepath
     #[arg(long)]
     pub secrets_vault_name: Option<String>,
     #[arg(long, value_parser = check_parent_dir_is_writeable)]
-    pub secrets_output_json: Option<PathBuf>,
+    pub secret_mode_output_json: Option<PathBuf>,
     #[arg(long, value_parser = check_readable_file)]
-    pub secrets_input_json: Option<PathBuf>,
+    pub secret_mode_input_json: Option<PathBuf>,
 }
 
 impl Args {
@@ -60,7 +64,8 @@ impl Args {
             if let Some(client_id) = &self.secrets_client_id {
                 if client_id.len() != 8 {
                     return Err(
-                        "secrets_client_id must be exactly 8 characters long when Mode is Secrets.".to_string()
+                        "secrets_client_id must be exactly 8 characters long when Mode is Secrets."
+                            .to_string(),
                     );
                 }
             }
@@ -83,13 +88,13 @@ impl Args {
                 }
             }
 
-            if let Some(output_json) = &self.secrets_output_json {
+            if let Some(output_json) = &self.secret_mode_output_json {
                 if let Err(e) = check_parent_dir_is_writeable(output_json.to_str().unwrap()) {
                     return Err(e);
                 }
             }
 
-            if let Some(input_json) = &self.secrets_input_json {
+            if let Some(input_json) = &self.secret_mode_input_json {
                 if let Err(e) = check_valid_json_file(input_json.to_str().unwrap()) {
                     return Err(e);
                 }
@@ -112,13 +117,16 @@ pub enum Mode {
 fn check_parent_dir_is_writeable(existing_file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(existing_file).to_owned();
     let parent_path = path.parent().unwrap();
-    if
-        parent_path.is_dir() &&
-        fs::metadata(&parent_path).is_ok() &&
-        fs::read_dir(&parent_path).is_ok()
+    if parent_path.is_dir()
+        && fs::metadata(&parent_path).is_ok()
+        && fs::read_dir(&parent_path).is_ok()
     {
         let temp_file_path = parent_path.join(".temp_write_check");
-        match OpenOptions::new().write(true).create(true).open(&temp_file_path) {
+        match OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&temp_file_path)
+        {
             Ok(mut file) => {
                 let _ = file
                     .write_all(b"test")
@@ -146,7 +154,8 @@ fn check_valid_json_file(file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file);
     let mut file = File::open(&path).map_err(|e| e.to_string())?;
     let mut file_content = String::new();
-    file.read_to_string(&mut file_content).map_err(|e| e.to_string())?;
+    file.read_to_string(&mut file_content)
+        .map_err(|e| e.to_string())?;
     let mut entries = Vec::new();
     let mut deserializer = serde_json::Deserializer::from_str(&file_content).into_iter::<Value>();
 
