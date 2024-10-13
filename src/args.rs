@@ -1,7 +1,7 @@
-use clap::{Parser, ValueEnum};
+use clap::{ Parser, ValueEnum };
 use serde_json::Value;
-use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Write};
+use std::fs::{ self, File, OpenOptions };
+use std::io::{ Read, Write };
 use std::path::PathBuf;
 // use clap::builder::ValueParser;
 
@@ -60,8 +60,7 @@ impl Args {
             if let Some(client_id) = &self.secrets_client_id {
                 if client_id.len() != 8 {
                     return Err(
-                        "secrets_client_id must be exactly 8 characters long when Mode is Secrets."
-                            .to_string(),
+                        "secrets_client_id must be exactly 8 characters long when Mode is Secrets.".to_string()
                     );
                 }
             }
@@ -113,16 +112,13 @@ pub enum Mode {
 fn check_parent_dir_is_writeable(existing_file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(existing_file).to_owned();
     let parent_path = path.parent().unwrap();
-    if parent_path.is_dir()
-        && fs::metadata(&parent_path).is_ok()
-        && fs::read_dir(&parent_path).is_ok()
+    if
+        parent_path.is_dir() &&
+        fs::metadata(&parent_path).is_ok() &&
+        fs::read_dir(&parent_path).is_ok()
     {
         let temp_file_path = parent_path.join(".temp_write_check");
-        match OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(&temp_file_path)
-        {
+        match OpenOptions::new().write(true).create(true).open(&temp_file_path) {
             Ok(mut file) => {
                 let _ = file
                     .write_all(b"test")
@@ -150,8 +146,7 @@ fn check_valid_json_file(file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file);
     let mut file = File::open(&path).map_err(|e| e.to_string())?;
     let mut file_content = String::new();
-    file.read_to_string(&mut file_content)
-        .map_err(|e| e.to_string())?;
+    file.read_to_string(&mut file_content).map_err(|e| e.to_string())?;
     let mut entries = Vec::new();
     let mut deserializer = serde_json::Deserializer::from_str(&file_content).into_iter::<Value>();
 
