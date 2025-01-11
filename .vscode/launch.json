@@ -24,7 +24,7 @@
         "--exclude-path-patterns",
         "docker/archive",
         "--include-path-patterns",
-        "docker/wireguard",
+        "docker/rusty-golf",
         "--build-args",
         "USERNAME=`id -un 1000`",
       ],

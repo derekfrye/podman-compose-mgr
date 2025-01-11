@@ -1,12 +1,13 @@
 use crate::args::Args;
 use crate::helpers::cmd_helper_fns as cmd;
+use crate::helpers::cmd_helper_fns::file_exists_and_readable;
 use crate::helpers::podman_helper_fns;
 use crate::read_val::{self, Grammar, GrammerType};
 
 // use regex::Regex;
 use chrono::{DateTime, Local};
 use serde_yaml::Value;
-use std::fs;
+// use std::fs;
 use std::fs::File;
 use std::vec;
 use walkdir::DirEntry;
@@ -228,12 +229,23 @@ impl RebuildManager {
                             );
                             println!(
                                 "Dockerfile exists: {}",
-                                cmd::dockerfile_exists_and_readable(
+                                cmd::file_exists_and_readable(
                                     &entry
                                         .path()
                                         .parent()
                                         .unwrap()
                                         .join("Dockerfile")
+                                        .to_path_buf()
+                                )
+                            );
+                            println!(
+                                "Makefile exists: {}",
+                                cmd::file_exists_and_readable(
+                                    &entry
+                                        .path()
+                                        .parent()
+                                        .unwrap()
+                                        .join("Makefile")
                                         .to_path_buf()
                                 )
                             );
@@ -255,7 +267,7 @@ impl RebuildManager {
                         _ => {}
                     },
                     "b" => {
-                        self.build_image_from_dockerfile(
+                        self.build_image_from_spec(
                             &entry,
                             image,
                             build_args.iter().map(|s| s.as_str()).collect(),
@@ -297,41 +309,65 @@ impl RebuildManager {
         }
     }
 
-    fn build_image_from_dockerfile(
-        &mut self,
-        dir: &DirEntry,
-        image_name: &str,
-        build_args: Vec<&str>,
-    ) {
-        let mut dockerfile = dir.path().to_path_buf().parent().unwrap().to_path_buf();
-        dockerfile.push("Dockerfile");
+    fn build_image_from_spec(&mut self, dir: &DirEntry, image_name: &str, build_args: Vec<&str>) {
+        let parent_dir = dir.path().to_path_buf().parent().unwrap().to_path_buf();
 
-        if !dockerfile.is_file()
-            || !fs::metadata(&dockerfile).is_ok()
-            || !fs::File::open(&dockerfile).is_ok()
-        {
-            eprintln!("No Dockerfile found at '{}'", dockerfile.display());
-            std::process::exit(1);
+        let dockerfile = parent_dir.join("Dockerfile");
+        let makefile = parent_dir.join("Makefile");
+
+        let makefile_a_symlink = makefile
+            .symlink_metadata()
+            .unwrap()
+            .file_type()
+            .is_symlink();
+        let target = if makefile_a_symlink {
+            // find target of symlink
+            println!("makefile {} is a symlink", makefile.display());
+            std::fs::read_link(&makefile)
+                .unwrap()
+                .to_path_buf()
+                .parent()
+                .unwrap()
+                .to_path_buf()
+        } else {
+            println!("makefile {} not a symlink", makefile.display());
+            parent_dir.clone()
+        };
+
+        if file_exists_and_readable(&makefile) {
+            let _ = cmd::exec_cmd("make", vec!["-C", target.to_str().unwrap(), "clean"]);
+            let _ = cmd::exec_cmd("make", vec!["-C", target.to_str().unwrap()]);
+        } else {
+            if !file_exists_and_readable(&dockerfile) {
+                eprintln!("No Dockerfile found at '{}'", parent_dir.display());
+                std::process::exit(1);
+            }
+
+            let _ = cmd::pull_base_image(&dockerfile);
+
+            let z = dockerfile.to_str().unwrap();
+
+            let mut x = vec![];
+            x.push("build");
+            x.push("-t");
+            x.push(image_name);
+            x.push("-f");
+            x.push(&z);
+
+            // x.push("--build-context=");
+            // let build_context = format!(".:{}", dockerfile_dir.to_str().unwrap());
+            // x.push(&build_context);
+
+            // let mut abc = string::String::new();
+            for arg in build_args {
+                x.push("--build-arg");
+                x.push(&arg);
+            }
+
+            x.push(parent_dir.to_str().unwrap());
+
+            cmd::exec_cmd("podman", x);
         }
-
-        let _ = cmd::pull_base_image(&dockerfile);
-
-        let z = dockerfile.display().to_string();
-
-        let mut x = vec![];
-        x.push("build");
-        x.push("-t");
-        x.push(image_name);
-        x.push("-f");
-        x.push(&z);
-
-        // let mut abc = string::String::new();
-        for arg in build_args {
-            x.push("--build-arg");
-            x.push(&arg);
-        }
-
-        cmd::exec_cmd("podman", x);
     }
 
     // other methods...
