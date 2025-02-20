@@ -166,6 +166,27 @@ else if files.dockerfile_exists && files.dockerfile_is_link {
 
 }
  
+ fn make_choice_grammar(user_choices: Vec<&str>,pos_to_start_from:u8) ->Vec<GrammarFragment>{
+    let mut new_prompt_grammars = vec![];
+    for i in 0..user_choices.len() {
+        let mut choice_separator = Some("/".to_string());
+        if i == user_choices.len() - 1 {
+            choice_separator = Some(": ".to_string());
+        }
+        let choice_grammar = GrammarFragment {
+            original_val_for_prompt: Some(user_choices[i].to_string()),
+            shortened_val_for_prompt: None,
+            pos: (i + pos_to_start_from as usize) as u8,
+            prefix: None,
+            suffix: choice_separator,
+            grammar_type: GrammarType::UserChoice,
+            part_of_static_prompt: true,
+            display_at_all: true,
+        };
+        new_prompt_grammars.push(choice_grammar);
+    }
+    new_prompt_grammars
+ }
 
  fn find_dockerfile_and_makefile<'a>( dir: &'a DirEntry, image_name: &'a str, build_args: Vec<&'a str>) -> DockerfileAndMakefile<'a> {
     let parent_dir = dir.path().to_path_buf().parent().unwrap().to_path_buf();

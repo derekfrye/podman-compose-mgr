@@ -1,6 +1,8 @@
 mod args;
-mod rebuild;
-mod build;
+mod build {
+    mod rebuild;
+    mod build;
+}
 mod helpers {
     pub mod cmd_helper_fns;
     pub mod podman_helper_fns;
