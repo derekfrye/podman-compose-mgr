@@ -1,8 +1,9 @@
 use crate::args::Args;
+use crate::build::start;
 use crate::helpers::cmd_helper_fns as cmd;
 use crate::helpers::cmd_helper_fns::file_exists_and_readable;
 use crate::helpers::podman_helper_fns;
-use crate::read_val::{self, Grammar, GrammerType};
+use crate::read_val::{self, GrammarFragment, GrammarType};
 
 // use regex::Regex;
 use chrono::{DateTime, Local};
@@ -55,8 +56,8 @@ impl RebuildManager {
                             let img_and_container_previously_reviewed =
                                 self.images_checked.iter().any(|i| {
                                     if let Some(ref name) = i.name {
-                                        if let Some(ref contner) = i.container {
-                                            name == &image_string && contner == &container_nm_string
+                                        if let Some(ref container_name) = i.container {
+                                            name == &image_string && container_name == &container_nm_string
                                         } else {
                                             false
                                         }
@@ -99,40 +100,40 @@ impl RebuildManager {
         build_args: &Vec<String>,
         container_name: &str,
     ) {
-        let mut grammars: Vec<Grammar> = vec![];
+        let mut grammars: Vec<GrammarFragment> = vec![];
 
-        let grm1 = Grammar {
+        let grm1 = GrammarFragment {
             original_val_for_prompt: Some("Refresh".to_string()),
-            shortend_val_for_prompt: None,
+            shortened_val_for_prompt: None,
             pos: 0,
             prefix: None,
             suffix: Some(" ".to_string()),
-            grammer_type: GrammerType::Verbiage,
+            grammar_type: GrammarType::Verbiage,
             part_of_static_prompt: true,
             display_at_all: true,
         };
 
         grammars.push(grm1);
 
-        let grm2 = Grammar {
+        let grm2 = GrammarFragment {
             original_val_for_prompt: Some(image.to_string()),
-            shortend_val_for_prompt: None,
+            shortened_val_for_prompt: None,
             pos: 1,
             prefix: None,
             suffix: Some(" ".to_string()),
-            grammer_type: GrammerType::Image,
+            grammar_type: GrammarType::Image,
             part_of_static_prompt: false,
             display_at_all: true,
         };
         grammars.push(grm2);
 
-        let grm3 = Grammar {
+        let grm3 = GrammarFragment {
             original_val_for_prompt: Some("from".to_string()),
-            shortend_val_for_prompt: None,
+            shortened_val_for_prompt: None,
             pos: 2,
             prefix: None,
             suffix: Some(" ".to_string()),
-            grammer_type: GrammerType::Verbiage,
+            grammar_type: GrammarType::Verbiage,
             part_of_static_prompt: true,
             display_at_all: true,
         };
@@ -144,25 +145,25 @@ impl RebuildManager {
             .unwrap_or(std::path::Path::new("/"))
             .display();
         let docker_compose_pth_fmtted = format!("{}", docker_compose_pth);
-        let grm4 = Grammar {
+        let grm4 = GrammarFragment {
             original_val_for_prompt: Some(docker_compose_pth_fmtted.clone()),
-            shortend_val_for_prompt: None,
+            shortened_val_for_prompt: None,
             pos: 3,
             prefix: None,
             suffix: Some("? ".to_string()),
-            grammer_type: GrammerType::DockerComposePath,
+            grammar_type: GrammarType::DockerComposePath,
             part_of_static_prompt: false,
             display_at_all: true,
         };
         grammars.push(grm4);
 
-        let grm5 = Grammar {
+        let grm5 = GrammarFragment {
             original_val_for_prompt: Some(container_name.to_string()),
-            shortend_val_for_prompt: None,
+            shortened_val_for_prompt: None,
             pos: 4,
             prefix: None,
             suffix: None,
-            grammer_type: GrammerType::ContainerName,
+            grammar_type: GrammarType::ContainerName,
             part_of_static_prompt: false,
             display_at_all: false,
         };
@@ -174,13 +175,13 @@ impl RebuildManager {
             if i == choices.len() - 1 {
                 choice_separator = Some(": ".to_string());
             }
-            let choice_grammar = Grammar {
+            let choice_grammar = GrammarFragment {
                 original_val_for_prompt: Some(choices[i].to_string()),
-                shortend_val_for_prompt: None,
+                shortened_val_for_prompt: None,
                 pos: (i + 5) as u8,
                 prefix: None,
                 suffix: choice_separator,
-                grammer_type: GrammerType::UserChoice,
+                grammar_type: GrammarType::UserChoice,
                 part_of_static_prompt: true,
                 display_at_all: true,
             };
@@ -190,8 +191,8 @@ impl RebuildManager {
         loop {
             let result = read_val::read_val_from_cmd_line_and_proceed(
                 &mut grammars,
-                GrammerType::DockerComposePath,
-                GrammerType::Image,
+                GrammarType::DockerComposePath,
+                GrammarType::Image,
             );
 
             match result.user_entered_val {
@@ -267,10 +268,11 @@ impl RebuildManager {
                         _ => {}
                     },
                     "b" => {
-                        self.build_image_from_spec(
+                        start(
                             &entry,
                             image,
                             build_args.iter().map(|s| s.as_str()).collect(),
+                            
                         );
                         break;
                     }
@@ -284,7 +286,7 @@ impl RebuildManager {
                         break;
                     }
                     _ => {
-                        println!("Invalid input. Please enter p/N/d/b/s/?: ");
+                        eprintln!("Invalid input. Please enter p/N/d/b/s/?: ");
                     }
                 },
             }
@@ -309,66 +311,7 @@ impl RebuildManager {
         }
     }
 
-    fn build_image_from_spec(&mut self, dir: &DirEntry, image_name: &str, build_args: Vec<&str>) {
-        let parent_dir = dir.path().to_path_buf().parent().unwrap().to_path_buf();
-
-        let dockerfile = parent_dir.join("Dockerfile");
-        let makefile = parent_dir.join("Makefile");
-
-        let makefile_a_symlink = makefile
-            .symlink_metadata()
-            .unwrap()
-            .file_type()
-            .is_symlink();
-        let target = if makefile_a_symlink {
-            // find target of symlink
-            println!("makefile {} is a symlink", makefile.display());
-            std::fs::read_link(&makefile)
-                .unwrap()
-                .to_path_buf()
-                .parent()
-                .unwrap()
-                .to_path_buf()
-        } else {
-            println!("makefile {} not a symlink", makefile.display());
-            parent_dir.clone()
-        };
-
-        if file_exists_and_readable(&makefile) {
-            let _ = cmd::exec_cmd("make", vec!["-C", target.to_str().unwrap(), "clean"]);
-            let _ = cmd::exec_cmd("make", vec!["-C", target.to_str().unwrap()]);
-        } else {
-            if !file_exists_and_readable(&dockerfile) {
-                eprintln!("No Dockerfile found at '{}'", parent_dir.display());
-                std::process::exit(1);
-            }
-
-            let _ = cmd::pull_base_image(&dockerfile);
-
-            let z = dockerfile.to_str().unwrap();
-
-            let mut x = vec![];
-            x.push("build");
-            x.push("-t");
-            x.push(image_name);
-            x.push("-f");
-            x.push(&z);
-
-            // x.push("--build-context=");
-            // let build_context = format!(".:{}", dockerfile_dir.to_str().unwrap());
-            // x.push(&build_context);
-
-            // let mut abc = string::String::new();
-            for arg in build_args {
-                x.push("--build-arg");
-                x.push(&arg);
-            }
-
-            x.push(parent_dir.to_str().unwrap());
-
-            cmd::exec_cmd("podman", x);
-        }
-    }
+    
 
     // other methods...
 

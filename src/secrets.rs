@@ -1,5 +1,5 @@
 use crate::args::Args;
-use crate::read_val::{self, Grammar, GrammerType};
+use crate::read_val::{self, GrammarFragment, GrammarType};
 
 use chrono::{DateTime, Local, TimeZone, Utc};
 use md5::{Digest, Md5};
@@ -210,7 +210,7 @@ fn read_val_loop(
     client: &SecretClient,
     args: &Args,
 ) -> Result<JsonOutputControl, Box<dyn Error>> {
-    let mut grammars: Vec<Grammar> = vec![];
+    let mut grammars: Vec<GrammarFragment> = vec![];
     let mut tt: JsonOutputControl = JsonOutputControl {
         jsonoutput: JsonOutput {
             filenm: String::new(),
@@ -224,13 +224,13 @@ fn read_val_loop(
         },
         validate_all: false,
     };
-    let static_prompt_grammar = Grammar {
+    let static_prompt_grammar = GrammarFragment {
         original_val_for_prompt: Some("Check".to_string()),
-        shortend_val_for_prompt: None,
+        shortened_val_for_prompt: None,
         pos: 0,
         prefix: None,
         suffix: Some(" ".to_string()),
-        grammer_type: GrammerType::Verbiage,
+        grammar_type: GrammarType::Verbiage,
         part_of_static_prompt: true,
         display_at_all: true,
     };
@@ -241,13 +241,13 @@ fn read_val_loop(
         .ok_or("filenm missing in input json")
         .unwrap();
 
-    let filenm_grammar = Grammar {
+    let filenm_grammar = GrammarFragment {
         original_val_for_prompt: Some(file_name.to_string()),
-        shortend_val_for_prompt: None,
+        shortened_val_for_prompt: None,
         pos: 1,
         prefix: None,
         suffix: Some("? ".to_string()),
-        grammer_type: GrammerType::FileName,
+        grammar_type: GrammarType::FileName,
         part_of_static_prompt: false,
         display_at_all: true,
     };
@@ -259,13 +259,13 @@ fn read_val_loop(
         if i == choices.len() - 1 {
             choice_separator = Some(": ".to_string());
         }
-        let choice_grammar = Grammar {
+        let choice_grammar = GrammarFragment {
             original_val_for_prompt: Some(choices[i].to_string()),
-            shortend_val_for_prompt: None,
+            shortened_val_for_prompt: None,
             pos: (i + 2) as u8,
             prefix: None,
             suffix: choice_separator,
-            grammer_type: GrammerType::UserChoice,
+            grammar_type: GrammarType::UserChoice,
             part_of_static_prompt: true,
             display_at_all: true,
         };
@@ -281,8 +281,8 @@ fn read_val_loop(
         } else {
             let result = read_val::read_val_from_cmd_line_and_proceed(
                 &mut grammars,
-                GrammerType::FileName,
-                GrammerType::None,
+                GrammarType::FileName,
+                GrammarType::None,
             );
 
             match result.user_entered_val {

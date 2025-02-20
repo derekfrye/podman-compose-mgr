@@ -1,6 +1,7 @@
 use dockerfile_parser::Dockerfile;
 use std::io::{BufRead, BufReader, Read};
 use std::process::{Command, Stdio};
+use terminal_size::{self, Width};
 
 pub fn pull_base_image(dockerfile: &std::path::PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     let file = std::fs::File::open(dockerfile).unwrap();
@@ -13,8 +14,8 @@ pub fn pull_base_image(dockerfile: &std::path::PathBuf) -> Result<(), Box<dyn st
     let mut x = vec![];
     x.push("pull");
     let mut img_nm = vec![];
-    let fromimg = dockerfile.instructions;
-    for i in fromimg {
+    let from_img = dockerfile.instructions;
+    for i in from_img {
         match i {
             dockerfile_parser::Instruction::From(image, ..) => {
                 img_nm.push(image.image.clone().to_string());
@@ -29,9 +30,14 @@ pub fn pull_base_image(dockerfile: &std::path::PathBuf) -> Result<(), Box<dyn st
     Ok(())
 }
 
+/// exists(), is_file() traversing links, and metadata.is_ok() traversing links
 pub fn file_exists_and_readable(file: &std::path::PathBuf) -> bool {
-    file.exists() && file.is_file() && file.metadata().is_ok()
-}
+   let z= file.try_exists();
+   match z {
+       Ok(true) => { file.is_file() && file.metadata().is_ok()},
+       _ => false,
+    
+}}
 
 pub fn exec_cmd(cmd: &str, args: Vec<&str>) {
     let mut cmd = Command::new(cmd);
@@ -56,6 +62,10 @@ pub fn exec_cmd(cmd: &str, args: Vec<&str>) {
 }
 
 pub fn get_terminal_display_width() -> usize {
-    let (width, _) = term_size::dimensions().unwrap_or((80, 24));
-    width
+    let size = terminal_size::terminal_size();
+    if let Some((Width(w), _)) = size {
+        w as usize
+    } else {
+        80
+    }
 }

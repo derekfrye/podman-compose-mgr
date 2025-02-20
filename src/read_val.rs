@@ -4,13 +4,14 @@ use std::cmp::max;
 use std::collections::HashSet;
 use std::io::{self, Write};
 
-pub struct Result {
+pub struct ReadValResult {
     pub user_entered_val: Option<String>,
-    pub grammar: Vec<Grammar>,
+    pub grammar: Vec<GrammarFragment>,
+    pub prompt_count_shown_user: u8,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum GrammerType {
+pub enum GrammarType {
     Verbiage,
     UserChoice,
     Image,
@@ -20,35 +21,36 @@ pub enum GrammerType {
     None,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct Grammar {
+#[derive(Debug, PartialEq, Clone)]
+pub struct GrammarFragment {
     pub original_val_for_prompt: Option<String>,
-    pub shortend_val_for_prompt: Option<String>,
+    pub shortened_val_for_prompt: Option<String>,
     pub pos: u8,
     pub prefix: Option<String>,
     pub suffix: Option<String>,
-    pub grammer_type: GrammerType,
+    pub grammar_type: GrammarType,
     pub part_of_static_prompt: bool,
     pub display_at_all: bool,
 }
 
-impl Default for Grammar {
+impl Default for GrammarFragment {
     fn default() -> Self {
-        Grammar {
+        GrammarFragment {
             original_val_for_prompt: None,
-            shortend_val_for_prompt: None,
+            shortened_val_for_prompt: None,
             pos: 0,
             prefix: None,
             suffix: None,
-            grammer_type: GrammerType::Verbiage,
+            grammar_type: GrammarType::Verbiage,
             part_of_static_prompt: false,
             display_at_all: false,
         }
     }
 }
 
-fn unroll_grammer_into_string(
-    grammars: &Vec<Grammar>,
+/// Build a string to display to the user. Don't use this directly, try to use read_val_from_cmd_line_and_proceed instead.
+ fn unroll_grammar_into_string(
+    grammars: &Vec<GrammarFragment>,
     excl_if_not_in_base_prompt: bool,
     use_shortened_val: bool,
 ) -> String {
@@ -63,8 +65,8 @@ fn unroll_grammer_into_string(
             return_result.push_str(prefix);
         }
 
-        if use_shortened_val && grammar.shortend_val_for_prompt.is_some() {
-            return_result.push_str(grammar.shortend_val_for_prompt.as_ref().unwrap().as_str());
+        if use_shortened_val && grammar.shortened_val_for_prompt.is_some() {
+            return_result.push_str(grammar.shortened_val_for_prompt.as_ref().unwrap().as_str());
         } else if grammar.display_at_all {
             return_result.push_str(grammar.original_val_for_prompt.as_ref().unwrap().as_str());
         }
@@ -76,32 +78,33 @@ fn unroll_grammer_into_string(
     return_result
 }
 
-// moved from main, i've got to believe i'll use it for secrets and restartsvcs too
+// moved from main, i've got to believe i'll use it for secrets and restart svcs too
 pub fn read_val_from_cmd_line_and_proceed(
-    grammars: &mut Vec<Grammar>,
-    grammar_type_1_to_shorten: GrammerType,
-    grammar_type_2_to_shorten: GrammerType,
-) -> Result {
+    grammars: &mut Vec<GrammarFragment>,
+    grammar_type_1_to_shorten: GrammarType,
+    grammar_type_2_to_shorten: GrammarType,
+) -> ReadValResult {
     let type_1_to_shorten = grammars
         .iter()
-        .find(|x| x.grammer_type == grammar_type_1_to_shorten)
+        .find(|x| x.grammar_type == grammar_type_1_to_shorten)
         .map(|f| f.original_val_for_prompt.clone())
         .unwrap()
         .unwrap();
     let type_2_to_shorten = grammars
         .iter()
-        .find(|x| x.grammer_type == grammar_type_2_to_shorten)
+        .find(|x| x.grammar_type == grammar_type_2_to_shorten)
         .map(|f| f.original_val_for_prompt.clone())
         .unwrap_or_else(|| Some(String::new()))
         .unwrap_or_else(String::new);
 
-    let mut return_result = Result {
+    let mut return_result = ReadValResult {
         user_entered_val: None,
         grammar: Vec::new(),
+        prompt_count_shown_user: 1,
     };
 
-    let refresh_static = unroll_grammer_into_string(grammars, true, false);
-    let refresh_prompt = unroll_grammer_into_string(grammars, false, false);
+    let refresh_static = unroll_grammar_into_string(grammars, true, false);
+    let refresh_prompt = unroll_grammar_into_string(grammars, false, false);
 
     // if the prompt is too long, we need to shorten some stuff.
     // At a minimum, we'll display our 23 chars of "refresh ... from ?" stuff.
@@ -116,7 +119,7 @@ pub fn read_val_from_cmd_line_and_proceed(
     // let docker_compose_path_orig = docker_compose_pth_shortened.to_string();
     let mut type_2_shortened = type_2_to_shorten.clone();
     // let image_orig = image.to_string();
-    // 1 char for a little buffer so it doesnt wrap after user input
+    // 1 char for a little buffer so it doesn't wrap after user input
     if refresh_prompt.len() > term_width - 1 {
         let truncated_symbols = "...";
         let mut max_avail_chars_for_image_and_path =
@@ -142,66 +145,71 @@ pub fn read_val_from_cmd_line_and_proceed(
         }
     }
 
-    let type_1_grammar = Grammar {
+    let type_1_grammar = GrammarFragment {
         original_val_for_prompt: Some(type_1_to_shorten.clone()),
-        shortend_val_for_prompt: Some(type_1_shortened.clone()),
+        shortened_val_for_prompt: Some(type_1_shortened.clone()),
         pos: 0,
         prefix: None,
         suffix: None,
-        grammer_type: grammar_type_1_to_shorten.clone(),
+        grammar_type: grammar_type_1_to_shorten.clone(),
         part_of_static_prompt: true,
         display_at_all: true,
     };
 
-    let type_2_grammar = Grammar {
+    let type_2_grammar = GrammarFragment {
         original_val_for_prompt: Some(type_2_to_shorten.clone()),
-        shortend_val_for_prompt: Some(type_2_shortened.clone()),
+        shortened_val_for_prompt: Some(type_2_shortened.clone()),
         pos: 0,
         prefix: None,
         suffix: None,
-        grammer_type: grammar_type_2_to_shorten.clone(),
+        grammar_type: grammar_type_2_to_shorten.clone(),
         part_of_static_prompt: true,
         display_at_all: true,
     };
     return_result.grammar.push(type_1_grammar);
     return_result.grammar.push(type_2_grammar);
 
-    // put the shortened values into the input grammar, so when we prompt the user from the unrolled grammar, we use the shortend values
+    // put the shortened values into the input grammar, so when we prompt the user from the unrolled grammar, we use the shortened values
     let x = return_result
         .grammar
         .iter()
-        .find(|x| x.grammer_type == grammar_type_1_to_shorten)
-        .and_then(|x| x.shortend_val_for_prompt.clone());
+        .find(|x| x.grammar_type == grammar_type_1_to_shorten)
+        .and_then(|x| x.shortened_val_for_prompt.clone());
     let z = return_result
         .grammar
         .iter()
-        .find(|x| x.grammer_type == grammar_type_2_to_shorten)
-        .and_then(|x| x.shortend_val_for_prompt.clone());
+        .find(|x| x.grammar_type == grammar_type_2_to_shorten)
+        .and_then(|x| x.shortened_val_for_prompt.clone());
     grammars.iter_mut().for_each(|y| {
-        if y.grammer_type == grammar_type_1_to_shorten {
-            y.shortend_val_for_prompt = x.clone();
+        if y.grammar_type == grammar_type_1_to_shorten {
+            y.shortened_val_for_prompt = x.clone();
         }
-        if y.grammer_type == grammar_type_2_to_shorten {
-            y.shortend_val_for_prompt = z.clone();
+        if y.grammar_type == grammar_type_2_to_shorten {
+            y.shortened_val_for_prompt = z.clone();
         }
     });
 
-    print!("{}", unroll_grammer_into_string(grammars, false, true));
+    // prepare the prompt, this might go to stdout, or we have to flush first
+    print!("{}", unroll_grammar_into_string(grammars, false, true));
 
+    // what were the available choices someone could've made
     let user_choices: HashSet<String> = grammars
         .iter()
-        .filter(|x| x.grammer_type == GrammerType::UserChoice)
-        .collect::<Vec<&Grammar>>()
+        .filter(|x| x.grammar_type == GrammarType::UserChoice)
+        .collect::<Vec<&GrammarFragment>>()
         .iter()
         .map(|x| x.original_val_for_prompt.clone().unwrap())
         .collect();
 
     loop {
         let mut input = String::new();
+        // flush stdout so prompt for sure displays
         io::stdout().flush().unwrap();
+        // read a line of input from stdin
         io::stdin().read_line(&mut input).unwrap();
         let input = input.trim();
 
+        // if user specified something that was an available choice, return that result
         if user_choices.contains(input) {
             return_result.user_entered_val = Some(input.to_string());
             break;

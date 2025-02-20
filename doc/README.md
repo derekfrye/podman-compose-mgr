@@ -41,8 +41,6 @@ You can pass multiple build options to `podman` like so:
 podman-compose-mgr --build-args USERNAME=`id -un 1000` --build-args VERSION=1.2.3
 ```
 
-[^1]: I'm old and I use my stuff for years, so if I don't have good, built-in help and self-explanatory command line parameters, I find I have to re-read the source to learn the right incantation of command line params in my setup. I've found [clap](https://docs.rs/clap/latest/clap/) is a good balance, and keeps me out of re-reading source code for most times I need to change the params I'm passing a program, so I've grown to use it when building something new.
-
 ## Why does this exist?
 
 ### Can't this be just 50 lines of bash?
@@ -57,3 +55,5 @@ Yes, you could do a lot of this with 50 lines of `bash`, `grep`, `tput`. *But*..
 It might be a dead-end eventually ([1](https://github.com/containers/podman-compose/issues/276), [2](https://github.com/containers/podman-compose/issues/629)). And some features don't work reliably, that I wish would ([1](https://github.com/containers/podman-compose/issues/715)).
 
 But, `podman` and `podman-compose` are working for my servers, and `docker-compose` appears to be a first-class citizen in Docker ecosystem. And, `minikube` seems too complex for my use case (building images locally and running rootless).
+
+[^1]: I'm old and I use my stuff for years, so if I don't have good, built-in help and self-explanatory command line parameters, I find I have to re-read the source to learn the right incantation of command line params in my setup. I've found [clap](https://docs.rs/clap/latest/clap/) is a good balance, and keeps me out of re-reading source code for most times I need to change the params I'm passing a program, so I've grown to use it when building something new.
