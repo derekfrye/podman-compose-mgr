@@ -6,23 +6,31 @@ use crate::{helpers::cmd_helper_fns::{self, file_exists_and_readable}, read_val:
 use walkdir::DirEntry;
 
  struct DockerfileAndMakefile<'a> {
+    /// path to Dockerfile, following links
      dockerfile: PathBuf,
      dockerfile_is_link: bool,
      dockerfile_exists: bool,
-     dockerfile_dir: PathBuf,
+     dockerfile_orig_dir: PathBuf,
      dockerfile_link_target_dir: PathBuf,
 
      make_cmds: Vec<&'a str>,
+     /// path to Makefile, following links
      makefile: PathBuf,
      makefile_is_link: bool,
      makefile_exists: bool,
-        makefile_dir: PathBuf,
+        makefile_orig_dir: PathBuf,
         makefile_link_target_dir: PathBuf,
 }
 
+enum BuildChoice {
+    Dockerfile,
+    Makefile,
+}
+
 struct WhatWereBuilding<'a> {
-    file: &'a PathBuf,
+    file: Option<&'a PathBuf>,
     follow_link: bool,
+    build_choice: Option<BuildChoice>,
 
 }
 
@@ -34,11 +42,11 @@ pub fn start( dir: &DirEntry, image_name: &str, build_args: Vec<&str>)
         std::process::exit(1);
     }
 
-    read_val_loop(dockerfile_and_makefile);
+    let x=read_val_loop(dockerfile_and_makefile);
 }
 
 
- fn read_val_loop(files: DockerfileAndMakefile){
+ fn read_val_loop(files: DockerfileAndMakefile)->WhatWereBuilding{
     let mut prompt_grammars: Vec<GrammarFragment> = vec![];
     let mut user_choices: Vec<&str> = vec![];
     let template_grammar = GrammarFragment {
@@ -52,12 +60,15 @@ pub fn start( dir: &DirEntry, image_name: &str, build_args: Vec<&str>)
         display_at_all: true,
     };
 
+    
 if files.makefile_exists && files.dockerfile_exists {
     let mut grm1 = template_grammar.clone();
       grm1.original_val_for_prompt= Some("Prefer Dockerfile or Makefile?".to_string());
         prompt_grammars.push(grm1);
 
     user_choices= vec!["D", "M", "d", "?"];        
+    prompt_grammars.extend(make_choice_grammar(user_choices, prompt_grammars.len() as u8));
+    
 }
 else if files.makefile_exists && files.makefile_is_link {
     let mut grm1 = template_grammar.clone();
@@ -65,7 +76,7 @@ else if files.makefile_exists && files.makefile_is_link {
       prompt_grammars.push(grm1);
 
       let mut grm2 = template_grammar.clone();
-    grm2.original_val_for_prompt= Some(files.makefile_dir.display().to_string());
+    grm2.original_val_for_prompt= Some(files.makefile_orig_dir.display().to_string());
     grm2.pos =1;
     grm2.grammar_type= GrammarType::FileName;
     prompt_grammars.push(grm2);
@@ -81,6 +92,8 @@ else if files.makefile_exists && files.makefile_is_link {
     prompt_grammars.push(grm4);
 
   user_choices= vec!["1", "2", "d", "?"];        
+  prompt_grammars.extend(make_choice_grammar(user_choices, prompt_grammars.len() as u8));
+  
 }
 else if files.dockerfile_exists && files.dockerfile_is_link {
     let mut grm1 = template_grammar.clone();
@@ -88,7 +101,7 @@ else if files.dockerfile_exists && files.dockerfile_is_link {
       prompt_grammars.push(grm1);
 
       let mut grm2 = template_grammar.clone();
-    grm2.original_val_for_prompt= Some(files.makefile_dir.display().to_string());
+    grm2.original_val_for_prompt= Some(files.makefile_orig_dir.display().to_string());
     grm2.pos =1;
     grm2.grammar_type= GrammarType::FileName;
     prompt_grammars.push(grm2);
@@ -104,58 +117,103 @@ else if files.dockerfile_exists && files.dockerfile_is_link {
     prompt_grammars.push(grm4);
 
   user_choices= vec!["1", "2", "d", "?"];    
+  prompt_grammars.extend(make_choice_grammar(user_choices, prompt_grammars.len() as u8));
+  
 }
 
-        for i in 0..user_choices.len() {
-            let mut choice_separator = Some("/".to_string());
-            if i == user_choices.len() - 1 {
-                choice_separator = Some(": ".to_string());
-            }
-            let choice_grammar = GrammarFragment {
-                original_val_for_prompt: Some(user_choices[i].to_string()),
-                shortened_val_for_prompt: None,
-                pos: (i + prompt_grammars.len()) as u8,
-                prefix: None,
-                suffix: choice_separator,
-                grammar_type: GrammarType::UserChoice,
-                part_of_static_prompt: true,
-                display_at_all: true,
-            };
-            prompt_grammars.push(choice_grammar);
-        }
+let mut choice_of_where_to_build:WhatWereBuilding = WhatWereBuilding{
+    file: None,
+    follow_link: false, 
+    build_choice: None,
+};
+
+
 
         loop{
-            let mut choice_of_where_to_build:WhatWereBuilding ;
+            
         let z = read_val_from_cmd_line_and_proceed(&mut prompt_grammars, GrammarType::Verbiage, GrammarType::UserChoice);
         if let Some(t) = z.user_entered_val {
             match t.as_str() {
+                // only set back up near line 95, if both Makefile and Dockerfile exist in dir
+                // and here, user picked D for Dockerfile
                 "D" => {
-                    choice_of_where_to_build = WhatWereBuilding {
-                        file: &files.dockerfile,
-                        follow_link: files.dockerfile_is_link,
-                    };
+                    if files.dockerfile_exists{
+                    choice_of_where_to_build.build_choice=BuildChoice::Dockerfile;
+                    // but now we need to figure out if they want to set build dir to link's dir, or target of link
+                    user_choices= vec!["1", "2", "d", "?"];
+                    prompt_grammars.retain(|g| g.grammar_type != GrammarType::UserChoice);
+                    prompt_grammars.extend(make_choice_grammar(user_choices, prompt_grammars.len() as u8));
+                    }
+                    else{
+                        eprintln!("No Dockerfile found at '{}'", &files.dockerfile_orig_dir.display());
+                        
+                    }
                 }
+                // only set back up near line 95, if both Makefile and Dockerfile exist in dir
+                // and here, user picked M for Makefile
                 "M" => {
-                    build_image_from_spec(files.dir, image_name, build_args, true);
+                    if files.makefile_exists{
+                    choice_of_where_to_build.build_choice=BuildChoice::Makefile;
+                    user_choices= vec!["1", "2", "d", "?"];
+                    prompt_grammars.retain(|g| g.grammar_type != GrammarType::UserChoice);
+                    prompt_grammars.extend(make_choice_grammar(user_choices, prompt_grammars.len() as u8));
+                    }
+                    else{
+                        eprintln!("No Makefile found at '{}'", &files.makefile_orig_dir.display());   
+                    }
                 }
+                // print details / explanation
                 "d" => {
-                    let dockerfile = files.dockerfile.to_str().unwrap();
-                    let makefile = files.makefile.to_str().unwrap();
+                    if files.dockerfile_exists{
+                    let dockerfile = &files.dockerfile.to_str().unwrap();
                     println!("Dockerfile: {}", dockerfile);
+                    }
+                    if files.makefile_exists{
+                    let makefile = &files.makefile.to_str().unwrap();
+                    
                     println!("Makefile: {}", makefile);
+                    }
+                    if !files.makefile_exists || !files.dockerfile_exists{
+                    println!("No Dockerfile or Makefile found at '{}'", files.dockerfile_orig_dir.display());
+                    }
                 }
                 "?" => {
-                    println!("1 = Build the image in the first directory choice.");
-                    println!("2 = Build the image in the second directory choice.");
+                    
+                    if files.makefile_exists && files.dockerfile_exists{
                     println!("D = Build an image from a Dockerfile.");
-                    println!("2 = Execute `make` on a Makefile.");
+                    println!("M = Execute `make` on a Makefile.");
+                    }
+                    else if files.makefile_exists || files.dockerfile_exists{
+                        let location1 = if files.makefile_exists{
+                            files .makefile.display().to_string()
+                        }
+                        else{
+                            files.dockerfile.display().to_string()
+                        };
+                        let location2 = if files.makefile_exists{
+                            files.makefile_orig_dir.display().to_string()
+                        }
+                        else{
+                            files.dockerfile_orig_dir.display().to_string()
+                        };
+                        println!("1 = Set build working dir to:\n{}",location1);
+                            println!("2 = Set build working dir to:\n {}",location2);
+                            
+                    }
                     println!(
-                                "d = Display info about Dockerfile and Makefile, if they exist."
-                            );
-                    println!(
-                                "b = Build image from the Dockerfile residing in same path as the docker-compose.yml."
+                                "d = Display info about Dockerfile and/or Makefile."
                             );
                     println!("? = Display this help.");   
+                }
+                // building at link target
+                "1"=>{
+                    choice_of_where_to_build.follow_link=true;
+                    break;
+                }
+                // building in dir symlink lives, not link target
+                "2"=>{
+                    choice_of_where_to_build.follow_link=false;
+                    break;
                 }
                 _ => {
                     eprintln!("Invalid choice '{}'", t);
@@ -164,6 +222,7 @@ else if files.dockerfile_exists && files.dockerfile_is_link {
         }
     }
 
+    choice_of_where_to_build
 }
  
  fn make_choice_grammar(user_choices: Vec<&str>,pos_to_start_from:u8) ->Vec<GrammarFragment>{
@@ -198,9 +257,9 @@ else if files.dockerfile_exists && files.dockerfile_is_link {
         makefile_is_link: false,
         dockerfile_exists: false,
         makefile_exists: false,
-        dockerfile_dir: parent_dir.clone(),
+        dockerfile_orig_dir: parent_dir.clone(),
         dockerfile_link_target_dir: parent_dir.clone(),
-        makefile_dir: parent_dir.clone(),
+        makefile_orig_dir: parent_dir.clone(),
         makefile_link_target_dir: parent_dir.clone(),
     };
 
@@ -211,12 +270,19 @@ else if files.dockerfile_exists && files.dockerfile_is_link {
             if metadata.file_type().is_symlink() {
                 if i == &ret_res.dockerfile {
                     ret_res.dockerfile = std::fs::read_link(&i).unwrap().to_path_buf();
-                    ret_res.dockerfile_dir = ret_res.dockerfile.parent().unwrap().to_path_buf();
+                    let tmp = ret_res.dockerfile.parent();
+                    if tmp.is_some(){
+                    ret_res.dockerfile_orig_dir = ret_res.dockerfile.parent().unwrap().to_path_buf();
+                    }
                     
                     ret_res.dockerfile_is_link = true;
                 } else {
                     ret_res.makefile = std::fs::read_link(&i).unwrap().to_path_buf();
-                    ret_res.makefile_dir = ret_res.makefile.parent().unwrap().to_path_buf();
+                    let tmp = ret_res.makefile.parent();
+                    if tmp.is_some(){
+                    ret_res.makefile_orig_dir = ret_res.makefile.parent().unwrap().to_path_buf();
+                    }
+                    
                     ret_res.makefile_is_link = true;
                     
                 }
@@ -225,11 +291,11 @@ else if files.dockerfile_exists && files.dockerfile_is_link {
                 if i == &ret_res.dockerfile {
                     ret_res.dockerfile_exists = true;
                     ret_res.dockerfile_is_link=false;
-                    ret_res.dockerfile_dir = parent_dir.clone();
+                    ret_res.dockerfile_orig_dir = parent_dir.clone();
                 } else {
                     ret_res.makefile_exists = true;
                     ret_res.makefile_is_link=false;
-                    ret_res.makefile_dir = parent_dir.clone();
+                    ret_res.makefile_orig_dir = parent_dir.clone();
                 }
             }
         }
