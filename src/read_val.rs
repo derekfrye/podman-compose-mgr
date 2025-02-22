@@ -7,7 +7,7 @@ use std::io::{self, Write};
 pub struct ReadValResult {
     pub user_entered_val: Option<String>,
     pub grammar: Vec<GrammarFragment>,
-    pub prompt_count_shown_user: u8,
+    
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -100,7 +100,7 @@ pub fn read_val_from_cmd_line_and_proceed(
     let mut return_result = ReadValResult {
         user_entered_val: None,
         grammar: Vec::new(),
-        prompt_count_shown_user: 1,
+        
     };
 
     let refresh_static = unroll_grammar_into_string(grammars, true, false);

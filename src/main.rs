@@ -1,7 +1,7 @@
 mod args;
 mod build {
-    mod rebuild;
-    mod build;
+    pub mod rebuild;
+    pub mod build;
 }
 mod helpers {
     pub mod cmd_helper_fns;
@@ -12,7 +12,7 @@ mod restartsvcs;
 mod secrets;
 
 use args::Args;
-use rebuild::RebuildManager;
+use build::rebuild::RebuildManager;
 use regex::Regex;
 // use futures::executor;
 use std::{ io, mem };
@@ -74,7 +74,7 @@ fn walk_dirs(args: &Args) {
         println!("Rebuild images in path: {}", args.path.display());
     }
 
-    let mut manager: Option<RebuildManager> = Some(rebuild::RebuildManager::new());
+    let mut manager: Option<RebuildManager> = Some(build::rebuild::RebuildManager::new());
 
     for entry in WalkDir::new(&args.path)
         .into_iter()
