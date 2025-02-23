@@ -18,7 +18,6 @@ pub enum GrammarType {
     DockerComposePath,
     ContainerName,
     FileName,
-    None,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -29,8 +28,8 @@ pub struct GrammarFragment {
     pub prefix: Option<String>,
     pub suffix: Option<String>,
     pub grammar_type: GrammarType,
-    pub part_of_static_prompt: bool,
     pub display_at_all: bool,
+    pub can_shorten: bool,
 }
 
 impl Default for GrammarFragment {
@@ -42,8 +41,8 @@ impl Default for GrammarFragment {
             prefix: None,
             suffix: None,
             grammar_type: GrammarType::Verbiage,
-            part_of_static_prompt: false,
-            display_at_all: false,
+            can_shorten: false,
+            display_at_all: true,
         }
     }
 }
@@ -57,7 +56,7 @@ impl Default for GrammarFragment {
     let mut return_result = String::new();
     // lets loop through based on the position
     for grammar in grammars.iter() {
-        if excl_if_not_in_base_prompt && !grammar.part_of_static_prompt {
+        if excl_if_not_in_base_prompt && grammar.can_shorten {
             return_result.push_str(" ");
             continue;
         }
@@ -78,25 +77,24 @@ impl Default for GrammarFragment {
     return_result
 }
 
-// moved from main, i've got to believe i'll use it for secrets and restart svcs too
+
 pub fn read_val_from_cmd_line_and_proceed(
     grammars: &mut Vec<GrammarFragment>,
-    grammars_to_shorten: Option<Vec<GrammarType>>,
     
 ) -> ReadValResult {
-    let type_1_to_shorten = grammars_to_shorten
-        .as_ref()
-        .and_then(|z| z.get(0))
-        .and_then(|&grammar_type| {
-            grammars
-                .iter()
-                .find(|x| x.grammar_type == grammar_type)
-                .and_then(|f| f.original_val_for_prompt.clone())
-        })
-        .unwrap_or_else(String::new);
-    let type_2_to_shorten = grammars_to_shorten
+    let mut return_result = ReadValResult {
+        user_entered_val: None,
+        grammar: Vec::new(),
+        
+    };
+
+    let term_width = cmd::get_terminal_display_width();
+    let initial_prompt = unroll_grammar_into_string(grammars, false, false);
+
+    if initial_prompt.len() > term_width {
+        let type_1_to_shorten = grammars
     .as_ref()
-    .and_then(|z| z.get(1))
+    .and_then(|z| z.get(0))
     .and_then(|&grammar_type| {
         grammars
             .iter()
@@ -104,17 +102,22 @@ pub fn read_val_from_cmd_line_and_proceed(
             .and_then(|f| f.original_val_for_prompt.clone())
     })
     .unwrap_or_else(String::new);
-
-    let mut return_result = ReadValResult {
-        user_entered_val: None,
-        grammar: Vec::new(),
-        
-    };
+let type_2_to_shorten = grammars_to_shorten
+.as_ref()
+.and_then(|z| z.get(1))
+.and_then(|&grammar_type| {
+    grammars
+        .iter()
+        .find(|x| x.grammar_type == grammar_type)
+        .and_then(|f| f.original_val_for_prompt.clone())
+})
+.unwrap_or_else(String::new);
 
     let refresh_static = unroll_grammar_into_string(grammars, true, false);
     let refresh_prompt = unroll_grammar_into_string(grammars, false, false);
 
     // if the prompt is too long, we need to shorten some stuff.
+
     // At a minimum, we'll display Verbiage and UserChoices un-shortened. 
     // We're not going to go less than 12 chars for path and image name, anything less feels like we're cutting too much off maybe.
     let fixed_len_grammars = grammars.iter().fold(0, |acc, x| {
@@ -126,7 +129,7 @@ pub fn read_val_from_cmd_line_and_proceed(
     });
 
     // Then we divide remaining space equally between items that can be shortened
-    let term_width = cmd::get_terminal_display_width();
+    
     // println!("term_width: {}", term_width);
     // println!("refresh_prompt len: {}", refresh_prompt.len());
     let mut type_1_shortened = type_1_to_shorten.clone();
@@ -202,6 +205,8 @@ pub fn read_val_from_cmd_line_and_proceed(
             y.shortened_val_for_prompt = z.clone();
         }
     });
+
+}
 
     // prepare the prompt, this might go to stdout, or we have to flush first
     print!("{}", unroll_grammar_into_string(grammars, false, true));
