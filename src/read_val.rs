@@ -110,8 +110,8 @@ pub fn read_val_from_cmd_line_and_proceed(
     
     // 2. Calculate the total remaining space available for the other fragments.
         //    We subtract one extra character to account for user input.
-        let total_remaining_space = if term_width > fixed_len_grammars + 1 {
-            term_width - fixed_len_grammars - 1
+        let total_remaining_space = if term_width > fixed_len_grammars + 2 {
+            term_width - fixed_len_grammars - 2
         } else {
             0
         };

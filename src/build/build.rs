@@ -42,7 +42,7 @@ if let Some(ax) = buildfiles{
 
  fn read_val_loop(files: Vec<BuildFile>)->WhatWereBuilding{
     let mut prompt_grammars: Vec<GrammarFragment> = vec![];
-    let mut user_choices: Vec<&str> ;
+    let mut user_choices: Vec<&str> = vec![];
     
 let mut buildfile = files[0].clone();
 let are_there_multiple_files = files.iter().filter(|x| x.filepath.is_some()).collect::<Vec<_>>().len() > 1;
@@ -53,35 +53,13 @@ if are_there_multiple_files {
         prompt_grammars.push(grm1);
 
     user_choices= vec!["D", "M", "d", "?"];        
-    prompt_grammars.extend(make_choice_grammar(user_choices, prompt_grammars.len() as u8));
+    prompt_grammars.extend(make_choice_grammar(&user_choices, prompt_grammars.len() as u8));
     
 }
 else if buildfile.link_target_dir.is_some() {
-    let mut grm1 = GrammarFragment::default();
-    grm1.original_val_for_prompt= Some(format!("Run `{}` in", match buildfile.filetype {
-        BuildChoice::Dockerfile => "podman build",
-        BuildChoice::Makefile => "make",
-    } ).to_string());
-      prompt_grammars.push(grm1);
-
-      let mut grm2 = GrammarFragment::default();
-    grm2.original_val_for_prompt= Some(buildfile.link_target_dir.clone().unwrap().display().to_string());
-    grm2.pos =1;
-    grm2.grammar_type= GrammarType::FileName;
-    prompt_grammars.push(grm2);
-
-    let mut grm3 = GrammarFragment::default();
-    grm3.original_val_for_prompt= Some("or".to_string());
-      prompt_grammars.push(grm3);
-
-    let mut grm4 = GrammarFragment::default();
-    grm4.original_val_for_prompt= Some(buildfile.parent_dir.display().to_string());
-    grm4.pos =3;
-    grm4.grammar_type= GrammarType::FileName;
-    prompt_grammars.push(grm4);
-
-  user_choices= vec!["1", "2", "d", "?"];        
-  prompt_grammars.extend(make_choice_grammar(user_choices, prompt_grammars.len() as u8));
+         let t = make_build_prompt_grammar(&buildfile);
+         user_choices= vec!["1", "2", "d", "?"];   
+  prompt_grammars.extend(make_choice_grammar(&user_choices, t.len() as u8));
   
 }
 
@@ -105,9 +83,10 @@ if prompt_grammars.len()>0{
                         _ => BuildChoice::Dockerfile,
                     }).unwrap().clone();
                     // but now we need to figure out if they want to set build dir to link's dir, or target of link
-                    user_choices= vec!["1", "2", "d", "?"];
-                    prompt_grammars.retain(|g| g.grammar_type != GrammarType::UserChoice);
-                    prompt_grammars.extend(make_choice_grammar(user_choices, prompt_grammars.len() as u8));
+                    prompt_grammars = make_build_prompt_grammar(&buildfile);
+         user_choices= vec!["1", "2", "d", "?"];   
+         
+  prompt_grammars.extend(make_choice_grammar(&user_choices, t.len() as u8));
                     }
                     else{
                         eprintln!("No {} found at '{}'", match t.as_str() { 
@@ -131,8 +110,8 @@ if prompt_grammars.len()>0{
                     
                 }
                 "?" => {
-                    
-                    if are_there_multiple_files{
+                    // only show this prompt if we haven't already narrowed down the build choice
+                    if are_there_multiple_files && user_choices.is_empty() && user_choices.iter().any(|f| *f=="D") {
                     println!("D = Build an image from a Dockerfile.");
                     println!("M = Execute `make` on a Makefile.");
                     }
@@ -167,7 +146,37 @@ if prompt_grammars.len()>0{
     choice_of_where_to_build
 }
  
- fn make_choice_grammar(user_choices: Vec<&str>,pos_to_start_from:u8) ->Vec<GrammarFragment>{
+fn make_build_prompt_grammar(buildfile: &BuildFile) -> Vec<GrammarFragment> {
+    let mut prompt_grammars: Vec<GrammarFragment> = vec![];
+    // let mut user_choices: Vec<&str> ;
+    let mut grm1 = GrammarFragment::default();
+    grm1.original_val_for_prompt= Some(format!("Run `{}` in", match buildfile.filetype {
+        BuildChoice::Dockerfile => "podman build",
+        BuildChoice::Makefile => "make",
+    } ).to_string());
+      prompt_grammars.push(grm1);
+
+      let mut grm2 = GrammarFragment::default();
+    grm2.original_val_for_prompt= Some(buildfile.link_target_dir.clone().unwrap().display().to_string());
+    grm2.pos =1;
+    grm2.grammar_type= GrammarType::FileName;
+    prompt_grammars.push(grm2);
+
+    let mut grm3 = GrammarFragment::default();
+    grm3.original_val_for_prompt= Some("or".to_string());
+      prompt_grammars.push(grm3);
+
+    let mut grm4 = GrammarFragment::default();
+    grm4.original_val_for_prompt= Some(buildfile.parent_dir.display().to_string());
+    grm4.pos =3;
+    grm4.grammar_type= GrammarType::FileName;
+    prompt_grammars.push(grm4);
+
+  
+
+    prompt_grammars}
+
+ fn make_choice_grammar(user_choices: &Vec<&str>,pos_to_start_from:u8) ->Vec<GrammarFragment>{
     let mut new_prompt_grammars = vec![];
     for i in 0..user_choices.len() {
         let mut choice_separator = Some("/".to_string());
