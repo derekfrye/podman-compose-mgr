@@ -48,7 +48,7 @@ impl Default for GrammarFragment {
     }
 }
 
-/// Build a string to display to the user. Don't use this directly, try to use read_val_from_cmd_line_and_proceed instead.
+/// Build a string to display to the user. Don't use this publicly, try to use read_val_from_cmd_line_and_proceed instead.
  fn unroll_grammar_into_string(
     grammars: &Vec<GrammarFragment>,
     excl_if_not_in_base_prompt: bool,
@@ -81,21 +81,29 @@ impl Default for GrammarFragment {
 // moved from main, i've got to believe i'll use it for secrets and restart svcs too
 pub fn read_val_from_cmd_line_and_proceed(
     grammars: &mut Vec<GrammarFragment>,
-    grammar_type_1_to_shorten: GrammarType,
-    grammar_type_2_to_shorten: GrammarType,
+    grammars_to_shorten: Option<Vec<GrammarType>>,
+    
 ) -> ReadValResult {
-    let type_1_to_shorten = grammars
-        .iter()
-        .find(|x| x.grammar_type == grammar_type_1_to_shorten)
-        .map(|f| f.original_val_for_prompt.clone())
-        .unwrap()
-        .unwrap();
-    let type_2_to_shorten = grammars
-        .iter()
-        .find(|x| x.grammar_type == grammar_type_2_to_shorten)
-        .map(|f| f.original_val_for_prompt.clone())
-        .unwrap_or_else(|| Some(String::new()))
+    let type_1_to_shorten = grammars_to_shorten
+        .as_ref()
+        .and_then(|z| z.get(0))
+        .and_then(|&grammar_type| {
+            grammars
+                .iter()
+                .find(|x| x.grammar_type == grammar_type)
+                .and_then(|f| f.original_val_for_prompt.clone())
+        })
         .unwrap_or_else(String::new);
+    let type_2_to_shorten = grammars_to_shorten
+    .as_ref()
+    .and_then(|z| z.get(1))
+    .and_then(|&grammar_type| {
+        grammars
+            .iter()
+            .find(|x| x.grammar_type == grammar_type)
+            .and_then(|f| f.original_val_for_prompt.clone())
+    })
+    .unwrap_or_else(String::new);
 
     let mut return_result = ReadValResult {
         user_entered_val: None,
@@ -107,11 +115,17 @@ pub fn read_val_from_cmd_line_and_proceed(
     let refresh_prompt = unroll_grammar_into_string(grammars, false, false);
 
     // if the prompt is too long, we need to shorten some stuff.
-    // At a minimum, we'll display our 23 chars of "refresh ... from ?" stuff.
-    // Then we divide remaining space equally between image name and path name.
+    // At a minimum, we'll display Verbiage and UserChoices un-shortened. 
     // We're not going to go less than 12 chars for path and image name, anything less feels like we're cutting too much off maybe.
-    // This means total display chars is 23 + 12 + 12 = 47 at a min
-    // if user has less than 47 wide, well then we'll have to let the terminal word-wrap.
+    let fixed_len_grammars = grammars.iter().fold(0, |acc, x| {
+        if x.grammar_type == GrammarType::Verbiage || x.grammar_type == GrammarType::UserChoice {
+            acc + x.original_val_for_prompt.as_ref().unwrap().len()
+        } else {
+            acc
+        }
+    });
+
+    // Then we divide remaining space equally between items that can be shortened
     let term_width = cmd::get_terminal_display_width();
     // println!("term_width: {}", term_width);
     // println!("refresh_prompt len: {}", refresh_prompt.len());
@@ -123,7 +137,7 @@ pub fn read_val_from_cmd_line_and_proceed(
     if refresh_prompt.len() > term_width - 1 {
         let truncated_symbols = "...";
         let mut max_avail_chars_for_image_and_path =
-            max(term_width, 47) - refresh_static.len() - 2 * truncated_symbols.len() - 1;
+            max(term_width, fixed_len_grammars) - refresh_static.len() - 2 * truncated_symbols.len() - 1;
         if max_avail_chars_for_image_and_path % 2 != 0 {
             max_avail_chars_for_image_and_path -= 1;
         }
@@ -151,7 +165,7 @@ pub fn read_val_from_cmd_line_and_proceed(
         pos: 0,
         prefix: None,
         suffix: None,
-        grammar_type: grammar_type_1_to_shorten.clone(),
+        grammar_type: grammars_to_shorten.clone(),
         part_of_static_prompt: true,
         display_at_all: true,
     };
@@ -173,7 +187,7 @@ pub fn read_val_from_cmd_line_and_proceed(
     let x = return_result
         .grammar
         .iter()
-        .find(|x| x.grammar_type == grammar_type_1_to_shorten)
+        .find(|x| x.grammar_type == grammars_to_shorten)
         .and_then(|x| x.shortened_val_for_prompt.clone());
     let z = return_result
         .grammar
@@ -181,7 +195,7 @@ pub fn read_val_from_cmd_line_and_proceed(
         .find(|x| x.grammar_type == grammar_type_2_to_shorten)
         .and_then(|x| x.shortened_val_for_prompt.clone());
     grammars.iter_mut().for_each(|y| {
-        if y.grammar_type == grammar_type_1_to_shorten {
+        if y.grammar_type == grammars_to_shorten {
             y.shortened_val_for_prompt = x.clone();
         }
         if y.grammar_type == grammar_type_2_to_shorten {

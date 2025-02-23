@@ -102,7 +102,7 @@ let mut choice_of_where_to_build:WhatWereBuilding = WhatWereBuilding{
 if prompt_grammars.len()>0{
         loop{
             
-        let z = read_val_from_cmd_line_and_proceed(&mut prompt_grammars, GrammarType::Verbiage, GrammarType::UserChoice);
+        let z = read_val_from_cmd_line_and_proceed(&mut prompt_grammars, GrammarType::None, GrammarType::None);
         if let Some(t) = z.user_entered_val {
             match t.as_str() {
                 // only set back up near line 95, if both Makefile and Dockerfile exist in dir
@@ -227,8 +227,8 @@ if prompt_grammars.len()>0{
                     link_target_dir: if std::fs::read_link(&i).is_ok() { Some(std::fs::read_link(&i).unwrap().to_path_buf())
                     } else { None },
                 };
-                dbg!(&zzz.filepath);
-                dbg!(i);
+                // dbg!(&zzz.filepath);
+                // dbg!(i);
 
                 match zz
                         {
