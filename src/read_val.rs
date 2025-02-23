@@ -55,7 +55,7 @@ impl Default for GrammarFragment {
 ) -> String {
     let mut return_result = String::new();
     // lets loop through based on the position
-    for grammar in grammars.iter() {
+    for grammar in grammars.iter().filter(|g| g.display_at_all) {
         if excl_if_not_in_base_prompt && grammar.can_shorten {
             return_result.push_str(" ");
             continue;
@@ -66,7 +66,7 @@ impl Default for GrammarFragment {
 
         if use_shortened_val && grammar.shortened_val_for_prompt.is_some() {
             return_result.push_str(grammar.shortened_val_for_prompt.as_ref().unwrap().as_str());
-        } else if grammar.display_at_all {
+        } else  {
             return_result.push_str(grammar.original_val_for_prompt.as_ref().unwrap().as_str());
         }
 
@@ -91,7 +91,7 @@ pub fn read_val_from_cmd_line_and_proceed(
     let term_width = cmd::get_terminal_display_width();
     let initial_prompt = unroll_grammar_into_string(grammars, false, false);
 
-    if initial_prompt.len() > term_width {
+    if initial_prompt.len() > term_width -1 {
 
     // let refresh_static = unroll_grammar_into_string(grammars, true, false);
     // let refresh_prompt = unroll_grammar_into_string(grammars, false, false);
@@ -103,37 +103,54 @@ pub fn read_val_from_cmd_line_and_proceed(
     .filter(|g| {
         g.grammar_type == GrammarType::Verbiage || g.grammar_type == GrammarType::UserChoice
     })
-    .map(|g| g.original_val_for_prompt.as_ref().unwrap().len())
+    .map(|g| {
+        let suffix = g.suffix.clone().unwrap_or_else(|| "".to_string());
+        let prefix = g.prefix.clone().unwrap_or_else(|| "".to_string());
+        prefix.len() +
+        g.original_val_for_prompt.as_ref().unwrap().len() + suffix.len()
+    })
     .sum();
 
     // Then we divide remaining space equally between items that can be shortened
     
-    // 2. Calculate the total remaining space available for the other fragments.
-        //    We subtract one extra character to account for user input.
-        let total_remaining_space = if term_width > fixed_len_grammars + 2 {
-            term_width - fixed_len_grammars - 2
-        } else {
-            0
-        };
+   
 
 
 // 3. Collect the fragments that we want to shorten (those that are not Verbiage or UserChoice).
 let mut shortenable_grammars: Vec<&mut GrammarFragment> = grammars
 .iter_mut()
 .filter(|g| {
-    g.grammar_type != GrammarType::Verbiage && g.grammar_type != GrammarType::UserChoice
+    g.grammar_type != GrammarType::Verbiage && g.grammar_type != GrammarType::UserChoice && g.display_at_all
 })
 .collect();
+
+let n = shortenable_grammars.len();
+
+ // 2. Calculate the total remaining space available for the other fragments.
+        //    We subtract one extra character to account for user input.
+        let total_remaining_space = if term_width > fixed_len_grammars  {
+            term_width - fixed_len_grammars - (n+5)
+        } else {
+            0
+        };
 
         if total_remaining_space>0{
         
 
-        let n = shortenable_grammars.len();
+        
         
         // Only proceed if we have shortenable fragments and enough space (reserve 3 for "...")
         if n > 0 && total_remaining_space > 3 {
             // Determine how many characters each shortenable fragment is allowed
-            let allowed_len = (total_remaining_space - 3) / n;
+            let allowed_len = ((total_remaining_space - 3) as f64 / n as f64).floor() as usize;
+            if cfg!(debug_assertions) {
+                println!("term width: {}",term_width);
+                println!("fixed len: {}",fixed_len_grammars);
+                println!("remain space: {}",total_remaining_space);
+                println!("allow len: {}",allowed_len);
+                println!("total calc: {}", allowed_len * n + 3);
+            }
+            
 
             // (Optional) Calculate total unaltered length for debugging/analysis.
             // let total_unaltered_len: usize = shortenable_grammars
@@ -148,8 +165,13 @@ let mut shortenable_grammars: Vec<&mut GrammarFragment> = grammars
                 // If the original is longer than the allowed length, shorten it.
                 if orig.len() > allowed_len {
                     // Grab the last `allowed_len` characters.
-                    let substring = &orig[orig.len() - allowed_len..];
-                    grammar.shortened_val_for_prompt = Some(format!("...{}", substring));
+                      if grammar.grammar_type== GrammarType::Image {
+                        let substring =    &orig[.. allowed_len - 1];
+                        grammar.shortened_val_for_prompt = Some(format!("{}...", substring));
+                    }else {  let substring =&orig[orig.len() - allowed_len..];
+                        grammar.shortened_val_for_prompt = Some(format!("...{}", substring));
+                    };
+                    
                 } else {
                     // If it already fits, use the original.
                     grammar.shortened_val_for_prompt = Some(orig.clone());
