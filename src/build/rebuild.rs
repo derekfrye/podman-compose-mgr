@@ -108,7 +108,7 @@ impl RebuildManager {
             prefix: None,
             suffix: Some(" ".to_string()),
             grammar_type: GrammarType::Verbiage,
-            part_of_static_prompt: true,
+            can_shorten: false,
             display_at_all: true,
         };
 
@@ -121,7 +121,7 @@ impl RebuildManager {
             prefix: None,
             suffix: Some(" ".to_string()),
             grammar_type: GrammarType::Image,
-            part_of_static_prompt: false,
+            can_shorten: true,
             display_at_all: true,
         };
         grammars.push(grm2);
@@ -133,7 +133,7 @@ impl RebuildManager {
             prefix: None,
             suffix: Some(" ".to_string()),
             grammar_type: GrammarType::Verbiage,
-            part_of_static_prompt: true,
+            can_shorten: false,
             display_at_all: true,
         };
         grammars.push(grm3);
@@ -151,7 +151,7 @@ impl RebuildManager {
             prefix: None,
             suffix: Some("? ".to_string()),
             grammar_type: GrammarType::DockerComposePath,
-            part_of_static_prompt: false,
+            can_shorten: true,
             display_at_all: true,
         };
         grammars.push(grm4);
@@ -163,7 +163,7 @@ impl RebuildManager {
             prefix: None,
             suffix: None,
             grammar_type: GrammarType::ContainerName,
-            part_of_static_prompt: false,
+            can_shorten: true,
             display_at_all: false,
         };
         grammars.push(grm5);
@@ -181,7 +181,7 @@ impl RebuildManager {
                 prefix: None,
                 suffix: choice_separator,
                 grammar_type: GrammarType::UserChoice,
-                part_of_static_prompt: true,
+                can_shorten: false,
                 display_at_all: true,
             };
             grammars.push(choice_grammar);
@@ -190,8 +190,6 @@ impl RebuildManager {
         loop {
             let result = read_val::read_val_from_cmd_line_and_proceed(
                 &mut grammars,
-                GrammarType::DockerComposePath,
-                GrammarType::Image,
             );
 
             match result.user_entered_val {

@@ -1,6 +1,6 @@
 use crate::helpers::cmd_helper_fns as cmd;
 
-use std::cmp::max;
+// use std::cmp::max;
 use std::collections::HashSet;
 use std::io::{self, Write};
 
@@ -39,7 +39,7 @@ impl Default for GrammarFragment {
             shortened_val_for_prompt: None,
             pos: 0,
             prefix: None,
-            suffix: None,
+            suffix: Some(" ".to_string()),
             grammar_type: GrammarType::Verbiage,
             can_shorten: false,
             display_at_all: true,
@@ -92,119 +92,77 @@ pub fn read_val_from_cmd_line_and_proceed(
     let initial_prompt = unroll_grammar_into_string(grammars, false, false);
 
     if initial_prompt.len() > term_width {
-        let type_1_to_shorten = grammars
-    .as_ref()
-    .and_then(|z| z.get(0))
-    .and_then(|&grammar_type| {
-        grammars
-            .iter()
-            .find(|x| x.grammar_type == grammar_type)
-            .and_then(|f| f.original_val_for_prompt.clone())
-    })
-    .unwrap_or_else(String::new);
-let type_2_to_shorten = grammars_to_shorten
-.as_ref()
-.and_then(|z| z.get(1))
-.and_then(|&grammar_type| {
-    grammars
-        .iter()
-        .find(|x| x.grammar_type == grammar_type)
-        .and_then(|f| f.original_val_for_prompt.clone())
-})
-.unwrap_or_else(String::new);
 
-    let refresh_static = unroll_grammar_into_string(grammars, true, false);
-    let refresh_prompt = unroll_grammar_into_string(grammars, false, false);
+    // let refresh_static = unroll_grammar_into_string(grammars, true, false);
+    // let refresh_prompt = unroll_grammar_into_string(grammars, false, false);
 
     // if the prompt is too long, we need to shorten some stuff.
-
     // At a minimum, we'll display Verbiage and UserChoices un-shortened. 
-    // We're not going to go less than 12 chars for path and image name, anything less feels like we're cutting too much off maybe.
-    let fixed_len_grammars = grammars.iter().fold(0, |acc, x| {
-        if x.grammar_type == GrammarType::Verbiage || x.grammar_type == GrammarType::UserChoice {
-            acc + x.original_val_for_prompt.as_ref().unwrap().len()
-        } else {
-            acc
-        }
-    });
+    let fixed_len_grammars: usize = grammars
+    .iter()
+    .filter(|g| {
+        g.grammar_type == GrammarType::Verbiage || g.grammar_type == GrammarType::UserChoice
+    })
+    .map(|g| g.original_val_for_prompt.as_ref().unwrap().len())
+    .sum();
 
     // Then we divide remaining space equally between items that can be shortened
     
-    // println!("term_width: {}", term_width);
-    // println!("refresh_prompt len: {}", refresh_prompt.len());
-    let mut type_1_shortened = type_1_to_shorten.clone();
-    // let docker_compose_path_orig = docker_compose_pth_shortened.to_string();
-    let mut type_2_shortened = type_2_to_shorten.clone();
-    // let image_orig = image.to_string();
-    // 1 char for a little buffer so it doesn't wrap after user input
-    if refresh_prompt.len() > term_width - 1 {
-        let truncated_symbols = "...";
-        let mut max_avail_chars_for_image_and_path =
-            max(term_width, fixed_len_grammars) - refresh_static.len() - 2 * truncated_symbols.len() - 1;
-        if max_avail_chars_for_image_and_path % 2 != 0 {
-            max_avail_chars_for_image_and_path -= 1;
-        }
+    // 2. Calculate the total remaining space available for the other fragments.
+        //    We subtract one extra character to account for user input.
+        let total_remaining_space = if term_width > fixed_len_grammars + 1 {
+            term_width - fixed_len_grammars - 1
+        } else {
+            0
+        };
 
-        if type_1_shortened.len() > max_avail_chars_for_image_and_path / 2 {
-            type_1_shortened = format!(
-                "...{}",
-                type_1_shortened[type_1_shortened.len() - max_avail_chars_for_image_and_path / 2..]
-                    .to_string()
-            );
-        }
 
-        if type_2_shortened.len() > max_avail_chars_for_image_and_path / 2 {
-            type_2_shortened = format!(
-                "...{}",
-                type_2_shortened[type_2_shortened.len() - max_avail_chars_for_image_and_path / 2..]
-                    .to_string()
-            );
+// 3. Collect the fragments that we want to shorten (those that are not Verbiage or UserChoice).
+let mut shortenable_grammars: Vec<&mut GrammarFragment> = grammars
+.iter_mut()
+.filter(|g| {
+    g.grammar_type != GrammarType::Verbiage && g.grammar_type != GrammarType::UserChoice
+})
+.collect();
+
+        if total_remaining_space>0{
+        
+
+        let n = shortenable_grammars.len();
+        
+        // Only proceed if we have shortenable fragments and enough space (reserve 3 for "...")
+        if n > 0 && total_remaining_space > 3 {
+            // Determine how many characters each shortenable fragment is allowed
+            let allowed_len = (total_remaining_space - 3) / n;
+
+            // (Optional) Calculate total unaltered length for debugging/analysis.
+            // let total_unaltered_len: usize = shortenable_grammars
+            //     .iter()
+            //     .map(|g| g.original_val_for_prompt.as_ref().unwrap().len())
+            //     .sum();
+            // e.g., you might log total_unaltered_len if needed.
+
+            // 4. For each shortenable fragment, set its shortened value.
+            for grammar in shortenable_grammars.iter_mut() {
+                let orig = grammar.original_val_for_prompt.as_ref().unwrap();
+                // If the original is longer than the allowed length, shorten it.
+                if orig.len() > allowed_len {
+                    // Grab the last `allowed_len` characters.
+                    let substring = &orig[orig.len() - allowed_len..];
+                    grammar.shortened_val_for_prompt = Some(format!("...{}", substring));
+                } else {
+                    // If it already fits, use the original.
+                    grammar.shortened_val_for_prompt = Some(orig.clone());
+                }
+            }
         }
     }
 
-    let type_1_grammar = GrammarFragment {
-        original_val_for_prompt: Some(type_1_to_shorten.clone()),
-        shortened_val_for_prompt: Some(type_1_shortened.clone()),
-        pos: 0,
-        prefix: None,
-        suffix: None,
-        grammar_type: grammars_to_shorten.clone(),
-        part_of_static_prompt: true,
-        display_at_all: true,
-    };
-
-    let type_2_grammar = GrammarFragment {
-        original_val_for_prompt: Some(type_2_to_shorten.clone()),
-        shortened_val_for_prompt: Some(type_2_shortened.clone()),
-        pos: 0,
-        prefix: None,
-        suffix: None,
-        grammar_type: grammar_type_2_to_shorten.clone(),
-        part_of_static_prompt: true,
-        display_at_all: true,
-    };
-    return_result.grammar.push(type_1_grammar);
-    return_result.grammar.push(type_2_grammar);
-
-    // put the shortened values into the input grammar, so when we prompt the user from the unrolled grammar, we use the shortened values
-    let x = return_result
-        .grammar
-        .iter()
-        .find(|x| x.grammar_type == grammars_to_shorten)
-        .and_then(|x| x.shortened_val_for_prompt.clone());
-    let z = return_result
-        .grammar
-        .iter()
-        .find(|x| x.grammar_type == grammar_type_2_to_shorten)
-        .and_then(|x| x.shortened_val_for_prompt.clone());
-    grammars.iter_mut().for_each(|y| {
-        if y.grammar_type == grammars_to_shorten {
-            y.shortened_val_for_prompt = x.clone();
+    for i in shortenable_grammars.iter_mut() {
+        if i.display_at_all&& i.shortened_val_for_prompt.is_none() {
+            i.shortened_val_for_prompt = i.original_val_for_prompt.clone();
         }
-        if y.grammar_type == grammar_type_2_to_shorten {
-            y.shortened_val_for_prompt = z.clone();
-        }
-    });
+    }
 
 }
 

@@ -36,7 +36,7 @@ struct SetSecretResponse {
 
 #[derive(Serialize)]
 struct JsonOutput {
-    filenm: String,
+    file_nm: String,
     md5: String,
     ins_ts: String,
     az_id: String,
@@ -47,15 +47,15 @@ struct JsonOutput {
 }
 
 struct JsonOutputControl {
-    jsonoutput: JsonOutput,
+    json_output: JsonOutput,
     validate_all: bool,
 }
 
 impl JsonOutputControl {
     fn new() -> JsonOutputControl {
         JsonOutputControl {
-            jsonoutput: JsonOutput {
-                filenm: String::new(),
+            json_output: JsonOutput {
+                file_nm: String::new(),
                 md5: String::new(),
                 ins_ts: String::new(),
                 az_id: String::new(),
@@ -111,7 +111,7 @@ pub fn update_mode(args: &Args) -> Result<(), Box<dyn Error>> {
 
             // Build output entry
             let output_entry = json!({
-                "filenm": full_path,
+                "file_nm": full_path,
                 "md5": md5_checksum,
                 "ins_ts": ins_ts,
                 "az_id": azure_response.id,
@@ -181,7 +181,7 @@ pub fn validate(args: &Args) -> Result<(), Box<dyn Error>> {
         } else {
             match read_val_loop(entry, &client, args) {
                 Ok(result) => {
-                    json_outputs.push(result.jsonoutput);
+                    json_outputs.push(result.json_output);
                     loop_result.validate_all = result.validate_all;
                 }
                 Err(e) => {
@@ -212,8 +212,8 @@ fn read_val_loop(
 ) -> Result<JsonOutputControl, Box<dyn Error>> {
     let mut grammars: Vec<GrammarFragment> = vec![];
     let mut tt: JsonOutputControl = JsonOutputControl {
-        jsonoutput: JsonOutput {
-            filenm: String::new(),
+        json_output: JsonOutput {
+            file_nm: String::new(),
             md5: String::new(),
             ins_ts: String::new(),
             az_id: String::new(),
@@ -231,27 +231,27 @@ fn read_val_loop(
         prefix: None,
         suffix: Some(" ".to_string()),
         grammar_type: GrammarType::Verbiage,
-        part_of_static_prompt: true,
+        can_shorten: false,
         display_at_all: true,
     };
     grammars.push(static_prompt_grammar);
 
-    let file_name = entry["filenm"]
+    let file_name = entry["file_nm"]
         .as_str()
-        .ok_or("filenm missing in input json")
+        .ok_or("file_nm missing in input json")
         .unwrap();
 
-    let filenm_grammar = GrammarFragment {
+    let file_nm_grammar = GrammarFragment {
         original_val_for_prompt: Some(file_name.to_string()),
         shortened_val_for_prompt: None,
         pos: 1,
         prefix: None,
         suffix: Some("? ".to_string()),
         grammar_type: GrammarType::FileName,
-        part_of_static_prompt: false,
+        can_shorten: true,
         display_at_all: true,
     };
-    grammars.push(filenm_grammar);
+    grammars.push(file_nm_grammar);
 
     let choices = vec!["d", "N", "v", "a", "?"];
     for i in 0..choices.len() {
@@ -266,7 +266,7 @@ fn read_val_loop(
             prefix: None,
             suffix: choice_separator,
             grammar_type: GrammarType::UserChoice,
-            part_of_static_prompt: true,
+            can_shorten: false,
             display_at_all: true,
         };
         grammars.push(choice_grammar);
@@ -276,13 +276,11 @@ fn read_val_loop(
     loop {
         if tt.validate_all {
             let z = validate_entry(entry, client, args).unwrap();
-            tt.jsonoutput = z;
+            tt.json_output = z;
             break;
         } else {
             let result = read_val::read_val_from_cmd_line_and_proceed(
                 &mut grammars,
-                GrammarType::FileName,
-                GrammarType::None,
             );
 
             match result.user_entered_val {
@@ -295,7 +293,7 @@ fn read_val_loop(
                     }
                     "v" => {
                         let z = validate_entry(entry, client, args).unwrap();
-                        tt.jsonoutput = z;
+                        tt.json_output = z;
                         break;
                     }
                     "?" => {
@@ -321,9 +319,9 @@ fn read_val_loop(
 }
 
 fn details_about_entry(entry: &Value) {
-    let filenm = entry["filenm"]
+    let file_nm = entry["file_nm"]
         .as_str()
-        .ok_or("filenm missing in input json")
+        .ok_or("file_nm missing in input json")
         .unwrap();
     let az_name = entry["az_name"]
         .as_str()
@@ -338,7 +336,7 @@ fn details_about_entry(entry: &Value) {
         .ok_or("az_updated missing in input json")
         .unwrap();
 
-    println!("File: {}", filenm);
+    println!("File: {}", file_nm);
     println!("Azure Key Vault Name: {}", az_name);
 
     let x = vec![
@@ -368,7 +366,7 @@ fn validate_entry(
     args: &Args,
 ) -> Result<JsonOutput, Box<dyn Error>> {
     let mut output = JsonOutput {
-        filenm: String::new(),
+        file_nm: String::new(),
         md5: String::new(),
         ins_ts: String::new(),
         az_id: String::new(),
@@ -381,9 +379,9 @@ fn validate_entry(
         .as_str()
         .ok_or("az_id missing in input json")
         .unwrap();
-    let filenm = entry["filenm"]
+    let file_nm = entry["file_nm"]
         .as_str()
-        .ok_or("filenm missing in input json")
+        .ok_or("file_nm missing in input json")
         .unwrap();
     let mut az_name = entry["az_name"]
         .as_str()
@@ -400,17 +398,17 @@ fn validate_entry(
     az_updated = secret_value.updated.to_string();
 
     let md5 = calculate_md5(&secret_value.value);
-    let md5_of_file = match fs::read_to_string(filenm) {
+    let md5_of_file = match fs::read_to_string(file_nm) {
         Ok(content) => calculate_md5(&content),
         Err(_) => {
-            eprintln!("Error reading file to calculate md5: {}", filenm);
+            eprintln!("Error reading file to calculate md5: {}", file_nm);
             return Ok(output);
         }
     };
     if md5 != md5_of_file {
-        eprintln!("MD5 mismatch for file: {}", filenm);
+        eprintln!("MD5 mismatch for file: {}", file_nm);
     } else if args.verbose {
-        println!("MD5 match for file: {}", filenm);
+        println!("MD5 match for file: {}", file_nm);
     }
     if az_id != secret_value.id {
         eprintln!(
@@ -418,7 +416,7 @@ fn validate_entry(
             secret_value.id, az_id
         );
     } else if args.verbose {
-        println!("Azure ID match for file: {}", filenm);
+        println!("Azure ID match for file: {}", file_nm);
     }
 
     az_id = &secret_value.id;
@@ -434,7 +432,7 @@ fn validate_entry(
     let hostname = hostname::get().unwrap().into_string().unwrap();
 
     output = JsonOutput {
-        filenm: filenm.to_string(),
+        file_nm: file_nm.to_string(),
         md5: md5,
         ins_ts: formatted_date,
         az_id: az_id.to_string(),

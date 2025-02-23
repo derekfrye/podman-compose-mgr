@@ -43,21 +43,12 @@ if let Some(ax) = buildfiles{
  fn read_val_loop(files: Vec<BuildFile>)->WhatWereBuilding{
     let mut prompt_grammars: Vec<GrammarFragment> = vec![];
     let mut user_choices: Vec<&str> ;
-    let template_grammar = GrammarFragment {
-        original_val_for_prompt: Some("Template".to_string()),
-        shortened_val_for_prompt: None,
-        pos: 0,
-        prefix: None,
-        suffix: Some(" ".to_string()),
-        grammar_type: GrammarType::Verbiage,
-        part_of_static_prompt: true,
-        display_at_all: true,
-    };
+    
 let mut buildfile = files[0].clone();
 let are_there_multiple_files = files.iter().filter(|x| x.filepath.is_some()).collect::<Vec<_>>().len() > 1;
     
 if are_there_multiple_files {
-    let mut grm1 = template_grammar.clone();
+    let mut grm1 = GrammarFragment::default();
       grm1.original_val_for_prompt= Some("Prefer Dockerfile or Makefile?".to_string());
         prompt_grammars.push(grm1);
 
@@ -66,24 +57,24 @@ if are_there_multiple_files {
     
 }
 else if buildfile.link_target_dir.is_some() {
-    let mut grm1 = template_grammar.clone();
+    let mut grm1 = GrammarFragment::default();
     grm1.original_val_for_prompt= Some(format!("Run `{}` in", match buildfile.filetype {
         BuildChoice::Dockerfile => "podman build",
         BuildChoice::Makefile => "make",
     } ).to_string());
       prompt_grammars.push(grm1);
 
-      let mut grm2 = template_grammar.clone();
+      let mut grm2 = GrammarFragment::default();
     grm2.original_val_for_prompt= Some(buildfile.link_target_dir.clone().unwrap().display().to_string());
     grm2.pos =1;
     grm2.grammar_type= GrammarType::FileName;
     prompt_grammars.push(grm2);
 
-    let mut grm3 = template_grammar.clone();
+    let mut grm3 = GrammarFragment::default();
     grm3.original_val_for_prompt= Some("or".to_string());
       prompt_grammars.push(grm3);
 
-    let mut grm4 = template_grammar.clone();
+    let mut grm4 = GrammarFragment::default();
     grm4.original_val_for_prompt= Some(buildfile.parent_dir.display().to_string());
     grm4.pos =3;
     grm4.grammar_type= GrammarType::FileName;
@@ -102,7 +93,7 @@ let mut choice_of_where_to_build:WhatWereBuilding = WhatWereBuilding{
 if prompt_grammars.len()>0{
         loop{
             
-        let z = read_val_from_cmd_line_and_proceed(&mut prompt_grammars, GrammarType::None, GrammarType::None);
+        let z = read_val_from_cmd_line_and_proceed(&mut prompt_grammars, );
         if let Some(t) = z.user_entered_val {
             match t.as_str() {
                 // only set back up near line 95, if both Makefile and Dockerfile exist in dir
@@ -190,7 +181,7 @@ if prompt_grammars.len()>0{
             prefix: None,
             suffix: choice_separator,
             grammar_type: GrammarType::UserChoice,
-            part_of_static_prompt: true,
+            can_shorten: false,
             display_at_all: true,
         };
         new_prompt_grammars.push(choice_grammar);
