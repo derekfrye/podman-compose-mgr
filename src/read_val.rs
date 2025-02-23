@@ -6,7 +6,7 @@ use std::io::{self, Write};
 
 pub struct ReadValResult {
     pub user_entered_val: Option<String>,
-    pub grammar: Vec<GrammarFragment>,
+    
     
 }
 
@@ -84,7 +84,7 @@ pub fn read_val_from_cmd_line_and_proceed(
 ) -> ReadValResult {
     let mut return_result = ReadValResult {
         user_entered_val: None,
-        grammar: Vec::new(),
+        
         
     };
 
@@ -112,8 +112,6 @@ pub fn read_val_from_cmd_line_and_proceed(
     .sum();
 
     // Then we divide remaining space equally between items that can be shortened
-    
-   
 
 
 // 3. Collect the fragments that we want to shorten (those that are not Verbiage or UserChoice).
@@ -135,10 +133,7 @@ let n = shortenable_grammars.len();
         };
 
         if total_remaining_space>0{
-        
-
-        
-        
+    
         // Only proceed if we have shortenable fragments and enough space (reserve 3 for "...")
         if n > 0 && total_remaining_space > 3 {
             // Determine how many characters each shortenable fragment is allowed
@@ -151,13 +146,6 @@ let n = shortenable_grammars.len();
                 println!("total calc: {}", allowed_len * n + 3);
             }
             
-
-            // (Optional) Calculate total unaltered length for debugging/analysis.
-            // let total_unaltered_len: usize = shortenable_grammars
-            //     .iter()
-            //     .map(|g| g.original_val_for_prompt.as_ref().unwrap().len())
-            //     .sum();
-            // e.g., you might log total_unaltered_len if needed.
 
             // 4. For each shortenable fragment, set its shortened value.
             for grammar in shortenable_grammars.iter_mut() {

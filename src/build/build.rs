@@ -11,6 +11,7 @@ struct BuildFile{
     filepath: Option<PathBuf>,
     parent_dir: PathBuf,
     link_target_dir: Option<PathBuf>,
+    base_image: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -35,7 +36,12 @@ pub fn start( dir: &DirEntry, image_name: &str, build_args: Vec<&str>)
     }else{
 if let Some(ax) = buildfiles{
     let x=read_val_loop(ax);
-    dbg!(&x);
+    // dbg!(&x);
+
+    if x.file.filepath.is_some(){
+        build_image_from_spec(x);
+    }
+
     }}
 }
 
@@ -244,37 +250,12 @@ fn make_build_prompt_grammar(buildfile: &BuildFile) -> Vec<GrammarFragment> {
     zz
 }
 
-fn build_image_from_spec(dir: &DirEntry, image_name: &str, build_args: Vec<&str>, follow_symlinks: bool) {
-    let parent_dir = dir.path().to_path_buf().parent().unwrap().to_path_buf();
+fn build_image_from_spec(x: WhatWereBuilding) {
+    
+match x.file.filetype {
+    BuildChoice::Dockerfile => {
 
-    let dockerfile = parent_dir.join("Dockerfile");
-    let makefile = parent_dir.join("Makefile");
-    let symlink_test = makefile.symlink_metadata();
-
-    if symlink_test.is_ok() {
-        // let makefile = makefile.unwrap();
-   let target =     if follow_symlinks&&  symlink_test.unwrap().file_type().is_symlink() {
-             std::fs::read_link(&makefile).unwrap().to_path_buf().parent().unwrap().to_path_buf()
-            }
-             else 
-             {
-                    parent_dir.clone()
-             };
-            
-             if file_exists_and_readable(&makefile) {
-                let _ = cmd::exec_cmd("make", vec!["-C", target.to_str().unwrap(), "clean"]);
-                let _ = cmd::exec_cmd("make", vec!["-C", target.to_str().unwrap()]);
-            } else {
-                if !file_exists_and_readable(&dockerfile) {
-                    eprintln!("No Dockerfile found at '{}'", parent_dir.display());
-                    std::process::exit(1);
-                }
-
-        }
-    }
-
-
-        let _ = cmd::pull_base_image(&dockerfile);
+        let _ = cmd::pull_base_image(x.file.filepath.as_ref().unwrap());
 
         let z = dockerfile.to_str().unwrap();
 
@@ -299,3 +280,12 @@ fn build_image_from_spec(dir: &DirEntry, image_name: &str, build_args: Vec<&str>
 
         cmd::exec_cmd("podman", x);
     }
+    BuildChoice::Makefile => {
+
+                let _ = cmd::exec_cmd("make", vec!["-C", target.to_str().unwrap(), "clean"]);
+                let _ = cmd::exec_cmd("make", vec!["-C", target.to_str().unwrap()]);
+     
+    }
+
+    }
+}
