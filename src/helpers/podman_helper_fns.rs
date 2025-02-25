@@ -1,5 +1,4 @@
 use std::process::Command;
-//use dateparser::parse;
 use chrono::{DateTime, Local, TimeZone, Utc};
 use regex::Regex;
 
@@ -80,7 +79,7 @@ pub fn get_podman_ondisk_modify_time(img: &str) -> Result<DateTime<Local>, Strin
             .contains("image not known")
         {
             let dt = Local.with_ymd_and_hms(1900, 1, 1, 0, 0, 0).unwrap();
-            return Ok(dt);
+            Ok(dt)
         } else {
             let stderr = String::from_utf8(output.stderr)
                 .map_err(|e| format!("Failed to parse podman output: {}", e))?;

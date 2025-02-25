@@ -5,10 +5,11 @@ pub fn restart_services(args: &Args) {
     if args.verbose {
         println!("Starting {}...", args.path.display());
     }
-    let mut x = vec![];
-    x.push("restart");
-    x.push("-f");
-    x.push("docker-compose.yml");
-
+    let x = vec![
+        "restart",
+        "-f",
+        "docker-compose.yml",
+    ];
+    
     cmd::exec_cmd("podman", x);
 }

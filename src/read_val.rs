@@ -47,7 +47,7 @@ impl Default for GrammarFragment {
 
 /// Build a string to display to the user. Don't use this publicly, try to use read_val_from_cmd_line_and_proceed instead.
 fn unroll_grammar_into_string(
-    grammars: &Vec<GrammarFragment>,
+    grammars: &[GrammarFragment],
     excl_if_not_in_base_prompt: bool,
     use_shortened_val: bool,
 ) -> String {
@@ -55,7 +55,7 @@ fn unroll_grammar_into_string(
     // lets loop through based on the position
     for grammar in grammars.iter().filter(|g| g.display_at_all) {
         if excl_if_not_in_base_prompt && grammar.can_shorten {
-            return_result.push_str(" ");
+            return_result.push(' ');
             continue;
         }
         if let Some(prefix) = &grammar.prefix {
@@ -95,8 +95,8 @@ pub fn read_val_from_cmd_line_and_proceed(grammars: &mut Vec<GrammarFragment>) -
                 g.grammar_type == GrammarType::Verbiage || g.grammar_type == GrammarType::UserChoice
             })
             .map(|g| {
-                let suffix = g.suffix.clone().unwrap_or_else(|| "".to_string());
-                let prefix = g.prefix.clone().unwrap_or_else(|| "".to_string());
+                let suffix = g.suffix.clone().unwrap_or_default();
+                let prefix = g.prefix.clone().unwrap_or_default();
                 prefix.len() + g.original_val_for_prompt.as_ref().unwrap().len() + suffix.len()
             })
             .sum();

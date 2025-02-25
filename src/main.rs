@@ -78,14 +78,14 @@ fn walk_dirs(args: &Args) {
 
     for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_file() && entry.file_name() == "docker-compose.yml" {
-            if exclude_patterns.len() > 0
+            if !exclude_patterns.is_empty()
                 && exclude_patterns
                     .iter()
                     .any(|pattern| pattern.is_match(entry.path().to_str().unwrap()))
             {
                 continue;
             }
-            if include_patterns.len() > 0
+            if !include_patterns.is_empty()
                 && include_patterns
                     .iter()
                     .any(|pattern| !pattern.is_match(entry.path().to_str().unwrap()))
@@ -96,12 +96,12 @@ fn walk_dirs(args: &Args) {
                 args::Mode::Rebuild => {
                     // let mut manager = rebuild::RebuildManager::new();
                     if let Some(ref mut manager) = manager {
-                        manager.rebuild(&entry, &args);
+                        manager.rebuild(&entry, args);
                     }
                 }
                 args::Mode::RestartSvcs => {
                     drop_mgr(&mut manager);
-                    restartsvcs::restart_services(&args);
+                    restartsvcs::restart_services(args);
                 }
                 _ => {}
             }
