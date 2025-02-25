@@ -1,7 +1,7 @@
 mod args;
 mod build {
-    pub mod rebuild;
     pub mod build;
+    pub mod rebuild;
 }
 mod helpers {
     pub mod cmd_helper_fns;
@@ -15,7 +15,7 @@ use args::Args;
 use build::rebuild::RebuildManager;
 use regex::Regex;
 // use futures::executor;
-use std::{ io, mem };
+use std::{io, mem};
 use walkdir::WalkDir;
 
 fn main() -> io::Result<()> {
@@ -76,21 +76,17 @@ fn walk_dirs(args: &Args) {
 
     let mut manager: Option<RebuildManager> = Some(build::rebuild::RebuildManager::new());
 
-    for entry in WalkDir::new(&args.path)
-        .into_iter()
-        .filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_file() && entry.file_name() == "docker-compose.yml" {
-            if
-                exclude_patterns.len() > 0 &&
-                exclude_patterns
+            if exclude_patterns.len() > 0
+                && exclude_patterns
                     .iter()
                     .any(|pattern| pattern.is_match(entry.path().to_str().unwrap()))
             {
                 continue;
             }
-            if
-                include_patterns.len() > 0 &&
-                include_patterns
+            if include_patterns.len() > 0
+                && include_patterns
                     .iter()
                     .any(|pattern| !pattern.is_match(entry.path().to_str().unwrap()))
             {

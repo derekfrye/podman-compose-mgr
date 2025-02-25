@@ -56,7 +56,8 @@ impl RebuildManager {
                                 self.images_checked.iter().any(|i| {
                                     if let Some(ref name) = i.name {
                                         if let Some(ref container_name) = i.container {
-                                            name == &image_string && container_name == &container_nm_string
+                                            name == &image_string
+                                                && container_name == &container_nm_string
                                         } else {
                                             false
                                         }
@@ -95,7 +96,7 @@ impl RebuildManager {
     fn read_val_loop(
         &mut self,
         entry: &DirEntry,
-        image: &str,
+        custom_img_nm: &str,
         build_args: &Vec<String>,
         container_name: &str,
     ) {
@@ -115,7 +116,7 @@ impl RebuildManager {
         grammars.push(grm1);
 
         let grm2 = GrammarFragment {
-            original_val_for_prompt: Some(image.to_string()),
+            original_val_for_prompt: Some(custom_img_nm.to_string()),
             shortened_val_for_prompt: None,
             pos: 1,
             prefix: None,
@@ -188,9 +189,7 @@ impl RebuildManager {
         }
 
         loop {
-            let result = read_val::read_val_from_cmd_line_and_proceed(
-                &mut grammars,
-            );
+            let result = read_val::read_val_from_cmd_line_and_proceed(&mut grammars);
 
             match result.user_entered_val {
                 None => {
@@ -198,7 +197,7 @@ impl RebuildManager {
                 }
                 Some(user_entered_val) => match user_entered_val.as_str() {
                     "p" => {
-                        self.pull_it(image);
+                        self.pull_it(custom_img_nm);
                         break;
                     }
                     "N" => {
@@ -206,14 +205,14 @@ impl RebuildManager {
                     }
                     "d" | "?" => match user_entered_val.as_str() {
                         "d" => {
-                            println!("Image: {}", image.to_string());
+                            println!("Image: {}", custom_img_nm.to_string());
                             println!("Container name: {}", container_name);
                             println!("Compose file: {}", docker_compose_pth_fmtted);
                             println!(
                                 "Created: {}",
                                 self.format_time_ago(
                                     podman_helper_fns::get_podman_image_upstream_create_time(
-                                        &image
+                                        &custom_img_nm
                                     )
                                     .unwrap()
                                 )
@@ -221,8 +220,10 @@ impl RebuildManager {
                             println!(
                                 "Pulled: {}",
                                 self.format_time_ago(
-                                    podman_helper_fns::get_podman_ondisk_modify_time(&image)
-                                        .unwrap()
+                                    podman_helper_fns::get_podman_ondisk_modify_time(
+                                        &custom_img_nm
+                                    )
+                                    .unwrap()
                                 )
                             );
                             println!(
@@ -267,15 +268,14 @@ impl RebuildManager {
                     "b" => {
                         start(
                             &entry,
-                            image,
+                            custom_img_nm,
                             build_args.iter().map(|s| s.as_str()).collect(),
-                            
                         );
                         break;
                     }
                     "s" => {
                         let c = Image {
-                            name: Some(image.to_string()),
+                            name: Some(custom_img_nm.to_string()),
                             container: Some(container_name.to_string()),
                             skipall_by_this_name: true,
                         };
@@ -307,8 +307,6 @@ impl RebuildManager {
             format!("{} seconds ago", seconds)
         }
     }
-
-    
 
     // other methods...
 

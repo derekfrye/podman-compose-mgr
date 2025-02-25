@@ -279,9 +279,7 @@ fn read_val_loop(
             tt.json_output = z;
             break;
         } else {
-            let result = read_val::read_val_from_cmd_line_and_proceed(
-                &mut grammars,
-            );
+            let result = read_val::read_val_from_cmd_line_and_proceed(&mut grammars);
 
             match result.user_entered_val {
                 None => {

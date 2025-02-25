@@ -3,6 +3,7 @@ use std::io::{BufRead, BufReader, Read};
 use std::process::{Command, Stdio};
 use terminal_size::{self, Width};
 
+/// Parse Dockerfile and pull base image
 pub fn pull_base_image(dockerfile: &std::path::PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     let file = std::fs::File::open(dockerfile).unwrap();
     let mut reader = BufReader::new(file);
@@ -32,12 +33,12 @@ pub fn pull_base_image(dockerfile: &std::path::PathBuf) -> Result<(), Box<dyn st
 
 /// exists(), is_file() traversing links, and metadata.is_ok() traversing links
 pub fn file_exists_and_readable(file: &std::path::PathBuf) -> bool {
-   let z= file.try_exists();
-   match z {
-       Ok(true) => { file.is_file() && file.metadata().is_ok()},
-       _ => false,
-    
-}}
+    let z = file.try_exists();
+    match z {
+        Ok(true) => file.is_file() && file.metadata().is_ok(),
+        _ => false,
+    }
+}
 
 pub fn exec_cmd(cmd: &str, args: Vec<&str>) {
     let mut cmd = Command::new(cmd);
