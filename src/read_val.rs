@@ -189,7 +189,8 @@ pub fn read_val_from_cmd_line_and_proceed(grammars: &mut Vec<GrammarFragment>) -
             return_result.user_entered_val = Some(input.to_string());
             break;
         } else {
-            break;
+            println!("Invalid input '{}'. Please try again.", input);
+            print!("{}", unroll_grammar_into_string(grammars, false, true));
         }
     }
 
