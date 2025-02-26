@@ -1,8 +1,8 @@
 use dockerfile_parser::Dockerfile;
-use std::io::{ BufRead, BufReader, Read };
+use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
-use std::process::{ Command, Stdio };
-use terminal_size::{ self, Width };
+use std::process::{Command, Stdio};
+use terminal_size::{self, Width};
 
 /// Parse Dockerfile and pull base image
 pub fn pull_base_image(dockerfile: &std::path::PathBuf) -> Result<(), Box<dyn std::error::Error>> {
@@ -15,16 +15,22 @@ pub fn pull_base_image(dockerfile: &std::path::PathBuf) -> Result<(), Box<dyn st
 
     let mut x = vec![];
     x.push("pull");
-    let mut img_nm = vec![];
-    let from_img = dockerfile.instructions;
-    for i in from_img {
-        if let dockerfile_parser::Instruction::From(image, ..) = i {
-            img_nm.push(image.image.clone().to_string());
-        }
-    }
-    x.push(&img_nm[0]);
 
-    exec_cmd("podman", x);
+    let from_img = dockerfile.instructions;
+    let img_nm = from_img
+        .iter()
+        .find_map(|instruction| {
+            if let dockerfile_parser::Instruction::From(image, ..) = instruction {
+                Some(image.image.clone())
+            } else {
+                None
+            }
+        })
+        .ok_or("No base image found")?;
+    let tt = img_nm.to_string();
+    x.push(&tt);
+
+    exec_cmd("podman", &x);
 
     Ok(())
 }
@@ -43,17 +49,17 @@ pub fn exec_cmd(cmd: &str, args: &[&str]) {
 
     cmd.args(args);
 
-    let mut x = cmd.stdout(Stdio::piped()).spawn().expect("Failed to execute command");
+    let mut x = cmd
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Failed to execute command");
 
     if let Some(stdout) = x.stdout.take() {
         let reader = BufReader::new(stdout);
 
-        reader
-            .lines()
-            .flatten()
-            .for_each(|line| {
-                println!("{}", line);
-            });
+        reader.lines().flatten().for_each(|line| {
+            println!("{}", line);
+        });
     }
 
     let _ = x.wait().expect("Command wasn't running");

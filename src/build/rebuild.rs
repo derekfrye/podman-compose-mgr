@@ -2,10 +2,10 @@ use crate::args::Args;
 use crate::build::build::start;
 use crate::helpers::cmd_helper_fns as cmd;
 use crate::helpers::podman_helper_fns;
-use crate::read_val::{ self, GrammarFragment, GrammarType };
+use crate::read_val::{self, GrammarFragment, GrammarType};
 
 // use regex::Regex;
-use chrono::{ DateTime, Local };
+use chrono::{DateTime, Local};
 use serde_yaml::Value;
 // use std::fs;
 use std::fs::File;
@@ -52,13 +52,12 @@ impl RebuildManager {
                             });
 
                             // or, if this image is not in the list of images we've already checked, continue
-                            let img_and_container_previously_reviewed = self.images_checked
-                                .iter()
-                                .any(|i| {
+                            let img_and_container_previously_reviewed =
+                                self.images_checked.iter().any(|i| {
                                     if let Some(ref name) = i.name {
                                         if let Some(ref container_name) = i.container {
-                                            name == &image_string &&
-                                                container_name == &container_nm_string
+                                            name == &image_string
+                                                && container_name == &container_nm_string
                                         } else {
                                             false
                                         }
@@ -68,9 +67,8 @@ impl RebuildManager {
                                 });
 
                             // image ck is only empty on first check, so as long as we're non-empty, we might skip this image_string, move to next test
-                            if
-                                !self.images_checked.is_empty() &&
-                                (img_is_set_to_skip || img_and_container_previously_reviewed)
+                            if !self.images_checked.is_empty()
+                                && (img_is_set_to_skip || img_and_container_previously_reviewed)
                             {
                                 continue;
                             } else {
@@ -78,7 +76,7 @@ impl RebuildManager {
                                     entry,
                                     &image_string,
                                     &args.build_args,
-                                    &container_nm_string
+                                    &container_nm_string,
                                 );
 
                                 let c = Image {
@@ -100,7 +98,7 @@ impl RebuildManager {
         entry: &DirEntry,
         custom_img_nm: &str,
         build_args: &[String],
-        container_name: &str
+        container_name: &str,
     ) {
         let mut grammars: Vec<GrammarFragment> = vec![];
 
@@ -197,102 +195,95 @@ impl RebuildManager {
                 None => {
                     break;
                 }
-                Some(user_entered_val) =>
-                    match user_entered_val.as_str() {
-                        "p" => {
-                            self.pull_it(custom_img_nm);
-                            break;
+                Some(user_entered_val) => match user_entered_val.as_str() {
+                    "p" => {
+                        self.pull_it(custom_img_nm);
+                        break;
+                    }
+                    "N" => {
+                        break;
+                    }
+                    "d" | "?" => match user_entered_val.as_str() {
+                        "d" => {
+                            println!("Image: {}", custom_img_nm);
+                            println!("Container name: {}", container_name);
+                            println!("Compose file: {}", docker_compose_pth_fmtted);
+                            println!(
+                                "Created: {}",
+                                self.format_time_ago(
+                                    podman_helper_fns::get_podman_image_upstream_create_time(
+                                        custom_img_nm
+                                    )
+                                    .unwrap()
+                                )
+                            );
+                            println!(
+                                "Pulled: {}",
+                                self.format_time_ago(
+                                    podman_helper_fns::get_podman_ondisk_modify_time(custom_img_nm)
+                                        .unwrap()
+                                )
+                            );
+                            println!(
+                                "Dockerfile exists: {}",
+                                cmd::file_exists_and_readable(
+                                    &entry
+                                        .path()
+                                        .parent()
+                                        .unwrap()
+                                        .join("Dockerfile")
+                                        .to_path_buf()
+                                )
+                            );
+                            println!(
+                                "Makefile exists: {}",
+                                cmd::file_exists_and_readable(
+                                    &entry
+                                        .path()
+                                        .parent()
+                                        .unwrap()
+                                        .join("Makefile")
+                                        .to_path_buf()
+                                )
+                            );
                         }
-                        "N" => {
-                            break;
-                        }
-                        "d" | "?" =>
-                            match user_entered_val.as_str() {
-                                "d" => {
-                                    println!("Image: {}", custom_img_nm);
-                                    println!("Container name: {}", container_name);
-                                    println!("Compose file: {}", docker_compose_pth_fmtted);
-                                    println!(
-                                        "Created: {}",
-                                        self.format_time_ago(
-                                            podman_helper_fns
-                                                ::get_podman_image_upstream_create_time(
-                                                    custom_img_nm
-                                                )
-                                                .unwrap()
-                                        )
-                                    );
-                                    println!(
-                                        "Pulled: {}",
-                                        self.format_time_ago(
-                                            podman_helper_fns
-                                                ::get_podman_ondisk_modify_time(custom_img_nm)
-                                                .unwrap()
-                                        )
-                                    );
-                                    println!(
-                                        "Dockerfile exists: {}",
-                                        cmd::file_exists_and_readable(
-                                            &entry
-                                                .path()
-                                                .parent()
-                                                .unwrap()
-                                                .join("Dockerfile")
-                                                .to_path_buf()
-                                        )
-                                    );
-                                    println!(
-                                        "Makefile exists: {}",
-                                        cmd::file_exists_and_readable(
-                                            &entry
-                                                .path()
-                                                .parent()
-                                                .unwrap()
-                                                .join("Makefile")
-                                                .to_path_buf()
-                                        )
-                                    );
-                                }
-                                "?" => {
-                                    println!("p = Pull image from upstream.");
-                                    println!("N = Do nothing, skip this image.");
-                                    println!(
+                        "?" => {
+                            println!("p = Pull image from upstream.");
+                            println!("N = Do nothing, skip this image.");
+                            println!(
                                         "d = Display info (image name, docker-compose.yml path, upstream img create date, and img on-disk modify date)."
                                     );
-                                    println!(
+                            println!(
                                         "b = Build image from the Dockerfile residing in same path as the docker-compose.yml."
                                     );
-                                    println!(
+                            println!(
                                         "s = Skip all subsequent images with this same name (regardless of container name)."
                                     );
-                                    println!("? = Display this help.");
-                                }
-                                _ => {}
-                            }
-                        "b" => {
-                            start(
-                                entry,
-                                custom_img_nm,
-                                build_args
-                                    .iter()
-                                    .map(|s| s.as_str())
-                                    .collect()
-                            );
-                            break;
+                            println!("? = Display this help.");
                         }
-                        "s" => {
-                            let c = Image {
-                                name: Some(custom_img_nm.to_string()),
-                                container: Some(container_name.to_string()),
-                                skipall_by_this_name: true,
-                            };
-                            self.images_checked.push(c);
-                            break;
-                        }
-                        _ => {
-                            eprintln!("Invalid input. Please enter p/N/d/b/s/?: ");
-                        }
+                        _ => {}
+                    },
+                    "b" => {
+                        start(
+                            entry,
+                            custom_img_nm,
+                            build_args.iter().map(|s| s.as_str()).collect(),
+                        );
+                        break;
                     }
+                    "s" => {
+                        let c = Image {
+                            name: Some(custom_img_nm.to_string()),
+                            container: Some(container_name.to_string()),
+                            skipall_by_this_name: true,
+                        };
+                        self.images_checked.push(c);
+                        break;
+                    }
+                    _ => {
+                        eprintln!("Invalid input. Please enter p/N/d/b/s/?: ");
+                    }
+                },
             }
         }
     }
@@ -326,6 +317,6 @@ impl RebuildManager {
     fn pull_it(&mut self, image: &str) {
         let x = ["pull", image];
 
-        cmd::exec_cmd("podman", x);
+        cmd::exec_cmd("podman", &x);
     }
 }

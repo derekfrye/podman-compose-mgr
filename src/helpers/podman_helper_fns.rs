@@ -1,6 +1,6 @@
-use std::process::Command;
 use chrono::{DateTime, Local, TimeZone, Utc};
 use regex::Regex;
+use std::process::Command;
 
 pub fn get_podman_image_upstream_create_time(img: &str) -> Result<DateTime<Local>, String> {
     let mut cmd = Command::new("podman");
