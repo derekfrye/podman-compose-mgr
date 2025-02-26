@@ -149,9 +149,9 @@ fn check_valid_json_file(file: &str) -> Result<PathBuf, String> {
     file.read_to_string(&mut file_content)
         .map_err(|e| e.to_string())?;
     let mut entries = Vec::new();
-    let mut deserializer = serde_json::Deserializer::from_str(&file_content).into_iter::<Value>();
+    let deserializer = serde_json::Deserializer::from_str(&file_content).into_iter::<Value>();
 
-    while let Some(entry) = deserializer.next() {
+    for entry in deserializer {
         let entry = entry.map_err(|e| e.to_string())?;
         entries.push(entry);
     }

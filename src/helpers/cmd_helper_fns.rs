@@ -57,7 +57,7 @@ pub fn exec_cmd(cmd: &str, args: &[&str]) {
     if let Some(stdout) = x.stdout.take() {
         let reader = BufReader::new(stdout);
 
-        reader.lines().flatten().for_each(|line| {
+        reader.lines().map_while(Result::ok).for_each(|line| {
             println!("{}", line);
         });
     }

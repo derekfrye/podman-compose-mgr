@@ -75,7 +75,7 @@ fn unroll_grammar_into_string(
     return_result
 }
 
-pub fn read_val_from_cmd_line_and_proceed(grammars: &mut Vec<GrammarFragment>) -> ReadValResult {
+pub fn read_val_from_cmd_line_and_proceed(grammars: &mut [GrammarFragment]) -> ReadValResult {
     let mut return_result = ReadValResult {
         user_entered_val: None,
     };

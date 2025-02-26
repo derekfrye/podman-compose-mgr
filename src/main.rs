@@ -53,7 +53,7 @@ fn walk_dirs(args: &Args) {
     let mut exclude_patterns = Vec::new();
     let mut include_patterns = Vec::new();
 
-    if args.exclude_path_patterns.len() > 0 {
+    if !args.exclude_path_patterns.is_empty() {
         if args.verbose {
             println!("Excluding paths: {:?}", args.exclude_path_patterns);
         }
@@ -61,7 +61,7 @@ fn walk_dirs(args: &Args) {
             exclude_patterns.push(Regex::new(pattern).unwrap());
         }
     }
-    if args.include_path_patterns.len() > 0 {
+    if !args.include_path_patterns.is_empty() {
         if args.verbose {
             println!("Including paths: {:?}", args.include_path_patterns);
         }
