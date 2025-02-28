@@ -129,11 +129,11 @@ pub fn read_val_from_cmd_line_and_proceed(grammars: &mut [GrammarFragment]) -> R
                 // Determine how many characters each shortenable fragment is allowed
                 let allowed_len = ((total_remaining_space - 3) as f64 / n as f64).floor() as usize;
                 if cfg!(debug_assertions) {
-                    println!("term width: {}", term_width);
-                    println!("fixed len: {}", fixed_len_grammars);
-                    println!("remain space: {}", total_remaining_space);
-                    println!("allow len: {}", allowed_len);
-                    println!("total calc: {}", allowed_len * n + 3);
+                    // println!("term width: {}", term_width);
+                    // println!("fixed len: {}", fixed_len_grammars);
+                    // println!("remain space: {}", total_remaining_space);
+                    // println!("allow len: {}", allowed_len);
+                    // println!("total calc: {}", allowed_len * n + 3);
                 }
 
                 // 4. For each shortenable fragment, set its shortened value.
@@ -188,7 +188,12 @@ pub fn read_val_from_cmd_line_and_proceed(grammars: &mut [GrammarFragment]) -> R
         if user_choices.contains(input) {
             return_result.user_entered_val = Some(input.to_string());
             break;
-        } else {
+        }
+        else if input.is_empty() || input.trim().is_empty() {
+            return_result.user_entered_val = None;
+            break;
+        } 
+        else {
             println!("Invalid input '{}'. Please try again.", input);
             print!("{}", unroll_grammar_into_string(grammars, false, true));
         }

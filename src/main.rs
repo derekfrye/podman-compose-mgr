@@ -1,18 +1,6 @@
-mod args;
-mod build {
-    pub mod build;
-    pub mod rebuild;
-}
-mod helpers {
-    pub mod cmd_helper_fns;
-    pub mod podman_helper_fns;
-}
-mod read_val;
-mod restartsvcs;
-mod secrets;
+use podman_compose_mgr::{args::{self, Args}, build::{self, rebuild::RebuildManager}, restartsvcs, secrets};
 
-use args::Args;
-use build::rebuild::RebuildManager;
+
 use regex::Regex;
 // use futures::executor;
 use std::{io, mem};
