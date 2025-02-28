@@ -2,9 +2,20 @@
     "cSpell.words": [
         "buildfile",
         "buildfiles",
+        "dnsmasq",
+        "dont",
         "nanos",
+        "nofile",
+        "pihole",
+        "rclone",
+        "resolv",
         "restartsvcs",
         "shortenable",
-        "subsec"
+        "subsec",
+        "TEMPERATUREUNIT",
+        "tini",
+        "ulimits",
+        "WEBPASSWORD",
+        "wirehole"
     ]
 }

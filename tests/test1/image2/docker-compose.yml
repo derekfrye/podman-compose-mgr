@@ -1,0 +1,67 @@
+version: "3"
+
+services:
+  squid:
+    depends_on: [pihole]
+    image: djf/squid
+    container_name: squid
+    ports:
+      - "0:0"
+    volumes:
+      - squid_conf:/etc/squid:ro
+      - squid_spool:/var/spool/squid
+      - squid_log:/var/log/squid
+    environment:
+      - TZ=Somewhere/somewhere
+    networks:
+      wirehole-squid:
+        ipv4_address: 0.0.0.0
+    restart: "always"
+
+  pihole:
+    container_name: pihole
+    image:
+      pihole/pihole:latest
+    hostname: pihole
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8080:80"
+    environment:
+      TZ: "Somewhere/somewhere"
+      WEBPASSWORD: "xxx" # Blank password - Can be whatever you want.
+      LOCAL_IPV4:
+        0.0.0.0 # Internal IP of pihole
+      LOCAL_IPV6: 0::0  # Add this line for the IPv6 address
+      TEMPERATUREUNIT: f
+      VIRTUAL_HOST: pihole
+    # Volumes store your data between container upgrades
+    volumes:
+      - pihole_etc:/etc/pihole/
+      - pihole_dnsmasq:/etc/dnsmasq.d/
+    # Recommended but not required (DHCP needs NET_ADMIN)
+    #   https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
+    cap_add:
+      - NET_ADMIN
+    restart: "always"
+    networks:
+      x:
+        ipv4_address: 0.0.0.0
+        ipv6_address: 0::0  # Add this line for the IPv6 address
+
+networks:
+  x:
+    name: x
+    external: true
+
+volumes:
+  squid_conf:
+    external: true
+  squid_spool:
+    external: true
+  squid_log:
+    external: true
+  pihole_etc:
+    external: true
+  pihole_dnsmasq:
+    external: true
