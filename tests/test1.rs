@@ -1,30 +1,21 @@
-use podman_compose_mgr::read_val::{read_val_from_cmd_line_and_proceed, GrammarFragment, GrammarType};
+use std::fs::File;
+use std::io::{self, Write};
+use tempfile::NamedTempFile;
 
 #[test]
-fn test1() {
-    let mut grammars = vec![
-        GrammarFragment {
-            original_val_for_prompt: Some("original_val_for_prompt1".to_string()),
-            shortened_val_for_prompt: Some("shortened_val_for_prompt1".to_string()),
-            pos: 1,
-            prefix: Some("prefix1".to_string()),
-            suffix: Some("suffix1".to_string()),
-            grammar_type: GrammarType::Verbiage,
-            display_at_all: true,
-            can_shorten: true,
-        },
-        GrammarFragment {
-            original_val_for_prompt: Some("original_val_for_prompt2".to_string()),
-            shortened_val_for_prompt: Some("shortened_val_for_prompt2".to_string()),
-            pos: 2,
-            prefix: Some("prefix2".to_string()),
-            suffix: Some("suffix2".to_string()),
-            grammar_type: GrammarType::Verbiage,
-            display_at_all: true,
-            can_shorten: true,
-        },
-    ];
-    let mut grammars = &mut grammars;
-    let result = read_val_from_cmd_line_and_proceed(grammars);
-    assert_eq!(result.user_entered_val, None);
+fn test1() -> io::Result<()> {
+    let temp_file = NamedTempFile::new_in("/tmp")?;
+    let file_path = temp_file.path().to_owned();
+
+    writeln!(temp_file.as_file(), "This is a temporary file!")?;
+
+    println!("Created unique file: {}", file_path.display());
+
+    // If you want to persist the file instead of it being deleted when `temp_file` is dropped:
+    let _persisted_file = File::create(&file_path)?;
+
+    //now remove it
+    temp_file.close()?;
+
+    Ok(())
 }

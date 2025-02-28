@@ -21,3 +21,6 @@ azure_security_keyvault = "0"
 time = "0"
 hostname = "0"
 terminal_size = "0"
+
+[dev-dependencies]
+tempfile = "3"  # Use the latest version
