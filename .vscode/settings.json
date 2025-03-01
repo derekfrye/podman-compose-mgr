@@ -4,6 +4,7 @@
         "buildfiles",
         "dnsmasq",
         "dont",
+        "mockall",
         "nanos",
         "nofile",
         "pihole",

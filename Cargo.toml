@@ -24,3 +24,4 @@ terminal_size = "0"
 
 [dev-dependencies]
 tempfile = "3"  # Use the latest version
+mockall = "0.12.1"
