@@ -7,7 +7,7 @@ use podman_compose_mgr::interfaces::{CommandHelper, ReadValHelper};
 use podman_compose_mgr::read_val::{GrammarFragment, ReadValResult};
 use podman_compose_mgr::start::walk_dirs_with_helpers;
 
-use podman_compose_mgr::{unroll_grammar_into_string, Args};
+use podman_compose_mgr::{Args, unroll_grammar_into_string};
 use clap::Parser;
 use regex::Regex;
 // use podman_compose_mgr::{CommandHelper, ReadValHelper};
@@ -81,12 +81,21 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
 // Safe mock implementation of CommandHelper for testing using RefCell
 struct TestCommandHelper {
     commands_executed: RefCell<Vec<String>>,
+    width: Option<usize>,
 }
 
 impl TestCommandHelper {
     fn new() -> Self {
         Self {
             commands_executed: RefCell::new(Vec::new()),
+            width: None,
+        }
+    }
+    
+    fn new_with_width(width: Option<usize>) -> Self {
+        Self {
+            commands_executed: RefCell::new(Vec::new()),
+            width,
         }
     }
 }
@@ -106,10 +115,17 @@ impl CommandHelper for TestCommandHelper {
     }
     
     fn get_terminal_display_width(&self, siz: Option<usize>) -> usize {
-        // Always return 80 for tests
+        // First priority: explicit size passed as parameter
         if let Some(s) = siz {
             return s;
         }
+        
+        // Second priority: width set in the TestCommandHelper instance
+        if let Some(w) = self.width {
+            return w;
+        }
+        
+        // Default fallback
         80
     }
     
@@ -143,34 +159,29 @@ impl TestReadValHelper {
         // Also print to console for debugging
         println!("Captured print: {}", s);
     }
-    
-    // Function to capture println during test
-    // fn test_println(&self, s: &str) {
-    //     // Store the printed text in our captured_prompts
-    //     self.captured_prompts.borrow_mut().push(s.to_string());
-    //     // Also print to console for debugging
-    //     println!("Captured println: {}", s);
-    // }
 }
 
+// Monkey patch the test_print_fn to capture output in the TestReadValHelper
 impl ReadValHelper for TestReadValHelper {
-    fn read_val_from_cmd_line_and_proceed(&self, grammars: &mut [GrammarFragment]) -> ReadValResult {
-        // Reuse our test command helper for consistent terminal width
-        // let cmd_helper = TestCommandHelper::new();
+    fn read_val_from_cmd_line_and_proceed(&self, grammars: &mut [GrammarFragment], size: Option<usize>) -> ReadValResult {
+        println!("ReadValHelper called with width: {:?}", size);
         
-        // Create print and println functions that capture the output
-        let print_fn = |s: &str| self.test_print(s);
-        // let println_fn = |s: &str| self.test_println(s);
+        // Create command helper with the specified width
+        let cmd_helper = TestCommandHelper::new_with_width(size);
         
-        // This captures the prompt that would be displayed to the user
-        print_fn(&unroll_grammar_into_string(grammars, false, true));
+        // Instead of trying to use a closure that captures self, use a separate method
+        // This approach allows us to test the real formatting logic
+        let prompt = podman_compose_mgr::read_val::do_prompt_formatting(
+            grammars,
+            cmd_helper.get_terminal_display_width(size)
+        );
         
-        // For this test, always respond with "N" (do nothing)
-        // We use "N" here instead of "?" to prevent an infinite loop
-        let response = Some("N".to_string());
+        // Capture the prompt for test verification
+        self.test_print(&prompt);
         
+        // For testing, always respond with "N"
         ReadValResult {
-            user_entered_val: response,
+            user_entered_val: Some("N".to_string())
         }
     }
 }

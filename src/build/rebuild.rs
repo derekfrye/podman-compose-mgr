@@ -193,7 +193,7 @@ impl<'a> RebuildManager<'a> {
         }
 
         loop {
-            let result = self.read_val_helper.read_val_from_cmd_line_and_proceed(&mut grammars);
+            let result = self.read_val_helper.read_val_from_cmd_line_and_proceed(&mut grammars, None);
 
             match result.user_entered_val {
                 None => {

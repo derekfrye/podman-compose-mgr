@@ -49,6 +49,7 @@ impl ReadValHelper for DefaultReadValHelper {
             &cmd_helper, 
             crate::read_val::default_print, 
             None,
+            None, // Use default stdin behavior
         )
     }
 }
