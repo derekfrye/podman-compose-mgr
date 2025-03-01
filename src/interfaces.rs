@@ -42,6 +42,13 @@ pub struct DefaultReadValHelper;
 
 impl ReadValHelper for DefaultReadValHelper {
     fn read_val_from_cmd_line_and_proceed(&self, grammars: &mut [GrammarFragment]) -> ReadValResult {
-        crate::read_val::read_val_from_cmd_line_and_proceed(grammars)
+        // Use the default command helper for terminal width
+        let cmd_helper = DefaultCommandHelper;
+        crate::read_val::read_val_from_cmd_line_and_proceed_with_deps(
+            grammars, 
+            &cmd_helper, 
+            crate::read_val::default_print, 
+            crate::read_val::default_println
+        )
     }
 }

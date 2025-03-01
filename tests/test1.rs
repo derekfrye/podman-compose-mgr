@@ -52,17 +52,29 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
     assert!(!captured_prompts.is_empty(), "No prompts were captured");
     
     // Verify the prompt contains the expected text
+    let mut found_expected_prompt = false;
     for prompt in &captured_prompts {
         println!("Verifying prompt: {}", prompt);
         if prompt.contains("Refresh") && prompt.contains("djf/rusty-golf") {
             // We found the prompt we're looking for
             assert!(prompt.contains("Refresh"), "Prompt doesn't contain 'Refresh'");
             assert!(prompt.contains("from"), "Prompt doesn't contain 'from'");
-            return Ok(());
+            found_expected_prompt = true;
+            break;
         }
     }
     
-    panic!("Expected prompt with 'Refresh djf/rusty-golf' not found");
+    if !found_expected_prompt {
+        panic!("Expected prompt with 'Refresh djf/rusty-golf' not found");
+    }
+    
+    // Verify the specific formatting too
+    assert!(
+        captured_prompts.iter().any(|p| p.contains("Refresh djf/rusty-golf from tests/test1/image1?")),
+        "Expected prompt text not found"
+    );
+    
+    Ok(());
 }
 
 
@@ -120,44 +132,39 @@ impl TestReadValHelper {
     fn get_captured_prompts(&self) -> Vec<String> {
         self.captured_prompts.borrow().clone()
     }
+    
+    // Function to capture prints during test
+    fn test_print(&self, s: &str) {
+        // Store the printed text in our captured_prompts
+        self.captured_prompts.borrow_mut().push(s.to_string());
+        // Also print to console for debugging
+        println!("Captured print: {}", s);
+    }
+    
+    // Function to capture printlns during test
+    fn test_println(&self, s: &str) {
+        // Store the printed text in our captured_prompts
+        self.captured_prompts.borrow_mut().push(s.to_string());
+        // Also print to console for debugging
+        println!("Captured println: {}", s);
+    }
 }
 
 impl ReadValHelper for TestReadValHelper {
     fn read_val_from_cmd_line_and_proceed(&self, grammars: &mut [GrammarFragment]) -> ReadValResult {
-        // Construct the prompt from the grammar fragments
-        let mut prompt = String::new();
-        for grammar in grammars.iter().filter(|g| g.display_at_all) {
-            if let Some(prefix) = &grammar.prefix {
-                prompt.push_str(prefix);
-            }
-            
-            if grammar.shortened_val_for_prompt.is_some() {
-                prompt.push_str(grammar.shortened_val_for_prompt.as_ref().unwrap());
-            } else {
-                prompt.push_str(grammar.original_val_for_prompt.as_ref().unwrap());
-            }
-            
-            if let Some(suffix) = &grammar.suffix {
-                prompt.push_str(suffix);
-            }
-        }
+        // Reuse our test command helper for consistent terminal width
+        let cmd_helper = TestCommandHelper::new();
         
-        // Store the captured prompt using RefCell for safe interior mutability
-        println!("Captured prompt: {}", prompt);
-        self.captured_prompts.borrow_mut().push(prompt);
+        // Create print and println functions that capture the output
+        let print_fn = |s: &str| self.test_print(s);
+        let println_fn = |s: &str| self.test_println(s);
         
-        // For this test, always respond with "?"
-        let response = Some("?".to_string());
+        // This captures the prompt that would be displayed to the user
+        print_fn(&podman_compose_mgr::read_val::unroll_grammar_into_string(grammars, false, true));
         
-        // If the response is "?", print the help text
-        if response.as_deref() == Some("?") {
-            println!("p = Pull image from upstream.");
-            println!("N = Do nothing, skip this image.");
-            println!("d = Display info (image name, docker-compose.yml path, upstream img create date, and img on-disk modify date).");
-            println!("b = Build image from the Dockerfile residing in same path as the docker-compose.yml.");
-            println!("s = Skip all subsequent images with this same name (regardless of container name).");
-            println!("? = Display this help.");
-        }
+        // For this test, always respond with "N" (do nothing)
+        // We use "N" here instead of "?" to prevent an infinite loop
+        let response = Some("N".to_string());
         
         ReadValResult {
             user_entered_val: response,

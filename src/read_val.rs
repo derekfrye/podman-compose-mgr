@@ -1,4 +1,5 @@
 use crate::helpers::cmd_helper_fns as cmd;
+use crate::interfaces::{CommandHelper, ReadValHelper};
 
 // use std::cmp::max;
 use std::collections::HashSet;
@@ -6,6 +7,19 @@ use std::io::{self, Write};
 
 pub struct ReadValResult {
     pub user_entered_val: Option<String>,
+}
+
+/// For dependency injection in tests - PrintFunction type alias
+pub type PrintFunction = fn(&str);
+
+/// Default print function that writes to stdout
+pub fn default_print(s: &str) {
+    print!("{}", s);
+}
+
+/// Default println function that writes to stdout with newline
+pub fn default_println(s: &str) {
+    println!("{}", s);
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -45,8 +59,9 @@ impl Default for GrammarFragment {
     }
 }
 
-/// Build a string to display to the user. Don't use this publicly, try to use read_val_from_cmd_line_and_proceed instead.
-fn unroll_grammar_into_string(
+/// Build a string to display to the user. Generally use read_val_from_cmd_line_and_proceed instead.
+/// Made public to allow usage in tests.
+pub fn unroll_grammar_into_string(
     grammars: &[GrammarFragment],
     excl_if_not_in_base_prompt: bool,
     use_shortened_val: bool,
@@ -75,18 +90,21 @@ fn unroll_grammar_into_string(
     return_result
 }
 
-pub fn read_val_from_cmd_line_and_proceed(grammars: &mut [GrammarFragment]) -> ReadValResult {
+/// Implementation with dependency injection for the CommandHelper trait
+pub fn read_val_from_cmd_line_and_proceed_with_deps(
+    grammars: &mut [GrammarFragment], 
+    cmd_helper: &dyn CommandHelper,
+    print_fn: PrintFunction,
+    println_fn: PrintFunction,
+) -> ReadValResult {
     let mut return_result = ReadValResult {
         user_entered_val: None,
     };
 
-    let term_width = cmd::get_terminal_display_width();
+    let term_width = cmd_helper.get_terminal_display_width();
     let initial_prompt = unroll_grammar_into_string(grammars, false, false);
 
     if initial_prompt.len() > term_width - 1 {
-        // let refresh_static = unroll_grammar_into_string(grammars, true, false);
-        // let refresh_prompt = unroll_grammar_into_string(grammars, false, false);
-
         // if the prompt is too long, we need to shorten some stuff.
         // At a minimum, we'll display Verbiage and UserChoices un-shortened.
         let fixed_len_grammars: usize = grammars
@@ -165,7 +183,7 @@ pub fn read_val_from_cmd_line_and_proceed(grammars: &mut [GrammarFragment]) -> R
     }
 
     // prepare the prompt, this might go to stdout, or we have to flush first
-    print!("{}", unroll_grammar_into_string(grammars, false, true));
+    print_fn(&unroll_grammar_into_string(grammars, false, true));
 
     // what were the available choices someone could've made
     let user_choices: HashSet<String> = grammars
@@ -194,10 +212,17 @@ pub fn read_val_from_cmd_line_and_proceed(grammars: &mut [GrammarFragment]) -> R
             break;
         } 
         else {
-            println!("Invalid input '{}'. Please try again.", input);
-            print!("{}", unroll_grammar_into_string(grammars, false, true));
+            println_fn(&format!("Invalid input '{}'. Please try again.", input));
+            print_fn(&unroll_grammar_into_string(grammars, false, true));
         }
     }
 
     return_result
+}
+
+/// Original function for backwards compatibility - forwards to the dependency-injected version
+pub fn read_val_from_cmd_line_and_proceed(grammars: &mut [GrammarFragment]) -> ReadValResult {
+    // Use DefaultCommandHelper for the terminal width
+    let cmd_helper = crate::interfaces::DefaultCommandHelper;
+    read_val_from_cmd_line_and_proceed_with_deps(grammars, &cmd_helper, default_print, default_println)
 }
