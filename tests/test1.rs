@@ -77,10 +77,6 @@ impl TestCommandHelper {
             commands_executed: RefCell::new(Vec::new()),
         }
     }
-    
-    // fn get_commands_executed(&self) -> Vec<String> {
-    //     self.commands_executed.borrow().clone()
-    // }
 }
 
 impl CommandHelper for TestCommandHelper {
