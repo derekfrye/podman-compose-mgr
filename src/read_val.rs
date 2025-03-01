@@ -1,5 +1,4 @@
-use crate::helpers::cmd_helper_fns as cmd;
-use crate::interfaces::{CommandHelper, ReadValHelper};
+use crate::interfaces::CommandHelper;
 
 // use std::cmp::max;
 use std::collections::HashSet;
@@ -95,13 +94,13 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps(
     grammars: &mut [GrammarFragment], 
     cmd_helper: &dyn CommandHelper,
     print_fn: PrintFunction,
-    println_fn: PrintFunction,
+    size: Option<usize>,
 ) -> ReadValResult {
     let mut return_result = ReadValResult {
         user_entered_val: None,
     };
 
-    let term_width = cmd_helper.get_terminal_display_width();
+    let term_width = cmd_helper.get_terminal_display_width(size);
     let initial_prompt = unroll_grammar_into_string(grammars, false, false);
 
     if initial_prompt.len() > term_width - 1 {
@@ -212,7 +211,7 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps(
             break;
         } 
         else {
-            println_fn(&format!("Invalid input '{}'. Please try again.", input));
+            eprintln!("Invalid input '{}'. Please try again.", input);
             print_fn(&unroll_grammar_into_string(grammars, false, true));
         }
     }
@@ -224,5 +223,6 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps(
 pub fn read_val_from_cmd_line_and_proceed(grammars: &mut [GrammarFragment]) -> ReadValResult {
     // Use DefaultCommandHelper for the terminal width
     let cmd_helper = crate::interfaces::DefaultCommandHelper;
-    read_val_from_cmd_line_and_proceed_with_deps(grammars, &cmd_helper, default_print, default_println)
+    
+    read_val_from_cmd_line_and_proceed_with_deps(grammars, &cmd_helper, default_print, None)
 }

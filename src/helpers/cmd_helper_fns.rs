@@ -65,7 +65,10 @@ pub fn exec_cmd(cmd: &str, args: &[&str]) {
     let _ = x.wait().expect("Command wasn't running");
 }
 
-pub fn get_terminal_display_width() -> usize {
+pub fn get_terminal_display_width(specify_size: Option<usize>) -> usize {
+    if let Some(size) = specify_size {
+        return size;
+    }
     let size = terminal_size::terminal_size();
     if let Some((Width(w), _)) = size {
         w as usize

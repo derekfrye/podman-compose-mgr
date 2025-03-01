@@ -7,7 +7,7 @@ use podman_compose_mgr::interfaces::{CommandHelper, ReadValHelper};
 use podman_compose_mgr::read_val::{GrammarFragment, ReadValResult};
 use podman_compose_mgr::start::walk_dirs_with_helpers;
 
-use podman_compose_mgr::Args;
+use podman_compose_mgr::{unroll_grammar_into_string, Args};
 use clap::Parser;
 use regex::Regex;
 // use podman_compose_mgr::{CommandHelper, ReadValHelper};
@@ -49,7 +49,7 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
     let captured_prompts = read_val_helper.get_captured_prompts();
     
     // Verify at least one prompt was captured
-    assert!(!captured_prompts.is_empty(), "No prompts were captured");
+    assert_eq!(captured_prompts.len(), 3);
     
     // Verify the prompt contains the expected text
     let mut found_expected_prompt = false;
@@ -74,7 +74,7 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
         "Expected prompt text not found"
     );
     
-    Ok(());
+    Ok(())
 }
 
 
@@ -105,8 +105,11 @@ impl CommandHelper for TestCommandHelper {
         Ok(())
     }
     
-    fn get_terminal_display_width(&self) -> usize {
+    fn get_terminal_display_width(&self, siz: Option<usize>) -> usize {
         // Always return 80 for tests
+        if let Some(s) = siz {
+            return s;
+        }
         80
     }
     
@@ -141,26 +144,26 @@ impl TestReadValHelper {
         println!("Captured print: {}", s);
     }
     
-    // Function to capture printlns during test
-    fn test_println(&self, s: &str) {
-        // Store the printed text in our captured_prompts
-        self.captured_prompts.borrow_mut().push(s.to_string());
-        // Also print to console for debugging
-        println!("Captured println: {}", s);
-    }
+    // Function to capture println during test
+    // fn test_println(&self, s: &str) {
+    //     // Store the printed text in our captured_prompts
+    //     self.captured_prompts.borrow_mut().push(s.to_string());
+    //     // Also print to console for debugging
+    //     println!("Captured println: {}", s);
+    // }
 }
 
 impl ReadValHelper for TestReadValHelper {
     fn read_val_from_cmd_line_and_proceed(&self, grammars: &mut [GrammarFragment]) -> ReadValResult {
         // Reuse our test command helper for consistent terminal width
-        let cmd_helper = TestCommandHelper::new();
+        // let cmd_helper = TestCommandHelper::new();
         
         // Create print and println functions that capture the output
         let print_fn = |s: &str| self.test_print(s);
-        let println_fn = |s: &str| self.test_println(s);
+        // let println_fn = |s: &str| self.test_println(s);
         
         // This captures the prompt that would be displayed to the user
-        print_fn(&podman_compose_mgr::read_val::unroll_grammar_into_string(grammars, false, true));
+        print_fn(&unroll_grammar_into_string(grammars, false, true));
         
         // For this test, always respond with "N" (do nothing)
         // We use "N" here instead of "?" to prevent an infinite loop

@@ -14,4 +14,5 @@ pub mod secrets;
 pub mod start;
 
 pub use args::Args;
+pub use read_val::unroll_grammar_into_string;
 // pub use interfaces::{CommandHelper, DefaultCommandHelper, DefaultReadValHelper, ReadValHelper};
