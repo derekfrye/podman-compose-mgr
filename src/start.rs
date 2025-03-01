@@ -4,10 +4,10 @@ use regex::Regex;
 use walkdir::WalkDir;
 
 use crate::{
-    args,
+    Args, args,
     build::{self, rebuild::RebuildManager},
     interfaces::{CommandHelper, DefaultCommandHelper, DefaultReadValHelper, ReadValHelper},
-    restartsvcs, Args,
+    restartsvcs,
 };
 
 /// Main function that uses the default helper implementations

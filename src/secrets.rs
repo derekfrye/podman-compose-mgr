@@ -7,7 +7,7 @@ use regex::Regex;
 use reqwest::{Client, Url};
 use serde::Serialize;
 // use reqwest::Client;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
@@ -297,8 +297,8 @@ fn read_val_loop(
                     "?" => {
                         println!("N = Do nothing, skip this secret.");
                         println!(
-                                "d = Display info (file name, Azure KV name, upstream secret create date, and file name modify date)."
-                            );
+                            "d = Display info (file name, Azure KV name, upstream secret create date, and file name modify date)."
+                        );
                         println!("v = Validate on-disk item matches the Azure Key Vault secret.");
                         println!("a = Validate all items.");
                         println!("? = Display this help.");

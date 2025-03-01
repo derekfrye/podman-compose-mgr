@@ -249,14 +249,14 @@ impl<'a> RebuildManager<'a> {
                             println!("p = Pull image from upstream.");
                             println!("N = Do nothing, skip this image.");
                             println!(
-                                        "d = Display info (image name, docker-compose.yml path, upstream img create date, and img on-disk modify date)."
-                                    );
+                                "d = Display info (image name, docker-compose.yml path, upstream img create date, and img on-disk modify date)."
+                            );
                             println!(
-                                        "b = Build image from the Dockerfile residing in same path as the docker-compose.yml."
-                                    );
+                                "b = Build image from the Dockerfile residing in same path as the docker-compose.yml."
+                            );
                             println!(
-                                        "s = Skip all subsequent images with this same name (regardless of container name)."
-                                    );
+                                "s = Skip all subsequent images with this same name (regardless of container name)."
+                            );
                             println!("? = Display this help.");
                         }
                         _ => {}
