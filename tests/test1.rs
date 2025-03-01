@@ -1,13 +1,70 @@
 use std::cell::RefCell;
-use std::io::{self};
+use std::fs::{self};
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 
-use podman_compose_mgr::args::Mode;
+
 use podman_compose_mgr::interfaces::{CommandHelper, ReadValHelper};
 use podman_compose_mgr::read_val::{GrammarFragment, ReadValResult};
 use podman_compose_mgr::start::walk_dirs_with_helpers;
+
 use podman_compose_mgr::Args;
+use clap::Parser;
+use regex::Regex;
+// use podman_compose_mgr::{CommandHelper, ReadValHelper};
+use serde::Deserialize;
+
+#[test]
+fn test1() -> Result<(), Box<dyn std::error::Error>> {
+    // Set up the test directory structure
+    // let test_dir = "../tests/test1";
+    let contents = fs::read_to_string(".vscode/launch.json")?;
+    let re = Regex::new(r"^\s+//").unwrap();
+    
+    // Filter out the lines matching the regex
+    let filtered: String = contents
+        .lines()
+        .filter(|line| !re.is_match(line))
+        .collect::<Vec<&str>>()
+        .join("\n");
+
+    let filtered = filtered.replace("${env:HOME}/docker", "tests/test1");
+
+    let launch_json: LaunchJson = serde_json::from_str(&filtered)?;
+    let config = launch_json.configurations
+        .into_iter()
+        .find(|c| c.name == "Rebuild")
+        .ok_or("Configuration 'Rebuild' not found in launch.json")?;
+    let mut clap_args = vec!["dummy_binary".to_string()];
+    clap_args.extend(config.args);
+    let args = Args::parse_from(clap_args);
+    
+    // Create our mock implementations
+    let cmd_helper = TestCommandHelper::new();
+    let read_val_helper = TestReadValHelper::new();
+    
+    // Call the function with our test helpers
+    walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper);
+    
+    // Get the captured prompts for verification (safely)
+    let captured_prompts = read_val_helper.get_captured_prompts();
+    
+    // Verify at least one prompt was captured
+    assert!(!captured_prompts.is_empty(), "No prompts were captured");
+    
+    // Verify the prompt contains the expected text
+    for prompt in &captured_prompts {
+        println!("Verifying prompt: {}", prompt);
+        if prompt.contains("Refresh") && prompt.contains("djf/rusty-golf") {
+            // We found the prompt we're looking for
+            assert!(prompt.contains("Refresh"), "Prompt doesn't contain 'Refresh'");
+            assert!(prompt.contains("from"), "Prompt doesn't contain 'from'");
+            return Ok(());
+        }
+    }
+    
+    panic!("Expected prompt with 'Refresh djf/rusty-golf' not found");
+}
+
 
 // Safe mock implementation of CommandHelper for testing using RefCell
 struct TestCommandHelper {
@@ -21,9 +78,9 @@ impl TestCommandHelper {
         }
     }
     
-    fn get_commands_executed(&self) -> Vec<String> {
-        self.commands_executed.borrow().clone()
-    }
+    // fn get_commands_executed(&self) -> Vec<String> {
+    //     self.commands_executed.borrow().clone()
+    // }
 }
 
 impl CommandHelper for TestCommandHelper {
@@ -112,52 +169,20 @@ impl ReadValHelper for TestReadValHelper {
     }
 }
 
-#[test]
-fn test1() -> io::Result<()> {
-    // Set up the test directory structure
-    let workspace_folder = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let test_dir = workspace_folder.join("tests/test1");
-    
-    // Create a test Args instance
-    let args = Args {
-        path: test_dir,
-        mode: Mode::Rebuild,
-        verbose: true,
-        exclude_path_patterns: vec!["archive".to_string()],
-        include_path_patterns: vec![],
-        build_args: vec!["USERNAME=`id -un 1000`".to_string()],
-        secrets_tmp_dir: None,
-        secrets_client_id: None,
-        secrets_client_secret_path: None,
-        secrets_tenant_id: None,
-        secrets_vault_name: None,
-        secret_mode_output_json: None,
-        secret_mode_input_json: None,
-    };
-    
-    // Create our mock implementations
-    let cmd_helper = TestCommandHelper::new();
-    let read_val_helper = TestReadValHelper::new();
-    
-    // Call the function with our test helpers
-    walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper);
-    
-    // Get the captured prompts for verification (safely)
-    let captured_prompts = read_val_helper.get_captured_prompts();
-    
-    // Verify at least one prompt was captured
-    assert!(!captured_prompts.is_empty(), "No prompts were captured");
-    
-    // Verify the prompt contains the expected text
-    for prompt in &captured_prompts {
-        println!("Verifying prompt: {}", prompt);
-        if prompt.contains("Refresh") && prompt.contains("djf/rusty-golf") {
-            // We found the prompt we're looking for
-            assert!(prompt.contains("Refresh"), "Prompt doesn't contain 'Refresh'");
-            assert!(prompt.contains("from"), "Prompt doesn't contain 'from'");
-            return Ok(());
-        }
-    }
-    
-    panic!("Expected prompt with 'Refresh djf/rusty-golf' not found");
+#[derive(Debug, Deserialize)]
+struct LaunchJson {
+    // version: String,
+    configurations: Vec<Configuration>,
 }
+
+// This struct represents a configuration block in launch.json.
+#[derive(Debug, Deserialize)]
+struct Configuration {
+    name: String,
+    // This field will capture the command-line arguments.
+    #[serde(default)]
+    args: Vec<String>,
+    // Optionally, if you need the cargo args, you could add a field like:
+    // cargo: Option<Cargo>,
+}
+
