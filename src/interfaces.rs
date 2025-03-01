@@ -41,14 +41,14 @@ impl CommandHelper for DefaultCommandHelper {
 pub struct DefaultReadValHelper;
 
 impl ReadValHelper for DefaultReadValHelper {
-    fn read_val_from_cmd_line_and_proceed(&self, grammars: &mut [GrammarFragment], _size: Option<usize>) -> ReadValResult {
+    fn read_val_from_cmd_line_and_proceed(&self, grammars: &mut [GrammarFragment], size: Option<usize>) -> ReadValResult {
         // Use the default command helper for terminal width
         let cmd_helper = DefaultCommandHelper;
         crate::read_val::read_val_from_cmd_line_and_proceed_with_deps(
             grammars, 
             &cmd_helper, 
-            crate::read_val::default_print, 
-            None,
+            Box::new(crate::read_val::default_print), 
+            size,
             None, // Use default stdin behavior
         )
     }

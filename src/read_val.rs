@@ -2,14 +2,15 @@ use crate::interfaces::CommandHelper;
 
 // use std::cmp::max;
 use std::collections::HashSet;
-use std::io::{self, Write};
+use std::io::Write;
 
 pub struct ReadValResult {
     pub user_entered_val: Option<String>,
 }
 
 /// For dependency injection in tests - PrintFunction type alias
-pub type PrintFunction = fn(&str);
+/// Using trait object allows both regular functions and closures that capture environment
+pub type PrintFunction<'a> = Box<dyn Fn(&str) + 'a>;
 
 /// Default print function that writes to stdout
 pub fn default_print(s: &str) {
@@ -95,7 +96,7 @@ pub fn read_val_from_cmd_line_and_proceed(grammars: &mut [GrammarFragment]) -> R
     let cmd_helper = crate::interfaces::DefaultCommandHelper;
     
     // Using None for stdin_helper will use the default stdin reading behavior
-    read_val_from_cmd_line_and_proceed_with_deps(grammars, &cmd_helper, default_print, None, None)
+    read_val_from_cmd_line_and_proceed_with_deps(grammars, &cmd_helper, Box::new(default_print), None, None)
 }
 
 
@@ -103,7 +104,7 @@ pub fn read_val_from_cmd_line_and_proceed(grammars: &mut [GrammarFragment]) -> R
 pub fn read_val_from_cmd_line_and_proceed_with_deps(
     grammars: &mut [GrammarFragment], 
     cmd_helper: &dyn CommandHelper,
-    print_fn: PrintFunction,
+    print_fn: PrintFunction<'_>,
     size: Option<usize>,
     stdin_helper: Option<&dyn StdinHelper>,
 ) -> ReadValResult {
@@ -155,8 +156,6 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps(
 
     return_result
 }
-
-
 
 /// Trait for handling stdin operations, makes testing easier
 pub trait StdinHelper {

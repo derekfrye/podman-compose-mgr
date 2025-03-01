@@ -7,7 +7,7 @@ use podman_compose_mgr::interfaces::{CommandHelper, ReadValHelper};
 use podman_compose_mgr::read_val::{GrammarFragment, ReadValResult};
 use podman_compose_mgr::start::walk_dirs_with_helpers;
 
-use podman_compose_mgr::{Args, unroll_grammar_into_string};
+use podman_compose_mgr::Args;
 use clap::Parser;
 use regex::Regex;
 // use podman_compose_mgr::{CommandHelper, ReadValHelper};
@@ -169,20 +169,22 @@ impl ReadValHelper for TestReadValHelper {
         // Create command helper with the specified width
         let cmd_helper = TestCommandHelper::new_with_width(size);
         
-        // Instead of trying to use a closure that captures self, use a separate method
-        // This approach allows us to test the real formatting logic
-        let prompt = podman_compose_mgr::read_val::do_prompt_formatting(
+        // Now we can use a closure that captures self for the print function
+        let print_fn = Box::new(|s: &str| self.test_print(s));
+        
+        // Create a test stdin helper that returns "N"
+        let test_stdin = podman_compose_mgr::read_val::TestStdinHelper {
+            response: "N".to_string()
+        };
+        
+        // Now we can directly test the function with dependency injection
+        podman_compose_mgr::read_val::read_val_from_cmd_line_and_proceed_with_deps(
             grammars,
-            cmd_helper.get_terminal_display_width(size)
-        );
-        
-        // Capture the prompt for test verification
-        self.test_print(&prompt);
-        
-        // For testing, always respond with "N"
-        ReadValResult {
-            user_entered_val: Some("N".to_string())
-        }
+            &cmd_helper,
+            print_fn,
+            size,
+            Some(&test_stdin)
+        )
     }
 }
 
