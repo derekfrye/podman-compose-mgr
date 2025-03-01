@@ -195,7 +195,9 @@ impl<'a> RebuildManager<'a> {
         loop {
             // Get the terminal width from the command helper instead of passing None
             let term_width = self.cmd_helper.get_terminal_display_width(None);
-            let result = self.read_val_helper.read_val_from_cmd_line_and_proceed(&mut grammars, Some(term_width));
+            let result = self
+                .read_val_helper
+                .read_val_from_cmd_line_and_proceed(&mut grammars, Some(term_width));
 
             match result.user_entered_val {
                 None => {
@@ -233,21 +235,13 @@ impl<'a> RebuildManager<'a> {
                             println!(
                                 "Dockerfile exists: {}",
                                 self.cmd_helper.file_exists_and_readable(
-                                    &entry
-                                        .path()
-                                        .parent()
-                                        .unwrap()
-                                        .join("Dockerfile")
+                                    &entry.path().parent().unwrap().join("Dockerfile")
                                 )
                             );
                             println!(
                                 "Makefile exists: {}",
                                 self.cmd_helper.file_exists_and_readable(
-                                    &entry
-                                        .path()
-                                        .parent()
-                                        .unwrap()
-                                        .join("Makefile")
+                                    &entry.path().parent().unwrap().join("Makefile")
                                 )
                             );
                         }

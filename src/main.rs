@@ -1,5 +1,8 @@
-use podman_compose_mgr::{args::{self}, secrets, start::walk_dirs};
-
+use podman_compose_mgr::{
+    args::{self},
+    secrets,
+    start::walk_dirs,
+};
 
 // use futures::executor;
 use std::io;
@@ -34,4 +37,3 @@ fn main() -> io::Result<()> {
 
     Ok(())
 }
-
