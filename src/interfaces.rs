@@ -1,10 +1,10 @@
-use std::path::PathBuf;
+use std::path::Path;
 use crate::read_val::{GrammarFragment, ReadValResult};
 
 /// Interface for command-related functions to facilitate testing
 pub trait CommandHelper {
     fn exec_cmd(&self, cmd: &str, args: Vec<String>);
-    fn pull_base_image(&self, dockerfile: &PathBuf) -> Result<(), Box<dyn std::error::Error>>;
+    fn pull_base_image(&self, dockerfile: &Path) -> Result<(), Box<dyn std::error::Error>>;
     fn get_terminal_display_width(&self, specify_size: Option<usize>) -> usize;
     fn file_exists_and_readable(&self, file: &std::path::Path) -> bool;
 }
@@ -24,7 +24,7 @@ impl CommandHelper for DefaultCommandHelper {
         crate::helpers::cmd_helper_fns::exec_cmd(cmd, &args_ref);
     }
     
-    fn pull_base_image(&self, dockerfile: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    fn pull_base_image(&self, dockerfile: &Path) -> Result<(), Box<dyn std::error::Error>> {
         crate::helpers::cmd_helper_fns::pull_base_image(dockerfile)
     }
     

@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::fs::{self};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 
 use podman_compose_mgr::interfaces::{CommandHelper, ReadValHelper};
@@ -122,7 +122,7 @@ impl CommandHelper for TestCommandHelper {
         self.commands_executed.borrow_mut().push(command);
     }
     
-    fn pull_base_image(&self, dockerfile: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    fn pull_base_image(&self, dockerfile: &Path) -> Result<(), Box<dyn std::error::Error>> {
         println!("Mock pull_base_image called with: {:?}", dockerfile);
         Ok(())
     }

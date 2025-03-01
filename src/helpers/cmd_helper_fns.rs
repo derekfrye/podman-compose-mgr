@@ -5,7 +5,7 @@ use std::process::{Command, Stdio};
 use terminal_size::{self, Width};
 
 /// Parse Dockerfile and pull base image
-pub fn pull_base_image(dockerfile: &std::path::PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+pub fn pull_base_image(dockerfile: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
     let file = std::fs::File::open(dockerfile).unwrap();
     let mut reader = BufReader::new(file);
 
