@@ -1,66 +1,103 @@
+use std::cell::RefCell;
 use std::io::{self};
-use std::path::PathBuf;
-use std::sync::Mutex;
-use once_cell::sync::Lazy;
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
-// We'll define traits for the functionality we want to test
-// This helps with dependency injection by creating interfaces
-pub trait CommandHelper {
-    fn exec_cmd(&self, cmd: &str, args: Vec<String>);
-    fn pull_base_image(&self, dockerfile: &std::path::PathBuf) -> Result<(), Box<dyn std::error::Error>>;
-    fn get_terminal_display_width(&self) -> usize;
+use podman_compose_mgr::args::Mode;
+use podman_compose_mgr::interfaces::{CommandHelper, ReadValHelper};
+use podman_compose_mgr::read_val::{GrammarFragment, ReadValResult};
+use podman_compose_mgr::start::walk_dirs_with_helpers;
+use podman_compose_mgr::Args;
+
+// Safe mock implementation of CommandHelper for testing using RefCell
+struct TestCommandHelper {
+    commands_executed: RefCell<Vec<String>>,
 }
 
-pub trait ReadValHelper {
-    fn read_val_from_cmd_line_and_proceed(&self, prompt: &str) -> Option<String>;
+impl TestCommandHelper {
+    fn new() -> Self {
+        Self {
+            commands_executed: RefCell::new(Vec::new()),
+        }
+    }
+    
+    fn get_commands_executed(&self) -> Vec<String> {
+        self.commands_executed.borrow().clone()
+    }
 }
-
-// Safe global state using once_cell
-static TEST_STATE: Lazy<Mutex<TestState>> = Lazy::new(|| {
-    Mutex::new(TestState {
-        captured_prompt: None,
-        user_response: Some("?".to_string())
-    })
-});
-
-struct TestState {
-    captured_prompt: Option<String>,
-    user_response: Option<String>,
-}
-
-// Our mock implementation for CommandHelper
-struct TestCommandHelper;
 
 impl CommandHelper for TestCommandHelper {
     fn exec_cmd(&self, cmd: &str, args: Vec<String>) {
-        println!("Mock exec_cmd called with: {} {}", cmd, args.join(" "));
+        let command = format!("{} {}", cmd, args.join(" "));
+        println!("Mock exec_cmd called with: {}", command);
+        
+        // Use RefCell for interior mutability
+        self.commands_executed.borrow_mut().push(command);
     }
     
-    fn pull_base_image(&self, _dockerfile: &std::path::PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-        println!("Mock pull_base_image called");
+    fn pull_base_image(&self, dockerfile: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        println!("Mock pull_base_image called with: {:?}", dockerfile);
         Ok(())
     }
     
     fn get_terminal_display_width(&self) -> usize {
+        // Always return 80 for tests
         80
+    }
+    
+    fn file_exists_and_readable(&self, file: &Path) -> bool {
+        println!("Mock file_exists_and_readable called with: {:?}", file);
+        // Return true for files we expect to exist in the test
+        true
     }
 }
 
-// Our mock implementation for ReadValHelper
-struct TestReadValHelper;
+// Safe mock implementation of ReadValHelper for testing using RefCell
+struct TestReadValHelper {
+    captured_prompts: RefCell<Vec<String>>,
+}
+
+impl TestReadValHelper {
+    fn new() -> Self {
+        Self {
+            captured_prompts: RefCell::new(Vec::new()),
+        }
+    }
+    
+    fn get_captured_prompts(&self) -> Vec<String> {
+        self.captured_prompts.borrow().clone()
+    }
+}
 
 impl ReadValHelper for TestReadValHelper {
-    fn read_val_from_cmd_line_and_proceed(&self, prompt: &str) -> Option<String> {
-        // Store the prompt for verification
-        let mut state = TEST_STATE.lock().unwrap();
-        state.captured_prompt = Some(prompt.to_string());
+    fn read_val_from_cmd_line_and_proceed(&self, grammars: &mut [GrammarFragment]) -> ReadValResult {
+        // Construct the prompt from the grammar fragments
+        let mut prompt = String::new();
+        for grammar in grammars.iter().filter(|g| g.display_at_all) {
+            if let Some(prefix) = &grammar.prefix {
+                prompt.push_str(prefix);
+            }
+            
+            if grammar.shortened_val_for_prompt.is_some() {
+                prompt.push_str(grammar.shortened_val_for_prompt.as_ref().unwrap());
+            } else {
+                prompt.push_str(grammar.original_val_for_prompt.as_ref().unwrap());
+            }
+            
+            if let Some(suffix) = &grammar.suffix {
+                prompt.push_str(suffix);
+            }
+        }
+        
+        // Store the captured prompt using RefCell for safe interior mutability
         println!("Captured prompt: {}", prompt);
+        self.captured_prompts.borrow_mut().push(prompt);
         
-        // Get the response we should return
-        let response = state.user_response.clone();
+        // For this test, always respond with "?"
+        let response = Some("?".to_string());
         
-        // If the response is "?", print help text
-        if response == Some("?".to_string()) {
+        // If the response is "?", print the help text
+        if response.as_deref() == Some("?") {
             println!("p = Pull image from upstream.");
             println!("N = Do nothing, skip this image.");
             println!("d = Display info (image name, docker-compose.yml path, upstream img create date, and img on-disk modify date).");
@@ -69,54 +106,10 @@ impl ReadValHelper for TestReadValHelper {
             println!("? = Display this help.");
         }
         
-        response
-    }
-}
-
-// This is a refactored version of the walk_dirs function that supports dependency injection
-fn walk_dirs_testable(
-    args: &podman_compose_mgr::Args,
-    cmd_helper: &dyn CommandHelper,
-    read_val_helper: &dyn ReadValHelper
-) -> io::Result<()> {
-    // This would be a rewritten version of the original walk_dirs function
-    // But instead of directly calling functions, it would use the provided helpers
-    
-    // For our test, we'll simulate what would happen
-    // In a real implementation, this would walk through the directories
-    // and for each docker-compose.yml, it would call the appropriate functions
-    
-    println!("Simulating walk_dirs with path: {}", args.path.display());
-    
-    // Simulate the prompt that would be shown
-    let example_prompt = format!("Refresh djf/rusty-golf from {}/image1? p/N/d/b/s/?:", args.path.display());
-    
-    // Call the read_val_helper to get the user response
-    let response = read_val_helper.read_val_from_cmd_line_and_proceed(&example_prompt);
-    
-    // Based on the response, different actions would be taken
-    match response.as_deref() {
-        Some("p") => {
-            cmd_helper.exec_cmd("podman", vec!["pull".to_string(), "djf/rusty-golf".to_string()]);
-        }
-        Some("b") => {
-            println!("Would build the image from Dockerfile");
-        }
-        Some("d") => {
-            println!("Would display image info");
-        }
-        Some("s") => {
-            println!("Would skip all subsequent images with this name");
-        }
-        Some("?") => {
-            // Help text is already printed by the helper
-        }
-        _ => {
-            println!("Would do nothing");
+        ReadValResult {
+            user_entered_val: response,
         }
     }
-    
-    Ok(())
 }
 
 #[test]
@@ -126,9 +119,9 @@ fn test1() -> io::Result<()> {
     let test_dir = workspace_folder.join("tests/test1");
     
     // Create a test Args instance
-    let args = podman_compose_mgr::Args {
+    let args = Args {
         path: test_dir,
-        mode: podman_compose_mgr::args::Mode::Rebuild,
+        mode: Mode::Rebuild,
         verbose: true,
         exclude_path_patterns: vec!["archive".to_string()],
         include_path_patterns: vec![],
@@ -143,23 +136,28 @@ fn test1() -> io::Result<()> {
     };
     
     // Create our mock implementations
-    let cmd_helper = TestCommandHelper;
-    let read_val_helper = TestReadValHelper;
+    let cmd_helper = TestCommandHelper::new();
+    let read_val_helper = TestReadValHelper::new();
     
-    // Call the testable version of walk_dirs
-    walk_dirs_testable(&args, &cmd_helper, &read_val_helper)?;
+    // Call the function with our test helpers
+    walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper);
     
-    // Verify the test results
-    let state = TEST_STATE.lock().unwrap();
+    // Get the captured prompts for verification (safely)
+    let captured_prompts = read_val_helper.get_captured_prompts();
     
-    // Verify the prompt contained the expected text
-    if let Some(prompt) = &state.captured_prompt {
+    // Verify at least one prompt was captured
+    assert!(!captured_prompts.is_empty(), "No prompts were captured");
+    
+    // Verify the prompt contains the expected text
+    for prompt in &captured_prompts {
         println!("Verifying prompt: {}", prompt);
-        assert!(prompt.contains("Refresh djf/rusty-golf from"));
-        assert!(prompt.contains("/tests/test1/image1?"));
-    } else {
-        panic!("No prompt was captured");
+        if prompt.contains("Refresh") && prompt.contains("djf/rusty-golf") {
+            // We found the prompt we're looking for
+            assert!(prompt.contains("Refresh"), "Prompt doesn't contain 'Refresh'");
+            assert!(prompt.contains("from"), "Prompt doesn't contain 'from'");
+            return Ok(());
+        }
     }
     
-    Ok(())
+    panic!("Expected prompt with 'Refresh djf/rusty-golf' not found");
 }

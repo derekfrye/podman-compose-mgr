@@ -1,8 +1,8 @@
 use crate::args::Args;
 use crate::build::build::start;
-use crate::helpers::cmd_helper_fns as cmd;
 use crate::helpers::podman_helper_fns;
-use crate::read_val::{self, GrammarFragment, GrammarType};
+use crate::interfaces::{CommandHelper, ReadValHelper};
+use crate::read_val::{GrammarFragment, GrammarType};
 
 // use regex::Regex;
 use chrono::{DateTime, Local};
@@ -19,14 +19,18 @@ pub struct Image {
     pub skipall_by_this_name: bool,
 }
 
-pub struct RebuildManager {
+pub struct RebuildManager<'a> {
     images_checked: Vec<Image>,
+    cmd_helper: &'a dyn CommandHelper,
+    read_val_helper: &'a dyn ReadValHelper,
 }
 
-impl RebuildManager {
-    pub fn new() -> Self {
+impl<'a> RebuildManager<'a> {
+    pub fn new(cmd_helper: &'a dyn CommandHelper, read_val_helper: &'a dyn ReadValHelper) -> Self {
         Self {
             images_checked: Vec::new(),
+            cmd_helper,
+            read_val_helper,
         }
     }
 
@@ -189,7 +193,7 @@ impl RebuildManager {
         }
 
         loop {
-            let result = read_val::read_val_from_cmd_line_and_proceed(&mut grammars);
+            let result = self.read_val_helper.read_val_from_cmd_line_and_proceed(&mut grammars);
 
             match result.user_entered_val {
                 None => {
@@ -226,24 +230,22 @@ impl RebuildManager {
                             );
                             println!(
                                 "Dockerfile exists: {}",
-                                cmd::file_exists_and_readable(
+                                self.cmd_helper.file_exists_and_readable(
                                     &entry
                                         .path()
                                         .parent()
                                         .unwrap()
                                         .join("Dockerfile")
-                                        .to_path_buf()
                                 )
                             );
                             println!(
                                 "Makefile exists: {}",
-                                cmd::file_exists_and_readable(
+                                self.cmd_helper.file_exists_and_readable(
                                     &entry
                                         .path()
                                         .parent()
                                         .unwrap()
                                         .join("Makefile")
-                                        .to_path_buf()
                                 )
                             );
                         }
@@ -315,8 +317,8 @@ impl RebuildManager {
     }
 
     fn pull_it(&mut self, image: &str) {
-        let x = ["pull", image];
+        let x = vec!["pull".to_string(), image.to_string()];
 
-        cmd::exec_cmd("podman", &x);
+        self.cmd_helper.exec_cmd("podman", x);
     }
 }

@@ -3,9 +3,24 @@ use std::mem;
 use regex::Regex;
 use walkdir::WalkDir;
 
-use crate::{args, build::{self, rebuild::RebuildManager}, restartsvcs, Args};
+use crate::{args, build::{self, rebuild::RebuildManager}, interfaces::{CommandHelper, DefaultCommandHelper, DefaultReadValHelper, ReadValHelper}, restartsvcs, Args};
 
+/// Main function that uses the default helper implementations
 pub fn walk_dirs(args: &Args) {
+    // Use default implementations
+    let cmd_helper = DefaultCommandHelper;
+    let read_val_helper = DefaultReadValHelper;
+    
+    // Call the injectable version with default implementations
+    walk_dirs_with_helpers(args, &cmd_helper, &read_val_helper);
+}
+
+/// Version of walk_dirs that accepts dependency injection for testing
+pub fn walk_dirs_with_helpers(
+    args: &Args,
+    cmd_helper: &dyn CommandHelper,
+    read_val_helper: &dyn ReadValHelper
+) {
     let mut exclude_patterns = Vec::new();
     let mut include_patterns = Vec::new();
 
@@ -30,7 +45,7 @@ pub fn walk_dirs(args: &Args) {
         println!("Rebuild images in path: {}", args.path.display());
     }
 
-    let mut manager: Option<RebuildManager> = Some(build::rebuild::RebuildManager::new());
+    let mut manager: Option<RebuildManager> = Some(build::rebuild::RebuildManager::new(cmd_helper, read_val_helper));
 
     for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_file() && entry.file_name() == "docker-compose.yml" {
@@ -50,7 +65,6 @@ pub fn walk_dirs(args: &Args) {
             }
             match args.mode {
                 args::Mode::Rebuild => {
-                    // let mut manager = rebuild::RebuildManager::new();
                     if let Some(ref mut manager) = manager {
                         manager.rebuild(&entry, args);
                     }
