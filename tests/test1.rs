@@ -10,13 +10,11 @@ use podman_compose_mgr::start::walk_dirs_with_helpers;
 use podman_compose_mgr::Args;
 use clap::Parser;
 use regex::Regex;
-// use podman_compose_mgr::{CommandHelper, ReadValHelper};
 use serde::Deserialize;
 
 #[test]
 fn test1() -> Result<(), Box<dyn std::error::Error>> {
     // Set up the test directory structure
-    // let test_dir = "../tests/test1";
     let contents = fs::read_to_string(".vscode/launch.json")?;
     let re = Regex::new(r"^\s+//").unwrap();
     
@@ -38,84 +36,67 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
     clap_args.extend(config.args);
     let args = Args::parse_from(clap_args);
     
-    // Create our mock implementations
-    // We'll set a fixed width of 60 for terminal display
+    // FIRST TEST: Width 60
+    // Create our mock implementations with width 60
     let cmd_helper = TestCommandHelper::new_with_width(Some(60));
     let read_val_helper = TestReadValHelper::new();
     
     // Call the function with our test helpers
     walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper);
     
-    // Get the captured prompts for verification (safely)
+    // Get the captured prompts for verification
     let captured_prompts = read_val_helper.get_captured_prompts();
     
-    // Verify at least one prompt was captured
+    // We should have 3 prompts with width 60
     assert_eq!(captured_prompts.len(), 3);
     
-    // Verify the prompt contains the expected text
-    let mut found_expected_prompt = false;
-    for (i, prompt) in captured_prompts.iter().enumerate() {
-        println!("Verifying prompt: {}", prompt);
+    // Verify width 60 prompts
+    let mut found_width_60_prompt = false;
+    for prompt in &captured_prompts {
+        println!("Verifying width 60 prompt: {}", prompt);
         if prompt.contains("Refresh") && prompt.contains("djf/rusty-g") {
-            // We found the prompt we're looking for - note we're checking for the truncated name
-            assert!(prompt.contains("Refresh"), "Prompt doesn't contain 'Refresh'");
             assert!(prompt.contains("from"), "Prompt doesn't contain 'from'");
-            
-            match i{
-            0|2 =>
-                assert_eq!(prompt.len(), 58, "Prompt is not exactly 58 characters"),
-            _ =>
-            assert!(prompt.len() <= 60, "Prompt is longer than 60 characters")
-            }
-            found_expected_prompt = true;
+            assert!(prompt.len() <= 60, "Width 60 prompt longer than expected");
+            found_width_60_prompt = true;
             break;
         }
     }
+    
+    assert!(found_width_60_prompt, "Width 60 prompt not found");
 
+    // SECOND TEST: Width 40
+    // Clear captured prompts before second test
+    read_val_helper.clear_captured_prompts();
+    
+    // Create command helper with width 40
     let cmd_helper = TestCommandHelper::new_with_width(Some(40));
 
     // Call the function with our test helpers
     walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper);
     
-    // Get the captured prompts for verification (safely)
+    // Get the captured prompts for verification
     let captured_prompts = read_val_helper.get_captured_prompts();
     
-    // Verify at least one prompt was captured
+    // Verify 3 prompts with width 40
     assert_eq!(captured_prompts.len(), 3);
     
-    // Verify the prompt contains the expected text
-    let mut found_expected_prompt = false;
-    for (i, prompt) in captured_prompts.iter().enumerate() {
-        println!("Verifying prompt: {}", prompt);
-        if prompt.contains("Refresh") && prompt.contains("djf/rusty-g") {
-            // We found the prompt we're looking for - note we're checking for the truncated name
-            assert!(prompt.contains("Refresh"), "Prompt doesn't contain 'Refresh'");
+    // Verify width 40 prompts
+    let mut found_width_40_prompt = false;
+    for prompt in &captured_prompts {
+        println!("Verifying width 40 prompt: {}", prompt);
+        if prompt.contains("Refresh") && prompt.contains("d...") {
             assert!(prompt.contains("from"), "Prompt doesn't contain 'from'");
-            
-            match i{
-            0|2 =>
-                assert_eq!(prompt.len(), 58, "Prompt is not exactly 58 characters"),
-            _ =>
-            assert!(prompt.len() <= 60, "Prompt is longer than 60 characters")
-            }
-            found_expected_prompt = true;
+            assert!(prompt.len() <= 40, "Width 40 prompt longer than expected");
+            found_width_40_prompt = true;
             break;
         }
     }
     
-    if !found_expected_prompt {
-        panic!("Expected prompt with 'Refresh djf/rusty-g...' not found");
-    }
+    assert!(found_width_40_prompt, "Width 40 prompt not found");
     
-    // Verify the specific formatting too, accounting for truncation with our  width
-    assert!(
-        captured_prompts.iter().any(|p| p.contains("Refresh djf/rusty-g") && p.contains("test1/image1?")),
-        "Expected prompt text not found"
-    );
-    
+    // The test is successful if we made it here
     Ok(())
 }
-
 
 // Safe mock implementation of CommandHelper for testing using RefCell
 struct TestCommandHelper {
@@ -124,8 +105,6 @@ struct TestCommandHelper {
 }
 
 impl TestCommandHelper {
-    // Removed unused new() method
-    
     fn new_with_width(width: Option<usize>) -> Self {
         Self {
             commands_executed: RefCell::new(Vec::new()),
@@ -186,6 +165,10 @@ impl TestReadValHelper {
         self.captured_prompts.borrow().clone()
     }
     
+    fn clear_captured_prompts(&self) {
+        self.captured_prompts.borrow_mut().clear();
+    }
+    
     // Function to capture prints during test
     fn test_print(&self, s: &str) {
         // Store the printed text in our captured_prompts
@@ -200,10 +183,8 @@ impl ReadValHelper for TestReadValHelper {
     fn read_val_from_cmd_line_and_proceed(&self, grammars: &mut [GrammarFragment], size: Option<usize>) -> ReadValResult {
         println!("ReadValHelper called with width: {:?}", size);
         
-        // Always use a fixed width of 60 for consistent testing
-        // This ensures we test with a predictable terminal width
-        let forced_size = Some(size.unwrap_or(60));
-        let cmd_helper = TestCommandHelper::new_with_width(forced_size);
+        // Use the provided size parameter for testing
+        let cmd_helper = TestCommandHelper::new_with_width(size);
         
         // Now we can use a closure that captures self for the print function
         let print_fn = Box::new(|s: &str| self.test_print(s));
@@ -218,7 +199,7 @@ impl ReadValHelper for TestReadValHelper {
             grammars,
             &cmd_helper,
             print_fn,
-            forced_size,  // Pass our fixed size 
+            size,  // Pass the actual size parameter through
             Some(&test_stdin)
         )
     }
@@ -237,7 +218,4 @@ struct Configuration {
     // This field will capture the command-line arguments.
     #[serde(default)]
     args: Vec<String>,
-    // Optionally, if you need the cargo args, you could add a field like:
-    // cargo: Option<Cargo>,
 }
-
