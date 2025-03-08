@@ -139,18 +139,27 @@ impl Default for StdinHelperWrapper {
 }
 
 /// Original function for backwards compatibility - forwards to the dependency-injected version
-pub fn read_val_from_cmd_line_and_proceed(grammars: &mut [GrammarFragment]) -> ReadValResult {
-    // Use DefaultCommandHelper for the terminal width
-    let cmd_helper = crate::interfaces::DefaultCommandHelper;
-
+pub fn read_val_from_cmd_line_and_proceed<C: crate::interfaces::CommandHelper>(
+    grammars: &mut [GrammarFragment],
+    cmd_helper: &C,
+) -> ReadValResult {
     // Using None for stdin_helper will use the default stdin reading behavior
     read_val_from_cmd_line_and_proceed_with_deps(
         grammars,
-        &cmd_helper,
+        cmd_helper,
         Box::new(default_print),
         None,
         None,
     )
+}
+
+/// Compatibility wrapper that uses DefaultCommandHelper
+pub fn read_val_from_cmd_line_and_proceed_default(
+    grammars: &mut [GrammarFragment],
+) -> ReadValResult {
+    // Use DefaultCommandHelper for the terminal width
+    let cmd_helper = crate::interfaces::DefaultCommandHelper;
+    read_val_from_cmd_line_and_proceed(grammars, &cmd_helper)
 }
 
 /// Implementation with dependency injection for the CommandHelper trait

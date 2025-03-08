@@ -1,23 +1,31 @@
 use dockerfile_parser::Dockerfile;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufReader, Read};
 use std::path::Path;
-use std::process::{Command, Stdio};
 use terminal_size::{self, Width};
 
 /// Parse Dockerfile and pull base image
 pub fn pull_base_image(dockerfile: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
-    let file = std::fs::File::open(dockerfile).unwrap();
+    // Use the error utils to handle file opening errors
+    let file = std::fs::File::open(dockerfile).map_err(|e| {
+        crate::utils::error_utils::into_boxed_error(
+            e,
+            &format!("Failed to open Dockerfile: {}", dockerfile.display()),
+        )
+    })?;
+
     let mut reader = BufReader::new(file);
 
     let mut content = String::new();
-    reader.read_to_string(&mut content)?;
-    let dockerfile = Dockerfile::parse(&content)?;
+    reader.read_to_string(&mut content).map_err(|e| {
+        crate::utils::error_utils::into_boxed_error(e, "Failed to read Dockerfile contents")
+    })?;
 
-    let mut x = vec![];
-    x.push("pull");
+    let dockerfile = Dockerfile::parse(&content).map_err(|e| {
+        crate::utils::error_utils::into_boxed_error(e, "Failed to parse Dockerfile")
+    })?;
 
     let from_img = dockerfile.instructions;
-    let img_nm = from_img
+    let image_name = from_img
         .iter()
         .find_map(|instruction| {
             if let dockerfile_parser::Instruction::From(image, ..) = instruction {
@@ -26,43 +34,27 @@ pub fn pull_base_image(dockerfile: &std::path::Path) -> Result<(), Box<dyn std::
                 None
             }
         })
-        .ok_or("No base image found")?;
-    let tt = img_nm.to_string();
-    x.push(&tt);
+        .ok_or_else(|| crate::utils::error_utils::new_error("No base image found in Dockerfile"))?;
 
-    exec_cmd("podman", &x);
-
-    Ok(())
+    // Use the new command utilities
+    // Convert SpannedString to regular String for the command args
+    let image_name_str = image_name.to_string();
+    crate::utils::cmd_utils::run_command_checked("podman", &["pull", &image_name_str])
 }
 
 /// exists(), is_file() traversing links, and metadata.is_ok() traversing links
 pub fn file_exists_and_readable(file: &Path) -> bool {
-    let z = file.try_exists();
-    match z {
+    match file.try_exists() {
         Ok(true) => file.is_file() && file.metadata().is_ok(),
         _ => false,
     }
 }
 
 pub fn exec_cmd(cmd: &str, args: &[&str]) {
-    let mut cmd = Command::new(cmd);
-
-    cmd.args(args);
-
-    let mut x = cmd
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Failed to execute command");
-
-    if let Some(stdout) = x.stdout.take() {
-        let reader = BufReader::new(stdout);
-
-        reader.lines().map_while(Result::ok).for_each(|line| {
-            println!("{}", line);
-        });
+    // Delegate to the new utility function but handle the Result here for backward compatibility
+    if let Err(e) = crate::utils::cmd_utils::exec_cmd(cmd, args) {
+        eprintln!("Command execution failed: {}", e);
     }
-
-    let _ = x.wait().expect("Command wasn't running");
 }
 
 pub fn get_terminal_display_width(specify_size: Option<usize>) -> usize {

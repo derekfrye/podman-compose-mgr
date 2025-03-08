@@ -1,7 +1,6 @@
 use crate::helpers::cmd_helper_fns as cmd;
 use std::path::PathBuf;
 
-use crate::read_val::read_val_from_cmd_line_and_proceed;
 use crate::read_val::{GrammarFragment, GrammarType};
 use walkdir::DirEntry;
 
@@ -36,19 +35,19 @@ pub fn start(dir: &DirEntry, custom_img_nm: &str, build_args: Vec<&str>) {
             .as_ref()
             .unwrap()
             .iter()
-            .all(|x| x.filepath.is_none())
+            .all(|file| file.filepath.is_none())
     {
         eprintln!(
             "No Dockerfile or Makefile found at '{}'",
             dir.path().display()
         );
         // std::process::exit(1);
-    } else if let Some(ax) = buildfiles {
-        let x = read_val_loop(ax);
-        // dbg!(&x);
+    } else if let Some(found_buildfiles) = buildfiles {
+        let build_config = read_val_loop(found_buildfiles);
+        // dbg!(&build_config);
 
-        if x.file.filepath.is_some() {
-            build_image_from_spec(x);
+        if build_config.file.filepath.is_some() {
+            build_image_from_spec(build_config);
         }
     }
 }
@@ -90,7 +89,8 @@ fn read_val_loop(files: Vec<BuildFile>) -> WhatWereBuilding {
 
     if !prompt_grammars.is_empty() {
         loop {
-            let z = read_val_from_cmd_line_and_proceed(&mut prompt_grammars);
+            let z =
+                crate::read_val::read_val_from_cmd_line_and_proceed_default(&mut prompt_grammars);
             if let Some(t) = z.user_entered_val {
                 match t.as_str() {
                     // only set back up near line 95, if both Makefile and Dockerfile exist in dir
@@ -285,19 +285,19 @@ fn find_buildfile(
     let parent_dir = dir.path().to_path_buf().parent().unwrap().to_path_buf();
     let dockerfile = parent_dir.join("Dockerfile");
     let makefile = parent_dir.join("Makefile");
-    let mut zz: Option<Vec<BuildFile>> = None;
+    let mut buildfiles: Option<Vec<BuildFile>> = None;
 
-    for i in [&dockerfile, &makefile].iter() {
-        let zzz = BuildFile {
-            filetype: match i {
-                _ if *i == &makefile => BuildChoice::Makefile,
+    for file_path in [&dockerfile, &makefile].iter() {
+        let buildfile = BuildFile {
+            filetype: match file_path {
+                _ if *file_path == &makefile => BuildChoice::Makefile,
                 _ => BuildChoice::Dockerfile,
             },
-            filepath: if let Ok(metadata) = i.symlink_metadata() {
+            filepath: if let Ok(metadata) = file_path.symlink_metadata() {
                 if metadata.file_type().is_symlink() {
-                    Some(std::fs::read_link(i).unwrap().to_path_buf())
+                    Some(std::fs::read_link(file_path).unwrap().to_path_buf())
                 } else if metadata.is_file() {
-                    Some(i.to_path_buf())
+                    Some(file_path.to_path_buf())
                 } else {
                     None
                 }
@@ -305,63 +305,69 @@ fn find_buildfile(
                 None
             },
             parent_dir: parent_dir.clone(),
-            link_target_dir: if std::fs::read_link(i).is_ok() {
-                Some(std::fs::read_link(i).unwrap().to_path_buf())
+            link_target_dir: if std::fs::read_link(file_path).is_ok() {
+                Some(std::fs::read_link(file_path).unwrap().to_path_buf())
             } else {
                 None
             },
             base_image: Some(custom_img_nm.to_string()),
             custom_img_nm: Some(custom_img_nm.to_string()),
-            build_args: build_args.iter().map(|x| x.to_string()).collect(),
+            build_args: build_args.iter().map(|arg| arg.to_string()).collect(),
         };
-        // dbg!(&zzz.filepath);
-        // dbg!(i);
+        // dbg!(&buildfile.filepath);
+        // dbg!(file_path);
 
-        match zz {
-            Some(ref mut x) => {
-                x.push(zzz);
+        match buildfiles {
+            Some(ref mut files) => {
+                files.push(buildfile);
             }
             None => {
-                zz = Some(vec![zzz]);
+                buildfiles = Some(vec![buildfile]);
             }
         }
     }
 
-    zz
+    buildfiles
 }
 
-fn build_image_from_spec(x: WhatWereBuilding) {
-    match x.file.filetype {
+fn build_image_from_spec(build_config: WhatWereBuilding) {
+    match build_config.file.filetype {
         BuildChoice::Dockerfile => {
-            let _ = cmd::pull_base_image(x.file.filepath.as_ref().unwrap());
+            let _ = cmd::pull_base_image(build_config.file.filepath.as_ref().unwrap());
 
-            let z = x.file.filepath.as_ref().unwrap().to_str().unwrap();
+            let dockerfile_path = build_config
+                .file
+                .filepath
+                .as_ref()
+                .unwrap()
+                .to_str()
+                .unwrap();
 
-            let mut xa = vec![
+            let mut podman_args = vec![
                 "build",
                 "-t",
-                x.file.custom_img_nm.as_ref().unwrap(),
+                build_config.file.custom_img_nm.as_ref().unwrap(),
                 "-f",
-                z,
+                dockerfile_path,
             ];
 
-            // x.push("--build-context=");
+            // podman_args.push("--build-context=");
             // let build_context = format!(".:{}", dockerfile_dir.to_str().unwrap());
-            // x.push(&build_context);
+            // podman_args.push(&build_context);
 
-            // let mut abc = string::String::new();
-            for arg in x.file.build_args.iter() {
-                xa.push("--build-arg");
-                xa.push(arg);
+            for arg in build_config.file.build_args.iter() {
+                podman_args.push("--build-arg");
+                podman_args.push(arg);
             }
 
-            xa.push(x.file.parent_dir.to_str().unwrap());
+            podman_args.push(build_config.file.parent_dir.to_str().unwrap());
 
-            cmd::exec_cmd("podman", &xa[..]);
+            cmd::exec_cmd("podman", &podman_args[..]);
         }
         BuildChoice::Makefile => {
-            let chg_dir = if x.follow_link {
-                x.file
+            let chg_dir = if build_config.follow_link {
+                build_config
+                    .file
                     .link_target_dir
                     .as_ref()
                     .unwrap()
@@ -370,7 +376,7 @@ fn build_image_from_spec(x: WhatWereBuilding) {
                     .to_str()
                     .unwrap()
             } else {
-                x.file.parent_dir.to_str().unwrap()
+                build_config.file.parent_dir.to_str().unwrap()
             };
 
             cmd::exec_cmd("make", &["-C", chg_dir, "clean"]);

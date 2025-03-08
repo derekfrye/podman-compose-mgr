@@ -73,16 +73,18 @@ pub fn update_mode(args: &Args) -> Result<(), Box<dyn Error>> {
     let mut output_entries = vec![];
 
     // Regex to replace non-alphanumeric characters
-    let re = Regex::new(r"[^a-zA-Z0-9-]").unwrap();
+    let re = Regex::new(r"[^a-zA-Z0-9-]")
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to compile regex: {}", e)))?;
 
     let client_id = args.secrets_client_id.as_ref().unwrap();
     let client_secret = args.secrets_client_secret_path.as_ref().unwrap();
     let tenant_id = args.secrets_tenant_id.as_ref().unwrap();
-    let kev_vault_name = args.secrets_vault_name.as_ref().unwrap();
+    let key_vault_name = args.secrets_vault_name.as_ref().unwrap();
 
-    let client = get_keyvault_secret_client(client_id, client_secret, tenant_id, kev_vault_name);
+    let client = get_keyvault_secret_client(client_id, client_secret, tenant_id, key_vault_name);
 
-    let rt = Runtime::new().unwrap();
+    let rt = Runtime::new()
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to create Tokio runtime: {}", e)))?;
 
     for entry in WalkDir::new(args.path.clone())
         .into_iter()
@@ -159,14 +161,14 @@ pub fn validate(args: &Args) -> Result<(), Box<dyn Error>> {
         tenant_id_content = get_content_from_file(tenant_id);
         tenant_id = &tenant_id_content;
     }
-    let mut kev_vault_name = args.secrets_vault_name.as_ref().unwrap();
-    let kev_vault_name_content;
-    if kev_vault_name.contains(path::MAIN_SEPARATOR) {
-        kev_vault_name_content = get_content_from_file(kev_vault_name);
-        kev_vault_name = &kev_vault_name_content;
+    let mut key_vault_name = args.secrets_vault_name.as_ref().unwrap();
+    let key_vault_name_content;
+    if key_vault_name.contains(path::MAIN_SEPARATOR) {
+        key_vault_name_content = get_content_from_file(key_vault_name);
+        key_vault_name = &key_vault_name_content;
     }
 
-    let client = get_keyvault_secret_client(client_id, client_secret, tenant_id, kev_vault_name);
+    let client = get_keyvault_secret_client(client_id, client_secret, tenant_id, key_vault_name);
     let mut json_outputs: Vec<JsonOutput> = vec![];
 
     let mut loop_result: JsonOutputControl = JsonOutputControl::new();
@@ -211,7 +213,7 @@ fn read_val_loop(
     args: &Args,
 ) -> Result<JsonOutputControl, Box<dyn Error>> {
     let mut grammars: Vec<GrammarFragment> = vec![];
-    let mut tt: JsonOutputControl = JsonOutputControl {
+    let mut output_control: JsonOutputControl = JsonOutputControl {
         json_output: JsonOutput {
             file_nm: String::new(),
             md5: String::new(),
@@ -236,10 +238,7 @@ fn read_val_loop(
     };
     grammars.push(static_prompt_grammar);
 
-    let file_name = entry["file_nm"]
-        .as_str()
-        .ok_or("file_nm missing in input json")
-        .unwrap();
+    let file_name = crate::utils::json_utils::extract_string_field(&entry, "file_nm")?;
 
     let file_nm_grammar = GrammarFragment {
         original_val_for_prompt: Some(file_name.to_string()),
@@ -274,12 +273,12 @@ fn read_val_loop(
 
     // let mut validate_all = false;
     loop {
-        if tt.validate_all {
-            let z = validate_entry(entry, client, args).unwrap();
-            tt.json_output = z;
+        if output_control.validate_all {
+            let validated_entry = validate_entry(entry, client, args)?;
+            output_control.json_output = validated_entry;
             break;
         } else {
-            let result = read_val::read_val_from_cmd_line_and_proceed(&mut grammars);
+            let result = read_val::read_val_from_cmd_line_and_proceed_default(&mut grammars);
 
             match result.user_entered_val {
                 None => {
@@ -287,11 +286,13 @@ fn read_val_loop(
                 }
                 Some(user_entered_val) => match user_entered_val.as_str() {
                     "d" => {
-                        details_about_entry(&entry);
+                        if let Err(e) = details_about_entry(&entry) {
+                            eprintln!("Error displaying entry details: {}", e);
+                        }
                     }
                     "v" => {
-                        let z = validate_entry(entry, client, args).unwrap();
-                        tt.json_output = z;
+                        let validated_entry = validate_entry(entry, client, args)?;
+                        output_control.json_output = validated_entry;
                         break;
                     }
                     "?" => {
@@ -304,7 +305,7 @@ fn read_val_loop(
                         println!("? = Display this help.");
                     }
                     "a" => {
-                        tt.validate_all = true;
+                        output_control.validate_all = true;
                     }
                     "N" => {
                         break;
@@ -316,49 +317,42 @@ fn read_val_loop(
             }
         }
     }
-    Ok(tt)
+    Ok(output_control)
 }
 
-fn details_about_entry(entry: &Value) {
-    let file_nm = entry["file_nm"]
-        .as_str()
-        .ok_or("file_nm missing in input json")
-        .unwrap();
-    let az_name = entry["az_name"]
-        .as_str()
-        .ok_or("az_name missing in input json")
-        .unwrap();
-    let az_create = entry["az_create"]
-        .as_str()
-        .ok_or("az_create missing in input json")
-        .unwrap();
-    let az_updated = entry["az_updated"]
-        .as_str()
-        .ok_or("az_updated missing in input json")
-        .unwrap();
+fn details_about_entry(entry: &Value) -> Result<(), Box<dyn Error>> {
+    let file_nm = crate::utils::json_utils::extract_string_field(entry, "file_nm")?;
+    let az_name = crate::utils::json_utils::extract_string_field(entry, "az_name")?;
+    let az_create = crate::utils::json_utils::extract_string_field(entry, "az_create")?;
+    let az_updated = crate::utils::json_utils::extract_string_field(entry, "az_updated")?;
 
     println!("File: {}", file_nm);
     println!("Azure Key Vault Name: {}", az_name);
 
-    let x = vec![
-        vec![az_create, "az create dt"],
-        vec![az_updated, "az update dt"],
+    let datetime_entries = vec![
+        vec![az_create, "az create dt".to_string()],
+        vec![az_updated, "az update dt".to_string()],
     ];
 
-    for y in x {
-        match y[0].parse::<u64>() {
+    for entry in datetime_entries {
+        match entry[0].parse::<u64>() {
             Ok(az_create) => {
                 println!(
                     "{}: {:?}",
-                    y[1],
+                    entry[1],
                     OffsetDateTime::from_unix_timestamp(az_create as i64)
                 );
             }
-            Err(_) => {
-                eprintln!("{} parse error: {}", y[1], y[0]);
+            Err(e) => {
+                eprintln!("{} parse error: {}", entry[1], entry[0]);
+                return Err(Box::<dyn Error>::from(format!(
+                    "Failed to parse timestamp: {}",
+                    e
+                )));
             }
         }
     }
+    Ok(())
 }
 
 fn validate_entry(

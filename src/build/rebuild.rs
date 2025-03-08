@@ -34,8 +34,12 @@ impl<'a, C: CommandHelper, R: ReadValHelper> RebuildManager<'a, C, R> {
         }
     }
 
-    pub fn rebuild(&mut self, entry: &DirEntry, args: &Args) {
-        let yaml = self.read_yaml_file(entry.path().to_str().unwrap());
+    pub fn rebuild(
+        &mut self,
+        entry: &DirEntry,
+        args: &Args,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let yaml = self.read_yaml_file(entry.path().to_str().unwrap())?;
         if let Some(services) = yaml.get("services") {
             if let Some(services_map) = services.as_mapping() {
                 for (_, service_config) in services_map {
@@ -95,6 +99,7 @@ impl<'a, C: CommandHelper, R: ReadValHelper> RebuildManager<'a, C, R> {
                 }
             }
         }
+        Ok(())
     }
 
     fn read_val_loop(
@@ -205,7 +210,8 @@ impl<'a, C: CommandHelper, R: ReadValHelper> RebuildManager<'a, C, R> {
                 }
                 Some(user_entered_val) => match user_entered_val.as_str() {
                     "p" => {
-                        self.pull_it(custom_img_nm);
+                        self.pull_image(custom_img_nm)
+                            .unwrap_or_else(|e| eprintln!("Error pulling image: {}", e));
                         break;
                     }
                     "N" => {
@@ -306,15 +312,22 @@ impl<'a, C: CommandHelper, R: ReadValHelper> RebuildManager<'a, C, R> {
 
     // other methods...
 
-    fn read_yaml_file(&mut self, file: &str) -> Value {
-        let file = File::open(file).expect("file not found");
-        let yaml: Value = serde_yaml::from_reader(file).expect("Error reading file");
-        yaml
+    fn read_yaml_file(&mut self, file_path: &str) -> Result<Value, Box<dyn std::error::Error>> {
+        let file = File::open(file_path).map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!("Failed to open file {}: {}", file_path, e))
+        })?;
+        let yaml: Value = serde_yaml::from_reader(file).map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!(
+                "Error parsing YAML from {}: {}",
+                file_path, e
+            ))
+        })?;
+        Ok(yaml)
     }
 
-    fn pull_it(&mut self, image: &str) {
-        let x = vec!["pull".to_string(), image.to_string()];
+    fn pull_image(&mut self, image: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let podman_args = vec!["pull".to_string(), image.to_string()];
 
-        self.cmd_helper.exec_cmd("podman", x);
+        self.cmd_helper.exec_cmd("podman", podman_args)
     }
 }

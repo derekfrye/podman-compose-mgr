@@ -5,7 +5,7 @@ use std::path::Path;
 /// Interface for command-related functions to facilitate testing
 #[automock]
 pub trait CommandHelper {
-    fn exec_cmd(&self, cmd: &str, args: Vec<String>);
+    fn exec_cmd(&self, cmd: &str, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>>;
     fn pull_base_image(&self, dockerfile: &Path) -> Result<(), Box<dyn std::error::Error>>;
     fn get_terminal_display_width(&self, specify_size: Option<usize>) -> usize;
     fn file_exists_and_readable(&self, file: &std::path::Path) -> bool;
@@ -25,10 +25,11 @@ pub trait ReadValHelper {
 pub struct DefaultCommandHelper;
 
 impl CommandHelper for DefaultCommandHelper {
-    fn exec_cmd(&self, cmd: &str, args: Vec<String>) {
+    fn exec_cmd(&self, cmd: &str, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         // Convert Vec<String> to Vec<&str> for compatibility with existing function
         let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
         crate::helpers::cmd_helper_fns::exec_cmd(cmd, &args_ref);
+        Ok(())
     }
 
     fn pull_base_image(&self, dockerfile: &Path) -> Result<(), Box<dyn std::error::Error>> {

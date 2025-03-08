@@ -94,7 +94,8 @@ fn convert_str_to_date(date_str: &str) -> Result<DateTime<Local>, String> {
     // $ podman image inspect --format {{.Created}} docker.io/linuxserver/wireguard:arm64v8-latest
     // 2024-10-03 12:28:30.701255218 +0100 +0100
 
-    let re = Regex::new(r"(?P<datetime>[0-9:\-\s\.]+)(?P<tz_offset>[+-]\d{4})").unwrap();
+    let re = Regex::new(r"(?P<datetime>[0-9:\-\s\.]+)(?P<tz_offset>[+-]\d{4})")
+        .map_err(|e| format!("Failed to compile regex: {}", e))?;
     let captures = re.captures(date_str);
     // dbg!(&captures);
     let tz_offset = match captures.as_ref() {
@@ -135,9 +136,6 @@ fn convert_str_to_date(date_str: &str) -> Result<DateTime<Local>, String> {
             //println!("Parsed DateTime: '{}'", parsed_date);
             Ok(parsed_date.with_timezone(&Local))
         }
-        Err(e) => {
-            println!("Failed to parse '{}': {:?}", date_str, e);
-            todo!()
-        }
+        Err(e) => Err(format!("Failed to parse date '{}': {}", date_str, e)),
     }
 }

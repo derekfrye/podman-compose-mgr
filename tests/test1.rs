@@ -37,26 +37,28 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
     // FIRST TEST: Width 60
     // Create a mockall implementation with width 60
     let mut cmd_helper = MockCommandHelper::new();
-    cmd_helper.expect_get_terminal_display_width()
+    cmd_helper
+        .expect_get_terminal_display_width()
         .returning(|_| 60);
-    cmd_helper.expect_file_exists_and_readable()
+    cmd_helper
+        .expect_file_exists_and_readable()
         .returning(|_| true);
-    cmd_helper.expect_exec_cmd()
-        .returning(|cmd, args| {
-            println!("Mock exec_cmd called with: {} {}", cmd, args.join(" "));
-        });
-    cmd_helper.expect_pull_base_image()
-        .returning(|_| Ok(()));
+    cmd_helper.expect_exec_cmd().returning(|cmd, args| {
+        println!("Mock exec_cmd called with: {} {}", cmd, args.join(" "));
+        Ok(())
+    });
+    cmd_helper.expect_pull_base_image().returning(|_| Ok(()));
 
     // Setup read_val_helper
     let mut read_val_helper = MockReadValHelper::new();
-    
-    read_val_helper.expect_read_val_from_cmd_line_and_proceed()
+
+    read_val_helper
+        .expect_read_val_from_cmd_line_and_proceed()
         .returning(|grammars, size| {
             // Format the prompt to test
             let prompt = format!("Width: {:?}, Grammar items: {}", size, grammars.len());
             println!("Mock read_val called: {}", prompt);
-            
+
             // Return a result with "N" as user input
             ReadValResult {
                 user_entered_val: Some("N".to_string()),
@@ -70,25 +72,27 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
     // SECOND TEST: Width 40
     // Create a new mock with width 40
     let mut cmd_helper = MockCommandHelper::new();
-    cmd_helper.expect_get_terminal_display_width()
+    cmd_helper
+        .expect_get_terminal_display_width()
         .returning(|_| 40);
-    cmd_helper.expect_file_exists_and_readable()
+    cmd_helper
+        .expect_file_exists_and_readable()
         .returning(|_| true);
-    cmd_helper.expect_exec_cmd()
-        .returning(|cmd, args| {
-            println!("Mock exec_cmd called with: {} {}", cmd, args.join(" "));
-        });
-    cmd_helper.expect_pull_base_image()
-        .returning(|_| Ok(()));
+    cmd_helper.expect_exec_cmd().returning(|cmd, args| {
+        println!("Mock exec_cmd called with: {} {}", cmd, args.join(" "));
+        Ok(())
+    });
+    cmd_helper.expect_pull_base_image().returning(|_| Ok(()));
 
     // Set up a new mock read_val_helper
     let mut read_val_helper = MockReadValHelper::new();
-    read_val_helper.expect_read_val_from_cmd_line_and_proceed()
+    read_val_helper
+        .expect_read_val_from_cmd_line_and_proceed()
         .returning(|grammars, size| {
             // Format the prompt to test
             let prompt = format!("Width: {:?}, Grammar items: {}", size, grammars.len());
             println!("Mock read_val called (width 40): {}", prompt);
-            
+
             // Return a result with "N" as user input
             ReadValResult {
                 user_entered_val: Some("N".to_string()),

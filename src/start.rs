@@ -74,7 +74,9 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadValHelper>(
             match args.mode {
                 args::Mode::Rebuild => {
                     if let Some(ref mut manager) = manager {
-                        manager.rebuild(&entry, args);
+                        if let Err(e) = manager.rebuild(&entry, args) {
+                            eprintln!("Error rebuilding: {}", e);
+                        }
                     }
                 }
                 args::Mode::RestartSvcs => {
