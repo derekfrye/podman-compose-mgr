@@ -110,16 +110,8 @@ impl StdinHelper for DefaultStdinHelper {
     }
 }
 
-/// Test implementation that returns a predefined response
-pub struct TestStdinHelper {
-    pub response: String,
-}
-
-impl StdinHelper for TestStdinHelper {
-    fn read_line(&self) -> String {
-        self.response.clone()
-    }
-}
+/// Re-export TestStdinHelper for backward compatibility
+pub use crate::testing::stdin_helpers::TestStdinHelper;
 
 /// Wrapper type for StdinHelper with static dispatch
 pub enum StdinHelperWrapper {

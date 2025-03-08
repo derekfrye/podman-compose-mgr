@@ -1,7 +1,7 @@
 pub mod args;
 #[allow(clippy::module_inception)]
 pub mod build {
-    pub mod build;
+    pub mod buildfile;
     pub mod rebuild;
 }
 pub mod helpers {
@@ -13,6 +13,7 @@ pub mod read_val;
 pub mod restartsvcs;
 pub mod secrets;
 pub mod start;
+pub mod testing;
 
 pub use args::Args;
 pub use read_val::unroll_grammar_into_string;
