@@ -90,76 +90,6 @@ pub fn unroll_grammar_into_string(
     return_result
 }
 
-/// Original function for backwards compatibility - forwards to the dependency-injected version
-pub fn read_val_from_cmd_line_and_proceed(grammars: &mut [GrammarFragment]) -> ReadValResult {
-    // Use DefaultCommandHelper for the terminal width
-    let cmd_helper = crate::interfaces::DefaultCommandHelper;
-
-    // Using None for stdin_helper will use the default stdin reading behavior
-    read_val_from_cmd_line_and_proceed_with_deps(
-        grammars,
-        &cmd_helper,
-        Box::new(default_print),
-        None,
-        None,
-    )
-}
-
-/// Implementation with dependency injection for the CommandHelper trait
-pub fn read_val_from_cmd_line_and_proceed_with_deps(
-    grammars: &mut [GrammarFragment],
-    cmd_helper: &dyn CommandHelper,
-    print_fn: PrintFunction<'_>,
-    size: Option<usize>,
-    stdin_helper: Option<&dyn StdinHelper>,
-) -> ReadValResult {
-    let mut return_result = ReadValResult {
-        user_entered_val: None,
-    };
-
-    // Use our common helper function to process prompt formatting
-    let term_width = cmd_helper.get_terminal_display_width(size);
-    do_prompt_formatting(grammars, term_width);
-
-    // prepare the prompt, this might go to stdout, or we have to flush first
-    print_fn(&unroll_grammar_into_string(grammars, false, true));
-
-    // what were the available choices someone could've made
-    let user_choices: HashSet<String> = grammars
-        .iter()
-        .filter(|x| x.grammar_type == GrammarType::UserChoice)
-        .collect::<Vec<&GrammarFragment>>()
-        .iter()
-        .map(|x| x.original_val_for_prompt.clone().unwrap())
-        .collect();
-
-    // Default stdin helper if none provided
-    let default_stdin = DefaultStdinHelper;
-
-    loop {
-        // Get input either from the provided stdin_helper or default
-        let input = if let Some(helper) = stdin_helper {
-            helper.read_line()
-        } else {
-            default_stdin.read_line()
-        };
-
-        // if user specified something that was an available choice, return that result
-        if user_choices.contains(&input) {
-            return_result.user_entered_val = Some(input);
-            break;
-        } else if input.is_empty() || input.trim().is_empty() {
-            return_result.user_entered_val = None;
-            break;
-        } else {
-            eprintln!("Invalid input '{}'. Please try again.", input);
-            print_fn(&unroll_grammar_into_string(grammars, false, true));
-        }
-    }
-
-    return_result
-}
-
 /// Trait for handling stdin operations, makes testing easier
 pub trait StdinHelper {
     /// Read a line of input, possibly from stdin or a test double
@@ -189,6 +119,98 @@ impl StdinHelper for TestStdinHelper {
     fn read_line(&self) -> String {
         self.response.clone()
     }
+}
+
+/// Wrapper type for StdinHelper with static dispatch
+pub enum StdinHelperWrapper {
+    Default(DefaultStdinHelper),
+    Test(TestStdinHelper),
+    #[cfg(test)]
+    Custom(Box<dyn StdinHelper>), // Keep dynamic dispatch only for tests
+}
+
+impl StdinHelperWrapper {
+    pub fn read_line(&self) -> String {
+        match self {
+            StdinHelperWrapper::Default(helper) => helper.read_line(),
+            StdinHelperWrapper::Test(helper) => helper.read_line(),
+            #[cfg(test)]
+            StdinHelperWrapper::Custom(helper) => helper.read_line(),
+        }
+    }
+}
+
+impl Default for StdinHelperWrapper {
+    fn default() -> Self {
+        StdinHelperWrapper::Default(DefaultStdinHelper)
+    }
+}
+
+/// Original function for backwards compatibility - forwards to the dependency-injected version
+pub fn read_val_from_cmd_line_and_proceed(grammars: &mut [GrammarFragment]) -> ReadValResult {
+    // Use DefaultCommandHelper for the terminal width
+    let cmd_helper = crate::interfaces::DefaultCommandHelper;
+
+    // Using None for stdin_helper will use the default stdin reading behavior
+    read_val_from_cmd_line_and_proceed_with_deps(
+        grammars,
+        &cmd_helper,
+        Box::new(default_print),
+        None,
+        None,
+    )
+}
+
+/// Implementation with dependency injection for the CommandHelper trait
+pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
+    grammars: &mut [GrammarFragment],
+    cmd_helper: &C,
+    print_fn: PrintFunction<'_>,
+    size: Option<usize>,
+    stdin_helper: Option<StdinHelperWrapper>,
+) -> ReadValResult {
+    let mut return_result = ReadValResult {
+        user_entered_val: None,
+    };
+
+    // Use our common helper function to process prompt formatting
+    let term_width = cmd_helper.get_terminal_display_width(size);
+    do_prompt_formatting(grammars, term_width);
+
+    // prepare the prompt, this might go to stdout, or we have to flush first
+    print_fn(&unroll_grammar_into_string(grammars, false, true));
+
+    // what were the available choices someone could've made
+    let user_choices: HashSet<String> = grammars
+        .iter()
+        .filter(|x| x.grammar_type == GrammarType::UserChoice)
+        .collect::<Vec<&GrammarFragment>>()
+        .iter()
+        .map(|x| x.original_val_for_prompt.clone().unwrap())
+        .collect();
+
+    // Create default stdin helper or use provided one
+    let default_stdin_wrapper = StdinHelperWrapper::default();
+    let stdin_wrapper = stdin_helper.as_ref().unwrap_or(&default_stdin_wrapper);
+
+    loop {
+        // Get input using the wrapper
+        let input = stdin_wrapper.read_line();
+
+        // if user specified something that was an available choice, return that result
+        if user_choices.contains(&input) {
+            return_result.user_entered_val = Some(input);
+            break;
+        } else if input.is_empty() || input.trim().is_empty() {
+            return_result.user_entered_val = None;
+            break;
+        } else {
+            eprintln!("Invalid input '{}'. Please try again.", input);
+            print_fn(&unroll_grammar_into_string(grammars, false, true));
+        }
+    }
+
+    return_result
 }
 
 // Extract the formatting logic to a separate function that can be used by both
