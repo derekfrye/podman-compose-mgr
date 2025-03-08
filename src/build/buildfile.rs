@@ -1,6 +1,6 @@
 use crate::helpers::cmd_helper_fns as cmd;
 use std::path::PathBuf;
-
+use thiserror::Error;
 use crate::read_val::{GrammarFragment, GrammarType};
 use walkdir::DirEntry;
 
@@ -27,7 +27,22 @@ struct WhatWereBuilding {
     follow_link: bool,
 }
 
-pub fn start(dir: &DirEntry, custom_img_nm: &str, build_args: Vec<&str>) {
+#[derive(Debug, Error)]
+pub enum BuildfileError {
+    #[error("Regex error: {0}")]
+    RegexError(#[from] regex::Error),
+    
+    #[error("Path contains invalid UTF-8: {0}")]
+    InvalidPath(String),
+    
+    #[error("Rebuild error: {0}")]
+    RebuildError(String),
+
+    #[error("Command execution error: {0}")]
+    CommandExecution(#[from] Box<dyn std::error::Error>),
+}
+
+pub fn start(dir: &DirEntry, custom_img_nm: &str, build_args: Vec<&str>)-> Result<(), BuildfileError> {
     let buildfiles = find_buildfile(dir, custom_img_nm, build_args);
     if buildfiles.is_none()
         || buildfiles.as_ref().unwrap().is_empty()
@@ -47,9 +62,10 @@ pub fn start(dir: &DirEntry, custom_img_nm: &str, build_args: Vec<&str>) {
         // dbg!(&build_config);
 
         if build_config.file.filepath.is_some() {
-            build_image_from_spec(build_config);
+            build_image_from_spec(build_config)?;
         }
     }
+    Ok(())
 }
 
 fn read_val_loop(files: Vec<BuildFile>) -> WhatWereBuilding {
@@ -330,7 +346,7 @@ fn find_buildfile(
     buildfiles
 }
 
-fn build_image_from_spec(build_config: WhatWereBuilding) {
+fn build_image_from_spec(build_config: WhatWereBuilding) -> Result<(), BuildfileError> {
     match build_config.file.filetype {
         BuildChoice::Dockerfile => {
             let _ = cmd::pull_base_image(build_config.file.filepath.as_ref().unwrap());
@@ -362,7 +378,7 @@ fn build_image_from_spec(build_config: WhatWereBuilding) {
 
             podman_args.push(build_config.file.parent_dir.to_str().unwrap());
 
-            cmd::exec_cmd("podman", &podman_args[..]);
+           Ok( cmd::exec_cmd("podman", &podman_args[..]).map_err(BuildfileError::from)?)
         }
         BuildChoice::Makefile => {
             let chg_dir = if build_config.follow_link {
@@ -379,8 +395,8 @@ fn build_image_from_spec(build_config: WhatWereBuilding) {
                 build_config.file.parent_dir.to_str().unwrap()
             };
 
-            cmd::exec_cmd("make", &["-C", chg_dir, "clean"]);
-            cmd::exec_cmd("make", &["-C", chg_dir]);
+            cmd::exec_cmd("make", &["-C", chg_dir, "clean"])?;
+            Ok(cmd::exec_cmd("make", &["-C", chg_dir])?)
         }
     }
 }

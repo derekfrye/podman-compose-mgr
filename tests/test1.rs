@@ -67,7 +67,7 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
         .times(3);
 
     // Call the function with our test helpers
-    walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper);
+    walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper)?;
 
     // SECOND TEST: Width 40
     // Create a new mock with width 40
@@ -101,7 +101,7 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
         .times(3);
 
     // Call the function with our test helpers
-    walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper);
+    walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper)?;
 
     // The test is successful if we made it here
     Ok(())

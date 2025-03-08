@@ -28,7 +28,7 @@ impl CommandHelper for DefaultCommandHelper {
     fn exec_cmd(&self, cmd: &str, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         // Convert Vec<String> to Vec<&str> for compatibility with existing function
         let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-        crate::helpers::cmd_helper_fns::exec_cmd(cmd, &args_ref);
+        crate::helpers::cmd_helper_fns::exec_cmd(cmd, &args_ref)?;
         Ok(())
     }
 

@@ -117,8 +117,8 @@ pub use crate::testing::stdin_helpers::TestStdinHelper;
 pub enum StdinHelperWrapper {
     Default(DefaultStdinHelper),
     Test(TestStdinHelper),
-    #[cfg(test)]
-    Custom(Box<dyn StdinHelper>), // Keep dynamic dispatch only for tests
+    //#[cfg(test)]
+    // Custom(Box<dyn StdinHelper>), // Keep dynamic dispatch only for tests
 }
 
 impl StdinHelperWrapper {
@@ -126,8 +126,8 @@ impl StdinHelperWrapper {
         match self {
             StdinHelperWrapper::Default(helper) => helper.read_line(),
             StdinHelperWrapper::Test(helper) => helper.read_line(),
-            #[cfg(test)]
-            StdinHelperWrapper::Custom(helper) => helper.read_line(),
+            // #[cfg(test)]
+            // StdinHelperWrapper::Custom(helper) => helper.read_line(),
         }
     }
 }

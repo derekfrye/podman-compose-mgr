@@ -50,11 +50,18 @@ pub fn file_exists_and_readable(file: &Path) -> bool {
     }
 }
 
-pub fn exec_cmd(cmd: &str, args: &[&str]) {
-    // Delegate to the new utility function but handle the Result here for backward compatibility
-    if let Err(e) = crate::utils::cmd_utils::exec_cmd(cmd, args) {
-        eprintln!("Command execution failed: {}", e);
-    }
+/// Execute a command with the given arguments
+///
+/// # Arguments
+/// * `cmd` - The command to execute
+/// * `args` - The arguments to pass to the command
+///
+/// # Errors
+///
+/// Returns an error if the command fails to execute
+pub fn exec_cmd(cmd: &str, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
+    // Delegate to the utility function and properly propagate errors
+    crate::utils::cmd_utils::exec_cmd(cmd, args)
 }
 
 pub fn get_terminal_display_width(specify_size: Option<usize>) -> usize {

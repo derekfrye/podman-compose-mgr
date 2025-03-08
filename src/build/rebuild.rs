@@ -4,13 +4,40 @@ use crate::helpers::podman_helper_fns;
 use crate::interfaces::{CommandHelper, ReadValHelper};
 use crate::read_val::{GrammarFragment, GrammarType};
 
-// use regex::Regex;
 use chrono::{DateTime, Local};
 use serde_yaml::Value;
-// use std::fs;
 use std::fs::File;
+use std::path::Path;
 use std::vec;
+use thiserror::Error;
 use walkdir::DirEntry;
+
+#[derive(Debug, Error)]
+pub enum RebuildError {
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    
+    #[error("YAML parsing error: {0}")]
+    YamlParse(#[from] serde_yaml::Error),
+    
+    #[error("Path not found: {0}")]
+    PathNotFound(String),
+    
+    #[error("Missing field in YAML: {0}")]
+    MissingField(String),
+    
+    #[error("Invalid container configuration: {0}")]
+    InvalidConfig(String),
+    
+    #[error("Command execution error: {0}")]
+    CommandExecution(String),
+    
+    #[error("Date parsing error: {0}")]
+    DateParse(String),
+    
+    #[error("Error: {0}")]
+    Other(String),
+}
 
 #[derive(Debug, PartialEq)]
 pub struct Image {
@@ -34,71 +61,96 @@ impl<'a, C: CommandHelper, R: ReadValHelper> RebuildManager<'a, C, R> {
         }
     }
 
+    /// Process a docker-compose.yml file for rebuilding images
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Unable to get the file path as a string
+    /// - Unable to read or parse the YAML file
+    /// - Service configurations are invalid
     pub fn rebuild(
         &mut self,
         entry: &DirEntry,
         args: &Args,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let yaml = self.read_yaml_file(entry.path().to_str().unwrap())?;
-        if let Some(services) = yaml.get("services") {
-            if let Some(services_map) = services.as_mapping() {
-                for (_, service_config) in services_map {
-                    // println!("Service: {:?}", service_name);
-                    if let Some(image) = service_config.get("image") {
-                        // println!("  Image: {:?}", image);
-                        if let Some(container_name) = service_config.get("container_name") {
-                            let image_string = image.as_str().unwrap().to_string();
-                            let container_nm_string = container_name.as_str().unwrap().to_string();
+    ) -> Result<(), RebuildError> {
+        // Get file path safely
+        let file_path = entry.path().to_str()
+            .ok_or_else(|| RebuildError::PathNotFound(format!("Invalid UTF-8 in path: {:?}", entry.path())))?;
+        
+        let yaml = self.read_yaml_file(file_path)?;
+        
+        // Get services from YAML
+        let services = yaml.get("services")
+            .ok_or_else(|| RebuildError::MissingField("No 'services' section found in compose file".to_string()))?;
+            
+        let services_map = services.as_mapping()
+            .ok_or_else(|| RebuildError::InvalidConfig("'services' is not a mapping".to_string()))?;
+        
+        // Process each service
+        for (_, service_config) in services_map {
+            // Get image name if present
+            if let Some(image) = service_config.get("image") {
+                // Get container name if present
+                if let Some(container_name) = service_config.get("container_name") {
+                    // Extract string values safely
+                    let image_string = image.as_str()
+                        .ok_or_else(|| RebuildError::InvalidConfig("'image' is not a string".to_string()))?
+                        .to_string();
+                    
+                    let container_nm_string = container_name.as_str()
+                        .ok_or_else(|| RebuildError::InvalidConfig("'container_name' is not a string".to_string()))?
+                        .to_string();
 
-                            // if this image is in the vec as a skippable image, skip this iter entry (aka continue)
-                            let img_is_set_to_skip = self.images_checked.iter().any(|i| {
-                                if let Some(ref name) = i.name {
-                                    name == &image_string && i.skipall_by_this_name
+                    // Check if this image should be skipped
+                    let img_is_set_to_skip = self.images_checked.iter().any(|i| {
+                        if let Some(ref name) = i.name {
+                            name == &image_string && i.skipall_by_this_name
+                        } else {
+                            false
+                        }
+                    });
+
+                    // Check if we've already processed this image+container combo
+                    let img_and_container_previously_reviewed =
+                        self.images_checked.iter().any(|i| {
+                            if let Some(ref name) = i.name {
+                                if let Some(ref container_name) = i.container {
+                                    name == &image_string
+                                        && container_name == &container_nm_string
                                 } else {
                                     false
                                 }
-                            });
-
-                            // or, if this image is not in the list of images we've already checked, continue
-                            let img_and_container_previously_reviewed =
-                                self.images_checked.iter().any(|i| {
-                                    if let Some(ref name) = i.name {
-                                        if let Some(ref container_name) = i.container {
-                                            name == &image_string
-                                                && container_name == &container_nm_string
-                                        } else {
-                                            false
-                                        }
-                                    } else {
-                                        false
-                                    }
-                                });
-
-                            // image ck is only empty on first check, so as long as we're non-empty, we might skip this image_string, move to next test
-                            if !self.images_checked.is_empty()
-                                && (img_is_set_to_skip || img_and_container_previously_reviewed)
-                            {
-                                continue;
                             } else {
-                                self.read_val_loop(
-                                    entry,
-                                    &image_string,
-                                    &args.build_args,
-                                    &container_nm_string,
-                                );
-
-                                let c = Image {
-                                    name: Some(image_string),
-                                    container: Some(container_nm_string),
-                                    skipall_by_this_name: false,
-                                };
-                                self.images_checked.push(c);
+                                false
                             }
-                        }
+                        });
+
+                    // Skip if necessary, otherwise process
+                    if !self.images_checked.is_empty()
+                        && (img_is_set_to_skip || img_and_container_previously_reviewed)
+                    {
+                        continue;
+                    } else {
+                        self.read_val_loop(
+                            entry,
+                            &image_string,
+                            &args.build_args,
+                            &container_nm_string,
+                        ).map_err(|e| RebuildError::Other(e.to_string()))?;
+
+                        // Add to our list of checked images
+                        let c = Image {
+                            name: Some(image_string),
+                            container: Some(container_nm_string),
+                            skipall_by_this_name: false,
+                        };
+                        self.images_checked.push(c);
                     }
                 }
             }
         }
+        
         Ok(())
     }
 
@@ -108,7 +160,7 @@ impl<'a, C: CommandHelper, R: ReadValHelper> RebuildManager<'a, C, R> {
         custom_img_nm: &str,
         build_args: &[String],
         container_name: &str,
-    ) {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let mut grammars: Vec<GrammarFragment> = vec![];
 
         let grm1 = GrammarFragment {
@@ -148,12 +200,15 @@ impl<'a, C: CommandHelper, R: ReadValHelper> RebuildManager<'a, C, R> {
         };
         grammars.push(grm3);
 
+        // Get parent directory safely with a fallback to root
         let docker_compose_pth = entry
             .path()
             .parent()
-            .unwrap_or(std::path::Path::new("/"))
+            .unwrap_or_else(|| Path::new("/")) // Fallback to root if parent doesn't exist
             .display();
-        let docker_compose_pth_fmtted = format!("{}", docker_compose_pth);
+            
+        let docker_compose_pth_fmtted = docker_compose_pth.to_string();
+        
         let grm4 = GrammarFragment {
             original_val_for_prompt: Some(docker_compose_pth_fmtted.clone()),
             shortened_val_for_prompt: None,
@@ -222,32 +277,42 @@ impl<'a, C: CommandHelper, R: ReadValHelper> RebuildManager<'a, C, R> {
                             println!("Image: {}", custom_img_nm);
                             println!("Container name: {}", container_name);
                             println!("Compose file: {}", docker_compose_pth_fmtted);
-                            println!(
-                                "Created: {}",
-                                self.format_time_ago(
-                                    podman_helper_fns::get_podman_image_upstream_create_time(
-                                        custom_img_nm
-                                    )
-                                    .unwrap()
-                                )
-                            );
-                            println!(
-                                "Pulled: {}",
-                                self.format_time_ago(
-                                    podman_helper_fns::get_podman_ondisk_modify_time(custom_img_nm)
-                                        .unwrap()
-                                )
-                            );
+                            // Display image creation time
+                            match podman_helper_fns::get_podman_image_upstream_create_time(custom_img_nm) {
+                                Ok(created_time) => {
+                                    println!("Created: {}", self.format_time_ago(created_time));
+                                },
+                                Err(e) => {
+                                    println!("Created: Error getting creation time - {}", e);
+                                }
+                            }
+                            
+                            // Display image pull time
+                            match podman_helper_fns::get_podman_ondisk_modify_time(custom_img_nm) {
+                                Ok(pull_time) => {
+                                    println!("Pulled: {}", self.format_time_ago(pull_time));
+                                },
+                                Err(e) => {
+                                    println!("Pulled: Error getting pull time - {}", e);
+                                }
+                            }
+                            
+                            // Get parent directory safely
+                            let parent_dir = entry.path().parent().unwrap_or_else(|| Path::new("/"));
+                            
+                            // Check if Dockerfile exists
                             println!(
                                 "Dockerfile exists: {}",
                                 self.cmd_helper.file_exists_and_readable(
-                                    &entry.path().parent().unwrap().join("Dockerfile")
+                                    &parent_dir.join("Dockerfile")
                                 )
                             );
+                            
+                            // Check if Makefile exists
                             println!(
                                 "Makefile exists: {}",
                                 self.cmd_helper.file_exists_and_readable(
-                                    &entry.path().parent().unwrap().join("Makefile")
+                                    &parent_dir.join("Makefile")
                                 )
                             );
                         }
@@ -272,7 +337,7 @@ impl<'a, C: CommandHelper, R: ReadValHelper> RebuildManager<'a, C, R> {
                             entry,
                             custom_img_nm,
                             build_args.iter().map(|s| s.as_str()).collect(),
-                        );
+                        )?;
                         break;
                     }
                     "s" => {
@@ -290,6 +355,7 @@ impl<'a, C: CommandHelper, R: ReadValHelper> RebuildManager<'a, C, R> {
                 },
             }
         }
+        Ok(())
     }
 
     fn format_time_ago(&mut self, dt: DateTime<Local>) -> String {
@@ -312,22 +378,36 @@ impl<'a, C: CommandHelper, R: ReadValHelper> RebuildManager<'a, C, R> {
 
     // other methods...
 
-    fn read_yaml_file(&mut self, file_path: &str) -> Result<Value, Box<dyn std::error::Error>> {
-        let file = File::open(file_path).map_err(|e| {
-            Box::<dyn std::error::Error>::from(format!("Failed to open file {}: {}", file_path, e))
-        })?;
-        let yaml: Value = serde_yaml::from_reader(file).map_err(|e| {
-            Box::<dyn std::error::Error>::from(format!(
-                "Error parsing YAML from {}: {}",
-                file_path, e
-            ))
-        })?;
+    /// Read and parse a YAML file
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Unable to open the file
+    /// - Unable to parse the file as YAML
+    fn read_yaml_file(&mut self, file_path: &str) -> Result<Value, RebuildError> {
+        // Open the file
+        let file = File::open(file_path)
+            .map_err(|e| RebuildError::Io(e))?;
+            
+        // Parse as YAML
+        let yaml: Value = serde_yaml::from_reader(file)
+            .map_err(|e| RebuildError::YamlParse(e))?;
+            
         Ok(yaml)
     }
 
-    fn pull_image(&mut self, image: &str) -> Result<(), Box<dyn std::error::Error>> {
+    /// Pull a container image using podman
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The podman command fails to execute
+    /// - The command execution returns a non-zero exit code
+    fn pull_image(&mut self, image: &str) -> Result<(), RebuildError> {
         let podman_args = vec!["pull".to_string(), image.to_string()];
 
         self.cmd_helper.exec_cmd("podman", podman_args)
+            .map_err(|e| RebuildError::CommandExecution(format!("Failed to pull image {}: {}", image, e)))
     }
 }

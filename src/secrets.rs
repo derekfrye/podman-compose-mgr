@@ -6,25 +6,59 @@ use md5::{Digest, Md5};
 use regex::Regex;
 use reqwest::{Client, Url};
 use serde::Serialize;
-// use reqwest::Client;
 use serde_json::{Value, json};
 use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
 use std::{fs, path};
-// use std::io::{BufRead, BufReader};
 use std::io::{Read, Write};
-// use std::path::PathBuf;
 use azure_identity::ClientSecretCredential;
 use azure_security_keyvault::{KeyvaultClient, SecretClient};
-// use hostname;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
+use thiserror::Error;
 use tokio::runtime::Runtime;
 use walkdir::WalkDir;
-// use chrono::{DateTime, FixedOffset};
 use time::OffsetDateTime;
-// use url::Url;
+
+#[derive(Debug, Error)]
+pub enum SecretError {
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+    
+    #[error("Azure Key Vault error: {0}")]
+    KeyVault(String),
+    
+    #[error("Regex error: {0}")]
+    Regex(#[from] regex::Error),
+    
+    #[error("Runtime error: {0}")]
+    Runtime(String),
+    
+    #[error("Field missing in JSON: {0}")]
+    MissingField(String),
+    
+    #[error("Time parse error: {0}")]
+    TimeError(String),
+    
+    #[error("Hostname error: {0}")]
+    HostnameError(String),
+    
+    #[error("Path error: {0}")]
+    PathError(String),
+    
+    #[error("Url parse error: {0}")]
+    UrlError(String),
+    
+    #[error("Generic error: {0}")]
+    Other(String),
+}
+
+// Use Box<dyn Error> for public functions for backward compatibility
+pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 struct SetSecretResponse {
     created: OffsetDateTime,
@@ -69,26 +103,28 @@ impl JsonOutputControl {
     }
 }
 
-pub fn update_mode(args: &Args) -> Result<(), Box<dyn Error>> {
+pub fn update_mode(args: &Args) -> std::result::Result<(), Box<dyn Error>> {
     let mut output_entries = vec![];
 
     // Regex to replace non-alphanumeric characters
-    let re = Regex::new(r"[^a-zA-Z0-9-]")
-        .map_err(|e| Box::<dyn Error>::from(format!("Failed to compile regex: {}", e)))?;
+    let re = Regex::new(r"[^a-zA-Z0-9-]")?;
 
-    let client_id = args.secrets_client_id.as_ref().unwrap();
-    let client_secret = args.secrets_client_secret_path.as_ref().unwrap();
-    let tenant_id = args.secrets_tenant_id.as_ref().unwrap();
-    let key_vault_name = args.secrets_vault_name.as_ref().unwrap();
+    let client_id = args.secrets_client_id.as_ref()
+        .ok_or_else(|| Box::<dyn Error>::from("Client ID is required"))?;
+    let client_secret = args.secrets_client_secret_path.as_ref()
+        .ok_or_else(|| Box::<dyn Error>::from("Client secret path is required"))?;
+    let tenant_id = args.secrets_tenant_id.as_ref()
+        .ok_or_else(|| Box::<dyn Error>::from("Tenant ID is required"))?;
+    let key_vault_name = args.secrets_vault_name.as_ref()
+        .ok_or_else(|| Box::<dyn Error>::from("Key vault name is required"))?;
 
-    let client = get_keyvault_secret_client(client_id, client_secret, tenant_id, key_vault_name);
+    let client = get_keyvault_secret_client(client_id, client_secret, tenant_id, key_vault_name)?;
 
-    let rt = Runtime::new()
-        .map_err(|e| Box::<dyn Error>::from(format!("Failed to create Tokio runtime: {}", e)))?;
+    let rt = Runtime::new()?;
 
     for entry in WalkDir::new(args.path.clone())
         .into_iter()
-        .filter_map(Result::ok)
+        .filter_map(|e| e.ok())
     {
         if entry.file_name() == ".env" && entry.file_type().is_file() {
             let full_path = entry.path().to_string_lossy().to_string();
@@ -99,17 +135,19 @@ pub fn update_mode(args: &Args) -> Result<(), Box<dyn Error>> {
             let secret_name = re.replace_all(stripped_path, "-");
 
             // Read file content
-            let content = fs::read_to_string(&full_path).unwrap();
+            let content = fs::read_to_string(&full_path)
+                .map_err(|e| Box::<dyn Error>::from(format!("Failed to read file {}: {}", full_path, e)))?;
             let md5_checksum = calculate_md5(content.as_str());
 
             // Insert secret into Azure Key Vault
             let azure_response = rt
                 .block_on(set_secret_value(&secret_name, &client, &content))
-                .unwrap();
+                .map_err(|e| Box::<dyn Error>::from(format!("Failed to set secret: {}", e)))?;
 
             // Get current timestamp
             let start = SystemTime::now();
-            let ins_ts = start.duration_since(UNIX_EPOCH).unwrap().as_secs();
+            let ins_ts = start.duration_since(UNIX_EPOCH)
+                .map_err(|e| Box::<dyn Error>::from(format!("Failed to get timestamp: {}", e)))?.as_secs();
 
             // Build output entry
             let output_entry = json!({
@@ -126,59 +164,105 @@ pub fn update_mode(args: &Args) -> Result<(), Box<dyn Error>> {
         }
     }
 
+    // Make sure output path exists
+    let output_path = args.secret_mode_output_json.as_ref()
+        .ok_or_else(|| Box::<dyn Error>::from("Output JSON path is required"))?;
+    
+    // Create parent directory if it doesn't exist
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| {
+            Box::<dyn Error>::from(format!("Failed to create directory {}: {}", parent.display(), e))
+        })?;
+    }
+
     // Append entries to output_file.txt
     let mut file = fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open(args.secret_mode_output_json.as_ref().unwrap().clone())
-        .unwrap();
+        .open(output_path)
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to open output file: {}", e)))?;
 
     for entry in output_entries {
-        serde_json::to_writer(&mut file, &entry).unwrap();
-        writeln!(file).unwrap(); // Write a newline after each JSON object
+        serde_json::to_writer(&mut file, &entry)
+            .map_err(|e| Box::<dyn Error>::from(format!("Failed to write JSON: {}", e)))?;
+        writeln!(file)
+            .map_err(|e| Box::<dyn Error>::from(format!("Failed to write newline: {}", e)))?;
     }
 
     Ok(())
 }
 
-pub fn validate(args: &Args) -> Result<(), Box<dyn Error>> {
+/// Validates secrets stored in Azure KeyVault against local files
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Unable to read the input JSON file
+/// - JSON parsing fails
+/// - Required arguments are missing
+/// - KeyVault client creation fails
+pub fn validate(args: &Args) -> std::result::Result<(), Box<dyn Error>> {
+    // Get input file path
+    let input_path = args.secret_mode_input_json.as_ref()
+        .ok_or_else(|| Box::<dyn Error>::from("Input JSON path is required"))?;
+    
     // Read and validate JSON entries
-    let mut file = File::open(args.secret_mode_input_json.as_ref().unwrap().clone()).unwrap();
+    let mut file = File::open(input_path)
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to open input JSON file: {}", e)))?;
+    
     let mut file_content = String::new();
-    file.read_to_string(&mut file_content).unwrap();
-    let json_values: Vec<Value> = serde_json::from_str(&file_content).unwrap();
+    file.read_to_string(&mut file_content)
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to read input JSON file: {}", e)))?;
+    
+    let json_values: Vec<Value> = serde_json::from_str(&file_content)
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to parse JSON: {}", e)))?;
 
-    let mut client_id = args.secrets_client_id.as_ref().unwrap();
-    let client_id_content;
-    if client_id.contains(path::MAIN_SEPARATOR) {
-        client_id_content = get_content_from_file(client_id);
-        client_id = &client_id_content;
-    }
-    let client_secret = args.secrets_client_secret_path.as_ref().unwrap();
-    let mut tenant_id = args.secrets_tenant_id.as_ref().unwrap();
-    let tenant_id_content;
-    if tenant_id.contains(path::MAIN_SEPARATOR) {
-        tenant_id_content = get_content_from_file(tenant_id);
-        tenant_id = &tenant_id_content;
-    }
-    let mut key_vault_name = args.secrets_vault_name.as_ref().unwrap();
-    let key_vault_name_content;
-    if key_vault_name.contains(path::MAIN_SEPARATOR) {
-        key_vault_name_content = get_content_from_file(key_vault_name);
-        key_vault_name = &key_vault_name_content;
-    }
+    // Handle client ID (from arg or file)
+    let client_id_arg = args.secrets_client_id.as_ref()
+        .ok_or_else(|| Box::<dyn Error>::from("Client ID is required"))?;
+    
+    let client_id = if client_id_arg.contains(path::MAIN_SEPARATOR) {
+        get_content_from_file(client_id_arg)?
+    } else {
+        client_id_arg.clone()
+    };
+    
+    // Handle client secret path
+    let client_secret = args.secrets_client_secret_path.as_ref()
+        .ok_or_else(|| Box::<dyn Error>::from("Client secret path is required"))?;
+    
+    // Handle tenant ID (from arg or file)
+    let tenant_id_arg = args.secrets_tenant_id.as_ref()
+        .ok_or_else(|| Box::<dyn Error>::from("Tenant ID is required"))?;
+    
+    let tenant_id = if tenant_id_arg.contains(path::MAIN_SEPARATOR) {
+        get_content_from_file(tenant_id_arg)?
+    } else {
+        tenant_id_arg.clone()
+    };
+    
+    // Handle key vault name (from arg or file)
+    let key_vault_name_arg = args.secrets_vault_name.as_ref()
+        .ok_or_else(|| Box::<dyn Error>::from("Key vault name is required"))?;
+    
+    let key_vault_name = if key_vault_name_arg.contains(path::MAIN_SEPARATOR) {
+        get_content_from_file(key_vault_name_arg)?
+    } else {
+        key_vault_name_arg.clone()
+    };
 
-    let client = get_keyvault_secret_client(client_id, client_secret, tenant_id, key_vault_name);
+    // Get KeyVault client
+    let client = get_keyvault_secret_client(&client_id, client_secret, &tenant_id, &key_vault_name)?;
     let mut json_outputs: Vec<JsonOutput> = vec![];
 
+    // Process each entry
     let mut loop_result: JsonOutputControl = JsonOutputControl::new();
     for entry in json_values {
-        // let string_representation = serde_json::to_string(&entry).unwrap();
-        // dbg!(&string_representation);
-
         if loop_result.validate_all {
-            let z = validate_entry(entry, &client, args).unwrap();
-            json_outputs.push(z);
+            match validate_entry(entry, &client, args) {
+                Ok(z) => json_outputs.push(z),
+                Err(e) => eprintln!("Error validating entry: {}", e),
+            }
             continue;
         } else {
             match read_val_loop(entry, &client, args) {
@@ -193,15 +277,21 @@ pub fn validate(args: &Args) -> Result<(), Box<dyn Error>> {
         }
     }
 
+    // Write output if we have results
     if !json_outputs.is_empty() {
-        write_json_output(
-            &json_outputs,
-            args.secret_mode_output_json
-                .as_ref()
-                .unwrap()
-                .to_str()
-                .unwrap(),
-        );
+        if let Some(output_path) = args.secret_mode_output_json.as_ref() {
+            if let Some(output_dir) = output_path.parent() {
+                fs::create_dir_all(output_dir)
+                    .map_err(|e| Box::<dyn Error>::from(format!("Failed to create output directory: {}", e)))?;
+            }
+            
+            let output_str = output_path.to_str()
+                .ok_or_else(|| Box::<dyn Error>::from("Invalid UTF-8 in output path"))?;
+                
+            write_json_output(&json_outputs, output_str)?;
+        } else {
+            return Err(Box::<dyn Error>::from("Output JSON path is required"));
+        }
     }
 
     Ok(())
@@ -211,7 +301,7 @@ fn read_val_loop(
     entry: Value,
     client: &SecretClient,
     args: &Args,
-) -> Result<JsonOutputControl, Box<dyn Error>> {
+) -> Result<JsonOutputControl> {
     let mut grammars: Vec<GrammarFragment> = vec![];
     let mut output_control: JsonOutputControl = JsonOutputControl {
         json_output: JsonOutput {
@@ -320,7 +410,7 @@ fn read_val_loop(
     Ok(output_control)
 }
 
-fn details_about_entry(entry: &Value) -> Result<(), Box<dyn Error>> {
+fn details_about_entry(entry: &Value) -> Result<()> {
     let file_nm = crate::utils::json_utils::extract_string_field(entry, "file_nm")?;
     let az_name = crate::utils::json_utils::extract_string_field(entry, "az_name")?;
     let az_create = crate::utils::json_utils::extract_string_field(entry, "az_create")?;
@@ -355,11 +445,22 @@ fn details_about_entry(entry: &Value) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/// Validates an entry by checking MD5 checksums and Azure IDs
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Required fields are missing from the input JSON
+/// - Unable to create a runtime
+/// - Unable to retrieve the secret from Azure
+/// - Unable to get system time
+/// - Unable to get hostname
 fn validate_entry(
     entry: Value,
     client: &SecretClient,
     args: &Args,
-) -> Result<JsonOutput, Box<dyn Error>> {
+) -> std::result::Result<JsonOutput, Box<dyn Error>> {
+    // Create a default output structure
     let mut output = JsonOutput {
         file_nm: String::new(),
         md5: String::new(),
@@ -370,39 +471,47 @@ fn validate_entry(
         az_name: String::new(),
         hostname: String::new(),
     };
-    let mut az_id = entry["az_id"]
+    
+    // Extract required fields from JSON
+    let az_id = entry["az_id"]
         .as_str()
-        .ok_or("az_id missing in input json")
-        .unwrap();
+        .ok_or_else(|| Box::<dyn Error>::from("az_id missing in input json"))?;
+        
     let file_nm = entry["file_nm"]
         .as_str()
-        .ok_or("file_nm missing in input json")
-        .unwrap();
-    let mut az_name = entry["az_name"]
+        .ok_or_else(|| Box::<dyn Error>::from("file_nm missing in input json"))?;
+        
+    let az_name = entry["az_name"]
         .as_str()
-        .ok_or("az_name missing in input json")
-        .unwrap();
+        .ok_or_else(|| Box::<dyn Error>::from("az_name missing in input json"))?;
 
-    let rt = Runtime::new().unwrap();
-    let secret_value = rt.block_on(get_secret_value(az_name, client)).unwrap();
+    // Create runtime and get secret from Azure
+    let rt = Runtime::new()
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to create runtime: {}", e)))?;
+        
+    let secret_value = rt.block_on(get_secret_value(az_name, client))?;
 
-    az_name = &secret_value.name;
-    let az_create = secret_value.created.to_string();
-    let az_updated = secret_value.updated.to_string();
-
-    let md5 = calculate_md5(&secret_value.value);
+    // Calculate MD5 checksums
+    let azure_md5 = calculate_md5(&secret_value.value);
+    
+    // Read local file and calculate MD5
     let md5_of_file = match fs::read_to_string(file_nm) {
         Ok(content) => calculate_md5(&content),
-        Err(_) => {
-            eprintln!("Error reading file to calculate md5: {}", file_nm);
+        Err(e) => {
+            eprintln!("Error reading file to calculate md5: {} - {}", file_nm, e);
+            // Return early with empty output if file can't be read
             return Ok(output);
         }
     };
-    if md5 != md5_of_file {
+    
+    // Compare checksums
+    if azure_md5 != md5_of_file {
         eprintln!("MD5 mismatch for file: {}", file_nm);
     } else if args.verbose {
         println!("MD5 match for file: {}", file_nm);
     }
+    
+    // Compare Azure IDs
     if az_id != secret_value.id {
         eprintln!(
             "Azure ID mismatch: id from azure {}, id from file {}",
@@ -412,73 +521,108 @@ fn validate_entry(
         println!("Azure ID match for file: {}", file_nm);
     }
 
-    az_id = &secret_value.id;
+    // Get current timestamp
     let start = SystemTime::now();
-    let duration = start.duration_since(UNIX_EPOCH).unwrap();
+    let duration = start.duration_since(UNIX_EPOCH)
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to get timestamp: {}", e)))?;
+    
     let datetime_utc = Utc
         .timestamp_opt(duration.as_secs() as i64, duration.subsec_nanos())
         .single()
-        .unwrap();
+        .ok_or_else(|| Box::<dyn Error>::from("Failed to create DateTime from timestamp"))?;
+        
     let datetime_local: DateTime<Local> = datetime_utc.with_timezone(&Local);
     let formatted_date = datetime_local.to_rfc3339();
 
-    let hostname = hostname::get().unwrap().into_string().unwrap();
+    // Get hostname
+    let hostname = hostname::get()
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to get hostname: {}", e)))?
+        .into_string()
+        .map_err(|_| Box::<dyn Error>::from("Hostname contains non-UTF8 characters"))?;
 
+    // Create output structure
     output = JsonOutput {
         file_nm: file_nm.to_string(),
-        md5,
+        md5: azure_md5,
         ins_ts: formatted_date,
-        az_id: az_id.to_string(),
-        az_create,
-        az_updated,
-        az_name: az_name.to_string(),
+        az_id: secret_value.id.to_string(),
+        az_create: secret_value.created.to_string(),
+        az_updated: secret_value.updated.to_string(),
+        az_name: secret_value.name.to_string(),
         hostname,
     };
 
     Ok(output)
 }
 
-fn write_json_output(input: &Vec<JsonOutput>, output_file: &str) {
+/// Writes JSON output to a file
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Unable to open the output file
+/// - JSON serialization fails
+/// - Unable to write to the file
+fn write_json_output(input: &[JsonOutput], output_file: &str) -> std::result::Result<(), Box<dyn Error>> {
     let mut file = fs::OpenOptions::new()
         .create(true)
-        // .append(false)
         .write(true)
         .truncate(true)
         .open(output_file)
-        .unwrap();
-    // let json = serde_json::to_string(&input).unwrap();
-    let json = serde_json::to_string_pretty(&input).unwrap();
-    file.write_all(json.as_bytes()).unwrap();
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to open output file '{}': {}", output_file, e)))?;
+    
+    let json = serde_json::to_string_pretty(input)
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to serialize JSON: {}", e)))?;
+    
+    file.write_all(json.as_bytes())
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to write JSON to file: {}", e)))?;
+    
+    Ok(())
 }
 
+/// Retrieves a secret from Azure KeyVault
+///
+/// # Errors
+///
+/// Returns an error if the Azure API call fails
 async fn get_secret_value(
     secret_name: &str,
     kv_client: &SecretClient,
-) -> Result<SetSecretResponse, Box<dyn Error>> {
-    let secret = kv_client.get(secret_name).await.unwrap();
-    // dbg!(&secret);
+) -> std::result::Result<SetSecretResponse, Box<dyn Error>> {
+    let secret = kv_client.get(secret_name).await
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to get secret '{}': {}", secret_name, e)))?;
 
     let created = secret.attributes.created_on;
     let updated = secret.attributes.updated_on;
     let id = secret.id;
-    let name = secret_name;
 
     Ok(SetSecretResponse {
         created,
         updated,
-        name: name.to_string(),
+        name: secret_name.to_string(),
         id: id.to_string(),
         value: secret.value,
     })
 }
 
+/// Sets a secret value in Azure KeyVault
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The secret set operation fails
+/// - Retrieving the secret after setting fails
 async fn set_secret_value(
     secret_name: &str,
     kv_client: &SecretClient,
     secret_value: &str,
-) -> Result<SetSecretResponse, Box<dyn Error>> {
-    kv_client.set(secret_name, secret_value).await.unwrap();
-    Ok(get_secret_value(secret_name, kv_client).await.unwrap())
+) -> std::result::Result<SetSecretResponse, Box<dyn Error>> {
+    // Set the secret in KeyVault
+    kv_client.set(secret_name, secret_value).await
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to set secret '{}': {}", secret_name, e)))?;
+    
+    // Get the secret we just set to return its details
+    get_secret_value(secret_name, kv_client).await
 }
 
 fn calculate_md5(content: &str) -> String {
@@ -487,32 +631,58 @@ fn calculate_md5(content: &str) -> String {
     format!("{:x}", hasher.finalize())
 }
 
+/// Get a KeyVault secret client for Azure operations
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Unable to read the client secret file
+/// - Unable to parse the authority URL
+/// - Unable to create the KeyVault client
 fn get_keyvault_secret_client(
     client_id: &str,
     client_secret: &PathBuf,
     tenant_id: &str,
-    kev_vault_name: &str,
-) -> SecretClient {
+    key_vault_name: &str,
+) -> std::result::Result<SecretClient, Box<dyn Error>> {
+    // Read client secret from file
     let mut secret = String::new();
-    let mut file = File::open(client_secret).unwrap();
-    file.read_to_string(&mut secret).unwrap();
-    // remove newlines from secret
+    let mut file = File::open(client_secret)
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to open client secret file: {}", e)))?;
+    
+    file.read_to_string(&mut secret)
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to read client secret: {}", e)))?;
+    
+    // Remove newlines from secret
     secret = secret.trim().to_string();
 
+    // Create HTTP client and Azure authority URL
     let http_client = Arc::new(Client::new());
-    let authority_host = Url::parse("https://login.microsoftonline.com/").unwrap();
+    let authority_host = Url::parse("https://login.microsoftonline.com/")
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to parse authority URL: {}", e)))?;
+    
+    // Create credential for Azure
     let credential = Arc::new(ClientSecretCredential::new(
         http_client,
         authority_host,
         tenant_id.to_string(),
         client_id.to_string(),
-        secret.to_string(),
+        secret,
     ));
-    KeyvaultClient::new(kev_vault_name, credential)
-        .unwrap()
-        .secret_client()
+    
+    // Create KeyVault client
+    let keyvault_client = KeyvaultClient::new(key_vault_name, credential)
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to create KeyVault client: {}", e)))?;
+    
+    Ok(keyvault_client.secret_client())
 }
 
-fn get_content_from_file(file_path: &str) -> String {
-    fs::read_to_string(file_path).unwrap()
+/// Read content from a file 
+///
+/// # Errors
+///
+/// Returns an error if the file cannot be read
+fn get_content_from_file(file_path: &str) -> std::result::Result<String, Box<dyn Error>> {
+    fs::read_to_string(file_path)
+        .map_err(|e| Box::<dyn Error>::from(format!("Failed to read file '{}': {}", file_path, e)))
 }
