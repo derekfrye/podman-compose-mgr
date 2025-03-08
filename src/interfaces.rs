@@ -1,7 +1,9 @@
 use crate::read_val::{GrammarFragment, ReadValResult};
+use mockall::automock;
 use std::path::Path;
 
 /// Interface for command-related functions to facilitate testing
+#[automock]
 pub trait CommandHelper {
     fn exec_cmd(&self, cmd: &str, args: Vec<String>);
     fn pull_base_image(&self, dockerfile: &Path) -> Result<(), Box<dyn std::error::Error>>;
@@ -10,6 +12,7 @@ pub trait CommandHelper {
 }
 
 /// Interface for read_val-related functions to facilitate testing
+#[automock]
 pub trait ReadValHelper {
     fn read_val_from_cmd_line_and_proceed(
         &self,

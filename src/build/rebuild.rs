@@ -19,14 +19,14 @@ pub struct Image {
     pub skipall_by_this_name: bool,
 }
 
-pub struct RebuildManager<'a> {
+pub struct RebuildManager<'a, C: CommandHelper, R: ReadValHelper> {
     images_checked: Vec<Image>,
-    cmd_helper: &'a dyn CommandHelper,
-    read_val_helper: &'a dyn ReadValHelper,
+    cmd_helper: &'a C,
+    read_val_helper: &'a R,
 }
 
-impl<'a> RebuildManager<'a> {
-    pub fn new(cmd_helper: &'a dyn CommandHelper, read_val_helper: &'a dyn ReadValHelper) -> Self {
+impl<'a, C: CommandHelper, R: ReadValHelper> RebuildManager<'a, C, R> {
+    pub fn new(cmd_helper: &'a C, read_val_helper: &'a R) -> Self {
         Self {
             images_checked: Vec::new(),
             cmd_helper,

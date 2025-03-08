@@ -1,4 +1,5 @@
 pub mod args;
+#[allow(clippy::module_inception)]
 pub mod build {
     pub mod build;
     pub mod rebuild;

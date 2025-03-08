@@ -21,10 +21,10 @@ pub fn walk_dirs(args: &Args) {
 }
 
 /// Version of walk_dirs that accepts dependency injection for testing
-pub fn walk_dirs_with_helpers(
+pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadValHelper>(
     args: &Args,
-    cmd_helper: &dyn CommandHelper,
-    read_val_helper: &dyn ReadValHelper,
+    cmd_helper: &C,
+    read_val_helper: &R,
 ) {
     let mut exclude_patterns = Vec::new();
     let mut include_patterns = Vec::new();
@@ -50,7 +50,7 @@ pub fn walk_dirs_with_helpers(
         println!("Rebuild images in path: {}", args.path.display());
     }
 
-    let mut manager: Option<RebuildManager> = Some(build::rebuild::RebuildManager::new(
+    let mut manager = Some(build::rebuild::RebuildManager::new(
         cmd_helper,
         read_val_helper,
     ));
@@ -87,7 +87,7 @@ pub fn walk_dirs_with_helpers(
     }
 }
 
-fn drop_mgr(manager: &mut Option<RebuildManager>) {
+fn drop_mgr<C: CommandHelper, R: ReadValHelper>(manager: &mut Option<RebuildManager<'_, C, R>>) {
     if let Some(manager) = manager.take() {
         mem::drop(manager);
     }
