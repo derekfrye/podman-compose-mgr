@@ -14,6 +14,14 @@ pub trait CommandHelper {
 /// Interface for read_val-related functions to facilitate testing
 #[automock]
 pub trait ReadValHelper {
+    /// Read a value from the command line
+    ///
+    /// # Arguments
+    /// * `grammars` - The grammar fragments to display in the prompt
+    /// * `size` - Optional override for terminal width
+    ///
+    /// # Returns
+    /// ReadValResult containing the user's input
     fn read_val_from_cmd_line_and_proceed(
         &self,
         grammars: &mut [GrammarFragment],

@@ -162,7 +162,7 @@ pub fn read_val_from_cmd_line_and_proceed_default(
     read_val_from_cmd_line_and_proceed(grammars, &cmd_helper)
 }
 
-/// Implementation with dependency injection for the CommandHelper trait
+/// Implementation with dependency injection for the CommandHelper trait. Keep in sync with testing code.
 pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
     grammars: &mut [GrammarFragment],
     cmd_helper: &C,
@@ -178,10 +178,13 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
     let term_width = cmd_helper.get_terminal_display_width(size);
     do_prompt_formatting(grammars, term_width);
 
-    // prepare the prompt, this might go to stdout, or we have to flush first
-    print_fn(&unroll_grammar_into_string(grammars, false, true));
+    // Get the formatted prompt string
+    let prompt_string = unroll_grammar_into_string(grammars, false, true);
+    
+    // Print the prompt using the provided print function
+    print_fn(&prompt_string);
 
-    // what were the available choices someone could've made
+    // What were the available choices someone could've made
     let user_choices: HashSet<String> = grammars
         .iter()
         .filter(|x| x.grammar_type == GrammarType::UserChoice)
@@ -207,7 +210,7 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
             break;
         } else {
             eprintln!("Invalid input '{}'. Please try again.", input);
-            print_fn(&unroll_grammar_into_string(grammars, false, true));
+            print_fn(&prompt_string);
         }
     }
 

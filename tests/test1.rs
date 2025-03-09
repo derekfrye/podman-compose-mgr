@@ -54,10 +54,26 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
 
     read_val_helper
         .expect_read_val_from_cmd_line_and_proceed()
-        .returning(|grammars, size| {
-            // Format the prompt to test
-            let prompt = format!("Width: {:?}, Grammar items: {}", size, grammars.len());
-            println!("Mock read_val called: {}", prompt);
+        .returning(|grammars, _size| {
+            // Print information about what's being called
+            // println!("Read val called with width: {:?}, grammar items: {}", size, grammars.len());
+            
+            // Create a copy of the grammars to format using the actual formatting functions
+            let mut grammars_copy = grammars.to_vec();
+            
+            // Run the actual formatting logic used in production and print the result
+            // Use explicit width instead of MockCommandHelper for test_format_prompt
+            // to avoid having to set up more expectations
+            let _ = podman_compose_mgr::read_val::do_prompt_formatting(
+                &mut grammars_copy, 
+                60
+            );
+            let formatted = podman_compose_mgr::read_val::unroll_grammar_into_string(
+                &grammars_copy, 
+                false, 
+                true
+            );
+            println!("prompt (width 60): {}", formatted);
 
             // Return a result with "N" as user input
             ReadValResult {
@@ -88,10 +104,26 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
     let mut read_val_helper = MockReadValHelper::new();
     read_val_helper
         .expect_read_val_from_cmd_line_and_proceed()
-        .returning(|grammars, size| {
-            // Format the prompt to test
-            let prompt = format!("Width: {:?}, Grammar items: {}", size, grammars.len());
-            println!("Mock read_val called (width 40): {}", prompt);
+        .returning(|grammars, _size| {
+            // Print information about what's being called
+            // println!("Read val called with width: {:?}, grammar items: {}", size, grammars.len());
+            
+            // Create a copy of the grammars to format using the actual formatting functions
+            let mut grammars_copy = grammars.to_vec();
+            
+            // Run the actual formatting logic used in production and print the result
+            // Use explicit width instead of MockCommandHelper for test_format_prompt
+            // to avoid having to set up more expectations
+            let _ = podman_compose_mgr::read_val::do_prompt_formatting(
+                &mut grammars_copy, 
+                40
+            );
+            let formatted = podman_compose_mgr::read_val::unroll_grammar_into_string(
+                &grammars_copy, 
+                false, 
+                true
+            );
+            println!("prompt (width 40): {}", formatted);
 
             // Return a result with "N" as user input
             ReadValResult {
