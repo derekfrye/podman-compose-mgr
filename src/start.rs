@@ -96,9 +96,9 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadValHelper>(
             if !exclude_patterns.is_empty() 
                 && exclude_patterns.iter().any(|pattern| pattern.is_match(entry_path_str)) 
             {
-                if args.verbose {
-                    println!("Excluding path due to exclude pattern: {}", entry_path_str);
-                }
+                // if args.verbose {
+                //     println!("Excluding path due to exclude pattern: {}", entry_path_str);
+                // }
                 continue;
             }
             
