@@ -37,38 +37,98 @@ pub fn walk_dirs(args: &Args) {
     }
 }
 
+/// Compile regex patterns from strings
+fn compile_patterns(
+    patterns: &[String],
+    verbose: bool,
+    pattern_type: &str
+) -> Result<Vec<Regex>, StartError> {
+    let mut compiled_patterns = Vec::new();
+    
+    if !patterns.is_empty() {
+        if verbose {
+            println!("{} paths: {:?}", pattern_type, patterns);
+        }
+        
+        for pattern in patterns {
+            let regex = Regex::new(pattern)?;
+            compiled_patterns.push(regex);
+        }
+    }
+    
+    Ok(compiled_patterns)
+}
+
+/// Check if a path should be included based on patterns
+fn should_include_path(
+    path: &str,
+    exclude_patterns: &[Regex],
+    include_patterns: &[Regex],
+    verbose: bool
+) -> bool {
+    // Check exclude patterns - skip if any match
+    if !exclude_patterns.is_empty() 
+        && exclude_patterns.iter().any(|pattern| pattern.is_match(path)) 
+    {
+        return false;
+    }
+    
+    // Check include patterns - skip if none match
+    if !include_patterns.is_empty() 
+        && include_patterns.iter().all(|pattern| !pattern.is_match(path)) 
+    {
+        if verbose {
+            println!("Skipping path as it doesn't match any include pattern: {}", path);
+        }
+        return false;
+    }
+    
+    true
+}
+
+/// Process a docker-compose.yml file based on mode
+fn process_compose_file<C: CommandHelper, R: ReadValHelper>(
+    entry: &walkdir::DirEntry,
+    entry_path_str: &str,
+    args: &Args,
+    manager: &mut Option<RebuildManager<'_, C, R>>
+) -> Result<(), StartError> {
+    match args.mode {
+        args::Mode::Rebuild => {
+            if let Some(mgr) = manager {
+                if let Err(e) = mgr.rebuild(entry, args) {
+                    eprintln!("Error rebuilding from {}: {}", entry_path_str, e);
+                }
+            }
+        }
+        args::Mode::RestartSvcs => {
+            drop_mgr(manager);
+            match restartsvcs::restart_services(args) {
+                Ok(_) => {
+                    if args.verbose {
+                        println!("Services restarted successfully");
+                    }
+                },
+                Err(e) => {
+                    eprintln!("Error restarting services: {}", e);
+                }
+            }
+        }
+        _ => {}
+    }
+    
+    Ok(())
+}
+
 /// Version of walk_dirs that accepts dependency injection for testing
 pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadValHelper>(
     args: &Args,
     cmd_helper: &C,
     read_val_helper: &R,
 ) -> Result<(), StartError> {
-    let mut exclude_patterns = Vec::new();
-    let mut include_patterns = Vec::new();
-
-    // Compile exclude patterns
-    if !args.exclude_path_patterns.is_empty() {
-        if args.verbose {
-            println!("Excluding paths: {:?}", args.exclude_path_patterns);
-        }
-        
-        for pattern in &args.exclude_path_patterns {
-            let regex = Regex::new(pattern)?;
-            exclude_patterns.push(regex);
-        }
-    }
-    
-    // Compile include patterns
-    if !args.include_path_patterns.is_empty() {
-        if args.verbose {
-            println!("Including paths: {:?}", args.include_path_patterns);
-        }
-        
-        for pattern in &args.include_path_patterns {
-            let regex = Regex::new(pattern)?;
-            include_patterns.push(regex);
-        }
-    }
+    // Compile patterns
+    let exclude_patterns = compile_patterns(&args.exclude_path_patterns, args.verbose, "Excluding")?;
+    let include_patterns = compile_patterns(&args.include_path_patterns, args.verbose, "Including")?;
 
     if args.verbose {
         println!("Rebuild images in path: {}", args.path.display());
@@ -92,50 +152,13 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadValHelper>(
                 }
             };
             
-            // Check exclude patterns - skip if any match
-            if !exclude_patterns.is_empty() 
-                && exclude_patterns.iter().any(|pattern| pattern.is_match(entry_path_str)) 
-            {
-                // if args.verbose {
-                //     println!("Excluding path due to exclude pattern: {}", entry_path_str);
-                // }
+            // Check if this path should be included
+            if !should_include_path(entry_path_str, &exclude_patterns, &include_patterns, args.verbose) {
                 continue;
             }
             
-            // Check include patterns - skip if none match
-            if !include_patterns.is_empty() 
-                && include_patterns.iter().all(|pattern| !pattern.is_match(entry_path_str)) 
-            {
-                if args.verbose {
-                    println!("Skipping path as it doesn't match any include pattern: {}", entry_path_str);
-                }
-                continue;
-            }
-            
-            // Process according to mode
-            match args.mode {
-                args::Mode::Rebuild => {
-                    if let Some(ref mut mgr) = manager {
-                        if let Err(e) = mgr.rebuild(&entry, args) {
-                            eprintln!("Error rebuilding from {}: {}", entry_path_str, e);
-                        }
-                    }
-                }
-                args::Mode::RestartSvcs => {
-                    drop_mgr(&mut manager);
-                    match restartsvcs::restart_services(args) {
-                        Ok(_) => {
-                            if args.verbose {
-                                println!("Services restarted successfully");
-                            }
-                        },
-                        Err(e) => {
-                            eprintln!("Error restarting services: {}", e);
-                        }
-                    }
-                }
-                _ => {}
-            }
+            // Process the file
+            process_compose_file(&entry, entry_path_str, args, &mut manager)?;
         }
     }
     

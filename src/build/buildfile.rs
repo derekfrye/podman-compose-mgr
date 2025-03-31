@@ -68,130 +68,145 @@ pub fn start(dir: &DirEntry, custom_img_nm: &str, build_args: Vec<&str>)-> Resul
     Ok(())
 }
 
-fn read_val_loop(files: Vec<BuildFile>) -> WhatWereBuilding {
+fn setup_prompts(files: &[BuildFile]) -> (Vec<GrammarFragment>, Vec<&str>, bool) {
     let mut prompt_grammars: Vec<GrammarFragment> = vec![];
     let mut user_choices: Vec<&str> = vec![];
-
-    let buildfile = files[0].clone();
+    
+    let buildfile = &files[0];
     let are_there_multiple_files = files
         .iter()
         .filter(|x| x.filepath.is_some())
-        .collect::<Vec<_>>()
-        .len()
-        > 1;
-
+        .count() > 1;
+    
     if are_there_multiple_files {
         let grm1 = GrammarFragment {
             original_val_for_prompt: Some("Prefer Dockerfile or Makefile?".to_string()),
             ..Default::default()
         };
         prompt_grammars.push(grm1);
-
+        
         user_choices = vec!["D", "M", "d", "?"];
         prompt_grammars.extend(make_choice_grammar(
             &user_choices,
             prompt_grammars.len() as u8,
         ));
     } else if buildfile.link_target_dir.is_some() {
-        let t = make_build_prompt_grammar(&buildfile);
+        let t = make_build_prompt_grammar(buildfile);
         user_choices = vec!["1", "2", "d", "?"];
         prompt_grammars.extend(make_choice_grammar(&user_choices, t.len() as u8));
     }
+    
+    (prompt_grammars, user_choices, are_there_multiple_files)
+}
 
+fn handle_display_info(files: &[BuildFile], buildfile: &BuildFile, user_choices: &[&str], are_there_multiple_files: bool) {
+    // Show Dockerfile and Makefile paths
+    for f in files.iter().filter(|f| f.filetype == BuildChoice::Dockerfile) {
+        let dockerfile = &f.filepath.as_ref().unwrap().to_str().unwrap();
+        println!("Dockerfile: {}", dockerfile);
+    }
+    for f in files.iter().filter(|f| f.filetype == BuildChoice::Makefile) {
+        let makefile = &f.filepath.as_ref().unwrap().to_str().unwrap();
+        println!("Makefile: {}", makefile);
+    }
+    
+    println!("Choices:");
+    
+    if are_there_multiple_files
+        && !user_choices.is_empty()
+        && user_choices.iter().any(|f| *f == "D")
+        && user_choices.iter().any(|f| *f == "M")
+    {
+        println!("D = Build an image from a Dockerfile.");
+        println!("M = Execute `make` on a Makefile.");
+    } else {
+        if buildfile.link_target_dir.is_some() {
+            let location1 = match buildfile.link_target_dir.as_ref().unwrap().parent() {
+                Some(parent) => parent.display().to_string(),
+                None => buildfile
+                    .link_target_dir
+                    .as_ref()
+                    .unwrap()
+                    .display()
+                    .to_string(),
+            };
+            println!("1 = Set build working dir to:\n\t{}", location1);
+        }
+        
+        let location2 = buildfile.parent_dir.display();
+        println!("2 = Set build working dir to:\n\t{}", location2);
+    }
+    println!("d = Display info about Dockerfile and/or Makefile.");
+    println!("? = Display this help.");
+}
+
+fn handle_file_type_choice<'a>(files: &[BuildFile], choice: &str, buildfile: &BuildFile) -> Option<(BuildFile, Vec<GrammarFragment>, Vec<&'a str>)> {
+    if files.len() > 1 {
+        // Find the file matching the chosen type
+        let chosen_file = files
+            .iter()
+            .find(|x| {
+                x.filetype
+                    == (match choice {
+                        "M" => BuildChoice::Makefile,
+                        _ => BuildChoice::Dockerfile,
+                    })
+            })
+            .unwrap()
+            .clone();
+            
+        // Setup prompts for working directory choice
+        let prompt_grammars = make_build_prompt_grammar(buildfile);
+        let user_choices = vec!["1", "2", "d", "?"];
+        
+        Some((chosen_file, prompt_grammars, user_choices))
+    } else {
+        eprintln!(
+            "No {} found at '{}'",
+            match choice {
+                "M" => "Makefile",
+                _ => "Dockerfile",
+            },
+            buildfile.parent_dir.display()
+        );
+        None
+    }
+}
+
+fn read_val_loop(files: Vec<BuildFile>) -> WhatWereBuilding {
+    let buildfile = files[0].clone();
+    let (mut prompt_grammars, mut user_choices, are_there_multiple_files) = setup_prompts(&files);
+    
     let mut choice_of_where_to_build: WhatWereBuilding = WhatWereBuilding {
         file: buildfile.clone(),
         follow_link: false,
     };
-
+    
     if !prompt_grammars.is_empty() {
         loop {
-            let z =
-                crate::read_val::read_val_from_cmd_line_and_proceed_default(&mut prompt_grammars);
+            let z = crate::read_val::read_val_from_cmd_line_and_proceed_default(&mut prompt_grammars);
             if let Some(t) = z.user_entered_val {
                 match t.as_str() {
-                    // only set back up near line 95, if both Makefile and Dockerfile exist in dir
-                    // and here, user picked D for Dockerfile
+                    // Handle Dockerfile or Makefile choice
                     "D" | "M" => {
-                        if files.len() > 1 {
-                            choice_of_where_to_build.file = files
-                                .iter()
-                                .find(|x| {
-                                    x.filetype
-                                        == (match t.as_str() {
-                                            "M" => BuildChoice::Makefile,
-                                            _ => BuildChoice::Dockerfile,
-                                        })
-                                })
-                                .unwrap()
-                                .clone();
-                            // but now we need to figure out if they want to set build dir to link's dir, or target of link
-                            prompt_grammars = make_build_prompt_grammar(&buildfile);
-                            user_choices = vec!["1", "2", "d", "?"];
-
-                            prompt_grammars
-                                .extend(make_choice_grammar(&user_choices, t.len() as u8));
-                        } else {
-                            eprintln!(
-                                "No {} found at '{}'",
-                                match t.as_str() {
-                                    "M" => "Makefile",
-                                    _ => "Dockerfile",
-                                },
-                                buildfile.parent_dir.display()
-                            );
+                        if let Some((chosen_file, new_prompts, new_choices)) = 
+                            handle_file_type_choice(&files, t.as_str(), &buildfile) {
+                            choice_of_where_to_build.file = chosen_file;
+                            prompt_grammars = new_prompts;
+                            user_choices = new_choices;
+                            prompt_grammars.extend(make_choice_grammar(&user_choices, t.len() as u8));
                         }
                     }
-                    // print details / explanation
+                    // Display help or info
                     "d" | "?" => {
-                        // only show this prompt if we haven't already narrowed down the build choice
-                        for f in files
-                            .iter()
-                            .filter(|f| f.filetype == BuildChoice::Dockerfile)
-                        {
-                            let dockerfile = &f.filepath.as_ref().unwrap().to_str().unwrap();
-                            println!("Dockerfile: {}", dockerfile);
-                        }
-                        for f in files.iter().filter(|f| f.filetype == BuildChoice::Makefile) {
-                            let makefile = &f.filepath.as_ref().unwrap().to_str().unwrap();
-                            println!("Makefile: {}", makefile);
-                        }
-
-                        println!("Choices:");
-
-                        if are_there_multiple_files
-                            && !user_choices.is_empty()
-                            && user_choices.iter().any(|f| *f == "D")
-                            && user_choices.iter().any(|f| *f == "M")
-                        {
-                            println!("D = Build an image from a Dockerfile.");
-                            println!("M = Execute `make` on a Makefile.");
-                        } else {
-                            if buildfile.link_target_dir.is_some() {
-                                let location1 =
-                                    match buildfile.link_target_dir.as_ref().unwrap().parent() {
-                                        Some(parent) => parent.display().to_string(),
-                                        None => buildfile
-                                            .link_target_dir
-                                            .as_ref()
-                                            .unwrap()
-                                            .display()
-                                            .to_string(),
-                                    };
-                                println!("1 = Set build working dir to:\n\t{}", location1);
-                            }
-
-                            let location2 = buildfile.parent_dir.display();
-                            println!("2 = Set build working dir to:\n\t{}", location2);
-                        }
-                        println!("d = Display info about Dockerfile and/or Makefile.");
-                        println!("? = Display this help.");
+                        handle_display_info(&files, &buildfile, &user_choices, are_there_multiple_files);
                     }
-                    // building at link target
+                    // Building at link target
                     "1" => {
                         choice_of_where_to_build.follow_link = true;
                         break;
                     }
-                    // building in dir symlink lives, not link target
+                    // Building in dir symlink lives, not link target
                     "2" => {
                         choice_of_where_to_build.follow_link = false;
                         break;
@@ -203,7 +218,7 @@ fn read_val_loop(files: Vec<BuildFile>) -> WhatWereBuilding {
             }
         }
     }
-
+    
     choice_of_where_to_build
 }
 
@@ -346,57 +361,58 @@ fn find_buildfile(
     buildfiles
 }
 
+fn build_dockerfile_image(build_config: &WhatWereBuilding) -> Result<(), BuildfileError> {
+    let _ = cmd::pull_base_image(build_config.file.filepath.as_ref().unwrap());
+    
+    let dockerfile_path = build_config
+        .file
+        .filepath
+        .as_ref()
+        .unwrap()
+        .to_str()
+        .unwrap();
+        
+    let mut podman_args = vec![
+        "build",
+        "-t",
+        build_config.file.custom_img_nm.as_ref().unwrap(),
+        "-f",
+        dockerfile_path,
+    ];
+    
+    // Add build args
+    for arg in build_config.file.build_args.iter() {
+        podman_args.push("--build-arg");
+        podman_args.push(arg);
+    }
+    
+    podman_args.push(build_config.file.parent_dir.to_str().unwrap());
+    
+    cmd::exec_cmd("podman", &podman_args[..]).map_err(BuildfileError::from)
+}
+
+fn build_makefile_image(build_config: &WhatWereBuilding) -> Result<(), BuildfileError> {
+    let chg_dir = if build_config.follow_link {
+        build_config
+            .file
+            .link_target_dir
+            .as_ref()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_str()
+            .unwrap()
+    } else {
+        build_config.file.parent_dir.to_str().unwrap()
+    };
+    
+    cmd::exec_cmd("make", &["-C", chg_dir, "clean"])?;
+    Ok(cmd::exec_cmd("make", &["-C", chg_dir])?)
+}
+
 fn build_image_from_spec(build_config: WhatWereBuilding) -> Result<(), BuildfileError> {
     match build_config.file.filetype {
-        BuildChoice::Dockerfile => {
-            let _ = cmd::pull_base_image(build_config.file.filepath.as_ref().unwrap());
-
-            let dockerfile_path = build_config
-                .file
-                .filepath
-                .as_ref()
-                .unwrap()
-                .to_str()
-                .unwrap();
-
-            let mut podman_args = vec![
-                "build",
-                "-t",
-                build_config.file.custom_img_nm.as_ref().unwrap(),
-                "-f",
-                dockerfile_path,
-            ];
-
-            // podman_args.push("--build-context=");
-            // let build_context = format!(".:{}", dockerfile_dir.to_str().unwrap());
-            // podman_args.push(&build_context);
-
-            for arg in build_config.file.build_args.iter() {
-                podman_args.push("--build-arg");
-                podman_args.push(arg);
-            }
-
-            podman_args.push(build_config.file.parent_dir.to_str().unwrap());
-
-           Ok( cmd::exec_cmd("podman", &podman_args[..]).map_err(BuildfileError::from)?)
-        }
-        BuildChoice::Makefile => {
-            let chg_dir = if build_config.follow_link {
-                build_config
-                    .file
-                    .link_target_dir
-                    .as_ref()
-                    .unwrap()
-                    .parent()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-            } else {
-                build_config.file.parent_dir.to_str().unwrap()
-            };
-
-            cmd::exec_cmd("make", &["-C", chg_dir, "clean"])?;
-            Ok(cmd::exec_cmd("make", &["-C", chg_dir])?)
-        }
+        BuildChoice::Dockerfile => build_dockerfile_image(&build_config),
+        BuildChoice::Makefile => build_makefile_image(&build_config),
     }
 }
