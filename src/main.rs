@@ -1,8 +1,9 @@
 use podman_compose_mgr::{
     args::{self},
-    secrets,
-    start::walk_dirs,
+    compose_finder::walk_dirs,
 };
+use podman_compose_mgr::secrets::azure;
+use podman_compose_mgr::secrets::validation;
 
 // use futures::executor;
 use std::io;
@@ -17,12 +18,12 @@ fn main() -> io::Result<()> {
 
     match args.mode {
         args::Mode::SecretRefresh => {
-            if let Err(e) = secrets::update_mode(&args) {
+            if let Err(e) = azure::update_mode(&args) {
                 eprintln!("Error refreshing secrets: {}", e);
             }
         }
         args::Mode::SecretRetrieve => {
-            if let Err(e) = secrets::validate(&args) {
+            if let Err(e) = validation::validate(&args) {
                 eprintln!("Error retrieving secrets: {}", e);
             }
         }

@@ -2,7 +2,7 @@ use std::fs::{self};
 
 use podman_compose_mgr::interfaces::{MockCommandHelper, MockReadValHelper};
 use podman_compose_mgr::read_val::ReadValResult;
-use podman_compose_mgr::start::walk_dirs_with_helpers;
+use podman_compose_mgr::compose_finder::walk_dirs_with_helpers;
 
 use clap::Parser;
 use podman_compose_mgr::Args;

@@ -1,17 +1,19 @@
 use crate::args::Args;
-use crate::read_val::{self, GrammarFragment, GrammarType};
+use crate::read_val::{self, GrammarFragment};
 use crate::secrets::azure::{calculate_md5, get_content_from_file, get_keyvault_secret_client, get_secret_value};
 use crate::secrets::error::Result;
-use crate::secrets::models::{JsonOutput, JsonOutputControl};
+use crate::secrets::models::{JsonOutput, JsonOutputControl, SetSecretResponse};
+use crate::secrets::prompt::{setup_validation_prompt, display_validation_help};
+use crate::secrets::utils::{
+    extract_validation_fields, details_about_entry, get_current_timestamp, 
+    get_hostname, write_json_output
+};
 
 use azure_security_keyvault::SecretClient;
-use chrono::{DateTime, Local, TimeZone, Utc};
 use serde_json::Value;
 use std::fs::{self, File};
-use std::io::{Read, Write};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::io::Read;
 use tokio::runtime::Runtime;
-use time::OffsetDateTime;
 
 /// Validates secrets stored in Azure KeyVault against local files
 ///
@@ -155,6 +157,50 @@ fn write_validation_results(args: &Args, json_outputs: &[JsonOutput]) -> Result<
     Ok(())
 }
 
+/// Process user choice for validation
+fn process_validation_choice(
+    choice: &str,
+    entry: &Value,
+    client: &SecretClient,
+    args: &Args,
+    output_control: &mut JsonOutputControl
+) -> Result<bool> {
+    match choice {
+        // Display entry details
+        "d" => {
+            if let Err(e) = details_about_entry(entry) {
+                eprintln!("Error displaying entry details: {}", e);
+            }
+            Ok(false) // Continue the loop
+        }
+        // Validate entry
+        "v" => {
+            let validated_entry = validate_entry(entry.clone(), client, args)?;
+            output_control.json_output = validated_entry;
+            Ok(true) // Exit the loop
+        }
+        // Display help
+        "?" => {
+            display_validation_help();
+            Ok(false) // Continue the loop
+        }
+        // Validate all entries
+        "a" => {
+            output_control.validate_all = true;
+            Ok(false) // Continue the loop but will exit in the next iteration
+        }
+        // Skip this entry
+        "N" => {
+            Ok(true) // Exit the loop
+        }
+        // Invalid choice
+        _ => {
+            eprintln!("Invalid choice: {}", choice);
+            Ok(false) // Continue the loop
+        }
+    }
+}
+
 /// Interactive validation loop for a single entry
 pub fn read_val_loop(
     entry: Value,
@@ -167,213 +213,40 @@ pub fn read_val_loop(
     setup_validation_prompt(&mut grammars, &entry)?;
     
     loop {
+        // If validate_all flag is set, validate immediately
         if output_control.validate_all {
             let validated_entry = validate_entry(entry.clone(), client, args)?;
             output_control.json_output = validated_entry;
             break;
-        } else {
-            let result = read_val::read_val_from_cmd_line_and_proceed_default(&mut grammars);
+        }
+        
+        // Display prompt and get user input
+        let result = read_val::read_val_from_cmd_line_and_proceed_default(&mut grammars);
 
-            match result.user_entered_val {
-                None => {
+        match result.user_entered_val {
+            None => break, // Empty input
+            Some(user_entered_val) => {
+                // Process user choice and determine if we should exit the loop
+                let should_exit = process_validation_choice(
+                    &user_entered_val,
+                    &entry,
+                    client,
+                    args,
+                    &mut output_control
+                )?;
+                
+                if should_exit {
                     break;
                 }
-                Some(user_entered_val) => match user_entered_val.as_str() {
-                    "d" => {
-                        if let Err(e) = details_about_entry(&entry) {
-                            eprintln!("Error displaying entry details: {}", e);
-                        }
-                    }
-                    "v" => {
-                        let validated_entry = validate_entry(entry.clone(), client, args)?;
-                        output_control.json_output = validated_entry;
-                        break;
-                    }
-                    "?" => {
-                        display_validation_help();
-                    }
-                    "a" => {
-                        output_control.validate_all = true;
-                    }
-                    "N" => {
-                        break;
-                    }
-                    _ => {
-                        eprintln!("Invalid choice: {}", user_entered_val);
-                    }
-                },
             }
         }
     }
+    
     Ok(output_control)
 }
 
-/// Setup the interactive prompt for validation
-fn setup_validation_prompt(grammars: &mut Vec<GrammarFragment>, entry: &Value) -> Result<()> {
-    let static_prompt_grammar = GrammarFragment {
-        original_val_for_prompt: Some("Check".to_string()),
-        shortened_val_for_prompt: None,
-        pos: 0,
-        prefix: None,
-        suffix: Some(" ".to_string()),
-        grammar_type: GrammarType::Verbiage,
-        can_shorten: false,
-        display_at_all: true,
-    };
-    grammars.push(static_prompt_grammar);
-
-    let file_name = crate::utils::json_utils::extract_string_field(entry, "file_nm")?;
-
-    let file_nm_grammar = GrammarFragment {
-        original_val_for_prompt: Some(file_name.to_string()),
-        shortened_val_for_prompt: None,
-        pos: 1,
-        prefix: None,
-        suffix: Some("? ".to_string()),
-        grammar_type: GrammarType::FileName,
-        can_shorten: true,
-        display_at_all: true,
-    };
-    grammars.push(file_nm_grammar);
-
-    add_choice_options(grammars);
-    
-    Ok(())
-}
-
-/// Add user choice options to the prompt
-fn add_choice_options(grammars: &mut Vec<GrammarFragment>) {
-    let choices = ["d", "N", "v", "a", "?"];
-    for i in 0..choices.len() {
-        let mut choice_separator = Some("/".to_string());
-        if i == choices.len() - 1 {
-            choice_separator = Some(": ".to_string());
-        }
-        let choice_grammar = GrammarFragment {
-            original_val_for_prompt: Some(choices[i].to_string()),
-            shortened_val_for_prompt: None,
-            pos: (i + 2) as u8,
-            prefix: None,
-            suffix: choice_separator,
-            grammar_type: GrammarType::UserChoice,
-            can_shorten: false,
-            display_at_all: true,
-        };
-        grammars.push(choice_grammar);
-    }
-}
-
-/// Display help for validation options
-fn display_validation_help() {
-    println!("N = Do nothing, skip this secret.");
-    println!(
-        "d = Display info (file name, Azure KV name, upstream secret create date, and file name modify date)."
-    );
-    println!("v = Validate on-disk item matches the Azure Key Vault secret.");
-    println!("a = Validate all items.");
-    println!("? = Display this help.");
-}
-
-/// Display details about a validation entry
-fn details_about_entry(entry: &Value) -> Result<()> {
-    let file_nm = crate::utils::json_utils::extract_string_field(entry, "file_nm")?;
-    let az_name = crate::utils::json_utils::extract_string_field(entry, "az_name")?;
-    let az_create = crate::utils::json_utils::extract_string_field(entry, "az_create")?;
-    let az_updated = crate::utils::json_utils::extract_string_field(entry, "az_updated")?;
-
-    println!("File: {}", file_nm);
-    println!("Azure Key Vault Name: {}", az_name);
-
-    let datetime_entries = vec![
-        vec![az_create, "az create dt".to_string()],
-        vec![az_updated, "az update dt".to_string()],
-    ];
-
-    for entry in datetime_entries {
-        match entry[0].parse::<u64>() {
-            Ok(az_create) => {
-                println!(
-                    "{}: {:?}",
-                    entry[1],
-                    OffsetDateTime::from_unix_timestamp(az_create as i64)
-                );
-            }
-            Err(e) => {
-                eprintln!("{} parse error: {}", entry[1], entry[0]);
-                return Err(Box::<dyn std::error::Error>::from(format!(
-                    "Failed to parse timestamp: {}",
-                    e
-                )));
-            }
-        }
-    }
-    Ok(())
-}
-
-/// Validates an entry by checking MD5 checksums and Azure IDs
-///
-/// # Errors
-///
-/// Returns an error if:
-/// - Required fields are missing from the input JSON
-/// - Unable to create a runtime
-/// - Unable to retrieve the secret from Azure
-/// - Unable to get system time
-/// - Unable to get hostname
-pub fn validate_entry(
-    entry: Value,
-    client: &SecretClient,
-    args: &Args,
-) -> Result<JsonOutput> {
-    // Extract required fields
-    let (az_id, file_nm, az_name) = extract_validation_fields(&entry)?;
-    
-    // Get the secret from Azure KeyVault
-    let secret_value = get_secret_from_azure(az_name, client)?;
-    
-    // Validate checksums and IDs
-    validate_checksums(&file_nm, &secret_value.value, args)?;
-    validate_azure_ids(&az_id, &secret_value.id, args)?;
-    
-    // Create timestamp and get hostname
-    let formatted_date = get_current_timestamp()?;
-    let hostname = get_hostname()?;
-    
-    // Create and return output structure
-    Ok(JsonOutput {
-        file_nm,
-        md5: calculate_md5(&secret_value.value),
-        ins_ts: formatted_date,
-        az_id: secret_value.id.to_string(),
-        az_create: secret_value.created.to_string(),
-        az_updated: secret_value.updated.to_string(),
-        az_name: secret_value.name.to_string(),
-        hostname,
-    })
-}
-
-/// Extract required fields for validation
-fn extract_validation_fields(entry: &Value) -> Result<(String, String, String)> {
-    let az_id = entry["az_id"]
-        .as_str()
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("az_id missing in input json"))?
-        .to_string();
-        
-    let file_nm = entry["file_nm"]
-        .as_str()
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("file_nm missing in input json"))?
-        .to_string();
-        
-    let az_name = entry["az_name"]
-        .as_str()
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("az_name missing in input json"))?
-        .to_string();
-        
-    Ok((az_id, file_nm, az_name))
-}
-
 /// Get a secret from Azure KeyVault
-fn get_secret_from_azure(az_name: String, client: &SecretClient) -> Result<crate::secrets::models::SetSecretResponse> {
+fn get_secret_from_azure(az_name: String, client: &SecretClient) -> Result<SetSecretResponse> {
     let rt = Runtime::new()
         .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
         
@@ -416,50 +289,54 @@ fn validate_azure_ids(az_id: &str, secret_id: &str, args: &Args) -> Result<()> {
     Ok(())
 }
 
-/// Get current timestamp formatted as RFC3339
-fn get_current_timestamp() -> Result<String> {
-    let start = SystemTime::now();
-    let duration = start.duration_since(UNIX_EPOCH)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get timestamp: {}", e)))?;
-    
-    let datetime_utc = Utc
-        .timestamp_opt(duration.as_secs() as i64, duration.subsec_nanos())
-        .single()
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("Failed to create DateTime from timestamp"))?;
-        
-    let datetime_local: DateTime<Local> = datetime_utc.with_timezone(&Local);
-    Ok(datetime_local.to_rfc3339())
+/// Create output JSON structure from validation results
+fn create_validation_output(
+    file_nm: String,
+    secret_value: &SetSecretResponse,
+    formatted_date: String,
+    hostname: String,
+) -> JsonOutput {
+    JsonOutput {
+        file_nm,
+        md5: calculate_md5(&secret_value.value),
+        ins_ts: formatted_date,
+        az_id: secret_value.id.to_string(),
+        az_create: secret_value.created.to_string(),
+        az_updated: secret_value.updated.to_string(),
+        az_name: secret_value.name.to_string(),
+        hostname,
+    }
 }
 
-/// Get hostname of the current machine
-fn get_hostname() -> Result<String> {
-    hostname::get()
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get hostname: {}", e)))?
-        .into_string()
-        .map_err(|_| Box::<dyn std::error::Error>::from("Hostname contains non-UTF8 characters"))
-}
-
-/// Writes JSON output to a file
+/// Validates an entry by checking MD5 checksums and Azure IDs
 ///
 /// # Errors
 ///
 /// Returns an error if:
-/// - Unable to open the output file
-/// - JSON serialization fails
-/// - Unable to write to the file
-pub fn write_json_output(input: &[JsonOutput], output_file: &str) -> Result<()> {
-    let mut file = fs::OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(output_file)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to open output file '{}': {}", output_file, e)))?;
+/// - Required fields are missing from the input JSON
+/// - Unable to create a runtime
+/// - Unable to retrieve the secret from Azure
+/// - Unable to get system time
+/// - Unable to get hostname
+pub fn validate_entry(
+    entry: Value,
+    client: &SecretClient,
+    args: &Args,
+) -> Result<JsonOutput> {
+    // Extract required fields
+    let (az_id, file_nm, az_name) = extract_validation_fields(&entry)?;
     
-    let json = serde_json::to_string_pretty(input)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to serialize JSON: {}", e)))?;
+    // Get the secret from Azure KeyVault
+    let secret_value = get_secret_from_azure(az_name, client)?;
     
-    file.write_all(json.as_bytes())
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to write JSON to file: {}", e)))?;
+    // Validate checksums and IDs
+    validate_checksums(&file_nm, &secret_value.value, args)?;
+    validate_azure_ids(&az_id, &secret_value.id, args)?;
     
-    Ok(())
+    // Create timestamp and get hostname
+    let formatted_date = get_current_timestamp()?;
+    let hostname = get_hostname()?;
+    
+    // Create and return output structure
+    Ok(create_validation_output(file_nm, &secret_value, formatted_date, hostname))
 }

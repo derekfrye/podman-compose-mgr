@@ -1,6 +1,6 @@
 use std::error::Error;
 use crate::args::Args;
-use crate::helpers::cmd_helper_fns as cmd;
+use crate::utils::cmd_utils as cmd;
 
 /// Restart services managed by podman-compose
 ///
