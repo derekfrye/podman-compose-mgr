@@ -9,7 +9,7 @@ use crate::secrets::utils::{
     get_hostname, write_json_output
 };
 
-use azure_security_keyvault::SecretClient;
+use azure_security_keyvault_secrets::SecretClient;
 use serde_json::Value;
 use std::fs::{self, File};
 use std::io::Read;
