@@ -283,8 +283,10 @@ fn display_file_details(file_path: &str, size_kib: f64, encoded_name: &str) -> R
 
 #[cfg(test)]
 pub mod test_utils {
-    use super::*;
-    use azure_security_keyvault::KeyvaultClient;
+    use crate::secrets::models::SetSecretResponse;
+
+    // use super::*;
+    // use azure_security_keyvault::KeyvaultClient;
     use time::OffsetDateTime;
 
     // For testing, we can override the get_secret_value and set_secret_value functions
