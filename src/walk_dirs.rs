@@ -8,7 +8,7 @@ use crate::{
     Args, args,
     build::{self, rebuild::RebuildManager},
     interfaces::{CommandHelper, DefaultCommandHelper, DefaultReadValHelper, ReadValHelper},
-    restartsvcs,
+    
 };
 
 #[derive(Debug, Error)]
@@ -121,20 +121,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadValHelper>(
                         }
                     }
                 }
-                args::Mode::RestartSvcs => {
-                    drop_mgr(&mut manager);
-                    match restartsvcs::restart_services(args) {
-                        Ok(_) => {
-                            if args.verbose {
-                                println!("Services restarted successfully");
-                            }
-                        },
-                        Err(e) => {
-                            eprintln!("Error restarting services: {}", e);
-                        }
-                    }
-                }
-                _ => {}
+                _ => {drop_mgr(&mut manager);}
             }
         }
     }

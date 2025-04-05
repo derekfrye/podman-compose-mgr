@@ -10,9 +10,9 @@ pub mod helpers {
 }
 pub mod interfaces;
 pub mod read_val;
-pub mod restartsvcs;
+
 pub mod secrets;
-pub mod start;
+pub mod walk_dirs;
 pub mod testing;
 pub mod utils;
 

@@ -1,7 +1,7 @@
 use podman_compose_mgr::{
     args::{self, Mode},
     secrets,
-    start::walk_dirs,
+    walk_dirs::walk_dirs,
 };
 
 // use futures::executor;
