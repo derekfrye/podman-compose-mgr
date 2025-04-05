@@ -33,6 +33,8 @@ podman-compose-mgr --path ~/docker --mode secret-retrieve --secrets-client-id te
 - `--secret-mode-input-json` to specify the json containing the list of on-disk secrets to validate against Azure Key Vault (TODO: document this file format)
 - `--secret-mode-output-json` to... (TODO: is this needed?)
 
+For more details on this mode, see [secrets retrieve documentation](secrets_retrieve.md). 
+
 ## Options
 
 ### Build args
