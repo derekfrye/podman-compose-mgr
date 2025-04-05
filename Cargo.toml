@@ -26,6 +26,7 @@ hostname = "0"
 terminal_size = "0"
 mockall = "0"
 thiserror = "1"
+async-trait = "0.1.88"
 
 [dev-dependencies]
 tempfile = "3"  # Use the latest version

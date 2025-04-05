@@ -222,9 +222,9 @@ pub fn get_keyvault_secret_client(
     // Remove newlines from secret
     secret = secret.trim().to_string();
 
-    // Create a scoped environment variable context
-    // SAFETY: The unsafe is contained to this function and we restore environment
-    // afterward, minimizing any thread-safety issues
+    // Create a scoped environment variable context that properly cleans up
+    // SAFETY: We're using environment variables in a controlled way,
+    // saving and restoring them to minimize thread-safety issues
     let credential = unsafe {
         // Save existing environment variables
         let old_tenant = std::env::var("AZURE_TENANT_ID").ok();

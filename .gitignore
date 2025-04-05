@@ -3,3 +3,4 @@ Cargo.lock
 peer1.conf
 outfile.json
 outfile.txt
+tests/personal_testing_data

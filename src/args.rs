@@ -74,9 +74,7 @@ impl Args {
             }
         } else if let Mode::SecretRetrieve = self.mode {
             if let Some(client_id) = &self.secrets_client_id {
-                if client_id.len() != 36 {
-                    return Err("Azure client_id must be 36 characters long.".to_string());
-                }
+                check_readable_file(client_id)?;
             }
 
             if let Some(client_secret) = &self.secrets_client_secret_path {
