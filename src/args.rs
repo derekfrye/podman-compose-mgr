@@ -24,9 +24,7 @@ pub struct Args {
     /// rebuild = pull latest docker.io images and rebuild custom images, secrets = refresh secrets files (not impl yet)
     #[arg(short = 'm', long, default_value = "Rebuild", value_parser = clap::value_parser!(Mode))]
     pub mode: Mode,
-    /// Optional path for storing intermediate secrets file, must be rw if supplied, and ideally secured to this user's group
-    #[arg(short = 's', long, value_name = "SECRETS_FILE", value_parser = check_readable_dir)]
-    pub secrets_tmp_dir: Option<PathBuf>,
+    
     /// Print extra stuff
     #[arg(short, long)]
     pub verbose: bool,

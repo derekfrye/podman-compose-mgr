@@ -70,7 +70,7 @@ fn test_azure_integration() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args {
         path: PathBuf::from("~/docker"),
         mode: podman_compose_mgr::args::Mode::SecretRetrieve,
-        secrets_tmp_dir: None,
+        
         verbose: true,
         exclude_path_patterns: vec![],
         include_path_patterns: vec![],

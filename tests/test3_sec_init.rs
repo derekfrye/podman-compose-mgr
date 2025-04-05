@@ -18,7 +18,7 @@ fn test_initialize_process() {
         secrets_init_filepath: Some(PathBuf::from("tests/test3/test_input.json")),
         secret_mode_input_json: Some(temp_path.clone()),
         path: PathBuf::from("."),
-        secrets_tmp_dir: None,
+        
         verbose: true,
         exclude_path_patterns: vec![],
         include_path_patterns: vec![],
