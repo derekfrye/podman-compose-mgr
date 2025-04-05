@@ -27,7 +27,7 @@ fn test_initialize_process() {
         secrets_client_secret_path: None,
         secrets_tenant_id: None,
         secrets_vault_name: None,
-        secret_mode_output_json: None,
+        output_json: None,
     };
     
     // Run the initialize process

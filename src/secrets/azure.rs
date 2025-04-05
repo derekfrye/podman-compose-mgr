@@ -102,7 +102,7 @@ fn process_env_file(
 /// Write output entries to the specified JSON file
 fn write_output_entries(args: &Args, output_entries: Vec<Value>) -> Result<()> {
     // Make sure output path exists
-    let output_path = args.secret_mode_output_json.as_ref()
+    let output_path = args.output_json.as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Output JSON path is required"))?;
     
     // Create parent directory if it doesn't exist

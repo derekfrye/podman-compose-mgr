@@ -48,8 +48,8 @@ pub struct Args {
     /// Pass as guid or filepath
     #[arg(long)]
     pub secrets_vault_name: Option<String>,
-    #[arg(long, value_parser = check_parent_dir_is_writeable)]
-    pub secret_mode_output_json: Option<PathBuf>,
+    #[arg(long, value_parser = check_file_writable)]
+    pub output_json: Option<PathBuf>,
     #[arg(long, value_parser = check_readable_file)]
     pub secret_mode_input_json: Option<PathBuf>,
     /// Path to the JSON file containing secret files to initialize
@@ -82,8 +82,8 @@ impl Args {
                 check_readable_file(client_secret.to_str().unwrap())?;
             }
 
-            if let Some(output_json) = &self.secret_mode_output_json {
-                check_parent_dir_is_writeable(output_json.to_str().unwrap())?;
+            if let Some(output_json) = &self.output_json {
+                check_file_writable(output_json.to_str().unwrap())?;
             }
 
             if let Some(input_json) = &self.secret_mode_input_json {
@@ -91,13 +91,13 @@ impl Args {
             }
         } else if let Mode::SecretInitialize = self.mode {
             if let Some(filepath) = &self.secrets_init_filepath {
-                check_readable_file(filepath.to_str().unwrap())?;
+                check_init_filepath(filepath.to_str().unwrap())?;
             } else {
                 return Err("secrets_init_filepath is required for SecretInitialize mode".to_string());
             }
             
             if let Some(output_dir) = &self.secret_mode_input_json {
-                check_parent_dir_is_writeable(output_dir.to_str().unwrap())?;
+                check_file_writable(output_dir.to_str().unwrap())?;
             } else {
                 return Err("secret_mode_input_json is required for SecretInitialize mode".to_string());
             }
@@ -118,7 +118,7 @@ impl Args {
             if self.secrets_client_id.is_none() {
                 return Err("secrets_client_id is required for SecretUpload mode".to_string());
             }
-            if self.secret_mode_output_json.is_none() {
+            if self.output_json.is_none() {
                 return Err("secret_mode_output_json is required for SecretUpload mode".to_string());
             }
             
@@ -129,8 +129,8 @@ impl Args {
             if let Some(client_secret) = &self.secrets_client_secret_path {
                 check_readable_file(client_secret.to_str().unwrap())?;
             }
-            if let Some(output_json) = &self.secret_mode_output_json {
-                check_parent_dir_is_writeable(output_json.to_str().unwrap())?;
+            if let Some(output_json) = &self.output_json {
+                check_file_writable(output_json.to_str().unwrap())?;
             }
         }
         Ok(())
@@ -148,34 +148,6 @@ pub enum Mode {
     RestartSvcs,
 }
 
-// for a passed PathBuf, get the parent dir, check if it exists and is writable
-fn check_parent_dir_is_writeable(existing_file: &str) -> Result<PathBuf, String> {
-    let path = PathBuf::from(existing_file).to_owned();
-    let parent_path = path.parent().unwrap();
-    if parent_path.is_dir()
-        && fs::metadata(parent_path).is_ok()
-        && fs::read_dir(parent_path).is_ok()
-    {
-        let temp_file_path = parent_path.join(".temp_write_check");
-        match OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(&temp_file_path)
-        {
-            Ok(mut file) => {
-                let _ = file
-                    .write_all(b"test")
-                    .map_err(|e| format!("Failed to write to temp file: {}", e));
-                let _ = fs::remove_file(&temp_file_path); // Clean up the temporary file
-                Ok(path)
-            }
-            Err(_) => Err(format!("The dir '{}' is not writable.", existing_file)),
-        }
-    } else {
-        Err(format!("The dir '{}' is not writable.", existing_file))
-    }
-}
 
 fn check_readable_file(file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file);
@@ -208,5 +180,113 @@ fn check_readable_dir(dir: &str) -> Result<PathBuf, String> {
         Ok(path)
     } else {
         Err(format!("The dir '{}' is not readable.", dir))
+    }
+}
+
+// Checks if a file is valid for initialization
+// It must be readable and either valid JSON or contain a list of filenames
+fn check_init_filepath(file_path: &str) -> Result<PathBuf, String> {
+    // First check if the file is readable
+    let path = check_readable_file(file_path)?;
+    
+    // Try to parse as JSON
+    let mut file = File::open(&path).map_err(|e| e.to_string())?;
+    let mut file_content = String::new();
+    file.read_to_string(&mut file_content).map_err(|e| e.to_string())?;
+    
+    // If empty file, return error
+    if file_content.trim().is_empty() {
+        return Err(format!("The file '{}' is empty.", file_path));
+    }
+    
+    // Try to parse as JSON first
+    let json_result = serde_json::from_str::<serde_json::Value>(&file_content);
+    
+    match json_result {
+        Ok(_) => {
+            // Valid JSON, no further processing needed
+            Ok(path)
+        },
+        Err(_) => {
+            // Not valid JSON, check if it's a list of filenames (one per line)
+            let lines: Vec<&str> = file_content.lines().collect();
+            
+            // Filter out empty lines
+            let non_empty_lines: Vec<&str> = lines.iter()
+                .filter(|line| !line.trim().is_empty())
+                .copied()
+                .collect();
+            
+            if non_empty_lines.is_empty() {
+                return Err(format!("The file '{}' does not contain valid JSON or filenames.", file_path));
+            }
+            
+            // Check if each filename is a readable file
+            let mut all_valid = true;
+            for line in &non_empty_lines {
+                let filename = line.trim();
+                if check_readable_file(filename).is_err() {
+                    eprintln!("Warning: File '{}' does not exist or is not readable.", filename);
+                    all_valid = false;
+                }
+            }
+            
+            if !all_valid {
+                eprintln!("Warning: Some files are not readable. Continuing with valid files only.");
+            }
+            
+            // Create JSON array with filenames (only for files that exist and are readable)
+            let mut file_array = Vec::new();
+            for line in non_empty_lines {
+                let filename = line.trim();
+                if check_readable_file(filename).is_ok() {
+                    file_array.push(serde_json::json!({"filenm": filename}));
+                }
+            }
+            
+            // If no valid files found, return an error
+            if file_array.is_empty() {
+                return Err(format!("No readable files found in '{}'.", file_path));
+            }
+            
+            // Write back to the file
+            let json_content = serde_json::to_string_pretty(&file_array)
+                .map_err(|e| format!("Failed to convert filename list to JSON: {}", e))?;
+            
+            let mut output_file = File::create(&path)
+                .map_err(|e| format!("Failed to open file for writing: {}", e))?;
+            
+            output_file.write_all(json_content.as_bytes())
+                .map_err(|e| format!("Failed to write JSON content: {}", e))?;
+            
+            Ok(path)
+        }
+    }
+}
+
+// Checks if a file is writable (or can be created and written to)
+fn check_file_writable(file_path: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(file_path);
+    
+    // First check if the parent directory exists and is writable
+    if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            return Err(format!("The parent directory of '{}' does not exist.", file_path));
+        }
+        
+        if !parent.is_dir() {
+            return Err(format!("The parent path '{}' is not a directory.", parent.display()));
+        }
+    }
+    
+    // Try to open the file in write mode
+    match OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(false) // Don't truncate an existing file
+        .open(&path)
+    {
+        Ok(_) => Ok(path),
+        Err(e) => Err(format!("The file '{}' is not writable: {}", file_path, e)),
     }
 }

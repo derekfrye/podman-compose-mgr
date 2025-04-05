@@ -14,7 +14,7 @@ pub fn process(args: &Args) -> Result<()> {
     // Get required parameters from args
     let input_filepath = args.secret_mode_input_json.as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Input JSON path is required"))?;
-    let output_filepath = args.secret_mode_output_json.as_ref()
+    let output_filepath = args.output_json.as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Output JSON path is required"))?;
     
     // Create Azure Key Vault client

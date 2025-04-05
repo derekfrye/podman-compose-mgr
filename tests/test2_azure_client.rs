@@ -79,7 +79,7 @@ fn test_azure_integration() -> Result<(), Box<dyn std::error::Error>> {
         secrets_client_secret_path: Some(PathBuf::from("tests/personal_testing_data/secret.txt")),
         secrets_tenant_id: Some("tests/personal_testing_data/tenant_id.txt".to_string()),
         secrets_vault_name: Some("tests/personal_testing_data/vault_name.txt".to_string()),
-        secret_mode_output_json: Some(PathBuf::from("tests/personal_testing_data/outfile.json")),
+        output_json: Some(PathBuf::from("tests/personal_testing_data/outfile.json")),
         secret_mode_input_json: Some(PathBuf::from("tests/personal_testing_data/input.json")),
         secrets_init_filepath: None,
     };

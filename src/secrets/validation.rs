@@ -148,7 +148,7 @@ fn process_validation_entries(
 
 /// Write validation results to the output file
 fn write_validation_results(args: &Args, json_outputs: &[JsonOutput]) -> Result<()> {
-    if let Some(output_path) = args.secret_mode_output_json.as_ref() {
+    if let Some(output_path) = args.output_json.as_ref() {
         if let Some(output_dir) = output_path.parent() {
             fs::create_dir_all(output_dir)
                 .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create output directory: {}", e)))?;
