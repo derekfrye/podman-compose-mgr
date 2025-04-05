@@ -215,16 +215,13 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
     encoded_name: &str, 
     read_val_helper: &R,
 ) -> Result<bool> {
-    // Get file metadata to calculate size
-    let metadata = metadata(file_path)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get metadata for {}: {}", file_path, e)))?;
-    let size_bytes = metadata.len();
-    let size_kib = size_bytes as f64 / 1024.0;
+    // We no longer need to calculate size here
+    // The size is now calculated inside setup_upload_prompt
 
     let mut grammars: Vec<GrammarFragment> = Vec::new();
     
     // Setup the prompt
-    setup_upload_prompt(&mut grammars, file_path, size_kib, encoded_name)?;
+    setup_upload_prompt(&mut grammars, file_path, encoded_name)?;
     
     loop {
         // Display prompt and get user input using the provided helper

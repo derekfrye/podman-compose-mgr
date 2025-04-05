@@ -85,10 +85,14 @@ pub fn add_upload_choice_options(grammars: &mut Vec<GrammarFragment>) {
 /// Setup the prompt for uploading a secret
 pub fn setup_upload_prompt(
     grammars: &mut Vec<GrammarFragment>, 
-    _file_path: &str, 
-    size_kib: f64, 
+    file_path: &str, 
     encoded_name: &str
 ) -> Result<()> {
+    // Calculate file size
+    let metadata = std::fs::metadata(file_path)
+        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get metadata for {}: {}", file_path, e)))?;
+    let size_bytes = metadata.len();
+    let size_kib = size_bytes as f64 / 1024.0;
     // Add "Upload" text
     let upload_grammar = GrammarFragment {
         original_val_for_prompt: Some("Upload".to_string()),
