@@ -51,7 +51,7 @@ pub struct Args {
     #[arg(long, value_parser = check_file_writable)]
     pub output_json: Option<PathBuf>,
     #[arg(long, value_parser = check_readable_file)]
-    pub secret_mode_input_json: Option<PathBuf>,
+    pub input_json: Option<PathBuf>,
     /// Path to the JSON file containing secret files to initialize
     #[arg(long, value_parser = check_readable_file)]
     pub secrets_init_filepath: Option<PathBuf>,
@@ -86,7 +86,7 @@ impl Args {
                 check_file_writable(output_json.to_str().unwrap())?;
             }
 
-            if let Some(input_json) = &self.secret_mode_input_json {
+            if let Some(input_json) = &self.input_json {
                 check_valid_json_file(input_json.to_str().unwrap())?;
             }
         } else if let Mode::SecretInitialize = self.mode {
@@ -96,14 +96,14 @@ impl Args {
                 return Err("secrets_init_filepath is required for SecretInitialize mode".to_string());
             }
             
-            if let Some(output_dir) = &self.secret_mode_input_json {
+            if let Some(output_dir) = &self.input_json {
                 check_file_writable(output_dir.to_str().unwrap())?;
             } else {
                 return Err("secret_mode_input_json is required for SecretInitialize mode".to_string());
             }
         } else if let Mode::SecretUpload = self.mode {
             // Check for required fields for SecretUpload mode
-            if self.secret_mode_input_json.is_none() {
+            if self.input_json.is_none() {
                 return Err("secret_mode_input_json is required for SecretUpload mode".to_string());
             }
             if self.secrets_vault_name.is_none() {
@@ -123,7 +123,7 @@ impl Args {
             }
             
             // Validate the file paths
-            if let Some(input_json) = &self.secret_mode_input_json {
+            if let Some(input_json) = &self.input_json {
                 check_valid_json_file(input_json.to_str().unwrap())?;
             }
             if let Some(client_secret) = &self.secrets_client_secret_path {

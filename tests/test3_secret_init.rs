@@ -16,7 +16,7 @@ fn test_initialize_process() {
     let args = args::Args {
         mode: Mode::SecretInitialize,
         secrets_init_filepath: Some(PathBuf::from("tests/test3_and_test4/test_input.json")),
-        secret_mode_input_json: Some(temp_path.clone()),
+        input_json: Some(temp_path.clone()),
         path: PathBuf::from("."),
         
         verbose: true,

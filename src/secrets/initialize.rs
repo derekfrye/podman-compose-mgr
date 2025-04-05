@@ -18,7 +18,7 @@ use crate::utils::cmd_utils;
 pub fn process(args: &Args) -> Result<()> {
     // Get the required file paths from args
     let init_filepath = args.secrets_init_filepath.as_ref().unwrap();
-    let output_filepath = args.secret_mode_input_json.as_ref().unwrap();
+    let output_filepath = args.input_json.as_ref().unwrap();
     
     // Read the input file containing the file paths
     let mut file = File::open(init_filepath)?;
