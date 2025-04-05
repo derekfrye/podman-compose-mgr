@@ -13,8 +13,18 @@ use std::io::Read;
 use std::path::{Path, MAIN_SEPARATOR};
 use tokio::runtime::Runtime;
 
-/// Process the upload operation to Azure Key Vault
+/// Process the upload operation to Azure Key Vault using default implementations
 pub fn process(args: &Args) -> Result<()> {
+    // Use default read helper
+    let read_val_helper = DefaultReadInteractiveInputHelper;
+    process_with_injected_dependencies(args, &read_val_helper)
+}
+
+/// Process the upload operation with dependency injection for testing
+pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
+    args: &Args,
+    read_val_helper: &R,
+) -> Result<()> {
     // Get required parameters from args
     let input_filepath = args.input_json.as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Input JSON path is required"))?;
@@ -119,9 +129,8 @@ pub fn process(args: &Args) -> Result<()> {
         let size_bytes = metadata.len();
         let size_kib = size_bytes as f64 / 1024.0;
         
-        // Prompt the user for confirmation, using default implementation
-        let read_val_helper = DefaultReadInteractiveInputHelper;
-        let upload_confirmed = prompt_for_upload_with_helper(filenm, &secret_name, size_kib, &read_val_helper)?;
+        // Prompt the user for confirmation using the injected helper
+        let upload_confirmed = prompt_for_upload_with_helper(filenm, &secret_name, size_kib, read_val_helper)?;
         
         if !upload_confirmed {
             if args.verbose {
@@ -283,10 +292,9 @@ fn display_file_details(file_path: &str, size_kib: f64, encoded_name: &str) -> R
 
 #[cfg(test)]
 pub mod test_utils {
+    use super::*;
     use crate::secrets::models::SetSecretResponse;
-
-    // use super::*;
-    // use azure_security_keyvault::KeyvaultClient;
+    use azure_security_keyvault::KeyvaultClient;
     use time::OffsetDateTime;
 
     // For testing, we can override the get_secret_value and set_secret_value functions
