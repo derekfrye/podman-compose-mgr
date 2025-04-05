@@ -54,6 +54,9 @@ pub struct Args {
     pub secret_mode_output_json: Option<PathBuf>,
     #[arg(long, value_parser = check_readable_file)]
     pub secret_mode_input_json: Option<PathBuf>,
+    /// Path to the JSON file containing secret files to initialize
+    #[arg(long, value_parser = check_readable_file)]
+    pub secrets_init_filepath: Option<PathBuf>,
 }
 
 impl Args {
@@ -88,6 +91,18 @@ impl Args {
             if let Some(input_json) = &self.secret_mode_input_json {
                 check_valid_json_file(input_json.to_str().unwrap())?;
             }
+        } else if let Mode::SecretInitialize = self.mode {
+            if let Some(filepath) = &self.secrets_init_filepath {
+                check_readable_file(filepath.to_str().unwrap())?;
+            } else {
+                return Err("secrets_init_filepath is required for SecretInitialize mode".to_string());
+            }
+            
+            if let Some(output_dir) = &self.secret_mode_input_json {
+                check_parent_dir_is_writeable(output_dir.to_str().unwrap())?;
+            } else {
+                return Err("secret_mode_input_json is required for SecretInitialize mode".to_string());
+            }
         }
         Ok(())
     }
@@ -99,6 +114,7 @@ pub enum Mode {
     Rebuild,
     SecretRefresh,
     SecretRetrieve,
+    SecretInitialize,
     RestartSvcs,
 }
 

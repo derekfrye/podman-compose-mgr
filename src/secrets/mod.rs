@@ -1,5 +1,6 @@
 pub mod azure;
 pub mod error;
+pub mod initialize;
 pub mod models;
 pub mod prompt;
 pub mod utils;
@@ -18,6 +19,9 @@ pub fn process_secrets_mode(args: &Args) -> Result<()> {
         }
         crate::args::Mode::SecretRetrieve => {
             validation::validate(args)?;
+        }
+        crate::args::Mode::SecretInitialize => {
+            initialize::process(args)?;
         }
         _ => {
             return Err(Box::<dyn std::error::Error>::from("Unsupported mode for secrets processing"));
