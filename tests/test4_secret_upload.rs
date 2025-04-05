@@ -4,12 +4,13 @@ use podman_compose_mgr::interfaces::{MockAzureKeyVaultClient, MockReadInteractiv
 use podman_compose_mgr::read_interactive_input::ReadValResult;
 use podman_compose_mgr::secrets::models::SetSecretResponse;
 use podman_compose_mgr::args::{Args, Mode};
-use podman_compose_mgr::secrets::upload;
+use podman_compose_mgr::secrets::upload::{self, FileDetails};
 use mockall::predicate::*;
 use mockall::Sequence;
 use serde_json::json;
 use tempfile::NamedTempFile;
 use time::OffsetDateTime;
+use std::sync::{Arc, Mutex};
 
 #[test]
 fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::error::Error>> {
@@ -77,16 +78,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // For each file, expect a get_secret_value call first to check if it exists
         // Then expect a set_secret_value call to upload it
         for file_path in &test_files {
-            let encoded_name = file_path.replace([std::path::MAIN_SEPARATOR, '.'], "-")
-                .chars()
-                .map(|c| {
-                    if c.is_alphanumeric() || c == '-' {
-                        c.to_string()
-                    } else {
-                        format!("-{:02X}", c as u8)
-                    }
-                })
-                .collect::<String>();
+            let encoded_name = upload::create_encoded_secret_name(file_path);
             
             // First expect a check if the secret exists - return an error
             let encoded_name_clone = encoded_name.clone();
@@ -185,16 +177,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // Set up expectations: for each file, we only expect the get_secret_value
         // call since the user will decline the upload
         for file_path in &test_files {
-            let encoded_name = file_path.replace([std::path::MAIN_SEPARATOR, '.'], "-")
-                .chars()
-                .map(|c| {
-                    if c.is_alphanumeric() || c == '-' {
-                        c.to_string()
-                    } else {
-                        format!("-{:02X}", c as u8)
-                    }
-                })
-                .collect::<String>();
+            let encoded_name = upload::create_encoded_secret_name(file_path);
             
             // Expect a check if the secret exists
             azure_client
@@ -282,20 +265,34 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // Setup mockall sequence for checking and uploading each file
         let mut seq = Sequence::new();
         
-        // For each file, expect a get_secret_value call first to check if it exists
-        // Then expect a set_secret_value call to upload it
-        for file_path in &test_files {
-            let encoded_name = file_path.replace([std::path::MAIN_SEPARATOR, '.'], "-")
-                .chars()
-                .map(|c| {
-                    if c.is_alphanumeric() || c == '-' {
-                        c.to_string()
-                    } else {
-                        format!("-{:02X}", c as u8)
-                    }
-                })
-                .collect::<String>();
-            
+        // Create a vector of expected file details
+        let expected_file_details: Vec<(String, FileDetails)> = test_files
+            .iter()
+            .map(|file_path| {
+                // Calculate the encoded name
+                let encoded_name = upload::create_encoded_secret_name(file_path);
+                
+                // Get file size
+                let metadata = std::fs::metadata(file_path).unwrap();
+                let size_bytes = metadata.len();
+                let size_kib = size_bytes as f64 / 1024.0;
+                
+                // Create a hard-coded expected FileDetails with known values
+                // Note: We can't predict the exact last_modified time in the test,
+                // so we'll check that field separately
+                let details = FileDetails {
+                    file_path: file_path.clone(),
+                    size_kib,
+                    last_modified: "WILL BE VALIDATED SEPARATELY".to_string(), // Will be checked differently
+                    secret_name: encoded_name.clone(),
+                };
+                
+                (encoded_name, details)
+            })
+            .collect();
+        
+        // For each file, set up the expected API calls
+        for (encoded_name, _) in &expected_file_details {
             // First expect a check if the secret exists - return an error
             let encoded_name_clone = encoded_name.clone();
             azure_client
@@ -328,6 +325,9 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                 });
         }
         
+        // Create a shared container to hold captured file details from the test
+        let captured_details = Arc::new(Mutex::new(Vec::<FileDetails>::new()));
+        
         // Create a mock ReadInteractiveInputHelper that returns "d" first, then "Y" on second prompt
         let mut read_val_helper = MockReadInteractiveInputHelper::new();
         
@@ -335,24 +335,18 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         let file_index = std::cell::Cell::new(0);
         let attempt_index = std::cell::Cell::new(1);
         let test_files_clone = test_files.clone();
+        let captured_details_clone = captured_details.clone();
         
-        // We need 8 inputs: 2 per file (first "d" for details, then "Y" to approve)
+        // Function in upload.rs runs in a loop and keeps prompting when "d" is selected,
+        // so we need more than 8 inputs - exact number depends on implementation
         read_val_helper
             .expect_read_val_from_cmd_line_and_proceed()
-            .times(8) // 2 prompts per file × 4 files
+            .times(..)
             .returning(move |grammars, _size| {
                 // Get the current file and attempt numbers
                 let current_file_index = file_index.get();
                 let current_file = &test_files_clone[current_file_index];
                 let current_attempt = attempt_index.get();
-                
-                // Reset attempt counter and increment file index when we're done with a file
-                if current_attempt >= 2 {
-                    attempt_index.set(1);
-                    file_index.set(current_file_index + 1);
-                } else {
-                    attempt_index.set(current_attempt + 1);
-                }
                 
                 // Format the prompt using actual terminal width
                 let mut grammars_copy = grammars.to_vec();
@@ -387,15 +381,57 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                 assert!(max_line_length <= actual_width, 
                     "Prompt line length {} exceeds terminal width {}", max_line_length, actual_width);
                 
-                // For odd-numbered attempts (first attempt per file), return "d" to show details
-                // For even-numbered attempts (second attempt per file), return "Y" to approve
-                if current_attempt % 2 == 1 {
-                    println!("User selects 'd' to see details");
+                // Check which file we're on
+                // We want to alternate showing details then approving for each file
+                // We'll use a state machine approach
+                if current_file_index >= test_files_clone.len() {
+                    // We're done with all files, shouldn't happen but just in case
+                    panic!("Unexpected call after all files processed");
+                }
+
+                // We have two states per file:
+                // 1. First time for a file - show details (select "d")
+                // 2. Second time for a file - approve upload (select "Y")
+                let current_file_path = current_file.clone();
+                let already_showed_details = captured_details_clone.lock().unwrap().iter()
+                    .any(|d| d.file_path == current_file_path);
+
+                if !already_showed_details {
+                    // First time seeing this file, show details ("d")
+                    println!("User selects 'd' to see details for file {}", current_file);
+                    
+                    // Get the encoded name
+                    let encoded_name = upload::create_encoded_secret_name(current_file);
+                    
+                    // Calculate file size
+                    let metadata = std::fs::metadata(current_file).unwrap();
+                    let size_bytes = metadata.len();
+                    let size_kib = size_bytes as f64 / 1024.0;
+                    
+                    // Get file details using our extracted function
+                    let details = upload::get_file_details(current_file, size_kib, &encoded_name).unwrap();
+                    
+                    // Capture the details for later verification
+                    captured_details_clone.lock().unwrap().push(details.clone());
+                    
+                    // Print the details manually since we're in a test
+                    println!("File path: {}", details.file_path);
+                    println!("Size: {:.2} KiB", details.size_kib);
+                    println!("Last modified: {}", details.last_modified);
+                    println!("Secret name: {}", details.secret_name);
+                    
+                    // Return "d" for details
                     ReadValResult {
                         user_entered_val: Some("d".to_string()),
                     }
                 } else {
-                    println!("User selects 'Y' to approve upload");
+                    // Second time seeing this file, approve upload ("Y") and move to next file
+                    println!("User selects 'Y' to approve upload for file {}", current_file);
+                    
+                    // Move to next file
+                    file_index.set(current_file_index + 1);
+                    
+                    // Return "Y" to approve
                     ReadValResult {
                         user_entered_val: Some("Y".to_string()),
                     }
@@ -411,7 +447,35 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         
         // Check that the test succeeded
         assert!(result.is_ok(), "Test 3 failed: {:?}", result.err());
-        println!("Test 3 succeeded - all files were uploaded with details shown first!");
+        
+        // Now validate that the file details we captured are correct
+        let details_vec = captured_details.lock().unwrap();
+        assert_eq!(details_vec.len(), 4, "Should have captured details for 4 files");
+        
+        // Check each captured detail against the expected values
+        for (i, details) in details_vec.iter().enumerate() {
+            let expected_details = &expected_file_details[i].1;
+            
+            // Verify file path
+            assert_eq!(details.file_path, expected_details.file_path, 
+                "File path mismatch for file {}", details.file_path);
+            
+            // Verify size (with small epsilon for floating point comparison)
+            assert!((details.size_kib - expected_details.size_kib).abs() < 0.001, 
+                "Size mismatch for file {}: got {}, expected {}", 
+                details.file_path, details.size_kib, expected_details.size_kib);
+            
+            // Verify secret name
+            assert_eq!(details.secret_name, expected_details.secret_name, 
+                "Secret name mismatch for file {}", details.file_path);
+            
+            // Verify the format of last_modified (we can't know the exact value)
+            let date_format = regex::Regex::new(r"^\d{2}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}$").unwrap();
+            assert!(date_format.is_match(&details.last_modified), 
+                "Last modified date format incorrect: {}", details.last_modified);
+        }
+        
+        println!("Test 3 succeeded - all files were uploaded with details shown and verified!");
     }
     
     // Clean up

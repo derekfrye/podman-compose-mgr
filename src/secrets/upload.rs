@@ -96,28 +96,8 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
             continue;
         }
         
-        // Create a secret name from the full path
-        // 1. Replace path separators with dashes
-        // 2. Replace periods (.) with dashes
-        // 3. Encode remaining special characters
-        let secret_name = filenm.replace([MAIN_SEPARATOR, '.'], "-");
-        
-        // Replace spaces and other problematic characters with URL-encoding
-        // Note: In Azure Key Vault, secret names can only contain alphanumeric characters and dashes
-        let mut encoded_name = String::new();
-        for c in secret_name.chars() {
-            if c.is_alphanumeric() || c == '-' {
-                encoded_name.push(c);
-            } else {
-                // For space and other special characters, convert to percent encoding
-                // but use their hex value directly
-                for byte in c.to_string().as_bytes() {
-                    encoded_name.push_str(&format!("-{:02X}", byte));
-                }
-            }
-        }
-        
-        let secret_name = encoded_name;
+        // Create a secret name from the file path
+        let secret_name = create_encoded_secret_name(filenm);
         
         // Step 2: Check if the secret already exists using the interface
         let secret_exists = match kv_client.get_secret_value(&secret_name) {
@@ -281,8 +261,17 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
     }
 }
 
-/// Display detailed information about the file
-fn display_file_details(file_path: &str, size_kib: f64, encoded_name: &str) -> Result<()> {
+/// Represents the detailed information about a file for secret upload
+#[derive(Debug, Clone)]
+pub struct FileDetails {
+    pub file_path: String,
+    pub size_kib: f64,
+    pub last_modified: String,
+    pub secret_name: String,
+}
+
+/// Get detailed information about the file
+pub fn get_file_details(file_path: &str, size_kib: f64, encoded_name: &str) -> Result<FileDetails> {
     // Get file metadata for the last modified time
     let metadata = metadata(file_path)
         .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get metadata: {}", e)))?;
@@ -294,16 +283,59 @@ fn display_file_details(file_path: &str, size_kib: f64, encoded_name: &str) -> R
     let datetime: DateTime<Local> = modified.into();
     let formatted_time = datetime.format("%m/%d/%y %H:%M:%S").to_string();
     
+    // Return the details
+    Ok(FileDetails {
+        file_path: file_path.to_string(),
+        size_kib,
+        last_modified: formatted_time,
+        secret_name: encoded_name.to_string(),
+    })
+}
+
+/// Display detailed information about the file
+fn display_file_details(file_path: &str, size_kib: f64, encoded_name: &str) -> Result<()> {
+    // Get the file details
+    let details = get_file_details(file_path, size_kib, encoded_name)?;
+    
     // Display the details
-    println!("File path: {}", file_path);
-    println!("Size: {:.2} KiB", size_kib);
-    println!("Last modified: {}", formatted_time);
-    println!("Secret name: {}", encoded_name);
+    println!("File path: {}", details.file_path);
+    println!("Size: {:.2} KiB", details.size_kib);
+    println!("Last modified: {}", details.last_modified);
+    println!("Secret name: {}", details.secret_name);
     
     Ok(())
 }
 
-#[cfg(test)]
+/// Create an encoded secret name from a file path
+/// 
+/// This function takes a file path and converts it to a name suitable for
+/// Azure Key Vault secrets:
+/// 1. Replace path separators with dashes
+/// 2. Replace periods (.) with dashes
+/// 3. Encode any other special characters using hex encoding
+pub fn create_encoded_secret_name(file_path: &str) -> String {
+    // First replace path separators and periods with dashes
+    let secret_name = file_path.replace([MAIN_SEPARATOR, '.'], "-");
+    
+    // Replace spaces and other problematic characters with URL-encoding
+    // Note: In Azure Key Vault, secret names can only contain alphanumeric characters and dashes
+    let mut encoded_name = String::new();
+    
+    for c in secret_name.chars() {
+        if c.is_alphanumeric() || c == '-' {
+            encoded_name.push(c);
+        } else {
+            // For space and other special characters, convert to percent encoding
+            // but use their hex value directly
+            for byte in c.to_string().as_bytes() {
+                encoded_name.push_str(&format!("-{:02X}", byte));
+            }
+        }
+    }
+    
+    encoded_name
+}
+
 pub mod test_utils {
     use crate::secrets::models::SetSecretResponse;
     use time::OffsetDateTime;
