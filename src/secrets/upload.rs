@@ -1,0 +1,183 @@
+use crate::args::Args;
+use crate::secrets::azure::{get_keyvault_client, get_secret_value, set_secret_value};
+use crate::secrets::error::Result;
+use crate::secrets::utils::get_hostname;
+
+use serde_json::{json, Value};
+use std::fs::{self, File, OpenOptions};
+use std::io::Read;
+use std::path::{Path, MAIN_SEPARATOR};
+use tokio::runtime::Runtime;
+
+/// Process the upload operation to Azure Key Vault
+pub fn process(args: &Args) -> Result<()> {
+    // Get required parameters from args
+    let input_filepath = args.secret_mode_input_json.as_ref()
+        .ok_or_else(|| Box::<dyn std::error::Error>::from("Input JSON path is required"))?;
+    let output_filepath = args.secret_mode_output_json.as_ref()
+        .ok_or_else(|| Box::<dyn std::error::Error>::from("Output JSON path is required"))?;
+    
+    // Create Azure Key Vault client
+    let client_id = args.secrets_client_id.as_ref()
+        .ok_or_else(|| Box::<dyn std::error::Error>::from("Client ID is required"))?;
+    let client_secret_path = args.secrets_client_secret_path.as_ref()
+        .ok_or_else(|| Box::<dyn std::error::Error>::from("Client secret path is required"))?;
+    let tenant_id = args.secrets_tenant_id.as_ref()
+        .ok_or_else(|| Box::<dyn std::error::Error>::from("Tenant ID is required"))?;
+    let key_vault_name = args.secrets_vault_name.as_ref()
+        .ok_or_else(|| Box::<dyn std::error::Error>::from("Key vault name is required"))?;
+    
+    // Create KeyVault client
+    let kv_client = get_keyvault_client(client_id, client_secret_path, tenant_id, key_vault_name)?;
+    
+    // Create runtime for async operations
+    let rt = Runtime::new()?;
+    
+    // Test connection to Azure Key Vault
+    if args.verbose {
+        println!("Testing connection to Azure Key Vault...");
+    }
+    
+    // Read input JSON file
+    let mut file = File::open(input_filepath)?;
+    let mut content = String::new();
+    file.read_to_string(&mut content)?;
+    
+    // Parse JSON as array
+    let entries: Vec<Value> = serde_json::from_str(&content)?;
+    
+    // Storage for processed entries
+    let mut azure_secret_set_output = Vec::new();
+    
+    // Process each entry
+    for entry in entries {
+        let filenm = entry["filenm"].as_str().ok_or_else(|| 
+            Box::<dyn std::error::Error>::from(format!("Missing filenm field in entry: {}", entry)))?;
+        let md5 = entry["md5"].as_str().ok_or_else(|| 
+            Box::<dyn std::error::Error>::from(format!("Missing md5 field in entry: {}", entry)))?;
+        // Get hostname either from the entry or from the system
+        let hostname = match entry["hostname"].as_str() {
+            Some(h) => h.to_string(),
+            None => get_hostname().unwrap_or_default()
+        };
+        let ins_ts = entry["ins_ts"].as_str().ok_or_else(|| 
+            Box::<dyn std::error::Error>::from(format!("Missing ins_ts field in entry: {}", entry)))?;
+        
+        // Skip this entry if the file doesn't exist
+        if !Path::new(filenm).exists() {
+            eprintln!("File {} does not exist, skipping", filenm);
+            continue;
+        }
+        
+        // Create a secret name from the full path
+        // 1. Replace path separators with dashes
+        // 2. Replace periods (.) with dashes
+        // 3. Encode remaining special characters
+        let secret_name = filenm.replace([MAIN_SEPARATOR, '.'], "-");
+        
+        // Replace spaces and other problematic characters with URL-encoding
+        // Note: In Azure Key Vault, secret names can only contain alphanumeric characters and dashes
+        let mut encoded_name = String::new();
+        for c in secret_name.chars() {
+            if c.is_alphanumeric() || c == '-' {
+                encoded_name.push(c);
+            } else {
+                // For space and other special characters, convert to percent encoding
+                // but use their hex value directly
+                for byte in c.to_string().as_bytes() {
+                    encoded_name.push_str(&format!("-{:02X}", byte));
+                }
+            }
+        }
+        
+        let secret_name = encoded_name;
+        
+        // Step 2: Check if the secret already exists
+        let secret_exists = match rt.block_on(get_secret_value(&secret_name, &kv_client)) {
+            Ok(_) => {
+                eprintln!("Secret {} already exists in the key vault, skipping", secret_name);
+                true
+            },
+            Err(_) => false,
+        };
+        
+        if secret_exists {
+            continue;
+        }
+        
+        // Step 3: Upload the secret
+        let content = fs::read_to_string(filenm)
+            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to read file {}: {}", filenm, e)))?;
+        
+        let response = rt.block_on(set_secret_value(&secret_name, &kv_client, &content))
+            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to upload secret {}: {}", secret_name, e)))?;
+        
+        if args.verbose {
+            println!("Successfully uploaded secret {} to Azure Key Vault", secret_name);
+        }
+        
+        // Step 4: Fetch metadata and save to output
+        let output_entry = json!({
+            "filenm": filenm,
+            "md5": md5,
+            "ins_ts": ins_ts,
+            "az_id": response.id,
+            "az_create": response.created.to_string(),
+            "az_updated": response.updated.to_string(),
+            "az_name": response.name,
+            "hostname": hostname
+        });
+        
+        azure_secret_set_output.push(output_entry);
+    }
+    
+    // Step 5: Append to output file if we have any entries
+    if !azure_secret_set_output.is_empty() {
+        // Create parent directory if it doesn't exist
+        if let Some(parent) = output_filepath.parent() {
+            fs::create_dir_all(parent).map_err(|e| {
+                Box::<dyn std::error::Error>::from(format!("Failed to create directory {}: {}", parent.display(), e))
+            })?;
+        }
+        
+        // Check if the file already exists
+        let file_exists = output_filepath.exists();
+        
+        if file_exists {
+            // Read existing content to append properly
+            let mut existing_file = File::open(output_filepath)?;
+            let mut existing_content = String::new();
+            existing_file.read_to_string(&mut existing_content)?;
+            
+            let mut existing_entries: Vec<Value> = if existing_content.trim().is_empty() {
+                Vec::new()
+            } else {
+                serde_json::from_str(&existing_content)?
+            };
+            
+            // Append new entries
+            existing_entries.extend(azure_secret_set_output);
+            
+            // Write back as valid JSON array
+            let mut file = OpenOptions::new()
+                .create(true)
+                .truncate(true)
+                .write(true)
+                .open(output_filepath)?;
+            
+            serde_json::to_writer_pretty(&mut file, &existing_entries)?;
+        } else {
+            // Create new file with JSON array
+            let mut file = File::create(output_filepath)?;
+            serde_json::to_writer_pretty(&mut file, &azure_secret_set_output)?;
+        }
+        
+        if args.verbose {
+            println!("Successfully saved entries to {}", output_filepath.display());
+        }
+    } else if args.verbose {
+        println!("No entries were processed successfully.");
+    }
+    
+    Ok(())
+}

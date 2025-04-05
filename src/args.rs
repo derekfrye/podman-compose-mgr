@@ -101,6 +101,37 @@ impl Args {
             } else {
                 return Err("secret_mode_input_json is required for SecretInitialize mode".to_string());
             }
+        } else if let Mode::SecretUpload = self.mode {
+            // Check for required fields for SecretUpload mode
+            if self.secret_mode_input_json.is_none() {
+                return Err("secret_mode_input_json is required for SecretUpload mode".to_string());
+            }
+            if self.secrets_vault_name.is_none() {
+                return Err("secrets_vault_name is required for SecretUpload mode".to_string());
+            }
+            if self.secrets_tenant_id.is_none() {
+                return Err("secrets_tenant_id is required for SecretUpload mode".to_string());
+            }
+            if self.secrets_client_secret_path.is_none() {
+                return Err("secrets_client_secret_path is required for SecretUpload mode".to_string());
+            }
+            if self.secrets_client_id.is_none() {
+                return Err("secrets_client_id is required for SecretUpload mode".to_string());
+            }
+            if self.secret_mode_output_json.is_none() {
+                return Err("secret_mode_output_json is required for SecretUpload mode".to_string());
+            }
+            
+            // Validate the file paths
+            if let Some(input_json) = &self.secret_mode_input_json {
+                check_valid_json_file(input_json.to_str().unwrap())?;
+            }
+            if let Some(client_secret) = &self.secrets_client_secret_path {
+                check_readable_file(client_secret.to_str().unwrap())?;
+            }
+            if let Some(output_json) = &self.secret_mode_output_json {
+                check_parent_dir_is_writeable(output_json.to_str().unwrap())?;
+            }
         }
         Ok(())
     }
@@ -113,6 +144,7 @@ pub enum Mode {
     SecretRefresh,
     SecretRetrieve,
     SecretInitialize,
+    SecretUpload,
     RestartSvcs,
 }
 

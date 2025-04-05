@@ -16,7 +16,7 @@ fn main() -> io::Result<()> {
     }
 
     match args.mode {
-        Mode::SecretRefresh | Mode::SecretRetrieve | Mode::SecretInitialize => {
+        Mode::SecretRefresh | Mode::SecretRetrieve | Mode::SecretInitialize | Mode::SecretUpload => {
             if let Err(e) = secrets::process_secrets_mode(&args) {
                 eprintln!("Error processing secrets: {}", e);
                 std::process::exit(1);
