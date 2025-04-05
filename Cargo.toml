@@ -3,9 +3,6 @@ name = "podman-compose-mgr"
 version = "0.1.4"
 edition = "2024"
 
-[[bin]]
-name = "debug_azure"
-path = "debug_azure.rs"
 
 [dependencies]
 walkdir = "2"
@@ -20,11 +17,10 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 md-5 = "0"
 tokio = { version = "1", features = ["full"] }
-# Updated from azure_identity 0.21 + azure_security_keyvault to the newer APIs
-azure_identity = "0"
-azure_security_keyvault_secrets = "0"
+# Use specific versions that are known to work
+azure_identity = "0.21"
+azure_security_keyvault = "0"
 azure_core = "0"
-typespec_client_core = { version = "0", features = ["http", "json", "reqwest", "reqwest_gzip"] }
 time = "0"
 hostname = "0"
 terminal_size = "0"

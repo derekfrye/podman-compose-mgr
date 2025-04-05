@@ -1,6 +1,6 @@
 use crate::args::Args;
 use crate::read_val::{self, GrammarFragment};
-use crate::secrets::azure::{calculate_md5, get_content_from_file, get_keyvault_secret_client, get_secret_value};
+use crate::secrets::azure::{calculate_md5, get_content_from_file, get_keyvault_client, get_secret_value};
 use crate::secrets::error::Result;
 use crate::secrets::models::{JsonOutput, JsonOutputControl, SetSecretResponse};
 use crate::secrets::prompt::{setup_validation_prompt, display_validation_help};
@@ -9,7 +9,7 @@ use crate::secrets::utils::{
     get_hostname, write_json_output
 };
 
-use azure_security_keyvault_secrets::SecretClient;
+use azure_security_keyvault::KeyvaultClient;
 use serde_json::Value;
 use std::fs::{self, File};
 use std::io::Read;
@@ -40,7 +40,7 @@ pub fn validate(args: &Args) -> Result<()> {
 }
 
 /// Prepare for validation by reading the input file and creating a KeyVault client
-pub fn prepare_validation(args: &Args) -> Result<(SecretClient, Vec<Value>)> {
+pub fn prepare_validation(args: &Args) -> Result<(KeyvaultClient, Vec<Value>)> {
     // Get input file path
     let input_path = args.secret_mode_input_json.as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Input JSON path is required"))?;
@@ -64,7 +64,7 @@ pub fn prepare_validation(args: &Args) -> Result<(SecretClient, Vec<Value>)> {
     let key_vault_name = get_key_vault_name(args)?;
 
     // Get KeyVault client
-    let client = get_keyvault_secret_client(&client_id, client_secret, &tenant_id, &key_vault_name)?;
+    let client = get_keyvault_client(&client_id, client_secret, &tenant_id, &key_vault_name)?;
     
     Ok((client, json_values))
 }
@@ -107,7 +107,7 @@ fn get_key_vault_name(args: &Args) -> Result<String> {
 
 /// Process each validation entry, either directly or interactively
 fn process_validation_entries(
-    client: &SecretClient,
+    client: &KeyvaultClient,
     json_values: &Vec<Value>,
     args: &Args
 ) -> Result<Vec<JsonOutput>> {
@@ -161,7 +161,7 @@ fn write_validation_results(args: &Args, json_outputs: &[JsonOutput]) -> Result<
 fn process_validation_choice(
     choice: &str,
     entry: &Value,
-    client: &SecretClient,
+    client: &KeyvaultClient,
     args: &Args,
     output_control: &mut JsonOutputControl
 ) -> Result<bool> {
@@ -204,7 +204,7 @@ fn process_validation_choice(
 /// Interactive validation loop for a single entry
 pub fn read_val_loop(
     entry: Value,
-    client: &SecretClient,
+    client: &KeyvaultClient,
     args: &Args,
 ) -> Result<JsonOutputControl> {
     let mut grammars: Vec<GrammarFragment> = vec![];
@@ -246,7 +246,7 @@ pub fn read_val_loop(
 }
 
 /// Get a secret from Azure KeyVault
-fn get_secret_from_azure(az_name: String, client: &SecretClient) -> Result<SetSecretResponse> {
+fn get_secret_from_azure(az_name: String, client: &KeyvaultClient) -> Result<SetSecretResponse> {
     let rt = Runtime::new()
         .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
         
@@ -320,7 +320,7 @@ fn create_validation_output(
 /// - Unable to get hostname
 pub fn validate_entry(
     entry: Value,
-    client: &SecretClient,
+    client: &KeyvaultClient,
     args: &Args,
 ) -> Result<JsonOutput> {
     // Extract required fields

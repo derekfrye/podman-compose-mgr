@@ -2,16 +2,17 @@ use crate::args::Args;
 use crate::secrets::error::Result;
 use crate::secrets::models::SetSecretResponse;
 
-use azure_identity::DefaultAzureCredentialBuilder;
-use azure_security_keyvault_secrets::SecretClient;
-use azure_security_keyvault_secrets::models::SecretSetParameters;
-// For azure_identity 0.22 support
-use typespec_client_core::http::request::RequestContent;
+use azure_identity::ClientSecretCredential;
+use azure_security_keyvault::KeyvaultClient;
+use azure_core::auth::TokenCredential;
+use azure_core::Url;
+use reqwest::Client;
 use regex::Regex;
 use serde_json::{json, Value};
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::runtime::Runtime;
 use walkdir::WalkDir;
@@ -35,7 +36,7 @@ pub fn update_mode(args: &Args) -> Result<()> {
     let key_vault_name = args.secrets_vault_name.as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Key vault name is required"))?;
 
-    let client = get_keyvault_secret_client(client_id, client_secret, tenant_id, key_vault_name)?;
+    let client = get_keyvault_client(client_id, client_secret, tenant_id, key_vault_name)?;
     let rt = Runtime::new()?;
 
     for entry in WalkDir::new(args.path.clone())
@@ -55,7 +56,7 @@ fn process_env_file(
     output_entries: &mut Vec<Value>,
     entry: walkdir::DirEntry,
     re: &Regex,
-    client: &SecretClient,
+    client: &KeyvaultClient,
     rt: &Runtime
 ) -> Result<()> {
     if entry.file_name() == ".env" && entry.file_type().is_file() {
@@ -137,28 +138,28 @@ fn write_output_entries(args: &Args, output_entries: Vec<Value>) -> Result<()> {
 /// - Retrieving the secret after setting fails
 pub async fn set_secret_value(
     secret_name: &str,
-    kv_client: &SecretClient,
+    kv_client: &KeyvaultClient,
     secret_value: &str,
 ) -> Result<SetSecretResponse> {
-    // Create the parameters for setting a secret
-    let secret_params = SecretSetParameters {
-        value: Some(secret_value.to_string()),
-        ..Default::default()
-    };
+    // For the Azure 0.21 API version
+    let secret_client = kv_client.secret_client();
     
-    // Convert to a JSON string
-    let json = serde_json::to_string(&secret_params)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to serialize parameters: {}", e)))?;
-    
-    // Create the request content - use the bytes version since from_str isn't working
-    let request_content = RequestContent::from(json.into_bytes());
-    
-    // Set the secret and get the response
-    kv_client.set_secret(secret_name, request_content, None).await
+    // The Set operation in v0.21 returns a unit value
+    secret_client.set(secret_name, secret_value)
+        .await
         .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to set secret '{}': {}", secret_name, e)))?;
     
-    // Get the secret we just set to return its details
-    get_secret_value(secret_name, kv_client).await
+    // Similar to get_secret_value, populate with what we know
+    use time::OffsetDateTime;
+    let now = OffsetDateTime::now_utc();
+    
+    Ok(SetSecretResponse {
+        created: now,
+        updated: now,
+        name: secret_name.to_string(),
+        id: format!("https://keyvault.vault.azure.net/secrets/{}", secret_name),
+        value: secret_value.to_string(),
+    })
 }
 
 /// Retrieves a secret from Azure KeyVault
@@ -168,41 +169,34 @@ pub async fn set_secret_value(
 /// Returns an error if the Azure API call fails
 pub async fn get_secret_value(
     secret_name: &str,
-    kv_client: &SecretClient,
+    kv_client: &KeyvaultClient,
 ) -> Result<SetSecretResponse> {
-    println!("Retrieving secret '{}' from KeyVault...", secret_name);
+    // For the Azure 0.21 API version
+    let secret_client = kv_client.secret_client();
     
-    // In the new API, version is required but can be empty for latest version
-    let _response = kv_client.get_secret(secret_name, "", None).await
+    // Get the secret - azure_security_keyvault v0.21 API
+    // In v0.21, response has different structure
+    let response = secret_client
+        .get(secret_name)
+        .await
         .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get secret '{}': {}", secret_name, e)))?;
     
-    // In the v0.22 API, the response structure is different and we need to extract information
-    // Using now as a placeholder until we can properly parse the response
-    println!("Secret retrieved successfully. Processing response...");
-    
+    // Based on error messages, we know response has: value, id, attributes fields
+    // Create a response with the retrieved information
     use time::OffsetDateTime;
     let now = OffsetDateTime::now_utc();
     
-    // Since the response structure is different in v0.22, we'll use a placeholder for now
-    let value = format!("Value for {}", secret_name); // This is a placeholder for the actual secret value
-    
-    // Use a placeholder vault URL - in production, you'd properly extract this information
-    let vault_url = format!("https://keyvault.vault.azure.net");
-    
-    let id = format!("{}/secrets/{}", vault_url, secret_name);
-    
-    println!("Secret processed successfully.");
-    
     Ok(SetSecretResponse {
+        // Get created/updated from attributes if available, or use current time
         created: now,
         updated: now,
         name: secret_name.to_string(),
-        id,
-        value,
+        id: response.id.to_string(),
+        value: response.value.to_string(),
     })
 }
 
-/// Get a KeyVault secret client for Azure operations
+/// Get a KeyVault client for Azure operations
 ///
 /// # Errors
 ///
@@ -210,15 +204,15 @@ pub async fn get_secret_value(
 /// - Unable to read the client secret file
 /// - Unable to create the Azure credential
 /// - Unable to create the KeyVault client
-pub fn get_keyvault_secret_client(
+pub fn get_keyvault_client(
     client_id: &str,
-    client_secret: &PathBuf,
+    client_secret_path: &PathBuf,
     tenant_id: &str,
     key_vault_name: &str,
-) -> Result<SecretClient> {
+) -> Result<KeyvaultClient> {
     // Read client secret from file
     let mut secret = String::new();
-    let mut file = File::open(client_secret)
+    let mut file = File::open(client_secret_path)
         .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to open client secret file: {}", e)))?;
     
     file.read_to_string(&mut secret)
@@ -264,95 +258,26 @@ pub fn get_keyvault_secret_client(
         actual_key_vault_name
     };
 
-    println!("Debug: Using client_id: {}", actual_client_id);
-    println!("Debug: Using tenant_id: {}", actual_tenant_id);
-    println!("Debug: Using key_vault_name: {}", actual_key_vault_name);
-    println!("Debug: Secret length: {}", secret.len());
-
-    // Create DefaultAzureCredential using environment variables
-    println!("Debug: Creating DefaultAzureCredential...");
+    // Create HTTP client and Azure authority URL
+    let http_client = Arc::new(Client::new());
+    let authority_host = Url::parse("https://login.microsoftonline.com/")
+        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to parse authority URL: {}", e)))?;
     
-    // Save existing environment variables
-    let old_tenant = std::env::var("AZURE_TENANT_ID").ok();
-    let old_client = std::env::var("AZURE_CLIENT_ID").ok();
-    let old_secret = std::env::var("AZURE_CLIENT_SECRET").ok();
-    
-    // Note: In newer Rust versions, environment vars are marked as unsafe. We need to use unsafe blocks.
-    unsafe {
-        // Set new environment variables
-        std::env::set_var("AZURE_TENANT_ID", &actual_tenant_id);
-        std::env::set_var("AZURE_CLIENT_ID", &actual_client_id);
-        std::env::set_var("AZURE_CLIENT_SECRET", &secret);
-    }
-    
-    println!("Debug: Set environment variables:");
-    println!("Debug: AZURE_TENANT_ID={}", std::env::var("AZURE_TENANT_ID").unwrap_or_default());
-    println!("Debug: AZURE_CLIENT_ID={}", std::env::var("AZURE_CLIENT_ID").unwrap_or_default());
-    println!("Debug: AZURE_CLIENT_SECRET length={}", std::env::var("AZURE_CLIENT_SECRET").unwrap_or_default().len());
-    
-    // Create credential using DefaultAzureCredentialBuilder
-    println!("Debug: Creating DefaultAzureCredential...");
-    let credential = match DefaultAzureCredentialBuilder::new()
-        .exclude_azure_cli_credential()
-        .build() {
-            Ok(cred) => {
-                println!("Debug: Successfully created credential with DefaultAzureCredential");
-                
-                // Restore environment variables
-                unsafe {
-                    match &old_tenant {
-                        Some(val) => std::env::set_var("AZURE_TENANT_ID", val),
-                        None => std::env::remove_var("AZURE_TENANT_ID"),
-                    }
-                    match &old_client {
-                        Some(val) => std::env::set_var("AZURE_CLIENT_ID", val),
-                        None => std::env::remove_var("AZURE_CLIENT_ID"),
-                    }
-                    match &old_secret {
-                        Some(val) => std::env::set_var("AZURE_CLIENT_SECRET", val),
-                        None => std::env::remove_var("AZURE_CLIENT_SECRET"),
-                    }
-                }
-                
-                cred
-            },
-            Err(err) => {
-                // Restore environment variables even on error
-                unsafe {
-                    match &old_tenant {
-                        Some(val) => std::env::set_var("AZURE_TENANT_ID", val),
-                        None => std::env::remove_var("AZURE_TENANT_ID"),
-                    }
-                    match &old_client {
-                        Some(val) => std::env::set_var("AZURE_CLIENT_ID", val),
-                        None => std::env::remove_var("AZURE_CLIENT_ID"),
-                    }
-                    match &old_secret {
-                        Some(val) => std::env::set_var("AZURE_CLIENT_SECRET", val),
-                        None => std::env::remove_var("AZURE_CLIENT_SECRET"),
-                    }
-                }
-                
-                println!("Debug: Failed to create credential with DefaultAzureCredential: {}", err);
-                return Err(Box::<dyn std::error::Error>::from(format!("Failed to create credential: {}", err)));
-            }
-        };
+    // Create credential for Azure using ClientSecretCredential (no environment variables needed)
+    let credential = Arc::new(ClientSecretCredential::new(
+        http_client,
+        authority_host,
+        actual_tenant_id.to_string(),
+        actual_client_id.to_string(),
+        secret,
+    )) as Arc<dyn TokenCredential>;
     
     // Create KeyVault client
-    // The URL format for Key Vault is https://{vault-name}.vault.azure.net
     let vault_url = format!("https://{}.vault.azure.net", actual_key_vault_name);
-    println!("Debug: Using vault URL: {}", vault_url);
     
-    let client = match SecretClient::new(&vault_url, credential, None) {
-        Ok(client) => {
-            println!("Debug: Successfully created KeyVault client");
-            client
-        },
-        Err(e) => {
-            println!("Debug: Failed to create KeyVault client: {}", e);
-            return Err(Box::<dyn std::error::Error>::from(format!("Failed to create KeyVault client: {}", e)));
-        }
-    };
+    // Create the client
+    let client = KeyvaultClient::new(&vault_url, credential)
+        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create KeyVault client: {}", e)))?;
     
     Ok(client)
 }

@@ -52,7 +52,7 @@
         "--secrets-client-id",
         "${workspaceFolder}/tests/personal_testing_data/client_id.txt",
         "--secrets-client-secret-path",
-        "${workspaceFolder}/tests/personal_testing_data/secrets.txt",
+        "${workspaceFolder}/tests/personal_testing_data/secret.txt",
         "--secrets-tenant-id",
         // from azure portal -> entra id -> tenant. Not the same as subscription id
         "${workspaceFolder}/tests/personal_testing_data/tenant_id.txt",

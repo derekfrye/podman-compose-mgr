@@ -388,11 +388,11 @@ impl<'a, C: CommandHelper, R: ReadValHelper> RebuildManager<'a, C, R> {
     fn read_yaml_file(&mut self, file_path: &str) -> Result<Value, RebuildError> {
         // Open the file
         let file = File::open(file_path)
-            .map_err(|e| RebuildError::Io(e))?;
+            .map_err(RebuildError::Io)?;
             
         // Parse as YAML
         let yaml: Value = serde_yaml::from_reader(file)
-            .map_err(|e| RebuildError::YamlParse(e))?;
+            .map_err(RebuildError::YamlParse)?;
             
         Ok(yaml)
     }

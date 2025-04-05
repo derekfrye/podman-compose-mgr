@@ -23,12 +23,8 @@ fn main() -> io::Result<()> {
             }
         },
         Mode::RestartSvcs => {
-            // This is a special test mode for Azure KeyVault
-            // Using RestartSvcs as a stand-in for testing Azure connection
-            if let Err(e) = secrets::test_azure_connection(&args) {
-                eprintln!("Error testing Azure connection: {}", e);
-                std::process::exit(1);
-            }
+            // Placeholder for service restart functionality
+            eprintln!("Restart services mode not yet implemented");
         },
         _ => {
             walk_dirs(&args);
