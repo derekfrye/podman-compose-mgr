@@ -1,10 +1,18 @@
 pub mod args;
-pub mod build;
+#[allow(clippy::module_inception)]
+pub mod build {
+    pub mod buildfile;
+    pub mod rebuild;
+}
+pub mod helpers {
+    pub mod cmd_helper_fns;
+    pub mod podman_helper_fns;
+}
 pub mod interfaces;
 pub mod read_val;
 pub mod restartsvcs;
 pub mod secrets;
-pub mod compose_finder;
+pub mod start;
 pub mod testing;
 pub mod utils;
 

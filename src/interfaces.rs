@@ -36,20 +36,20 @@ impl CommandHelper for DefaultCommandHelper {
     fn exec_cmd(&self, cmd: &str, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         // Convert Vec<String> to Vec<&str> for compatibility with existing function
         let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-        crate::utils::cmd_utils::exec_cmd(cmd, &args_ref)?;
+        crate::helpers::cmd_helper_fns::exec_cmd(cmd, &args_ref)?;
         Ok(())
     }
 
     fn pull_base_image(&self, dockerfile: &Path) -> Result<(), Box<dyn std::error::Error>> {
-        crate::utils::cmd_utils::pull_base_image(dockerfile)
+        crate::helpers::cmd_helper_fns::pull_base_image(dockerfile)
     }
 
     fn get_terminal_display_width(&self, specify_size: Option<usize>) -> usize {
-        crate::utils::cmd_utils::get_terminal_display_width(specify_size)
+        crate::helpers::cmd_helper_fns::get_terminal_display_width(specify_size)
     }
 
     fn file_exists_and_readable(&self, file: &std::path::Path) -> bool {
-        crate::utils::cmd_utils::file_exists_and_readable(file)
+        crate::helpers::cmd_helper_fns::file_exists_and_readable(file)
     }
 }
 

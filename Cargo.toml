@@ -3,6 +3,10 @@ name = "podman-compose-mgr"
 version = "0.1.4"
 edition = "2024"
 
+[[bin]]
+name = "debug_azure"
+path = "debug_azure.rs"
+
 [dependencies]
 walkdir = "2"
 regex = "1"

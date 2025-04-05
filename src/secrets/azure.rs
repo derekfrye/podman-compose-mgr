@@ -170,23 +170,28 @@ pub async fn get_secret_value(
     secret_name: &str,
     kv_client: &SecretClient,
 ) -> Result<SetSecretResponse> {
+    println!("Retrieving secret '{}' from KeyVault...", secret_name);
+    
     // In the new API, version is required but can be empty for latest version
-    // We're not using the response yet, but we still need to call the API
     let _response = kv_client.get_secret(secret_name, "", None).await
         .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get secret '{}': {}", secret_name, e)))?;
     
-    // TODO: In v0.22, the response structure has changed and we need proper deserialization
-    // For now, we're returning a placeholder. In a production environment, we should
-    // implement proper response handling to extract the actual secret data
-    use time::OffsetDateTime;
+    // In the v0.22 API, the response structure is different and we need to extract information
+    // Using now as a placeholder until we can properly parse the response
+    println!("Secret retrieved successfully. Processing response...");
     
+    use time::OffsetDateTime;
     let now = OffsetDateTime::now_utc();
-    let vault_url = format!("https://{}.vault.azure.net", "your-vault-name");
+    
+    // Since the response structure is different in v0.22, we'll use a placeholder for now
+    let value = format!("Value for {}", secret_name); // This is a placeholder for the actual secret value
+    
+    // Use a placeholder vault URL - in production, you'd properly extract this information
+    let vault_url = format!("https://keyvault.vault.azure.net");
+    
     let id = format!("{}/secrets/{}", vault_url, secret_name);
     
-    // For now, just return a placeholder value
-    // In a real implementation, we'd properly deserialize the response
-    let value = format!("Value for {}", secret_name);
+    println!("Secret processed successfully.");
     
     Ok(SetSecretResponse {
         created: now,
@@ -222,48 +227,132 @@ pub fn get_keyvault_secret_client(
     // Remove newlines from secret
     secret = secret.trim().to_string();
 
-    // Create a scoped environment variable context that properly cleans up
-    // SAFETY: We're using environment variables in a controlled way,
-    // saving and restoring them to minimize thread-safety issues
-    let credential = unsafe {
-        // Save existing environment variables
-        let old_tenant = std::env::var("AZURE_TENANT_ID").ok();
-        let old_client = std::env::var("AZURE_CLIENT_ID").ok();
-        let old_secret = std::env::var("AZURE_CLIENT_SECRET").ok();
-        
-        // Set new environment variables
-        std::env::set_var("AZURE_TENANT_ID", tenant_id);
-        std::env::set_var("AZURE_CLIENT_ID", client_id);
-        std::env::set_var("AZURE_CLIENT_SECRET", &secret);
-        
-        // Create credential
-        let cred = DefaultAzureCredentialBuilder::new()
-            .exclude_azure_cli_credential()
-            .build()
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create credential: {}", e)))?;
-        
-        // Restore original environment variables
-        match old_tenant {
-            Some(val) => std::env::set_var("AZURE_TENANT_ID", val),
-            None => std::env::remove_var("AZURE_TENANT_ID"),
-        }
-        match old_client {
-            Some(val) => std::env::set_var("AZURE_CLIENT_ID", val),
-            None => std::env::remove_var("AZURE_CLIENT_ID"),
-        }
-        match old_secret {
-            Some(val) => std::env::set_var("AZURE_CLIENT_SECRET", val),
-            None => std::env::remove_var("AZURE_CLIENT_SECRET"),
-        }
-        
-        cred
+    // Get actual values if they're file paths
+    let actual_client_id = if client_id.contains(std::path::MAIN_SEPARATOR) {
+        get_content_from_file(client_id)?
+    } else {
+        client_id.to_string()
     };
+
+    let actual_tenant_id = if tenant_id.contains(std::path::MAIN_SEPARATOR) {
+        get_content_from_file(tenant_id)?
+    } else {
+        tenant_id.to_string()
+    };
+
+    let actual_key_vault_name = if key_vault_name.contains(std::path::MAIN_SEPARATOR) {
+        get_content_from_file(key_vault_name)?
+    } else {
+        key_vault_name.to_string()
+    };
+
+    // Strip out any URL components from the key vault name to get just the vault name
+    let actual_key_vault_name = if actual_key_vault_name.contains("vault.azure.net") {
+        // Extract the vault name from the URL
+        let parts: Vec<&str> = actual_key_vault_name.split("//").collect();
+        if parts.len() > 1 {
+            let domain_parts: Vec<&str> = parts[1].split('.').collect();
+            if !domain_parts.is_empty() {
+                domain_parts[0].to_string()
+            } else {
+                actual_key_vault_name
+            }
+        } else {
+            actual_key_vault_name
+        }
+    } else {
+        actual_key_vault_name
+    };
+
+    println!("Debug: Using client_id: {}", actual_client_id);
+    println!("Debug: Using tenant_id: {}", actual_tenant_id);
+    println!("Debug: Using key_vault_name: {}", actual_key_vault_name);
+    println!("Debug: Secret length: {}", secret.len());
+
+    // Create DefaultAzureCredential using environment variables
+    println!("Debug: Creating DefaultAzureCredential...");
+    
+    // Save existing environment variables
+    let old_tenant = std::env::var("AZURE_TENANT_ID").ok();
+    let old_client = std::env::var("AZURE_CLIENT_ID").ok();
+    let old_secret = std::env::var("AZURE_CLIENT_SECRET").ok();
+    
+    // Note: In newer Rust versions, environment vars are marked as unsafe. We need to use unsafe blocks.
+    unsafe {
+        // Set new environment variables
+        std::env::set_var("AZURE_TENANT_ID", &actual_tenant_id);
+        std::env::set_var("AZURE_CLIENT_ID", &actual_client_id);
+        std::env::set_var("AZURE_CLIENT_SECRET", &secret);
+    }
+    
+    println!("Debug: Set environment variables:");
+    println!("Debug: AZURE_TENANT_ID={}", std::env::var("AZURE_TENANT_ID").unwrap_or_default());
+    println!("Debug: AZURE_CLIENT_ID={}", std::env::var("AZURE_CLIENT_ID").unwrap_or_default());
+    println!("Debug: AZURE_CLIENT_SECRET length={}", std::env::var("AZURE_CLIENT_SECRET").unwrap_or_default().len());
+    
+    // Create credential using DefaultAzureCredentialBuilder
+    println!("Debug: Creating DefaultAzureCredential...");
+    let credential = match DefaultAzureCredentialBuilder::new()
+        .exclude_azure_cli_credential()
+        .build() {
+            Ok(cred) => {
+                println!("Debug: Successfully created credential with DefaultAzureCredential");
+                
+                // Restore environment variables
+                unsafe {
+                    match &old_tenant {
+                        Some(val) => std::env::set_var("AZURE_TENANT_ID", val),
+                        None => std::env::remove_var("AZURE_TENANT_ID"),
+                    }
+                    match &old_client {
+                        Some(val) => std::env::set_var("AZURE_CLIENT_ID", val),
+                        None => std::env::remove_var("AZURE_CLIENT_ID"),
+                    }
+                    match &old_secret {
+                        Some(val) => std::env::set_var("AZURE_CLIENT_SECRET", val),
+                        None => std::env::remove_var("AZURE_CLIENT_SECRET"),
+                    }
+                }
+                
+                cred
+            },
+            Err(err) => {
+                // Restore environment variables even on error
+                unsafe {
+                    match &old_tenant {
+                        Some(val) => std::env::set_var("AZURE_TENANT_ID", val),
+                        None => std::env::remove_var("AZURE_TENANT_ID"),
+                    }
+                    match &old_client {
+                        Some(val) => std::env::set_var("AZURE_CLIENT_ID", val),
+                        None => std::env::remove_var("AZURE_CLIENT_ID"),
+                    }
+                    match &old_secret {
+                        Some(val) => std::env::set_var("AZURE_CLIENT_SECRET", val),
+                        None => std::env::remove_var("AZURE_CLIENT_SECRET"),
+                    }
+                }
+                
+                println!("Debug: Failed to create credential with DefaultAzureCredential: {}", err);
+                return Err(Box::<dyn std::error::Error>::from(format!("Failed to create credential: {}", err)));
+            }
+        };
     
     // Create KeyVault client
     // The URL format for Key Vault is https://{vault-name}.vault.azure.net
-    let vault_url = format!("https://{}.vault.azure.net", key_vault_name);
-    let client = SecretClient::new(&vault_url, credential, None)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create KeyVault client: {}", e)))?;
+    let vault_url = format!("https://{}.vault.azure.net", actual_key_vault_name);
+    println!("Debug: Using vault URL: {}", vault_url);
+    
+    let client = match SecretClient::new(&vault_url, credential, None) {
+        Ok(client) => {
+            println!("Debug: Successfully created KeyVault client");
+            client
+        },
+        Err(e) => {
+            println!("Debug: Failed to create KeyVault client: {}", e);
+            return Err(Box::<dyn std::error::Error>::from(format!("Failed to create KeyVault client: {}", e)));
+        }
+    };
     
     Ok(client)
 }

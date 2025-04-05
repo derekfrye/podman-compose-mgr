@@ -40,7 +40,7 @@ pub fn validate(args: &Args) -> Result<()> {
 }
 
 /// Prepare for validation by reading the input file and creating a KeyVault client
-fn prepare_validation(args: &Args) -> Result<(SecretClient, Vec<Value>)> {
+pub fn prepare_validation(args: &Args) -> Result<(SecretClient, Vec<Value>)> {
     // Get input file path
     let input_path = args.secret_mode_input_json.as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Input JSON path is required"))?;

@@ -1,9 +1,8 @@
 use podman_compose_mgr::{
-    args::{self},
-    compose_finder::walk_dirs,
+    args::{self, Mode},
+    secrets,
+    start::walk_dirs,
 };
-use podman_compose_mgr::secrets::azure;
-use podman_compose_mgr::secrets::validation;
 
 // use futures::executor;
 use std::io;
@@ -17,16 +16,20 @@ fn main() -> io::Result<()> {
     }
 
     match args.mode {
-        args::Mode::SecretRefresh => {
-            if let Err(e) = azure::update_mode(&args) {
-                eprintln!("Error refreshing secrets: {}", e);
+        Mode::SecretRefresh | Mode::SecretRetrieve => {
+            if let Err(e) = secrets::process_secrets_mode(&args) {
+                eprintln!("Error processing secrets: {}", e);
+                std::process::exit(1);
             }
-        }
-        args::Mode::SecretRetrieve => {
-            if let Err(e) = validation::validate(&args) {
-                eprintln!("Error retrieving secrets: {}", e);
+        },
+        Mode::RestartSvcs => {
+            // This is a special test mode for Azure KeyVault
+            // Using RestartSvcs as a stand-in for testing Azure connection
+            if let Err(e) = secrets::test_azure_connection(&args) {
+                eprintln!("Error testing Azure connection: {}", e);
+                std::process::exit(1);
             }
-        }
+        },
         _ => {
             walk_dirs(&args);
         }
