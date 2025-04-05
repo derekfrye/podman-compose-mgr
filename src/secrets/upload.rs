@@ -116,14 +116,8 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
         let content = fs::read_to_string(filenm)
             .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to read file {}: {}", filenm, e)))?;
             
-        // Get file size in KiB
-        let metadata = metadata(filenm)
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get metadata for {}: {}", filenm, e)))?;
-        let size_bytes = metadata.len();
-        let size_kib = size_bytes as f64 / 1024.0;
-        
         // Prompt the user for confirmation using the injected helper
-        let upload_confirmed = prompt_for_upload_with_helper(filenm, &secret_name, size_kib, read_val_helper)?;
+        let upload_confirmed = prompt_for_upload_with_helper(filenm, &secret_name, read_val_helper)?;
         
         if !upload_confirmed {
             if args.verbose {
@@ -210,18 +204,23 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
 /// 
 /// This function uses the default ReadInteractiveInputHelper
 #[allow(dead_code)]
-fn prompt_for_upload(file_path: &str, encoded_name: &str, size_kib: f64) -> Result<bool> {
+fn prompt_for_upload(file_path: &str, encoded_name: &str) -> Result<bool> {
     let read_val_helper = DefaultReadInteractiveInputHelper;
-    prompt_for_upload_with_helper(file_path, encoded_name, size_kib, &read_val_helper)
+    prompt_for_upload_with_helper(file_path, encoded_name, &read_val_helper)
 }
 
 /// Version of prompt_for_upload that accepts dependency injection for testing
 pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
     file_path: &str, 
     encoded_name: &str, 
-    size_kib: f64,
     read_val_helper: &R,
 ) -> Result<bool> {
+    // Get file metadata to calculate size
+    let metadata = metadata(file_path)
+        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get metadata for {}: {}", file_path, e)))?;
+    let size_bytes = metadata.len();
+    let size_kib = size_bytes as f64 / 1024.0;
+
     let mut grammars: Vec<GrammarFragment> = Vec::new();
     
     // Setup the prompt
@@ -245,7 +244,7 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
                     },
                     // Display details about the file
                     "d" => {
-                        display_file_details(file_path, size_kib, encoded_name)?;
+                        display_file_details(file_path, encoded_name)?;
                     },
                     // Display help
                     "?" => {
@@ -271,10 +270,14 @@ pub struct FileDetails {
 }
 
 /// Get detailed information about the file
-pub fn get_file_details(file_path: &str, size_kib: f64, encoded_name: &str) -> Result<FileDetails> {
-    // Get file metadata for the last modified time
+pub fn get_file_details(file_path: &str, encoded_name: &str) -> Result<FileDetails> {
+    // Get file metadata for size and last modified time
     let metadata = metadata(file_path)
         .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get metadata: {}", e)))?;
+    
+    // Calculate file size in KiB
+    let size_bytes = metadata.len();
+    let size_kib = size_bytes as f64 / 1024.0;
     
     // Format the last modified time
     let modified = metadata.modified()
@@ -293,9 +296,9 @@ pub fn get_file_details(file_path: &str, size_kib: f64, encoded_name: &str) -> R
 }
 
 /// Display detailed information about the file
-fn display_file_details(file_path: &str, size_kib: f64, encoded_name: &str) -> Result<()> {
+fn display_file_details(file_path: &str, encoded_name: &str) -> Result<()> {
     // Get the file details
-    let details = get_file_details(file_path, size_kib, encoded_name)?;
+    let details = get_file_details(file_path, encoded_name)?;
     
     // Display the details
     println!("File path: {}", details.file_path);

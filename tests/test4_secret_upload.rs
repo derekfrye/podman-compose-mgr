@@ -272,20 +272,11 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                 // Calculate the encoded name
                 let encoded_name = upload::create_encoded_secret_name(file_path);
                 
-                // Get file size
-                let metadata = std::fs::metadata(file_path).unwrap();
-                let size_bytes = metadata.len();
-                let size_kib = size_bytes as f64 / 1024.0;
-                
                 // Create a hard-coded expected FileDetails with known values
                 // Note: We can't predict the exact last_modified time in the test,
-                // so we'll check that field separately
-                let details = FileDetails {
-                    file_path: file_path.clone(),
-                    size_kib,
-                    last_modified: "WILL BE VALIDATED SEPARATELY".to_string(), // Will be checked differently
-                    secret_name: encoded_name.clone(),
-                };
+                // so we'll check that field separately, and size_kib is calculated inside get_file_details
+                let mut details = upload::get_file_details(file_path, &encoded_name).unwrap();
+                details.last_modified = "WILL BE VALIDATED SEPARATELY".to_string(); // Will be checked differently
                 
                 (encoded_name, details)
             })
@@ -403,13 +394,8 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     // Get the encoded name
                     let encoded_name = upload::create_encoded_secret_name(current_file);
                     
-                    // Calculate file size
-                    let metadata = std::fs::metadata(current_file).unwrap();
-                    let size_bytes = metadata.len();
-                    let size_kib = size_bytes as f64 / 1024.0;
-                    
                     // Get file details using our extracted function
-                    let details = upload::get_file_details(current_file, size_kib, &encoded_name).unwrap();
+                    let details = upload::get_file_details(current_file, &encoded_name).unwrap();
                     
                     // Capture the details for later verification
                     captured_details_clone.lock().unwrap().push(details.clone());
