@@ -15,7 +15,7 @@ fn test_initialize_process() {
     // Create Args with the necessary parameters
     let args = args::Args {
         mode: Mode::SecretInitialize,
-        secrets_init_filepath: Some(PathBuf::from("tests/test3/test_input.json")),
+        secrets_init_filepath: Some(PathBuf::from("tests/test3_and_test4/test_input.json")),
         secret_mode_input_json: Some(temp_path.clone()),
         path: PathBuf::from("."),
         
@@ -70,10 +70,10 @@ fn test_initialize_process() {
         
         // Verify MD5 based on file content
         match filenm {
-            "tests/test3/a" => assert_eq!(md5, "60b725f10c9c85c70d97880dfe8191b3"),
-            "tests/test3/b" => assert_eq!(md5, "bfcc9da4f2e1d313c63cd0a4ee7604e9"),
-            "tests/test3/c" => assert_eq!(md5, "c576ec4297a7bdacc878e0061192441e"),
-            "tests/test3/d d" => assert_eq!(md5, "ef76b4f269b9a5104e4f061419a5f529"),
+            "tests/test3_and_test4/a" => assert_eq!(md5, "60b725f10c9c85c70d97880dfe8191b3"),
+            "tests/test3_and_test4/b" => assert_eq!(md5, "bfcc9da4f2e1d313c63cd0a4ee7604e9"),
+            "tests/test3_and_test4/c" => assert_eq!(md5, "c576ec4297a7bdacc878e0061192441e"),
+            "tests/test3_and_test4/d d" => assert_eq!(md5, "ef76b4f269b9a5104e4f061419a5f529"),
             _ => panic!("Unexpected file: {}", filenm),
         }
     }
@@ -104,10 +104,10 @@ fn test_initialize_process() {
     }
     
     // Verify all files have exactly 2 entries
-    assert_eq!(file_counts["tests/test3/a"], 2, "Expected 2 entries for file a");
-    assert_eq!(file_counts["tests/test3/b"], 2, "Expected 2 entries for file b");
-    assert_eq!(file_counts["tests/test3/c"], 2, "Expected 2 entries for file c");
-    assert_eq!(file_counts["tests/test3/d d"], 2, "Expected 2 entries for file 'd d'");
+    assert_eq!(file_counts["tests/test3_and_test4/a"], 2, "Expected 2 entries for file a");
+    assert_eq!(file_counts["tests/test3_and_test4/b"], 2, "Expected 2 entries for file b");
+    assert_eq!(file_counts["tests/test3_and_test4/c"], 2, "Expected 2 entries for file c");
+    assert_eq!(file_counts["tests/test3_and_test4/d d"], 2, "Expected 2 entries for file 'd d'");
     
     // Group entries by filename for comparison
     for entry in output_json {
@@ -132,10 +132,10 @@ fn test_initialize_process() {
         // Double-check MD5 against expected values
         let md5 = first["md5"].as_str().unwrap();
         match filename.as_str() {
-            "tests/test3/a" => assert_eq!(md5, "60b725f10c9c85c70d97880dfe8191b3", "MD5 mismatch for file a"),
-            "tests/test3/b" => assert_eq!(md5, "bfcc9da4f2e1d313c63cd0a4ee7604e9", "MD5 mismatch for file b"),
-            "tests/test3/c" => assert_eq!(md5, "c576ec4297a7bdacc878e0061192441e", "MD5 mismatch for file c"),
-            "tests/test3/d d" => assert_eq!(md5, "ef76b4f269b9a5104e4f061419a5f529", "MD5 mismatch for file 'd d'"),
+            "tests/test3_and_test4/a" => assert_eq!(md5, "60b725f10c9c85c70d97880dfe8191b3", "MD5 mismatch for file a"),
+            "tests/test3_and_test4/b" => assert_eq!(md5, "bfcc9da4f2e1d313c63cd0a4ee7604e9", "MD5 mismatch for file b"),
+            "tests/test3_and_test4/c" => assert_eq!(md5, "c576ec4297a7bdacc878e0061192441e", "MD5 mismatch for file c"),
+            "tests/test3_and_test4/d d" => assert_eq!(md5, "ef76b4f269b9a5104e4f061419a5f529", "MD5 mismatch for file 'd d'"),
             _ => panic!("Unexpected filename: {}", filename),
         }
     }
