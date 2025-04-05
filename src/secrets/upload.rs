@@ -1,7 +1,7 @@
 use crate::args::Args;
 use crate::interfaces::{DefaultReadInteractiveInputHelper, ReadInteractiveInputHelper};
 use crate::read_interactive_input::GrammarFragment;
-use crate::secrets::azure::{get_keyvault_client, get_secret_value, set_secret_value};
+use crate::secrets::azure::get_keyvault_client;
 use crate::secrets::error::Result;
 use crate::secrets::user_prompt::{setup_upload_prompt, display_upload_help};
 use crate::secrets::utils::get_hostname;
@@ -11,7 +11,6 @@ use serde_json::{json, Value};
 use std::fs::{self, File, OpenOptions, metadata};
 use std::io::Read;
 use std::path::{Path, MAIN_SEPARATOR};
-use tokio::runtime::Runtime;
 
 /// Process the upload operation to Azure Key Vault using default implementations
 pub fn process(args: &Args) -> Result<()> {
@@ -43,9 +42,6 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
     
     // Create KeyVault client
     let kv_client = get_keyvault_client(client_id, client_secret_path, tenant_id, key_vault_name)?;
-    
-    // Create runtime for async operations
-    let rt = Runtime::new()?;
     
     // Test connection to Azure Key Vault
     if args.verbose {
@@ -106,8 +102,8 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
         
         let secret_name = encoded_name;
         
-        // Step 2: Check if the secret already exists
-        let secret_exists = match rt.block_on(get_secret_value(&secret_name, &kv_client)) {
+        // Step 2: Check if the secret already exists using the interface
+        let secret_exists = match kv_client.get_secret_value(&secret_name) {
             Ok(_) => {
                 eprintln!("Secret {} already exists in the key vault, skipping", secret_name);
                 true
@@ -139,8 +135,8 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
             continue;
         }
         
-        // Step 3: Upload the secret
-        let response = rt.block_on(set_secret_value(&secret_name, &kv_client, &content))
+        // Step 3: Upload the secret using the interface
+        let response = kv_client.set_secret_value(&secret_name, &content)
             .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to upload secret {}: {}", secret_name, e)))?;
         
         if args.verbose {
@@ -292,9 +288,7 @@ fn display_file_details(file_path: &str, size_kib: f64, encoded_name: &str) -> R
 
 #[cfg(test)]
 pub mod test_utils {
-    use super::*;
     use crate::secrets::models::SetSecretResponse;
-    use azure_security_keyvault::KeyvaultClient;
     use time::OffsetDateTime;
 
     // For testing, we can override the get_secret_value and set_secret_value functions

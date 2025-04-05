@@ -4,7 +4,6 @@ use podman_compose_mgr::secrets::azure::get_content_from_file;
 use podman_compose_mgr::secrets::validation::prepare_validation;
 use podman_compose_mgr::secrets::error::Result as SecretResult;
 use std::path::PathBuf;
-use tokio::runtime::Runtime;
 
 /// Integration test for Azure KeyVault connection using azure_identity v0.21
 ///
@@ -125,12 +124,10 @@ fn test_azure_connection(args: &Args) -> SecretResult<()> {
         if let Some(az_name) = json_values[0].get("az_name").and_then(|v| v.as_str()) {
             println!("Testing retrieval of secret '{}'...", az_name);
             
-            // Create a runtime for the async operation
-            let rt = Runtime::new()
-                .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
+            // No need for a runtime with the interface
                 
-            // Attempt to get the secret
-            match rt.block_on(podman_compose_mgr::secrets::azure::get_secret_value(az_name, &client)) {
+            // Attempt to get the secret using the client interface
+            match client.get_secret_value(az_name) {
                 Ok(secret) => {
                     println!("Secret retrieved successfully:");
                     println!("  ID: {}", secret.id);

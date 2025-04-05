@@ -1,4 +1,5 @@
 use crate::read_interactive_input::{GrammarFragment, ReadValResult};
+use crate::secrets::models::SetSecretResponse;
 use mockall::automock;
 use std::path::Path;
 
@@ -71,5 +72,66 @@ impl ReadInteractiveInputHelper for DefaultReadInteractiveInputHelper {
             size,
             None, // Use default stdin behavior
         )
+    }
+}
+
+/// Interface for Azure KeyVault operations to facilitate testing
+#[automock]
+pub trait AzureKeyVaultClient {
+    /// Sets a secret value in Azure KeyVault
+    fn set_secret_value(
+        &self, 
+        secret_name: &str, 
+        secret_value: &str
+    ) -> Result<SetSecretResponse, Box<dyn std::error::Error>>;
+    
+    /// Gets a secret value from Azure KeyVault
+    fn get_secret_value(
+        &self, 
+        secret_name: &str
+    ) -> Result<SetSecretResponse, Box<dyn std::error::Error>>;
+}
+
+/// Default implementation that uses the actual Azure KeyVault client
+pub struct DefaultAzureKeyVaultClient {
+    // The actual KeyvaultClient from the Azure SDK
+    client: azure_security_keyvault::KeyvaultClient,
+}
+
+impl DefaultAzureKeyVaultClient {
+    pub fn new(client: azure_security_keyvault::KeyvaultClient) -> Self {
+        Self { client }
+    }
+}
+
+impl AzureKeyVaultClient for DefaultAzureKeyVaultClient {
+    fn set_secret_value(
+        &self,
+        secret_name: &str,
+        secret_value: &str
+    ) -> Result<SetSecretResponse, Box<dyn std::error::Error>> {
+        // Create a runtime for the async functions
+        let rt = tokio::runtime::Runtime::new()?;
+        
+        // Call the actual implementation
+        rt.block_on(crate::secrets::azure::set_secret_value(
+            secret_name,
+            &self.client,
+            secret_value
+        ))
+    }
+    
+    fn get_secret_value(
+        &self,
+        secret_name: &str
+    ) -> Result<SetSecretResponse, Box<dyn std::error::Error>> {
+        // Create a runtime for the async functions
+        let rt = tokio::runtime::Runtime::new()?;
+        
+        // Call the actual implementation
+        rt.block_on(crate::secrets::azure::get_secret_value(
+            secret_name,
+            &self.client
+        ))
     }
 }

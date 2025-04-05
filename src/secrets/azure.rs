@@ -1,4 +1,5 @@
 use crate::args::Args;
+use crate::interfaces::{AzureKeyVaultClient, DefaultAzureKeyVaultClient};
 use crate::secrets::error::Result;
 use crate::secrets::models::SetSecretResponse;
 
@@ -43,7 +44,7 @@ pub fn update_mode(args: &Args) -> Result<()> {
         .into_iter()
         .filter_map(|e| e.ok())
     {
-        process_env_file(&mut output_entries, entry, &re, &client, &rt)?;
+        process_env_file(&mut output_entries, entry, &re, client.as_ref(), &rt)?;
     }
 
     write_output_entries(args, output_entries)?;
@@ -56,8 +57,8 @@ fn process_env_file(
     output_entries: &mut Vec<Value>,
     entry: walkdir::DirEntry,
     re: &Regex,
-    client: &KeyvaultClient,
-    rt: &Runtime
+    client: &dyn AzureKeyVaultClient,
+    _rt: &Runtime
 ) -> Result<()> {
     if entry.file_name() == ".env" && entry.file_type().is_file() {
         let full_path = entry.path().to_string_lossy().to_string();
@@ -72,9 +73,8 @@ fn process_env_file(
             .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to read file {}: {}", full_path, e)))?;
         let md5_checksum = calculate_md5(content.as_str());
 
-        // Insert secret into Azure Key Vault
-        let azure_response = rt
-            .block_on(set_secret_value(&secret_name, client, &content))
+        // Insert secret into Azure Key Vault using the interface
+        let azure_response = client.set_secret_value(&secret_name, &content)
             .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to set secret: {}", e)))?;
 
         // Get current timestamp
@@ -136,6 +136,8 @@ fn write_output_entries(args: &Args, output_entries: Vec<Value>) -> Result<()> {
 /// Returns an error if:
 /// - The secret set operation fails
 /// - Retrieving the secret after setting fails
+/// 
+/// This function is used by the DefaultAzureKeyVaultClient implementation
 pub async fn set_secret_value(
     secret_name: &str,
     kv_client: &KeyvaultClient,
@@ -167,6 +169,8 @@ pub async fn set_secret_value(
 /// # Errors
 ///
 /// Returns an error if the Azure API call fails
+/// 
+/// This function is used by the DefaultAzureKeyVaultClient implementation
 pub async fn get_secret_value(
     secret_name: &str,
     kv_client: &KeyvaultClient,
@@ -209,7 +213,7 @@ pub fn get_keyvault_client(
     client_secret_path: &PathBuf,
     tenant_id: &str,
     key_vault_name: &str,
-) -> Result<KeyvaultClient> {
+) -> Result<Box<dyn AzureKeyVaultClient>> {
     // Read client secret from file
     let mut secret = String::new();
     let mut file = File::open(client_secret_path)
@@ -275,11 +279,14 @@ pub fn get_keyvault_client(
     // Create KeyVault client
     let vault_url = format!("https://{}.vault.azure.net", actual_key_vault_name);
     
-    // Create the client
-    let client = KeyvaultClient::new(&vault_url, credential)
+    // Create the concrete KeyvaultClient from the SDK
+    let sdk_client = KeyvaultClient::new(&vault_url, credential)
         .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create KeyVault client: {}", e)))?;
     
-    Ok(client)
+    // Wrap in our interface implementation
+    let client = DefaultAzureKeyVaultClient::new(sdk_client);
+    
+    Ok(Box::new(client))
 }
 
 /// Calculate MD5 hash for a string
