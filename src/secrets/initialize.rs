@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
-use std::process::Command;
 
 use chrono::{DateTime, Local};
 use md5::{Digest, Md5};
@@ -10,6 +9,7 @@ use serde_json::json;
 
 use crate::Args;
 use crate::secrets::error::Result;
+use crate::utils::cmd_utils;
 
 /// Process the initialization of secrets
 ///
@@ -25,8 +25,18 @@ pub fn process(args: &Args) -> Result<()> {
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
     
-    // Parse the JSON
-    let files_map: HashMap<String, String> = serde_json::from_str(&contents)?;
+    // Parse the JSON - it's either a map or an array of objects with filenm key
+    let files: Vec<String> = if contents.trim().starts_with('{') {
+        // Handle map format
+        let files_map: HashMap<String, String> = serde_json::from_str(&contents)?;
+        files_map.values().cloned().collect()
+    } else {
+        // Handle array format with objects that have filenm field
+        let files_array: Vec<serde_json::Value> = serde_json::from_str(&contents)?;
+        files_array.iter()
+            .filter_map(|obj| obj.get("filenm").and_then(|v| v.as_str()).map(String::from))
+            .collect()
+    };
     
     // Get the hostname
     let hostname = hostname()?;
@@ -34,7 +44,7 @@ pub fn process(args: &Args) -> Result<()> {
     // Create new entries for each file
     let mut new_entries = Vec::new();
     
-    for (filenm, _) in files_map {
+    for filenm in files {
         // Check if file exists
         if !Path::new(&filenm).exists() {
             return Err(Box::<dyn std::error::Error>::from(
@@ -115,18 +125,7 @@ fn calculate_md5(filepath: &str) -> Result<String> {
 
 /// Get the system hostname
 fn hostname() -> Result<String> {
-    let output = Command::new("hostname")
-        .output()
-        .map_err(|e| Box::<dyn std::error::Error>::from(e.to_string()))?;
-    
-    if !output.status.success() {
-        return Err(Box::<dyn std::error::Error>::from(
-            "Failed to get hostname",
-        ));
-    }
-    
-    let hostname = String::from_utf8(output.stdout)
-        .map_err(|e| Box::<dyn std::error::Error>::from(e.to_string()))?
+    let hostname = cmd_utils::run_command_with_output("hostname", &[])?
         .trim()
         .to_string();
     
