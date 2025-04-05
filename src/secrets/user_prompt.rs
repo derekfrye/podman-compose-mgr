@@ -1,6 +1,7 @@
 use crate::read_interactive_input::{GrammarFragment, GrammarType};
 use crate::utils::json_utils;
 use crate::secrets::error::Result;
+use crate::secrets::upload::format_file_size;
 use serde_json::Value;
 
 /// Setup the interactive prompt for validation
@@ -92,7 +93,15 @@ pub fn setup_upload_prompt(
     let metadata = std::fs::metadata(file_path)
         .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get metadata for {}: {}", file_path, e)))?;
     let size_bytes = metadata.len();
-    let size_kib = size_bytes as f64 / 1024.0;
+    
+    // Format file size with appropriate units
+    let formatted_size = format_file_size(size_bytes);
+    
+    // Split the formatted size into value and unit (e.g., "123.45 KiB" -> "123.45", "KiB ")
+    let parts: Vec<&str> = formatted_size.split_whitespace().collect();
+    let size_value = parts[0];
+    let size_unit = format!("{} ", parts[1]); // Add space after unit
+    
     // Add "Upload" text
     let upload_grammar = GrammarFragment {
         original_val_for_prompt: Some("Upload".to_string()),
@@ -106,13 +115,13 @@ pub fn setup_upload_prompt(
     };
     grammars.push(upload_grammar);
     
-    // Add file size in KiB
+    // Add file size with appropriate unit
     let size_grammar = GrammarFragment {
-        original_val_for_prompt: Some(format!("{:.2}", size_kib)),
+        original_val_for_prompt: Some(size_value.to_string()),
         shortened_val_for_prompt: None,
         pos: 1,
         prefix: None,
-        suffix: Some("KiB ".to_string()),
+        suffix: Some(size_unit),
         grammar_type: GrammarType::Verbiage,
         can_shorten: false,
         display_at_all: true,

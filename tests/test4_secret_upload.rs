@@ -402,7 +402,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     
                     // Print the details manually since we're in a test
                     println!("File path: {}", details.file_path);
-                    println!("Size: {:.2} KiB", details.size_kib);
+                    println!("Size: {}", upload::format_file_size(details.size_bytes));
                     println!("Last modified: {}", details.last_modified);
                     println!("Secret name: {}", details.secret_name);
                     
@@ -446,10 +446,10 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
             assert_eq!(details.file_path, expected_details.file_path, 
                 "File path mismatch for file {}", details.file_path);
             
-            // Verify size (with small epsilon for floating point comparison)
-            assert!((details.size_kib - expected_details.size_kib).abs() < 0.001, 
-                "Size mismatch for file {}: got {}, expected {}", 
-                details.file_path, details.size_kib, expected_details.size_kib);
+            // Verify size
+            assert_eq!(details.size_bytes, expected_details.size_bytes, 
+                "Size mismatch for file {}: got {} bytes, expected {} bytes", 
+                details.file_path, details.size_bytes, expected_details.size_bytes);
             
             // Verify secret name
             assert_eq!(details.secret_name, expected_details.secret_name, 

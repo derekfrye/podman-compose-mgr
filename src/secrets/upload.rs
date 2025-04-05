@@ -261,7 +261,7 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
 #[derive(Debug, Clone)]
 pub struct FileDetails {
     pub file_path: String,
-    pub size_kib: f64,
+    pub size_bytes: u64,
     pub last_modified: String,
     pub secret_name: String,
 }
@@ -272,9 +272,8 @@ pub fn get_file_details(file_path: &str, encoded_name: &str) -> Result<FileDetai
     let metadata = metadata(file_path)
         .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get metadata: {}", e)))?;
     
-    // Calculate file size in KiB
+    // Get file size in bytes
     let size_bytes = metadata.len();
-    let size_kib = size_bytes as f64 / 1024.0;
     
     // Format the last modified time
     let modified = metadata.modified()
@@ -286,10 +285,38 @@ pub fn get_file_details(file_path: &str, encoded_name: &str) -> Result<FileDetai
     // Return the details
     Ok(FileDetails {
         file_path: file_path.to_string(),
-        size_kib,
+        size_bytes,
         last_modified: formatted_time,
         secret_name: encoded_name.to_string(),
     })
+}
+
+/// Helper function to format file size with appropriate units
+pub fn format_file_size(size_bytes: u64) -> String {
+    if size_bytes < 1024 {
+        // Less than 1 KiB, display in bytes
+        format!("{} bytes", size_bytes)
+    } else if size_bytes < 1024 * 1024 {
+        // Display in KiB with 2 decimal places
+        let size_kib = size_bytes as f64 / 1024.0;
+        format!("{:.2} KiB", size_kib)
+    } else if size_bytes < 1024 * 1024 * 1024 {
+        // Display in MiB with 2 decimal places
+        let size_mib = size_bytes as f64 / (1024.0 * 1024.0);
+        format!("{:.2} MiB", size_mib)
+    } else if size_bytes < 1024 * 1024 * 1024 * 1024 {
+        // Display in GiB with 2 decimal places
+        let size_gib = size_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+        format!("{:.2} GiB", size_gib)
+    } else if size_bytes < 1024 * 1024 * 1024 * 1024 * 1024 {
+        // Display in TiB with 2 decimal places
+        let size_tib = size_bytes as f64 / (1024.0 * 1024.0 * 1024.0 * 1024.0);
+        format!("{:.2} TiB", size_tib)
+    } else {
+        // Display in PiB with 2 decimal places (for extremely large files)
+        let size_pib = size_bytes as f64 / (1024.0 * 1024.0 * 1024.0 * 1024.0 * 1024.0);
+        format!("{:.2} PiB", size_pib)
+    }
 }
 
 /// Display detailed information about the file
@@ -299,7 +326,7 @@ fn display_file_details(file_path: &str, encoded_name: &str) -> Result<()> {
     
     // Display the details
     println!("File path: {}", details.file_path);
-    println!("Size: {:.2} KiB", details.size_kib);
+    println!("Size: {}", format_file_size(details.size_bytes));
     println!("Last modified: {}", details.last_modified);
     println!("Secret name: {}", details.secret_name);
     
