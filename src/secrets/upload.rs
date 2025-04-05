@@ -1,5 +1,6 @@
 use crate::args::Args;
-use crate::read_interactive_input::{self as read_val, GrammarFragment};
+use crate::interfaces::{DefaultReadInteractiveInputHelper, ReadInteractiveInputHelper};
+use crate::read_interactive_input::GrammarFragment;
 use crate::secrets::azure::{get_keyvault_client, get_secret_value, set_secret_value};
 use crate::secrets::error::Result;
 use crate::secrets::user_prompt::{setup_upload_prompt, display_upload_help};
@@ -118,8 +119,9 @@ pub fn process(args: &Args) -> Result<()> {
         let size_bytes = metadata.len();
         let size_kib = size_bytes as f64 / 1024.0;
         
-        // Prompt the user for confirmation
-        let upload_confirmed = prompt_for_upload(filenm, &secret_name, size_kib)?;
+        // Prompt the user for confirmation, using default implementation
+        let read_val_helper = DefaultReadInteractiveInputHelper;
+        let upload_confirmed = prompt_for_upload_with_helper(filenm, &secret_name, size_kib, &read_val_helper)?;
         
         if !upload_confirmed {
             if args.verbose {
@@ -203,15 +205,29 @@ pub fn process(args: &Args) -> Result<()> {
 }
 
 /// Prompt the user for confirmation before uploading a file
+/// 
+/// This function uses the default ReadInteractiveInputHelper
+#[allow(dead_code)]
 fn prompt_for_upload(file_path: &str, encoded_name: &str, size_kib: f64) -> Result<bool> {
+    let read_val_helper = DefaultReadInteractiveInputHelper;
+    prompt_for_upload_with_helper(file_path, encoded_name, size_kib, &read_val_helper)
+}
+
+/// Version of prompt_for_upload that accepts dependency injection for testing
+pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
+    file_path: &str, 
+    encoded_name: &str, 
+    size_kib: f64,
+    read_val_helper: &R,
+) -> Result<bool> {
     let mut grammars: Vec<GrammarFragment> = Vec::new();
     
     // Setup the prompt
     setup_upload_prompt(&mut grammars, file_path, size_kib, encoded_name)?;
     
     loop {
-        // Display prompt and get user input
-        let result = read_val::read_val_from_cmd_line_and_proceed_default(&mut grammars);
+        // Display prompt and get user input using the provided helper
+        let result = read_val_helper.read_val_from_cmd_line_and_proceed(&mut grammars, None);
         
         match result.user_entered_val {
             None => return Ok(false), // Empty input means no
@@ -263,4 +279,24 @@ fn display_file_details(file_path: &str, size_kib: f64, encoded_name: &str) -> R
     println!("Secret name: {}", encoded_name);
     
     Ok(())
+}
+
+#[cfg(test)]
+pub mod test_utils {
+    use super::*;
+    use azure_security_keyvault::KeyvaultClient;
+    use time::OffsetDateTime;
+
+    // For testing, we can override the get_secret_value and set_secret_value functions
+    // This function is used to get a mock SecretResponse for testing
+    pub fn get_mock_secret_response(name: &str, value: &str) -> SetSecretResponse {
+        let now = OffsetDateTime::now_utc();
+        SetSecretResponse {
+            created: now,
+            updated: now,
+            name: name.to_string(),
+            id: format!("https://keyvault.vault.azure.net/secrets/{}", name),
+            value: value.to_string(),
+        }
+    }
 }
