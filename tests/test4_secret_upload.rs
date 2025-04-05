@@ -300,7 +300,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
             .expect_read_val_from_cmd_line_and_proceed()
             .times(4)
             .returning(|grammars, _size| {
-                // Format the prompt for verification
+                // Format the prompt for verification with width 60
                 let mut grammars_copy = grammars.to_vec();
                 let _ = podman_compose_mgr::read_interactive_input::do_prompt_formatting(
                     &mut grammars_copy, 
@@ -311,7 +311,22 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     false,
                     true
                 );
-                println!("width 60 prompt: {}", formatted);
+                
+                // Print the prompt for verification
+                println!("\nWidth 60 prompt:");
+                println!("\"{}\"", formatted);
+                println!("Prompt length: {} characters", formatted.len());
+                
+                // Validate the prompt length is within the constraints for width 60
+                // (It won't be exactly 60 due to word wrapping and other formatting)
+                let max_line_length = formatted.lines()
+                    .map(|line| line.len())
+                    .max()
+                    .unwrap_or(0);
+                    
+                println!("Longest line length: {}", max_line_length);
+                assert!(max_line_length <= 60, 
+                    "Prompt line length {} exceeds terminal width 60", max_line_length);
                 
                 // Return "Y" to approve all uploads
                 ReadValResult {
@@ -328,6 +343,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         
         // Check that the test succeeded - all files should be uploaded
         assert!(result.is_ok(), "Test 1 failed: {:?}", result.err());
+        println!("");
         println!("Test 1 succeeded - all files were uploaded!");
     }
     
@@ -384,7 +400,22 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     false,
                     true
                 );
-                println!("width 40 prompt: {}", formatted);
+                
+                // Print the prompt for verification
+                println!("\nWidth 40 prompt:");
+                println!("\"{}\"", formatted);
+                println!("Prompt length: {} characters", formatted.len());
+                
+                // Validate the prompt length is within the constraints for width 40
+                // (It won't be exactly 40 due to word wrapping and other formatting)
+                let max_line_length = formatted.lines()
+                    .map(|line| line.len())
+                    .max()
+                    .unwrap_or(0);
+                    
+                println!("Longest line length: {}", max_line_length);
+                assert!(max_line_length <= 40, 
+                    "Prompt line length {} exceeds terminal width 40", max_line_length);
                 
                 // Return "n" to decline all uploads
                 ReadValResult {
