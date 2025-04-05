@@ -27,28 +27,35 @@ Name your first secret whatever you want. This will upload the contents of the f
 az keyvault secret set --vault-name "your-unique-keyvault-name" --name "secret-name-whatever-you-choose" --file /path/to/file
 ```
 
-5. **Create an input json for this program.** `podman-compose-mgr` uses a json input to validate that each on-disk secret matches values in Azure Key Vault. The json input contains no sensitive information; it is just a record of files in the key vault, so that subsequent runs of `podman-compose-mgr` can determine if something on the host (or in the key vault) differs.
+5. **Create an input json for this program.** `podman-compose-mgr` uses json file to validate that each on-disk secret matches values in Azure Key Vault. The json input contains no sensitive information; it is just a record of files in the key vault, so that subsequent runs of `podman-compose-mgr` can determine if something on the host (or in the key vault) differs.
 
-You can manually build the one-time json input file according to this specification, or you can use the script below to automate it for this one simple file example.
+You can manually build the one-time json input file according to this specification, or you can use the script below to automate it for this simple example. 
 
-Specification:
+JSON specification:
 ```json
 [
   {
     /* path to the file on your disk */
     "filenm": "/path/to/file",
+
     /* md5 of the file's contents on disk */
     "md5": "eac66e80e21d414126fc47c49f0afeb1",
+
      /* date you built this json, not actually used by podman-compose-mgr */
     "ins_ts": "2025-03-30T15:14:01,612552867-05:00",
+
     /* .id attr if you use `az keyvault secret show` */
-    "az_id": "https://your-unique-keyvault-name.vault.azure.net/secrets/secret/94c648qe4dab43528f2921208ea0361f", 
+    "az_id": "https://your-unique-keyvault-name.vault.azure.net/secrets/secret/rest_of_the_url",
+
      /* .created attr if you use `az keyvault secret show` */
     "az_create": "2025-03-30T20:03:43+00:00",
+
     /* .updated attr if you use `az keyvault secret show` */
     "az_updated": "2025-03-30T20:03:43+00:00",
+
     /* .name attr if you use `az keyvault secret show` */
     "az_name": "secret-name-whatever-you-choose",
+    
     /* used by podman-compose-mgr when validating on-disk secrets; only those entries in here where hostname matches running hostname are compared to Azure Key Vault */
     "hostname": "your_computer_hostname"
   }

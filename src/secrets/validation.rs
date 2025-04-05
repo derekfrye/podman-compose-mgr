@@ -115,8 +115,16 @@ fn process_validation_entries(
     
     // Process each entry
     let mut loop_result: JsonOutputControl = JsonOutputControl::new();
+    let hostname = get_hostname()?;
     for entry in json_values {
+        if hostname != entry["hostname"].as_str().unwrap_or("") {
+            if args.verbose {
+                println!("Skipping entry {} for hostname: {}", entry["filenm"], entry["hostname"]);
+            }
+            continue; // Skip if hostname doesn't match
+        }
         if loop_result.validate_all {
+            
             match validate_entry(entry.clone(), client, args) {
                 Ok(z) => json_outputs.push(z),
                 Err(e) => eprintln!("Error validating entry: {}", e),
