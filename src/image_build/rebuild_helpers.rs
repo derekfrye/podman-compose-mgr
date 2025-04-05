@@ -1,6 +1,6 @@
-use crate::build::image::Image;
+use crate::image_build::image::Image;
 use crate::interfaces::CommandHelper;
-use crate::build::ui;
+use crate::image_build::ui;
 use std::path::Path;
 use walkdir::DirEntry;
 

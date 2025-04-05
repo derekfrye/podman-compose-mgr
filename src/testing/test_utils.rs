@@ -1,5 +1,5 @@
 use crate::interfaces::CommandHelper;
-use crate::read_val::{GrammarFragment, ReadValResult, StdinHelperWrapper, do_prompt_formatting, unroll_grammar_into_string};
+use crate::read_interactive_input::{GrammarFragment, ReadValResult, StdinHelperWrapper, do_prompt_formatting, unroll_grammar_into_string};
 
 /// Helper function for testing that runs the full prompt formatting pipeline
 /// and returns the formatted prompt string.
@@ -42,7 +42,7 @@ pub fn test_read_val_with_debug_output<C: CommandHelper>(
     println!("TEST DEBUG - Formatted prompt: {}", prompt_string);
     
     // Call the real function
-    crate::read_val::read_val_from_cmd_line_and_proceed_with_deps(
+    crate::read_interactive_input::read_val_from_cmd_line_and_proceed_with_deps(
         grammars,
         cmd_helper,
         Box::new(|s| print!("{}", s)), // Print function that prints to stdout

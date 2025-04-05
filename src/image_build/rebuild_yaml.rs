@@ -1,6 +1,6 @@
 use std::fs::File;
 use serde_yaml::Value;
-use crate::build::rebuild_error::RebuildError;
+use crate::image_build::rebuild_error::RebuildError;
 use serde_yaml::Mapping;
 
 /// Read and parse a YAML file

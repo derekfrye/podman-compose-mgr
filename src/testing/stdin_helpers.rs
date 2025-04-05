@@ -1,4 +1,4 @@
-use crate::read_val::StdinHelper;
+use crate::read_interactive_input::StdinHelper;
 
 /// Test implementation that returns a predefined response
 pub struct TestStdinHelper {

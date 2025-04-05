@@ -1,6 +1,6 @@
 use std::collections::HashSet;
-use crate::read_val::types::{GrammarFragment, GrammarType, ReadValResult, PrintFunction, StdinHelperWrapper};
-use crate::read_val::format::{unroll_grammar_into_string, do_prompt_formatting};
+use crate::read_interactive_input::types::{GrammarFragment, GrammarType, ReadValResult, PrintFunction, StdinHelperWrapper};
+use crate::read_interactive_input::format::{unroll_grammar_into_string, do_prompt_formatting};
 use crate::interfaces::CommandHelper;
 
 /// Default print function that writes to stdout

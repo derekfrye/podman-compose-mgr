@@ -6,7 +6,7 @@ use walkdir::WalkDir;
 
 use crate::{
     Args, args,
-    build::{self, rebuild::RebuildManager},
+    image_build::{self as build, rebuild::RebuildManager},
     interfaces::{CommandHelper, DefaultCommandHelper, DefaultReadValHelper, ReadValHelper},
     
 };

@@ -1,8 +1,8 @@
 use crate::args::Args;
-use crate::build::buildfile::start;
+use crate::image_build::buildfile::start;
 use crate::helpers::podman_helper_fns;
 use crate::interfaces::{CommandHelper, ReadValHelper};
-use crate::read_val::{GrammarFragment, GrammarType};
+use crate::read_interactive_input::{GrammarFragment, GrammarType};
 
 use chrono::{DateTime, Local};
 use serde_yaml::Value;

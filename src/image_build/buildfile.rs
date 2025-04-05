@@ -1,7 +1,7 @@
 use crate::helpers::cmd_helper_fns as cmd;
 use std::path::PathBuf;
 use thiserror::Error;
-use crate::read_val::{GrammarFragment, GrammarType};
+use crate::read_interactive_input::{GrammarFragment, GrammarType};
 use walkdir::DirEntry;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -106,7 +106,7 @@ fn read_val_loop(files: Vec<BuildFile>) -> WhatWereBuilding {
     if !prompt_grammars.is_empty() {
         loop {
             let z =
-                crate::read_val::read_val_from_cmd_line_and_proceed_default(&mut prompt_grammars);
+                crate::read_interactive_input::read_val_from_cmd_line_and_proceed_default(&mut prompt_grammars);
             if let Some(t) = z.user_entered_val {
                 match t.as_str() {
                     // only set back up near line 95, if both Makefile and Dockerfile exist in dir

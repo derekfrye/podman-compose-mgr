@@ -1,4 +1,4 @@
-use crate::read_val::{GrammarFragment, ReadValResult};
+use crate::read_interactive_input::{GrammarFragment, ReadValResult};
 use mockall::automock;
 use std::path::Path;
 
@@ -64,10 +64,10 @@ impl ReadValHelper for DefaultReadValHelper {
     ) -> ReadValResult {
         // Use the default command helper for terminal width
         let cmd_helper = DefaultCommandHelper;
-        crate::read_val::read_val_from_cmd_line_and_proceed_with_deps(
+        crate::read_interactive_input::read_val_from_cmd_line_and_proceed_with_deps(
             grammars,
             &cmd_helper,
-            Box::new(crate::read_val::default_print),
+            Box::new(crate::read_interactive_input::default_print),
             size,
             None, // Use default stdin behavior
         )

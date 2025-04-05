@@ -1,6 +1,6 @@
 use crate::utils::cmd_utils as cmd;
-use crate::build::buildfile_error::BuildfileError;
-use crate::build::buildfile_types::{BuildChoice, WhatWereBuilding};
+use crate::image_build::buildfile_error::BuildfileError;
+use crate::image_build::buildfile_types::{BuildChoice, WhatWereBuilding};
 
 /// Build an image from a dockerfile
 pub fn build_dockerfile_image(build_config: &WhatWereBuilding) -> Result<(), BuildfileError> {

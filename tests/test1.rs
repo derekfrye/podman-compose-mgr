@@ -1,7 +1,7 @@
 use std::fs::{self};
 
 use podman_compose_mgr::interfaces::{MockCommandHelper, MockReadValHelper};
-use podman_compose_mgr::read_val::ReadValResult;
+use podman_compose_mgr::read_interactive_input::ReadValResult;
 use podman_compose_mgr::walk_dirs::walk_dirs_with_helpers;
 
 use clap::Parser;
@@ -60,11 +60,11 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
             
             // Run the actual formatting logic used in production and print the result
             // Use explicit width instead of MockCommandHelper for test_format_prompt
-            let _ = podman_compose_mgr::read_val::do_prompt_formatting(
+            let _ = podman_compose_mgr::read_interactive_input::do_prompt_formatting(
                 &mut grammars_copy, 
                 60
             );
-            let formatted = podman_compose_mgr::read_val::unroll_grammar_into_string(
+            let formatted = podman_compose_mgr::read_interactive_input::unroll_grammar_into_string(
                 &grammars_copy, 
                 false, 
                 true
@@ -107,11 +107,11 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
             
             // Run the actual formatting logic used in production and print the result
             // Use explicit width instead of MockCommandHelper for test_format_prompt
-            let _ = podman_compose_mgr::read_val::do_prompt_formatting(
+            let _ = podman_compose_mgr::read_interactive_input::do_prompt_formatting(
                 &mut grammars_copy, 
                 40
             );
-            let formatted = podman_compose_mgr::read_val::unroll_grammar_into_string(
+            let formatted = podman_compose_mgr::read_interactive_input::unroll_grammar_into_string(
                 &grammars_copy, 
                 false, 
                 true

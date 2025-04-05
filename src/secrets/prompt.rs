@@ -1,4 +1,4 @@
-use crate::read_val::{GrammarFragment, GrammarType};
+use crate::read_interactive_input::{GrammarFragment, GrammarType};
 use crate::utils::json_utils;
 use crate::secrets::error::Result;
 use serde_json::Value;

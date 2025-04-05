@@ -1,5 +1,5 @@
-use crate::read_val::{GrammarFragment, GrammarType};
-use crate::build::buildfile_types::{BuildFile, BuildChoice};
+use crate::read_interactive_input::{GrammarFragment, GrammarType};
+use crate::image_build::buildfile_types::{BuildFile, BuildChoice};
 use walkdir::DirEntry;
 
 /// Setup prompts for buildfile selection

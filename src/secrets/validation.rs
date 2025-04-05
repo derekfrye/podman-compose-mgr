@@ -1,5 +1,5 @@
 use crate::args::Args;
-use crate::read_val::{self, GrammarFragment};
+use crate::read_interactive_input::{self as read_val, GrammarFragment};
 use crate::secrets::azure::{calculate_md5, get_content_from_file, get_keyvault_client, get_secret_value};
 use crate::secrets::error::Result;
 use crate::secrets::models::{JsonOutput, JsonOutputControl, SetSecretResponse};

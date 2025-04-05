@@ -1,4 +1,4 @@
-use crate::read_val::types::{GrammarFragment, GrammarType};
+use crate::read_interactive_input::types::{GrammarFragment, GrammarType};
 
 /// Build a string to display to the user. Generally use read_val_from_cmd_line_and_proceed instead.
 /// Made public to allow usage in tests.
