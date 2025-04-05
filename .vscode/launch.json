@@ -33,7 +33,7 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Secret refresh",
+      "name": "Secret Upload",
       "cargo": {
         "args": ["build", "--bin=podman-compose-mgr", "--package=podman-compose-mgr"],
         "filter": {
@@ -42,13 +42,9 @@
         }
       },
       "args": [
-        "--path",
-        "${env:HOME}/docker",
         "--mode", 
-        "secret-retrieve",
+        "secret-upload",
         "--verbose",
-        "--exclude-path-patterns",
-        "docker/archive",
         "--secrets-client-id",
         "${workspaceFolder}/tests/test2_personal_testing_data/client_id.txt",
         "--secrets-client-secret-path",
@@ -58,9 +54,9 @@
         "${workspaceFolder}/tests/test2_personal_testing_data/tenant_id.txt",
         "--secrets-vault-name",
         "${workspaceFolder}/tests/test2_personal_testing_data/vault_name.txt",
-        "--secret-mode-output-json",
-        "${workspaceFolder}/",
-        "--secret-mode-input-json",
+        "--output-json",
+        "${env:HOME}/docker/podman-compose-mgr/output.json",
+        "--input-json",
         "${env:HOME}/docker/podman-compose-mgr/input.json"
       ],
       "cwd": "${workspaceFolder}"

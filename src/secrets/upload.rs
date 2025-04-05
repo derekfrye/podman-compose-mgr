@@ -69,6 +69,7 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
     let mut file = File::open(input_filepath)?;
     let mut content = String::new();
     file.read_to_string(&mut content)?;
+    let our_hostname = get_hostname()?;
     
     // Parse JSON as array
     let entries: Vec<Value> = serde_json::from_str(&content)?;
@@ -91,6 +92,12 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
             Box::<dyn std::error::Error>::from(format!("Missing ins_ts field in entry: {}", entry)))?;
         
         // Skip this entry if the file doesn't exist
+        if hostname!=our_hostname {
+            if args.verbose {
+                println!("Skipping file {} because it is not on the current host", filenm);
+            }
+            continue;
+        }
         if !Path::new(filenm).exists() {
             eprintln!("File {} does not exist, skipping", filenm);
             continue;
