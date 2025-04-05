@@ -1,195 +1,15 @@
 use std::path::PathBuf;
-use std::io::Read;
 
 use podman_compose_mgr::interfaces::{MockAzureKeyVaultClient, MockReadInteractiveInputHelper};
 use podman_compose_mgr::read_interactive_input::ReadValResult;
 use podman_compose_mgr::secrets::models::SetSecretResponse;
 use podman_compose_mgr::args::{Args, Mode};
+use podman_compose_mgr::secrets::upload;
 use mockall::predicate::*;
 use mockall::Sequence;
 use serde_json::json;
 use tempfile::NamedTempFile;
 use time::OffsetDateTime;
-
-/// We need a helper function to process uploads with a mock Azure client
-/// 
-/// This is an enhanced version of process_with_injected_dependencies that takes
-/// a mocked Azure KeyVault client instead of creating one
-fn process_with_injected_dependencies_for_testing<R: podman_compose_mgr::interfaces::ReadInteractiveInputHelper>(
-    args: &Args,
-    read_val_helper: &R,
-    azure_client: Box<dyn podman_compose_mgr::interfaces::AzureKeyVaultClient>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // Get required parameters from args
-    let input_filepath = args.input_json.as_ref()
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("Input JSON path is required"))?;
-    let output_filepath = args.output_json.as_ref()
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("Output JSON path is required"))?;
-    
-    // Here we would normally create the KeyVault client, but we'll use the provided mock
-    let kv_client = azure_client;
-    
-    // Test connection to Azure Key Vault
-    if args.verbose {
-        println!("Testing connection to Azure Key Vault...");
-    }
-    
-    // Read input JSON file
-    let mut file = std::fs::File::open(input_filepath)?;
-    let mut content = String::new();
-    file.read_to_string(&mut content)?;
-    
-    // Parse JSON as array
-    let entries: Vec<serde_json::Value> = serde_json::from_str(&content)?;
-    
-    // Storage for processed entries
-    let mut azure_secret_set_output = Vec::new();
-    
-    // Process each entry
-    for entry in entries {
-        let filenm = entry["filenm"].as_str().ok_or_else(|| 
-            Box::<dyn std::error::Error>::from(format!("Missing filenm field in entry: {}", entry)))?;
-        let md5 = entry["md5"].as_str().ok_or_else(|| 
-            Box::<dyn std::error::Error>::from(format!("Missing md5 field in entry: {}", entry)))?;
-        // Get hostname either from the entry or from the system
-        let hostname = match entry["hostname"].as_str() {
-            Some(h) => h.to_string(),
-            None => podman_compose_mgr::secrets::utils::get_hostname().unwrap_or_default()
-        };
-        let ins_ts = entry["ins_ts"].as_str().ok_or_else(|| 
-            Box::<dyn std::error::Error>::from(format!("Missing ins_ts field in entry: {}", entry)))?;
-        
-        // Skip this entry if the file doesn't exist
-        if !std::path::Path::new(filenm).exists() {
-            eprintln!("File {} does not exist, skipping", filenm);
-            continue;
-        }
-        
-        // Create a secret name from the full path
-        let secret_name = filenm.replace([std::path::MAIN_SEPARATOR, '.'], "-");
-        
-        // Replace spaces and other problematic characters with URL-encoding
-        let mut encoded_name = String::new();
-        for c in secret_name.chars() {
-            if c.is_alphanumeric() || c == '-' {
-                encoded_name.push(c);
-            } else {
-                for byte in c.to_string().as_bytes() {
-                    encoded_name.push_str(&format!("-{:02X}", byte));
-                }
-            }
-        }
-        
-        let secret_name = encoded_name;
-        
-        // Check if the secret already exists
-        let secret_exists = match kv_client.get_secret_value(&secret_name) {
-            Ok(_) => {
-                eprintln!("Secret {} already exists in the key vault, skipping", secret_name);
-                true
-            },
-            Err(_) => false,
-        };
-        
-        if secret_exists {
-            continue;
-        }
-        
-        // Read file content
-        let content = std::fs::read_to_string(filenm)
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to read file {}: {}", filenm, e)))?;
-            
-        // Get file size in KiB
-        let metadata = std::fs::metadata(filenm)
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get metadata for {}: {}", filenm, e)))?;
-        let size_bytes = metadata.len();
-        let size_kib = size_bytes as f64 / 1024.0;
-        
-        // Prompt the user for confirmation using the injected helper
-        let upload_confirmed = podman_compose_mgr::secrets::upload::prompt_for_upload_with_helper(
-            filenm, &secret_name, size_kib, read_val_helper
-        )?;
-        
-        if !upload_confirmed {
-            if args.verbose {
-                println!("Skipping upload of {}", filenm);
-            }
-            continue;
-        }
-        
-        // Upload the secret
-        let response = kv_client.set_secret_value(&secret_name, &content)
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to upload secret {}: {}", secret_name, e)))?;
-        
-        if args.verbose {
-            println!("Successfully uploaded secret {} to Azure Key Vault", secret_name);
-        }
-        
-        // Add to output entries
-        let output_entry = serde_json::json!({
-            "filenm": filenm,
-            "md5": md5,
-            "ins_ts": ins_ts,
-            "az_id": response.id,
-            "az_create": response.created.to_string(),
-            "az_updated": response.updated.to_string(),
-            "az_name": response.name,
-            "hostname": hostname
-        });
-        
-        azure_secret_set_output.push(output_entry);
-    }
-    
-    // Write output if we have any entries
-    if !azure_secret_set_output.is_empty() {
-        // Create parent directory if it doesn't exist
-        if let Some(parent) = output_filepath.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| {
-                Box::<dyn std::error::Error>::from(format!("Failed to create directory {}: {}", parent.display(), e))
-            })?;
-        }
-        
-        // Check if the file already exists
-        let file_exists = output_filepath.exists();
-        
-        if file_exists {
-            // Read existing content to append properly
-            let mut existing_file = std::fs::File::open(output_filepath)?;
-            let mut existing_content = String::new();
-            existing_file.read_to_string(&mut existing_content)?;
-            
-            let mut existing_entries: Vec<serde_json::Value> = if existing_content.trim().is_empty() {
-                Vec::new()
-            } else {
-                serde_json::from_str(&existing_content)?
-            };
-            
-            // Append new entries
-            existing_entries.extend(azure_secret_set_output);
-            
-            // Write back as valid JSON array
-            let mut file = std::fs::OpenOptions::new()
-                .create(true)
-                .truncate(true)
-                .write(true)
-                .open(output_filepath)?;
-            
-            serde_json::to_writer_pretty(&mut file, &existing_entries)?;
-        } else {
-            // Create new file with JSON array
-            let mut file = std::fs::File::create(output_filepath)?;
-            serde_json::to_writer_pretty(&mut file, &azure_secret_set_output)?;
-        }
-        
-        if args.verbose {
-            println!("Successfully saved entries to {}", output_filepath.display());
-        }
-    } else if args.verbose {
-        println!("No entries were processed successfully.");
-    }
-    
-    Ok(())
-}
 
 #[test]
 fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::error::Error>> {
@@ -344,8 +164,8 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                 }
             });
             
-        // Run the process function with our mock helpers
-        let result = process_with_injected_dependencies_for_testing(
+        // Run the process function with our mock helpers - using the actual production code
+        let result = upload::process_with_injected_dependencies_and_client(
             &args, 
             &read_val_helper,
             Box::new(azure_client)
@@ -442,8 +262,8 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                 }
             });
             
-        // Run the process function with our mock helpers
-        let result = process_with_injected_dependencies_for_testing(
+        // Run the process function with our mock helpers - using the actual production code
+        let result = upload::process_with_injected_dependencies_and_client(
             &args, 
             &read_val_helper,
             Box::new(azure_client)

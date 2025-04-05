@@ -24,10 +24,10 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
     args: &Args,
     read_val_helper: &R,
 ) -> Result<()> {
-    // Get required parameters from args
-    let input_filepath = args.input_json.as_ref()
+    // Validate that required params exist, even though we don't use them directly here
+    let _ = args.input_json.as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Input JSON path is required"))?;
-    let output_filepath = args.output_json.as_ref()
+    let _ = args.output_json.as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Output JSON path is required"))?;
     
     // Create Azure Key Vault client
@@ -42,6 +42,23 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
     
     // Create KeyVault client
     let kv_client = get_keyvault_client(client_id, client_secret_path, tenant_id, key_vault_name)?;
+    
+    // Call the function that allows injection of the KeyVault client
+    process_with_injected_dependencies_and_client(args, read_val_helper, kv_client)
+}
+
+/// Process the upload operation with full dependency injection for testing
+/// This version allows injecting a mock AzureKeyVaultClient for testing
+pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelper>(
+    args: &Args,
+    read_val_helper: &R,
+    kv_client: Box<dyn crate::interfaces::AzureKeyVaultClient>,
+) -> Result<()> {
+    // Get required parameters from args
+    let input_filepath = args.input_json.as_ref()
+        .ok_or_else(|| Box::<dyn std::error::Error>::from("Input JSON path is required"))?;
+    let output_filepath = args.output_json.as_ref()
+        .ok_or_else(|| Box::<dyn std::error::Error>::from("Output JSON path is required"))?;
     
     // Test connection to Azure Key Vault
     if args.verbose {
