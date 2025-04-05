@@ -1,10 +1,13 @@
 use crate::args::Args;
+use crate::read_interactive_input::{self as read_val, GrammarFragment};
 use crate::secrets::azure::{get_keyvault_client, get_secret_value, set_secret_value};
 use crate::secrets::error::Result;
+use crate::secrets::user_prompt::{setup_upload_prompt, display_upload_help};
 use crate::secrets::utils::get_hostname;
 
+use chrono::{DateTime, Local};
 use serde_json::{json, Value};
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, File, OpenOptions, metadata};
 use std::io::Read;
 use std::path::{Path, MAIN_SEPARATOR};
 use tokio::runtime::Runtime;
@@ -105,10 +108,27 @@ pub fn process(args: &Args) -> Result<()> {
             continue;
         }
         
-        // Step 3: Upload the secret
+        // Read file content
         let content = fs::read_to_string(filenm)
             .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to read file {}: {}", filenm, e)))?;
+            
+        // Get file size in KiB
+        let metadata = metadata(filenm)
+            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get metadata for {}: {}", filenm, e)))?;
+        let size_bytes = metadata.len();
+        let size_kib = size_bytes as f64 / 1024.0;
         
+        // Prompt the user for confirmation
+        let upload_confirmed = prompt_for_upload(filenm, &secret_name, size_kib)?;
+        
+        if !upload_confirmed {
+            if args.verbose {
+                println!("Skipping upload of {}", filenm);
+            }
+            continue;
+        }
+        
+        // Step 3: Upload the secret
         let response = rt.block_on(set_secret_value(&secret_name, &kv_client, &content))
             .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to upload secret {}: {}", secret_name, e)))?;
         
@@ -178,6 +198,69 @@ pub fn process(args: &Args) -> Result<()> {
     } else if args.verbose {
         println!("No entries were processed successfully.");
     }
+    
+    Ok(())
+}
+
+/// Prompt the user for confirmation before uploading a file
+fn prompt_for_upload(file_path: &str, encoded_name: &str, size_kib: f64) -> Result<bool> {
+    let mut grammars: Vec<GrammarFragment> = Vec::new();
+    
+    // Setup the prompt
+    setup_upload_prompt(&mut grammars, file_path, size_kib, encoded_name)?;
+    
+    loop {
+        // Display prompt and get user input
+        let result = read_val::read_val_from_cmd_line_and_proceed_default(&mut grammars);
+        
+        match result.user_entered_val {
+            None => return Ok(false), // Empty input means no
+            Some(choice) => {
+                match choice.as_str() {
+                    // Yes, upload the file
+                    "Y" => {
+                        return Ok(true);
+                    },
+                    // No, skip this file
+                    "n" => {
+                        return Ok(false);
+                    },
+                    // Display details about the file
+                    "d" => {
+                        display_file_details(file_path, size_kib, encoded_name)?;
+                    },
+                    // Display help
+                    "?" => {
+                        display_upload_help();
+                    },
+                    // Invalid choice
+                    _ => {
+                        eprintln!("Invalid choice: {}", choice);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Display detailed information about the file
+fn display_file_details(file_path: &str, size_kib: f64, encoded_name: &str) -> Result<()> {
+    // Get file metadata for the last modified time
+    let metadata = metadata(file_path)
+        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get metadata: {}", e)))?;
+    
+    // Format the last modified time
+    let modified = metadata.modified()
+        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get modified time: {}", e)))?;
+    
+    let datetime: DateTime<Local> = modified.into();
+    let formatted_time = datetime.format("%m/%d/%y %H:%M:%S").to_string();
+    
+    // Display the details
+    println!("File path: {}", file_path);
+    println!("Size: {:.2} KiB", size_kib);
+    println!("Last modified: {}", formatted_time);
+    println!("Secret name: {}", encoded_name);
     
     Ok(())
 }

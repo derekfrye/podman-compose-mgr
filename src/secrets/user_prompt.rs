@@ -38,7 +38,7 @@ pub fn setup_validation_prompt(grammars: &mut Vec<GrammarFragment>, entry: &Valu
     Ok(())
 }
 
-/// Add user choice options to the prompt
+/// Add user choice options to the prompt for validation
 pub fn add_choice_options(grammars: &mut Vec<GrammarFragment>) {
     let choices = ["d", "N", "v", "a", "?"];
     for i in 0..choices.len() {
@@ -60,6 +60,93 @@ pub fn add_choice_options(grammars: &mut Vec<GrammarFragment>) {
     }
 }
 
+/// Add user choice options to the prompt for upload
+pub fn add_upload_choice_options(grammars: &mut Vec<GrammarFragment>) {
+    let choices = ["d", "Y", "n", "?"];
+    for i in 0..choices.len() {
+        let mut choice_separator = Some("/".to_string());
+        if i == choices.len() - 1 {
+            choice_separator = Some(": ".to_string());
+        }
+        let choice_grammar = GrammarFragment {
+            original_val_for_prompt: Some(choices[i].to_string()),
+            shortened_val_for_prompt: None,
+            pos: (i + 4) as u8,  // Start after the filename, size, and "for" text
+            prefix: None,
+            suffix: choice_separator,
+            grammar_type: GrammarType::UserChoice,
+            can_shorten: false,
+            display_at_all: true,
+        };
+        grammars.push(choice_grammar);
+    }
+}
+
+/// Setup the prompt for uploading a secret
+pub fn setup_upload_prompt(
+    grammars: &mut Vec<GrammarFragment>, 
+    _file_path: &str, 
+    size_kib: f64, 
+    encoded_name: &str
+) -> Result<()> {
+    // Add "Upload" text
+    let upload_grammar = GrammarFragment {
+        original_val_for_prompt: Some("Upload".to_string()),
+        shortened_val_for_prompt: None,
+        pos: 0,
+        prefix: None,
+        suffix: Some(" ".to_string()),
+        grammar_type: GrammarType::Verbiage,
+        can_shorten: false,
+        display_at_all: true,
+    };
+    grammars.push(upload_grammar);
+    
+    // Add file size in KiB
+    let size_grammar = GrammarFragment {
+        original_val_for_prompt: Some(format!("{:.2}", size_kib)),
+        shortened_val_for_prompt: None,
+        pos: 1,
+        prefix: None,
+        suffix: Some("KiB ".to_string()),
+        grammar_type: GrammarType::Verbiage,
+        can_shorten: false,
+        display_at_all: true,
+    };
+    grammars.push(size_grammar);
+    
+    // Add "for" text
+    let for_grammar = GrammarFragment {
+        original_val_for_prompt: Some("for".to_string()),
+        shortened_val_for_prompt: None,
+        pos: 2,
+        prefix: None,
+        suffix: Some(" ".to_string()),
+        grammar_type: GrammarType::Verbiage,
+        can_shorten: false,
+        display_at_all: true,
+    };
+    grammars.push(for_grammar);
+    
+    // Add encoded name
+    let name_grammar = GrammarFragment {
+        original_val_for_prompt: Some(encoded_name.to_string()),
+        shortened_val_for_prompt: None,
+        pos: 3,
+        prefix: None,
+        suffix: Some("? ".to_string()),
+        grammar_type: GrammarType::FileName,
+        can_shorten: true,
+        display_at_all: true,
+    };
+    grammars.push(name_grammar);
+    
+    // Add choice options
+    add_upload_choice_options(grammars);
+    
+    Ok(())
+}
+
 /// Display help for validation options
 pub fn display_validation_help() {
     println!("N = Do nothing, skip this secret.");
@@ -68,5 +155,13 @@ pub fn display_validation_help() {
     );
     println!("v = Validate on-disk item matches the Azure Key Vault secret.");
     println!("a = Validate all items.");
+    println!("? = Display this help.");
+}
+
+/// Display help for upload options
+pub fn display_upload_help() {
+    println!("Y = Upload this secret to Azure Key Vault.");
+    println!("n = Skip this secret, don't upload it.");
+    println!("d = Display details about the file.");
     println!("? = Display this help.");
 }
