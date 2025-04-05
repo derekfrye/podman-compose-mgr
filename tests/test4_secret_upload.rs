@@ -274,6 +274,146 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         println!("Test 2 succeeded - all uploads were declined!");
     }
     
+    // THIRD TEST: Using actual terminal width, user selects "d" for details and then "Y" to upload
+    {
+        // Create a mock Azure KeyVault client
+        let mut azure_client = MockAzureKeyVaultClient::new();
+        
+        // Setup mockall sequence for checking and uploading each file
+        let mut seq = Sequence::new();
+        
+        // For each file, expect a get_secret_value call first to check if it exists
+        // Then expect a set_secret_value call to upload it
+        for file_path in &test_files {
+            let encoded_name = file_path.replace([std::path::MAIN_SEPARATOR, '.'], "-")
+                .chars()
+                .map(|c| {
+                    if c.is_alphanumeric() || c == '-' {
+                        c.to_string()
+                    } else {
+                        format!("-{:02X}", c as u8)
+                    }
+                })
+                .collect::<String>();
+            
+            // First expect a check if the secret exists - return an error
+            let encoded_name_clone = encoded_name.clone();
+            azure_client
+                .expect_get_secret_value()
+                .with(eq(encoded_name.clone()))
+                .times(1)
+                .in_sequence(&mut seq)
+                .returning(move |name| {
+                    Err(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::NotFound, 
+                        format!("Secret not found: {}", name)
+                    )))
+                });
+            
+            // Then expect the upload - which should succeed
+            azure_client
+                .expect_set_secret_value()
+                .with(eq(encoded_name_clone), always())
+                .times(1)
+                .in_sequence(&mut seq)
+                .returning(move |name, value| {
+                    let now = OffsetDateTime::now_utc();
+                    Ok(SetSecretResponse {
+                        created: now,
+                        updated: now,
+                        name: name.to_string(),
+                        id: format!("https://test-vault.vault.azure.net/secrets/{}", name),
+                        value: value.to_string(),
+                    })
+                });
+        }
+        
+        // Create a mock ReadInteractiveInputHelper that returns "d" first, then "Y" on second prompt
+        let mut read_val_helper = MockReadInteractiveInputHelper::new();
+        
+        // Track which file and which attempt we're on
+        let file_index = std::cell::Cell::new(0);
+        let attempt_index = std::cell::Cell::new(1);
+        let test_files_clone = test_files.clone();
+        
+        // We need 8 inputs: 2 per file (first "d" for details, then "Y" to approve)
+        read_val_helper
+            .expect_read_val_from_cmd_line_and_proceed()
+            .times(8) // 2 prompts per file × 4 files
+            .returning(move |grammars, _size| {
+                // Get the current file and attempt numbers
+                let current_file_index = file_index.get();
+                let current_file = &test_files_clone[current_file_index];
+                let current_attempt = attempt_index.get();
+                
+                // Reset attempt counter and increment file index when we're done with a file
+                if current_attempt >= 2 {
+                    attempt_index.set(1);
+                    file_index.set(current_file_index + 1);
+                } else {
+                    attempt_index.set(current_attempt + 1);
+                }
+                
+                // Format the prompt using actual terminal width
+                let mut grammars_copy = grammars.to_vec();
+                
+                // Get the actual terminal width using the command helper
+                // (Use None to get the actual terminal width)
+                let actual_width = podman_compose_mgr::helpers::cmd_helper_fns::get_terminal_display_width(None);
+                
+                let _ = podman_compose_mgr::read_interactive_input::do_prompt_formatting(
+                    &mut grammars_copy, 
+                    actual_width
+                );
+                let formatted = podman_compose_mgr::read_interactive_input::unroll_grammar_into_string(
+                    &grammars_copy,
+                    false,
+                    true
+                );
+                
+                // Print information about the prompt
+                println!("\nActual terminal width: {} characters", actual_width);
+                println!("Prompt for file {}, attempt {}: ", current_file, current_attempt);
+                println!("\"{}\"", formatted);
+                println!("Prompt length: {} characters", formatted.len());
+                
+                // Validate the prompt length is within the constraints
+                let max_line_length = formatted.lines()
+                    .map(|line| line.len())
+                    .max()
+                    .unwrap_or(0);
+                    
+                println!("Longest line length: {}", max_line_length);
+                assert!(max_line_length <= actual_width, 
+                    "Prompt line length {} exceeds terminal width {}", max_line_length, actual_width);
+                
+                // For odd-numbered attempts (first attempt per file), return "d" to show details
+                // For even-numbered attempts (second attempt per file), return "Y" to approve
+                if current_attempt % 2 == 1 {
+                    println!("User selects 'd' to see details");
+                    ReadValResult {
+                        user_entered_val: Some("d".to_string()),
+                    }
+                } else {
+                    println!("User selects 'Y' to approve upload");
+                    ReadValResult {
+                        user_entered_val: Some("Y".to_string()),
+                    }
+                }
+            });
+            
+        // Run the process function with our mock helpers
+        let result = upload::process_with_injected_dependencies_and_client(
+            &args, 
+            &read_val_helper,
+            Box::new(azure_client)
+        );
+        
+        // Check that the test succeeded
+        assert!(result.is_ok(), "Test 3 failed: {:?}", result.err());
+        println!("Test 3 succeeded - all files were uploaded with details shown first!");
+    }
+    
     // Clean up
     drop(input_json);
     drop(output_json);
