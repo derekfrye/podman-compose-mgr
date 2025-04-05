@@ -16,7 +16,7 @@ fn test_initialize_process() {
     let args = args::Args {
         mode: Mode::SecretInitialize,
         secrets_init_filepath: Some(PathBuf::from("tests/test3_and_test4/test_input.json")),
-        input_json: Some(temp_path.clone()),
+        input_json: None,
         path: PathBuf::from("."),
         
         verbose: true,
@@ -27,7 +27,7 @@ fn test_initialize_process() {
         secrets_client_secret_path: None,
         secrets_tenant_id: None,
         secrets_vault_name: None,
-        output_json: None,
+        output_json: Some(temp_path.clone()),
     };
     
     // Run the initialize process

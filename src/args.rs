@@ -4,9 +4,32 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 // use clap::builder::ValueParser;
+use home::home_dir;
 
+/// Parse command line arguments and perform validation with processing
+///
+/// This function:
+/// 1. Parses command line arguments
+/// 2. For SecretInitialize mode, processes the init filepath if needed
+/// 3. Returns the validated Args structure
+///
+/// # Returns
+///
+/// * `Args` - The validated arguments
+///
+/// # Panics
+///
+/// Panics if validation fails
 pub fn args_checks() -> Args {
-    Args::parse()
+    let mut args = Args::parse();
+    
+    // Process and validate the arguments
+    if let Err(e) = args.validate_and_process() {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
+    
+    args
 }
 
 #[derive(Parser)]
@@ -58,7 +81,39 @@ pub struct Args {
 }
 
 impl Args {
-    /// Validate the secrets based on the mode
+    /// Validates and processes the secrets init filepath, updating it if necessary.
+    /// 
+    /// When in SecretInitialize mode, if secrets_init_filepath is a list of filenames,
+    /// this function will create a new JSON file and update the filepath.
+    ///
+    /// # Returns
+    /// 
+    /// * `Result<(), String>` - Success or error message
+    pub fn validate_and_process(&mut self) -> Result<(), String> {
+        if let Mode::SecretInitialize = self.mode {
+            if let Some(filepath) = &self.secrets_init_filepath {
+                if let Some(path_str) = filepath.to_str() {
+                    // Process the file and get updated path if needed
+                    let new_path = check_init_filepath(path_str)?;
+                    // Update the filepath with the processed one
+                    self.secrets_init_filepath = Some(new_path);
+                } else {
+                    return Err("secrets_init_filepath contains invalid UTF-8 characters".to_string());
+                }
+            } else {
+                return Err("secrets_init_filepath is required for SecretInitialize mode".to_string());
+            }
+            
+            if self.output_json.is_none() {
+                return Err("output_json is required for SecretInitialize mode".to_string());
+            }
+        }
+        
+        // Call the regular validation for other checks
+        self.validate()
+    }
+
+    /// Validate the secrets based on the mode, without modifying the Args
     pub fn validate(&self) -> Result<(), String> {
         if let Mode::SecretRefresh = self.mode {
             if let Some(client_id) = &self.secrets_client_id {
@@ -71,7 +126,7 @@ impl Args {
             }
 
             if let Some(client_secret) = &self.secrets_client_secret_path {
-                check_readable_file(client_secret.to_str().unwrap())?;
+                check_readable_path(client_secret)?;
             }
         } else if let Mode::SecretRetrieve = self.mode {
             if let Some(client_id) = &self.secrets_client_id {
@@ -79,28 +134,29 @@ impl Args {
             }
 
             if let Some(client_secret) = &self.secrets_client_secret_path {
-                check_readable_file(client_secret.to_str().unwrap())?;
+                check_readable_path(client_secret)?;
             }
 
             if let Some(output_json) = &self.output_json {
-                check_file_writable(output_json.to_str().unwrap())?;
+                check_file_writable_path(output_json)?;
             }
 
             if let Some(input_json) = &self.input_json {
-                check_valid_json_file(input_json.to_str().unwrap())?;
+                check_valid_json_path(input_json)?;
             }
         } else if let Mode::SecretInitialize = self.mode {
-            if let Some(filepath) = &self.secrets_init_filepath {
-                check_init_filepath(filepath.to_str().unwrap())?;
-            } else {
+            // Basic validation - make sure fields exist
+            if self.secrets_init_filepath.is_none() {
                 return Err("secrets_init_filepath is required for SecretInitialize mode".to_string());
             }
             
-            if let Some(output_dir) = &self.input_json {
-                check_file_writable(output_dir.to_str().unwrap())?;
+            if let Some(output_path) = &self.output_json {
+                check_file_writable_path(output_path)?;
             } else {
-                return Err("secret_mode_input_json is required for SecretInitialize mode".to_string());
+                return Err("output_json is required for SecretInitialize mode".to_string());
             }
+            
+            // The actual processing of secrets_init_filepath happens in validate_and_process()
         } else if let Mode::SecretUpload = self.mode {
             // Check for required fields for SecretUpload mode
             if self.input_json.is_none() {
@@ -124,13 +180,13 @@ impl Args {
             
             // Validate the file paths
             if let Some(input_json) = &self.input_json {
-                check_valid_json_file(input_json.to_str().unwrap())?;
+                check_valid_json_path(input_json)?;
             }
             if let Some(client_secret) = &self.secrets_client_secret_path {
-                check_readable_file(client_secret.to_str().unwrap())?;
+                check_readable_path(client_secret)?;
             }
             if let Some(output_json) = &self.output_json {
-                check_file_writable(output_json.to_str().unwrap())?;
+                check_file_writable_path(output_json)?;
             }
         }
         Ok(())
@@ -149,43 +205,150 @@ pub enum Mode {
 }
 
 
-fn check_readable_file(file: &str) -> Result<PathBuf, String> {
+/// Checks if a file is readable
+///
+/// # Arguments
+/// 
+/// * `file` - Path to check
+/// 
+/// # Returns
+/// 
+/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+pub fn check_readable_file(file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file);
-    if path.is_file() && fs::metadata(&path).is_ok() {
-        Ok(path)
+    
+    let xpath = if path.starts_with("~") {
+        if let Some(home) = home_dir() {
+            home.join(path.strip_prefix("~").unwrap_or(path.as_path()))
+        } else {
+            return Err("Home directory could not be determined.".to_string());
+        }
+    } else {
+        path
+    };
+    
+    if xpath.is_file() && fs::metadata(&xpath).is_ok() {
+        Ok(xpath)
     } else {
         Err(format!("The file '{}' is not readable.", file))
     }
 }
 
-fn check_valid_json_file(file: &str) -> Result<PathBuf, String> {
+/// Checks if a file is readable (PathBuf version)
+///
+/// # Arguments
+/// 
+/// * `file` - PathBuf to check
+/// 
+/// # Returns
+/// 
+/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+pub fn check_readable_path(file: &std::path::Path) -> Result<PathBuf, String> {
+    if let Some(file_str) = file.to_str() {
+        check_readable_file(file_str)
+    } else {
+        Err("Invalid path: contains non-UTF-8 characters".to_string())
+    }
+}
+
+/// Checks if a file is a valid JSON file
+///
+/// # Arguments
+/// 
+/// * `file` - Path to check
+/// 
+/// # Returns
+/// 
+/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+pub fn check_valid_json_file(file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file);
-    let mut file = File::open(&path).map_err(|e| e.to_string())?;
+    
+    let mut file_handle = File::open(&path).map_err(|e| format!("Unable to open '{}': {}", file, e))?;
     let mut file_content = String::new();
-    file.read_to_string(&mut file_content)
-        .map_err(|e| e.to_string())?;
+    file_handle.read_to_string(&mut file_content)
+        .map_err(|e| format!("Unable to read '{}': {}", file, e))?;
+    
     let mut entries = Vec::new();
     let deserializer = serde_json::Deserializer::from_str(&file_content).into_iter::<Value>();
 
     for entry in deserializer {
-        let entry = entry.map_err(|e| e.to_string())?;
+        let entry = entry.map_err(|e| format!("Invalid JSON in '{}': {}", file, e))?;
         entries.push(entry);
     }
     Ok(path)
 }
 
-fn check_readable_dir(dir: &str) -> Result<PathBuf, String> {
-    let path = PathBuf::from(dir);
-    if path.is_dir() && fs::metadata(&path).is_ok() && fs::read_dir(&path).is_ok() {
-        Ok(path)
+/// Checks if a PathBuf is a valid JSON file
+///
+/// # Arguments
+/// 
+/// * `file` - PathBuf to check
+/// 
+/// # Returns
+/// 
+/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+pub fn check_valid_json_path(file: &std::path::Path) -> Result<PathBuf, String> {
+    if let Some(file_str) = file.to_str() {
+        check_valid_json_file(file_str)
     } else {
-        Err(format!("The dir '{}' is not readable.", dir))
+        Err("Invalid path: contains non-UTF-8 characters".to_string())
     }
 }
 
-// Checks if a file is valid for initialization
-// It must be readable and either valid JSON or contain a list of filenames
-fn check_init_filepath(file_path: &str) -> Result<PathBuf, String> {
+/// Checks if a directory is readable
+///
+/// # Arguments
+/// 
+/// * `dir` - Path to check
+/// 
+/// # Returns
+/// 
+/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+pub fn check_readable_dir(dir: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(dir);
+    
+    if path.is_dir() && fs::metadata(&path).is_ok() && fs::read_dir(&path).is_ok() {
+        Ok(path)
+    } else {
+        Err(format!("The directory '{}' is not readable.", dir))
+    }
+}
+
+/// Checks if a directory PathBuf is readable
+///
+/// # Arguments
+/// 
+/// * `dir` - PathBuf to check
+/// 
+/// # Returns
+/// 
+/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+pub fn check_readable_dir_path(dir: &std::path::Path) -> Result<PathBuf, String> {
+    if let Some(dir_str) = dir.to_str() {
+        check_readable_dir(dir_str)
+    } else {
+        Err("Invalid path: contains non-UTF-8 characters".to_string())
+    }
+}
+
+/// Checks if a file is valid for initialization
+/// It must be readable and either valid JSON or contain a list of filenames
+///
+/// When processing a file containing a list of filenames, this function:
+/// 1. Reads the input file
+/// 2. Validates each filename
+/// 3. Creates a JSON array with valid filenames
+/// 4. Writes the JSON to a new file with timestamp extension
+/// 5. Returns the path to the new JSON file
+///
+/// # Arguments
+/// 
+/// * `file_path` - Path to the file to check
+/// 
+/// # Returns
+/// 
+/// * `Result<PathBuf, String>` - The validated or generated new PathBuf
+pub fn check_init_filepath(file_path: &str) -> Result<PathBuf, String> {
     // First check if the file is readable
     let path = check_readable_file(file_path)?;
     
@@ -239,8 +402,18 @@ fn check_init_filepath(file_path: &str) -> Result<PathBuf, String> {
             let mut file_array = Vec::new();
             for line in non_empty_lines {
                 let filename = line.trim();
-                if check_readable_file(filename).is_ok() {
-                    file_array.push(serde_json::json!({"filenm": filename}));
+                // if let Some(expanded_filenm) =check_readable_file(filename).is_ok() {
+                //     file_array.push(serde_json::json!({"filenm": filename}));
+                // }
+                match check_readable_file(filename) {
+                    Ok(path) => {
+                        if let Some(path_str) = path.to_str() {
+                            file_array.push(serde_json::json!({"filenm": path_str}));
+                        } else {
+                            eprintln!("Warning: Path '{}' contains invalid UTF-8 characters, skipping", filename);
+                        }
+                    },
+                    Err(_) => continue, // Skip invalid files
                 }
             }
             
@@ -249,23 +422,34 @@ fn check_init_filepath(file_path: &str) -> Result<PathBuf, String> {
                 return Err(format!("No readable files found in '{}'.", file_path));
             }
             
-            // Write back to the file
+            
             let json_content = serde_json::to_string_pretty(&file_array)
                 .map_err(|e| format!("Failed to convert filename list to JSON: {}", e))?;
             
-            let mut output_file = File::create(&path)
+            // Write back to the file with unix timestamp and .json extension
+            let new_extension = format!("{}.json", chrono::Utc::now().timestamp());
+            let new_file_path = path.with_extension(new_extension);
+            let mut output_file = File::create(&new_file_path)
                 .map_err(|e| format!("Failed to open file for writing: {}", e))?;
             
             output_file.write_all(json_content.as_bytes())
                 .map_err(|e| format!("Failed to write JSON content: {}", e))?;
             
-            Ok(path)
+            Ok(new_file_path)
         }
     }
 }
 
-// Checks if a file is writable (or can be created and written to)
-fn check_file_writable(file_path: &str) -> Result<PathBuf, String> {
+/// Checks if a file is writable (or can be created and written to)
+///
+/// # Arguments
+/// 
+/// * `file_path` - Path to check
+/// 
+/// # Returns
+/// 
+/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+pub fn check_file_writable(file_path: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file_path);
     
     // First check if the parent directory exists and is writable
@@ -288,5 +472,22 @@ fn check_file_writable(file_path: &str) -> Result<PathBuf, String> {
     {
         Ok(_) => Ok(path),
         Err(e) => Err(format!("The file '{}' is not writable: {}", file_path, e)),
+    }
+}
+
+/// Checks if a PathBuf is writable (or can be created and written to)
+///
+/// # Arguments
+/// 
+/// * `file_path` - PathBuf to check
+/// 
+/// # Returns
+/// 
+/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+pub fn check_file_writable_path(file_path: &std::path::Path) -> Result<PathBuf, String> {
+    if let Some(path_str) = file_path.to_str() {
+        check_file_writable(path_str)
+    } else {
+        Err("Invalid path: contains non-UTF-8 characters".to_string())
     }
 }

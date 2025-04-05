@@ -14,11 +14,11 @@ use crate::utils::cmd_utils;
 /// Process the initialization of secrets
 ///
 /// Reads the secrets from the input file, creates JSON entries for each file,
-/// and writes the results to the input.json file in the specified directory.
+/// and writes the results to the output_json file specified in the arguments.
 pub fn process(args: &Args) -> Result<()> {
     // Get the required file paths from args
     let init_filepath = args.secrets_init_filepath.as_ref().unwrap();
-    let output_filepath = args.input_json.as_ref().unwrap();
+    let output_filepath = args.output_json.as_ref().unwrap();
     
     // Read the input file containing the file paths
     let mut file = File::open(init_filepath)?;
@@ -104,7 +104,7 @@ pub fn process(args: &Args) -> Result<()> {
     output_file.write_all(output_content.as_bytes())?;
     
     if args.verbose {
-        println!("Successfully updated input.json with {} new entries", new_entries_count);
+        println!("Successfully updated output file with {} new entries", new_entries_count);
     }
     
     Ok(())

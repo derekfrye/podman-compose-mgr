@@ -61,7 +61,29 @@
         "--secret-mode-output-json",
         "${workspaceFolder}/",
         "--secret-mode-input-json",
-        "${env:HOME}/docker/input.json"
+        "${env:HOME}/docker/podman-compose-mgr/input.json"
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Secret Init",
+      "cargo": {
+        "args": ["build", "--bin=podman-compose-mgr", "--package=podman-compose-mgr"],
+        "filter": {
+          "name": "podman-compose-mgr",
+          "kind": "bin"
+        }
+      },
+      "args": [
+        "--mode", 
+        "secret-initialize",
+        "--verbose",
+        "--secrets-init-filepath",
+        "${env:HOME}/docker/podman-compose-mgr/secrets",
+        "--output-json",
+        "${env:HOME}/docker/podman-compose-mgr/input.json"
       ],
       "cwd": "${workspaceFolder}"
     },
