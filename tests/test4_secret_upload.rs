@@ -226,11 +226,12 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
     };
     
     // List of file paths in our test that will be processed
+    // Use string values that can be cloned
     let test_files = vec![
-        "tests/test3_and_test4/a",
-        "tests/test3_and_test4/b",
-        "tests/test3_and_test4/c",
-        "tests/test3_and_test4/d d",
+        "tests/test3_and_test4/a".to_string(),
+        "tests/test3_and_test4/b".to_string(),
+        "tests/test3_and_test4/c".to_string(),
+        "tests/test3_and_test4/d d".to_string(),
     ];
     
     // Helper function to create a mock secret response
@@ -295,11 +296,20 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // Create a mock ReadInteractiveInputHelper that always returns "Y" to approve uploads
         let mut read_val_helper = MockReadInteractiveInputHelper::new();
         
+        // Track which files we're processing
+        let file_index = std::cell::Cell::new(0);
+        let test_files_clone = test_files.clone();
+        
         // Set up the mock to return "Y" for all four files
         read_val_helper
             .expect_read_val_from_cmd_line_and_proceed()
             .times(4)
-            .returning(|grammars, _size| {
+            .returning(move |grammars, _size| {
+                // Get the current file being processed
+                let current_index = file_index.get();
+                let current_file = &test_files_clone[current_index];
+                file_index.set(current_index + 1);
+                
                 // Format the prompt for verification with width 60
                 let mut grammars_copy = grammars.to_vec();
                 let _ = podman_compose_mgr::read_interactive_input::do_prompt_formatting(
@@ -312,8 +322,8 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     true
                 );
                 
-                // Print the prompt for verification
-                println!("\nWidth 60 prompt:");
+                // Print the prompt for verification including the file being processed
+                println!("\nWidth 60 prompt, file {}:", current_file);
                 println!("\"{}\"", formatted);
                 println!("Prompt length: {} characters", formatted.len());
                 
@@ -384,11 +394,20 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // Create a mock ReadInteractiveInputHelper that always returns "n" to decline uploads
         let mut read_val_helper = MockReadInteractiveInputHelper::new();
         
+        // Track which files we're processing
+        let file_index = std::cell::Cell::new(0);
+        let test_files_clone = test_files.clone();
+        
         // Set up the mock to return "n" for all four files
         read_val_helper
             .expect_read_val_from_cmd_line_and_proceed()
             .times(4)
-            .returning(|grammars, _size| {
+            .returning(move |grammars, _size| {
+                // Get the current file being processed
+                let current_index = file_index.get();
+                let current_file = &test_files_clone[current_index];
+                file_index.set(current_index + 1);
+                
                 // Format the prompt for verification
                 let mut grammars_copy = grammars.to_vec();
                 let _ = podman_compose_mgr::read_interactive_input::do_prompt_formatting(
@@ -401,8 +420,8 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     true
                 );
                 
-                // Print the prompt for verification
-                println!("\nWidth 40 prompt:");
+                // Print the prompt for verification including the file being processed
+                println!("\nWidth 40 prompt, file {}:", current_file);
                 println!("\"{}\"", formatted);
                 println!("Prompt length: {} characters", formatted.len());
                 
