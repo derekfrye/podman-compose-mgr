@@ -139,7 +139,6 @@ fn test_initialize_process() {
             _ => panic!("Unexpected filename: {}", filename),
         }
     }
-    // Clean up the temporary file
+    // The tempfile will be automatically removed when it's dropped
     drop(temp_file);
-    std::fs::remove_file(temp_path).unwrap();
 }
