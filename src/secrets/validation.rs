@@ -3,7 +3,7 @@ use crate::read_interactive_input::{self as read_val, GrammarFragment};
 use crate::secrets::azure::{calculate_md5, get_content_from_file, get_keyvault_client, get_secret_value};
 use crate::secrets::error::Result;
 use crate::secrets::models::{JsonOutput, JsonOutputControl, SetSecretResponse};
-use crate::secrets::prompt::{setup_validation_prompt, display_validation_help};
+use crate::secrets::user_prompt::{setup_validation_prompt, display_validation_help};
 use crate::secrets::utils::{
     extract_validation_fields, details_about_entry, get_current_timestamp, 
     get_hostname, write_json_output

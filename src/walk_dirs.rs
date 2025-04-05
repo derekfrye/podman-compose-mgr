@@ -7,7 +7,7 @@ use walkdir::WalkDir;
 use crate::{
     Args, args,
     image_build::{self as build, rebuild::RebuildManager},
-    interfaces::{CommandHelper, DefaultCommandHelper, DefaultReadValHelper, ReadValHelper},
+    interfaces::{CommandHelper, DefaultCommandHelper, DefaultReadInteractiveInputHelper, ReadInteractiveInputHelper},
     
 };
 
@@ -29,7 +29,7 @@ pub enum StartError {
 pub fn walk_dirs(args: &Args) {
     // Use default implementations
     let cmd_helper = DefaultCommandHelper;
-    let read_val_helper = DefaultReadValHelper;
+    let read_val_helper = DefaultReadInteractiveInputHelper;
 
     // Call the injectable version with default implementations
     if let Err(e) = walk_dirs_with_helpers(args, &cmd_helper, &read_val_helper) {
@@ -38,7 +38,7 @@ pub fn walk_dirs(args: &Args) {
 }
 
 /// Version of walk_dirs that accepts dependency injection for testing
-pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadValHelper>(
+pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
     args: &Args,
     cmd_helper: &C,
     read_val_helper: &R,
@@ -129,7 +129,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadValHelper>(
     Ok(())
 }
 
-fn drop_mgr<C: CommandHelper, R: ReadValHelper>(manager: &mut Option<RebuildManager<'_, C, R>>) {
+fn drop_mgr<C: CommandHelper, R: ReadInteractiveInputHelper>(manager: &mut Option<RebuildManager<'_, C, R>>) {
     if let Some(manager) = manager.take() {
         mem::drop(manager);
     }

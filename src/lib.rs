@@ -17,7 +17,7 @@ pub mod testing;
 pub mod utils;
 
 pub use args::Args;
-pub use interfaces::{CommandHelper, ReadValHelper};
+pub use interfaces::{CommandHelper, ReadInteractiveInputHelper};
 pub use read_interactive_input::unroll_grammar_into_string;
 pub use utils::cmd_utils;
 pub use utils::error_utils;

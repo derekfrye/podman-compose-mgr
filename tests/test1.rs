@@ -1,6 +1,7 @@
 use std::fs::{self};
 
-use podman_compose_mgr::interfaces::{MockCommandHelper, MockReadValHelper};
+use podman_compose_mgr::interfaces::MockCommandHelper;
+use podman_compose_mgr::interfaces::MockReadInteractiveInputHelper;
 use podman_compose_mgr::read_interactive_input::ReadValResult;
 use podman_compose_mgr::walk_dirs::walk_dirs_with_helpers;
 
@@ -50,7 +51,7 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
     cmd_helper.expect_pull_base_image().returning(|_| Ok(()));
 
     // Setup read_val_helper 
-    let mut read_val_helper = MockReadValHelper::new();
+    let mut read_val_helper = MockReadInteractiveInputHelper::new();
 
     read_val_helper
         .expect_read_val_from_cmd_line_and_proceed()
@@ -97,7 +98,7 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
     cmd_helper.expect_pull_base_image().returning(|_| Ok(()));
 
     // Set up a new mock read_val_helper
-    let mut read_val_helper = MockReadValHelper::new();
+    let mut read_val_helper = MockReadInteractiveInputHelper::new();
     
     read_val_helper
         .expect_read_val_from_cmd_line_and_proceed()

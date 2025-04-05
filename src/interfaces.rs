@@ -13,7 +13,7 @@ pub trait CommandHelper {
 
 /// Interface for read_val-related functions to facilitate testing
 #[automock]
-pub trait ReadValHelper {
+pub trait ReadInteractiveInputHelper {
     /// Read a value from the command line
     ///
     /// # Arguments
@@ -54,9 +54,9 @@ impl CommandHelper for DefaultCommandHelper {
 }
 
 /// Default implementation of ReadValHelper that uses the actual function
-pub struct DefaultReadValHelper;
+pub struct DefaultReadInteractiveInputHelper;
 
-impl ReadValHelper for DefaultReadValHelper {
+impl ReadInteractiveInputHelper for DefaultReadInteractiveInputHelper {
     fn read_val_from_cmd_line_and_proceed(
         &self,
         grammars: &mut [GrammarFragment],

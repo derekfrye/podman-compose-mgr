@@ -2,7 +2,7 @@ pub mod azure;
 pub mod error;
 pub mod initialize;
 pub mod models;
-pub mod prompt;
+pub mod user_prompt;
 pub mod utils;
 pub mod validation;
 

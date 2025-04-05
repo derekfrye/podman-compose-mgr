@@ -1,7 +1,7 @@
 use crate::args::Args;
 use crate::image_build::buildfile::start;
 use crate::helpers::podman_helper_fns;
-use crate::interfaces::{CommandHelper, ReadValHelper};
+use crate::interfaces::{CommandHelper, ReadInteractiveInputHelper};
 use crate::read_interactive_input::{GrammarFragment, GrammarType};
 
 use chrono::{DateTime, Local};
@@ -46,13 +46,13 @@ pub struct Image {
     pub skipall_by_this_name: bool,
 }
 
-pub struct RebuildManager<'a, C: CommandHelper, R: ReadValHelper> {
+pub struct RebuildManager<'a, C: CommandHelper, R: ReadInteractiveInputHelper> {
     images_checked: Vec<Image>,
     cmd_helper: &'a C,
     read_val_helper: &'a R,
 }
 
-impl<'a, C: CommandHelper, R: ReadValHelper> RebuildManager<'a, C, R> {
+impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, R> {
     pub fn new(cmd_helper: &'a C, read_val_helper: &'a R) -> Self {
         Self {
             images_checked: Vec::new(),
