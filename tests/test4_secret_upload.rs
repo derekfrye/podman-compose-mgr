@@ -98,8 +98,12 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
     let output_json = NamedTempFile::new()?;
     let output_path = output_json.path().to_path_buf();
 
-    let client_secret_path = NamedTempFile::new()?;
-    let client_secret_path = client_secret_path.path().to_path_buf();
+    // 3. Create a temporary file for the client secret
+    let client_secret_file = NamedTempFile::new()?;
+    let client_secret_path = client_secret_file.path().to_path_buf();
+    
+    // Write a dummy secret to the file
+    std::fs::write(client_secret_file.path(), "test-client-secret")?;
     
     // Create Args for the process function
     let args = Args {
@@ -147,14 +151,22 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     user_entered_val: Some("Y".to_string()),
                 }
             })
-            .times(0); // It will fail before processing any files
+            .times(4); // We expect each of the 4 files to be prompted
             
         // Run the process function with our mock helper
         let result = process_with_injected_dependencies(&args, &read_val_helper);
         
-        // We expect this to fail because the client secret file doesn't exist
-        assert!(result.is_err(), "Expected test to fail because client secret file doesn't exist");
-        println!("Test failed as expected: {:?}", result.err());
+        // We expect this to fail at Azure client authentication
+        assert!(result.is_err(), "Expected test to fail at Azure authentication");
+        let err = result.err().unwrap();
+        println!("Test progress: now failing at expected Azure client initialization: {}", err);
+        
+        // Check that the error is related to Azure authentication, not the client secret file
+        assert!(format!("{}", err).contains("Azure") || 
+                format!("{}", err).contains("authentication") || 
+                format!("{}", err).contains("tenant") ||
+                format!("{}", err).contains("credential"),
+               "Error should be related to Azure authentication, got: {}", err);
     }
     
     // SECOND TEST: Terminal width 40
@@ -182,19 +194,28 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     user_entered_val: Some("n".to_string()),
                 }
             })
-            .times(0); // It will fail before processing any files
+            .times(4); // We expect each of the 4 files to be prompted
             
         // Run the process function with our mock helper
         let result = process_with_injected_dependencies(&args, &read_val_helper);
         
-        // It will still fail because we need a valid client secret file
-        assert!(result.is_err(), "Expected test to fail because client secret file doesn't exist");
-        println!("Test 2 failed as expected: {:?}", result.err());
+        // It will still fail at Azure authentication
+        assert!(result.is_err(), "Expected test to fail at Azure authentication");
+        let err = result.err().unwrap();
+        println!("Test 2 progress: now failing at expected Azure client initialization: {}", err);
+        
+        // Check that the error is related to Azure authentication, not the client secret file
+        assert!(format!("{}", err).contains("Azure") || 
+                format!("{}", err).contains("authentication") || 
+                format!("{}", err).contains("tenant") ||
+                format!("{}", err).contains("credential"),
+               "Error should be related to Azure authentication, got: {}", err);
     }
     
     // Clean up
     drop(input_json);
     drop(output_json);
+    drop(client_secret_file);
     
     Ok(())
 }
