@@ -253,17 +253,17 @@ impl Args {
                 if need_b2_credentials {
                     // Check if B2 account ID filepath is provided
                     if self.b2_account_id_filepath.is_none() {
-                        return Err("b2_account_id_filepath is required for upload mode with B2 entries".to_string());
+                        return Err("b2_account_id_filepath is required for upload mode when input json contains B2 entries".to_string());
                     }
                     
                     // Check if B2 account key filepath is provided
                     if self.b2_account_key_filepath.is_none() {
-                        return Err("b2_account_key_filepath is required for upload mode with B2 entries".to_string());
+                        return Err("b2_account_key_filepath is required for upload mode when input json contains B2 entries".to_string());
                     }
                     
                     // Check if B2 bucket for upload is provided
                     if self.b2_bucket_for_upload.is_none() {
-                        return Err("b2_bucket_for_upload is required for upload mode with B2 entries".to_string());
+                        return Err("b2_bucket_for_upload is required for upload mode when input json contains B2 entries".to_string());
                     }
                     
                     // Validate B2 account ID filepath
