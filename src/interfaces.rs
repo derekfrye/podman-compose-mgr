@@ -1,5 +1,7 @@
 use crate::read_interactive_input::{GrammarFragment, ReadValResult};
 use crate::secrets::models::SetSecretResponse;
+use crate::secrets::b2_storage::B2UploadResult;
+use crate::secrets::file_details::FileDetails;
 use mockall::automock;
 use std::path::Path;
 
@@ -133,5 +135,38 @@ impl AzureKeyVaultClient for DefaultAzureKeyVaultClient {
             secret_name,
             &self.client,
         ))
+    }
+}
+
+/// Interface for B2 storage operations to facilitate testing
+#[automock]
+pub trait B2StorageClient {
+    /// Creates a client from Args
+    fn from_args(args: &crate::args::Args) -> Result<Self, Box<dyn std::error::Error>> where Self: Sized;
+    
+    /// Uploads a file to B2 storage
+    fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<B2UploadResult, Box<dyn std::error::Error>>;
+}
+
+/// Default implementation that uses the actual B2 client
+pub struct DefaultB2StorageClient {
+    // The real B2Client 
+    client: crate::secrets::b2_storage::B2Client,
+}
+
+impl DefaultB2StorageClient {
+    pub fn new(client: crate::secrets::b2_storage::B2Client) -> Self {
+        Self { client }
+    }
+}
+
+impl B2StorageClient for DefaultB2StorageClient {
+    fn from_args(args: &crate::args::Args) -> Result<Self, Box<dyn std::error::Error>> {
+        let client = crate::secrets::b2_storage::B2Client::from_args(args)?;
+        Ok(Self::new(client))
+    }
+    
+    fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<B2UploadResult, Box<dyn std::error::Error>> {
+        self.client.upload_file_with_details(file_details)
     }
 }

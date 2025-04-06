@@ -1,9 +1,9 @@
 use crate::args::Args;
 use crate::interfaces::{
-    AzureKeyVaultClient, DefaultReadInteractiveInputHelper, ReadInteractiveInputHelper,
+    AzureKeyVaultClient, B2StorageClient, DefaultB2StorageClient,
+    DefaultReadInteractiveInputHelper, ReadInteractiveInputHelper,
 };
 use crate::secrets::azure::get_keyvault_client;
-use crate::secrets::b2_storage::B2Client;
 use crate::secrets::error::Result;
 use crate::secrets::file_details::{check_encoding_and_size, FileDetails};
 use crate::secrets::upload_utils::create_secret_name;
@@ -59,17 +59,37 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
 
     // Create KeyVault client
     let kv_client = get_keyvault_client(client_id, client_secret_path, tenant_id, key_vault_name)?;
+    
+    // Create B2 client using the default implementation
+    let b2_client = DefaultB2StorageClient::from_args(args)?;
 
     // Call the function that allows injection of the clients
-    process_with_injected_dependencies_and_client(args, read_val_helper, kv_client)
+    process_with_injected_dependencies_and_clients(args, read_val_helper, kv_client, Box::new(b2_client))
 }
 
-/// Process the upload operation with full dependency injection for testing
-/// This version allows injecting mock clients for testing
+/// Process the upload operation with full dependency injection for testing (legacy version)
+/// This version only allows injecting the Azure KeyVault client
+/// 
+/// Use process_with_injected_dependencies_and_clients instead for new code.
 pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelper>(
     args: &Args,
     read_val_helper: &R,
     kv_client: Box<dyn AzureKeyVaultClient>,
+) -> Result<()> {
+    // Create B2 client using the default implementation
+    let b2_client = DefaultB2StorageClient::from_args(args)?;
+    
+    // Forward to the new method
+    process_with_injected_dependencies_and_clients(args, read_val_helper, kv_client, Box::new(b2_client))
+}
+
+/// Process the upload operation with full dependency injection for testing
+/// This version allows injecting both Azure KeyVault and B2 Storage clients for testing
+pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHelper>(
+    args: &Args,
+    read_val_helper: &R,
+    kv_client: Box<dyn AzureKeyVaultClient>,
+    b2_client: Box<dyn B2StorageClient>,
 ) -> Result<()> {
     // Get required parameters from args
     let input_filepath = args
@@ -177,16 +197,6 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
                     file_path, encoded_size
                 );
             }
-            
-            // NOTE: This is a partial implementation that compiles but may not be fully functional yet
-            // until we resolve issues with AWS SDK credentials
-            let b2_client = match B2Client::from_args(args) {
-                Ok(client) => client,
-                Err(e) => {
-                    eprintln!("Failed to create B2 client: {}", e);
-                    continue;
-                }
-            };
             
             // Create a FileDetails struct for the file
             let file_details = FileDetails {
