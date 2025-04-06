@@ -77,7 +77,7 @@
         "secret-initialize",
         "--verbose",
         "--secrets-init-filepath",
-        "${env:HOME}/docker/podman-compose-mgr/secrets",
+        "${env:HOME}/docker/podman-compose-mgr/secrets_for_input_json",
         "--output-json",
         "${env:HOME}/docker/podman-compose-mgr/input.json"
       ],

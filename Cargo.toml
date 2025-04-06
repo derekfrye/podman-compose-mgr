@@ -8,7 +8,6 @@ edition = "2024"
 walkdir = "2"
 regex = "1"
 clap = { version = "4", features = ["derive"] }
-#term_size = "0"
 chrono = "0"
 serde_yaml = "0"
 dockerfile-parser = "0"
