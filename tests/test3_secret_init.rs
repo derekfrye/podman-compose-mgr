@@ -41,8 +41,8 @@ fn test_initialize_process() {
     
     let output_json: Vec<Value> = serde_json::from_str(&output_content).unwrap();
     
-    // Verify there are 4 entries
-    assert_eq!(output_json.len(), 4);
+    // Verify there are 5 entries
+    assert_eq!(output_json.len(), 5);
     
     // Get the current date
     let today = Local::now().date_naive();
@@ -68,12 +68,31 @@ fn test_initialize_process() {
         // Verify hostname is not empty
         assert!(!hostname.is_empty());
         
-        // Verify MD5 based on file content
+        // Verify encoding exists
+        let encoding = entry["encoding"].as_str().unwrap();
+        
+        // Verify MD5 based on file content and check encoding
         match filenm {
-            "tests/test3_and_test4/a" => assert_eq!(md5, "60b725f10c9c85c70d97880dfe8191b3"),
-            "tests/test3_and_test4/b" => assert_eq!(md5, "bfcc9da4f2e1d313c63cd0a4ee7604e9"),
-            "tests/test3_and_test4/c" => assert_eq!(md5, "c576ec4297a7bdacc878e0061192441e"),
-            "tests/test3_and_test4/d d" => assert_eq!(md5, "ef76b4f269b9a5104e4f061419a5f529"),
+            "tests/test3_and_test4/a" => {
+                assert_eq!(md5, "60b725f10c9c85c70d97880dfe8191b3");
+                assert_eq!(encoding, "utf8", "File 'a' should be utf8 encoded");
+            },
+            "tests/test3_and_test4/b" => {
+                assert_eq!(md5, "bfcc9da4f2e1d313c63cd0a4ee7604e9");
+                assert_eq!(encoding, "utf8", "File 'b' should be utf8 encoded");
+            },
+            "tests/test3_and_test4/c" => {
+                assert_eq!(md5, "c576ec4297a7bdacc878e0061192441e");
+                assert_eq!(encoding, "utf8", "File 'c' should be utf8 encoded");
+            },
+            "tests/test3_and_test4/d d" => {
+                assert_eq!(md5, "ef76b4f269b9a5104e4f061419a5f529");
+                assert_eq!(encoding, "utf8", "File 'd d' should be utf8 encoded");
+            },
+            "tests/test3_and_test4/e e" => {
+                // We don't hard-code the MD5 for the random file
+                assert_eq!(encoding, "base64", "File 'e e' should be base64 encoded");
+            },
             _ => panic!("Unexpected file: {}", filenm),
         }
     }
@@ -89,8 +108,8 @@ fn test_initialize_process() {
     
     let output_json: Vec<Value> = serde_json::from_str(&output_content).unwrap();
     
-    // Verify there are now 8 entries (4 original + 4 appended)
-    assert_eq!(output_json.len(), 8);
+    // Verify there are now 10 entries (5 original + 5 appended)
+    assert_eq!(output_json.len(), 10);
     
     // Group entries by filename for more rigorous comparison
     let mut entries_by_filename = std::collections::HashMap::new();
@@ -108,6 +127,7 @@ fn test_initialize_process() {
     assert_eq!(file_counts["tests/test3_and_test4/b"], 2, "Expected 2 entries for file b");
     assert_eq!(file_counts["tests/test3_and_test4/c"], 2, "Expected 2 entries for file c");
     assert_eq!(file_counts["tests/test3_and_test4/d d"], 2, "Expected 2 entries for file 'd d'");
+    assert_eq!(file_counts["tests/test3_and_test4/e e"], 2, "Expected 2 entries for file 'e e'");
     
     // Group entries by filename for comparison
     for entry in output_json {
@@ -128,14 +148,32 @@ fn test_initialize_process() {
         assert_eq!(first["az_updated"], second["az_updated"], "az_updated doesn't match for {}", filename);
         assert_eq!(first["az_name"], second["az_name"], "az_name doesn't match for {}", filename);
         assert_eq!(first["hostname"], second["hostname"], "hostname doesn't match for {}", filename);
+        assert_eq!(first["encoding"], second["encoding"], "encoding doesn't match for {}", filename);
         
-        // Double-check MD5 against expected values
+        // Double-check MD5 against expected values and verify encoding
         let md5 = first["md5"].as_str().unwrap();
+        let encoding = first["encoding"].as_str().unwrap();
+        
         match filename.as_str() {
-            "tests/test3_and_test4/a" => assert_eq!(md5, "60b725f10c9c85c70d97880dfe8191b3", "MD5 mismatch for file a"),
-            "tests/test3_and_test4/b" => assert_eq!(md5, "bfcc9da4f2e1d313c63cd0a4ee7604e9", "MD5 mismatch for file b"),
-            "tests/test3_and_test4/c" => assert_eq!(md5, "c576ec4297a7bdacc878e0061192441e", "MD5 mismatch for file c"),
-            "tests/test3_and_test4/d d" => assert_eq!(md5, "ef76b4f269b9a5104e4f061419a5f529", "MD5 mismatch for file 'd d'"),
+            "tests/test3_and_test4/a" => {
+                assert_eq!(md5, "60b725f10c9c85c70d97880dfe8191b3", "MD5 mismatch for file a");
+                assert_eq!(encoding, "utf8", "File 'a' should be utf8 encoded");
+            },
+            "tests/test3_and_test4/b" => {
+                assert_eq!(md5, "bfcc9da4f2e1d313c63cd0a4ee7604e9", "MD5 mismatch for file b");
+                assert_eq!(encoding, "utf8", "File 'b' should be utf8 encoded");
+            },
+            "tests/test3_and_test4/c" => {
+                assert_eq!(md5, "c576ec4297a7bdacc878e0061192441e", "MD5 mismatch for file c");
+                assert_eq!(encoding, "utf8", "File 'c' should be utf8 encoded");
+            },
+            "tests/test3_and_test4/d d" => {
+                assert_eq!(md5, "ef76b4f269b9a5104e4f061419a5f529", "MD5 mismatch for file 'd d'");
+                assert_eq!(encoding, "utf8", "File 'd d' should be utf8 encoded");
+            },
+            "tests/test3_and_test4/e e" => {
+                assert_eq!(encoding, "base64", "File 'e e' should be base64 encoded");
+            },
             _ => panic!("Unexpected filename: {}", filename),
         }
     }

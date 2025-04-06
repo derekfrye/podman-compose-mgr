@@ -19,6 +19,14 @@ pub struct JsonOutput {
     pub az_updated: String,
     pub az_name: String,
     pub hostname: String,
+    #[serde(default = "default_encoding")]
+    pub encoding: String,
+}
+
+// Default encoding for backward compatibility with existing JSON files
+#[allow(dead_code)]
+fn default_encoding() -> String {
+    "utf8".to_string()
 }
 
 pub struct JsonOutputControl {
@@ -38,6 +46,7 @@ impl Default for JsonOutputControl {
                 az_updated: String::new(),
                 az_name: String::new(),
                 hostname: String::new(),
+                encoding: "utf8".to_string(),
             },
             validate_all: false,
         }

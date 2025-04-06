@@ -5,6 +5,7 @@ use crate::secrets::azure::get_keyvault_client;
 use crate::secrets::error::Result;
 use crate::secrets::user_prompt::{setup_upload_prompt, display_upload_help};
 use crate::secrets::utils::get_hostname;
+use azure_core::base64;
 
 use chrono::{DateTime, Local};
 use serde_json::{json, Value};
@@ -109,22 +110,30 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
         // Step 2: Check if the secret already exists using the interface
         let secret_exists = match kv_client.get_secret_value(&secret_name) {
             Ok(_) => {
-                eprintln!("Secret {} already exists in the key vault, skipping", secret_name);
+                println!("Secret {} already exists in the key vault", secret_name);
                 true
             },
             Err(_) => false,
         };
         
-        if secret_exists {
-            continue;
-        }
-        
-        // Read file content
-        let content = fs::read_to_string(filenm)
+        // Read file content as bytes (handles non-UTF-8 files)
+        let file_bytes = fs::read(filenm)
             .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to read file {}: {}", filenm, e)))?;
             
+        // Check if the file is valid UTF-8
+        let (content, encoding) = match std::str::from_utf8(&file_bytes) {
+            Ok(text) => (text.to_string(), "utf8"),
+            Err(_) => {
+                if args.verbose {
+                    println!("Warning: File {} contains non-UTF-8 data. Using base64 encoding.", filenm);
+                }
+                // Convert binary data to base64 string
+                (base64::encode(&file_bytes), "base64")
+            }
+        };
+            
         // Prompt the user for confirmation using the injected helper
-        let upload_confirmed = prompt_for_upload_with_helper(filenm, &secret_name, read_val_helper)?;
+        let upload_confirmed = prompt_for_upload_with_helper(filenm, &secret_name, read_val_helper, secret_exists)?;
         
         if !upload_confirmed {
             if args.verbose {
@@ -150,7 +159,8 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
             "az_create": response.created.to_string(),
             "az_updated": response.updated.to_string(),
             "az_name": response.name,
-            "hostname": hostname
+            "hostname": hostname,
+            "encoding": encoding  // Add encoding info (utf8 or base64)
         });
         
         azure_secret_set_output.push(output_entry);
@@ -211,9 +221,9 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
 /// 
 /// This function uses the default ReadInteractiveInputHelper
 #[allow(dead_code)]
-fn prompt_for_upload(file_path: &str, encoded_name: &str) -> Result<bool> {
+fn prompt_for_upload(file_path: &str, encoded_name: &str, secret_exists: bool) -> Result<bool> {
     let read_val_helper = DefaultReadInteractiveInputHelper;
-    prompt_for_upload_with_helper(file_path, encoded_name, &read_val_helper)
+    prompt_for_upload_with_helper(file_path, encoded_name, &read_val_helper, secret_exists)
 }
 
 /// Version of prompt_for_upload that accepts dependency injection for testing
@@ -221,9 +231,12 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
     file_path: &str, 
     encoded_name: &str, 
     read_val_helper: &R,
+    secret_exists: bool,
 ) -> Result<bool> {
-    // We no longer need to calculate size here
-    // The size is now calculated inside setup_upload_prompt
+    // If the secret exists and we're prompting, show an overwrite warning
+    if secret_exists {
+        println!("Warning: This will overwrite the existing secret in Azure Key Vault.");
+    }
 
     let mut grammars: Vec<GrammarFragment> = Vec::new();
     
@@ -271,6 +284,7 @@ pub struct FileDetails {
     pub size_bytes: u64,
     pub last_modified: String,
     pub secret_name: String,
+    pub is_utf8: bool,
 }
 
 /// Get detailed information about the file
@@ -289,12 +303,19 @@ pub fn get_file_details(file_path: &str, encoded_name: &str) -> Result<FileDetai
     let datetime: DateTime<Local> = modified.into();
     let formatted_time = datetime.format("%m/%d/%y %H:%M:%S").to_string();
     
+    // Check if the file contains valid UTF-8
+    let is_utf8 = match fs::read(file_path) {
+        Ok(bytes) => std::str::from_utf8(&bytes).is_ok(),
+        Err(_) => false, // If we can't read the file, assume it's not UTF-8
+    };
+    
     // Return the details
     Ok(FileDetails {
         file_path: file_path.to_string(),
         size_bytes,
         last_modified: formatted_time,
         secret_name: encoded_name.to_string(),
+        is_utf8,
     })
 }
 
@@ -336,6 +357,13 @@ fn display_file_details(file_path: &str, encoded_name: &str) -> Result<()> {
     println!("Size: {}", format_file_size(details.size_bytes));
     println!("Last modified: {}", details.last_modified);
     println!("Secret name: {}", details.secret_name);
+    
+    // Display encoding information
+    if !details.is_utf8 {
+        println!("Encoding: Non-UTF-8 content (will be base64 encoded)");
+    } else {
+        println!("Encoding: UTF-8");
+    }
     
     Ok(())
 }

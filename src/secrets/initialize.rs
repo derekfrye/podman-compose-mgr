@@ -59,6 +59,20 @@ pub fn process(args: &Args) -> Result<()> {
         let now: DateTime<Local> = Local::now();
         let ins_ts = now.to_rfc3339();
         
+        // Read file content as bytes to check encoding
+        let file_bytes = std::fs::read(&filenm)?;
+        
+        // Check if the file is valid UTF-8
+        let encoding = match std::str::from_utf8(&file_bytes) {
+            Ok(_) => "utf8",
+            Err(_) => {
+                if args.verbose {
+                    println!("Warning: File {} contains non-UTF-8 data. Will use base64 encoding when uploaded.", filenm);
+                }
+                "base64"
+            }
+        };
+        
         // Create JSON entry
         let entry = json!({
             "filenm": filenm,
@@ -68,7 +82,8 @@ pub fn process(args: &Args) -> Result<()> {
             "az_create": "",
             "az_updated": "",
             "az_name": "",
-            "hostname": hostname
+            "hostname": hostname,
+            "encoding": encoding
         });
         
         new_entries.push(entry);

@@ -257,13 +257,34 @@ fn get_secret_from_azure(az_name: String, client: &dyn AzureKeyVaultClient) -> R
 }
 
 /// Validate MD5 checksums match
-fn validate_checksums(file_nm: &str, secret_value: &str, args: &Args) -> Result<()> {
+fn validate_checksums(file_nm: &str, secret_value: &str, encoding: &str, args: &Args) -> Result<()> {
+    use azure_core::base64;
+    
+    // Calculate MD5 of Azure value (may need to decode base64 first)
     let azure_md5 = calculate_md5(secret_value);
     
     // Read local file and calculate MD5
-    match fs::read_to_string(file_nm) {
-        Ok(content) => {
-            let md5_of_file = calculate_md5(&content);
+    match fs::read(file_nm) {
+        Ok(file_bytes) => {
+            let md5_of_file = if encoding == "base64" {
+                // For base64 encoded secrets, we need to compare MD5 of the base64 string
+                // since that's what we stored in Azure
+                let content_str = match std::str::from_utf8(&file_bytes) {
+                    Ok(text) => text.to_string(),
+                    Err(_) => base64::encode(&file_bytes)
+                };
+                calculate_md5(&content_str)
+            } else {
+                // For UTF-8 files, read as string and compare MD5 directly
+                match std::str::from_utf8(&file_bytes) {
+                    Ok(content) => calculate_md5(content),
+                    Err(_) => {
+                        eprintln!("Warning: File {} contains non-UTF-8 data but was expected to be UTF-8.", file_nm);
+                        // Fall back to comparing bytes
+                        calculate_md5(&String::from_utf8_lossy(&file_bytes))
+                    }
+                }
+            };
             
             if azure_md5 != md5_of_file {
                 eprintln!("MD5 mismatch for file: {}", file_nm);
@@ -298,6 +319,7 @@ fn create_validation_output(
     secret_value: &SetSecretResponse,
     formatted_date: String,
     hostname: String,
+    encoding: String,
 ) -> JsonOutput {
     JsonOutput {
         file_nm,
@@ -308,6 +330,7 @@ fn create_validation_output(
         az_updated: secret_value.updated.to_string(),
         az_name: secret_value.name.to_string(),
         hostname,
+        encoding,
     }
 }
 
@@ -327,13 +350,13 @@ pub fn validate_entry(
     args: &Args,
 ) -> Result<JsonOutput> {
     // Extract required fields
-    let (az_id, file_nm, az_name) = extract_validation_fields(&entry)?;
+    let (az_id, file_nm, az_name, encoding) = extract_validation_fields(&entry)?;
     
     // Get the secret from Azure KeyVault
     let secret_value = get_secret_from_azure(az_name, client)?;
     
     // Validate checksums and IDs
-    validate_checksums(&file_nm, &secret_value.value, args)?;
+    validate_checksums(&file_nm, &secret_value.value, &encoding, args)?;
     validate_azure_ids(&az_id, &secret_value.id, args)?;
     
     // Create timestamp and get hostname
@@ -341,5 +364,5 @@ pub fn validate_entry(
     let hostname = get_hostname()?;
     
     // Create and return output structure
-    Ok(create_validation_output(file_nm, &secret_value, formatted_date, hostname))
+    Ok(create_validation_output(file_nm, &secret_value, formatted_date, hostname, encoding))
 }

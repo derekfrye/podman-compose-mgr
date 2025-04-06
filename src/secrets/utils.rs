@@ -8,7 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use time::OffsetDateTime;
 
 /// Extract required fields for validation
-pub fn extract_validation_fields(entry: &Value) -> Result<(String, String, String)> {
+pub fn extract_validation_fields(entry: &Value) -> Result<(String, String, String, String)> {
     let az_id = entry["az_id"]
         .as_str()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("az_id missing in input json"))?
@@ -23,8 +23,14 @@ pub fn extract_validation_fields(entry: &Value) -> Result<(String, String, Strin
         .as_str()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("az_name missing in input json"))?
         .to_string();
+    
+    // Get encoding, defaulting to "utf8" for backward compatibility
+    let encoding = entry["encoding"]
+        .as_str()
+        .unwrap_or("utf8")
+        .to_string();
         
-    Ok((az_id, file_nm, az_name))
+    Ok((az_id, file_nm, az_name, encoding))
 }
 
 /// Display details about a validation entry
@@ -33,9 +39,12 @@ pub fn details_about_entry(entry: &Value) -> Result<()> {
     let az_name = crate::utils::json_utils::extract_string_field(entry, "az_name")?;
     let az_create = crate::utils::json_utils::extract_string_field(entry, "az_create")?;
     let az_updated = crate::utils::json_utils::extract_string_field(entry, "az_updated")?;
+    // Get encoding with default value for backward compatibility
+    let encoding = entry["encoding"].as_str().unwrap_or("utf8");
 
     println!("File: {}", file_nm);
     println!("Azure Key Vault Name: {}", az_name);
+    println!("Encoding: {}", encoding);
 
     let datetime_entries = vec![
         vec![az_create, "az create dt".to_string()],

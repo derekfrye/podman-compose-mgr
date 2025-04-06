@@ -277,26 +277,47 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                 // so we'll check that field separately, and size_kib is calculated inside get_file_details
                 let mut details = upload::get_file_details(file_path, &encoded_name).unwrap();
                 details.last_modified = "WILL BE VALIDATED SEPARATELY".to_string(); // Will be checked differently
+                details.is_utf8 = true; // Assume all test files are UTF-8 for testing purposes
                 
                 (encoded_name, details)
             })
             .collect();
         
         // For each file, set up the expected API calls
-        for (encoded_name, _) in &expected_file_details {
-            // First expect a check if the secret exists - return an error
+        for (i, (encoded_name, _)) in expected_file_details.iter().enumerate() {
+            // First expect a check if the secret exists
+            // Let's make the last file have an existing secret to test that code path
             let encoded_name_clone = encoded_name.clone();
-            azure_client
-                .expect_get_secret_value()
-                .with(eq(encoded_name.clone()))
-                .times(1)
-                .in_sequence(&mut seq)
-                .returning(move |name| {
-                    Err(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::NotFound, 
-                        format!("Secret not found: {}", name)
-                    )))
-                });
+            
+            if i == expected_file_details.len() - 1 {
+                // For the last file, make the secret exist
+                let encoded_name_clone_inner = encoded_name_clone.clone();
+                azure_client
+                    .expect_get_secret_value()
+                    .with(eq(encoded_name.clone()))
+                    .times(1)
+                    .in_sequence(&mut seq)
+                    .returning(move |_| {
+                        // Return a mock response indicating the secret exists
+                        Ok(upload::test_utils::get_mock_secret_response(
+                            &encoded_name_clone_inner,
+                            "existing-secret-value"
+                        ))
+                    });
+            } else {
+                // For other files, make the secret not exist
+                azure_client
+                    .expect_get_secret_value()
+                    .with(eq(encoded_name.clone()))
+                    .times(1)
+                    .in_sequence(&mut seq)
+                    .returning(move |name| {
+                        Err(Box::new(std::io::Error::new(
+                            std::io::ErrorKind::NotFound, 
+                            format!("Secret not found: {}", name)
+                        )))
+                    });
+            }
             
             // Then expect the upload - which should succeed
             azure_client
@@ -405,6 +426,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     println!("Size: {}", upload::format_file_size(details.size_bytes));
                     println!("Last modified: {}", details.last_modified);
                     println!("Secret name: {}", details.secret_name);
+                    println!("Encoding: {}", if details.is_utf8 { "UTF-8" } else { "Non-UTF-8 (base64 encoded)" });
                     
                     // Return "d" for details
                     ReadValResult {
@@ -479,10 +501,10 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
     
     // Create JSON content
     let json_content = json!([
-        {"filenm": "tests/test3_and_test4/a", "md5": "60b725f10c9c85c70d97880dfe8191b3", "ins_ts": "2023-01-01T00:00:00Z", "hostname": "test-host"},
-        {"filenm": "tests/test3_and_test4/b", "md5": "bfcc9da4f2e1d313c63cd0a4ee7604e9", "ins_ts": "2023-01-01T00:00:00Z", "hostname": "test-host"},
-        {"filenm": "tests/test3_and_test4/c", "md5": "c576ec4297a7bdacc878e0061192441e", "ins_ts": "2023-01-01T00:00:00Z", "hostname": "test-host"},
-        {"filenm": "tests/test3_and_test4/d d", "md5": "ef76b4f269b9a5104e4f061419a5f529", "ins_ts": "2023-01-01T00:00:00Z", "hostname": "test-host"}
+        {"filenm": "tests/test3_and_test4/a", "md5": "60b725f10c9c85c70d97880dfe8191b3", "ins_ts": "2023-01-01T00:00:00Z", "hostname": hostname::get()?.to_string_lossy().to_string()},
+        {"filenm": "tests/test3_and_test4/b", "md5": "bfcc9da4f2e1d313c63cd0a4ee7604e9", "ins_ts": "2023-01-01T00:00:00Z", "hostname": hostname::get()?.to_string_lossy().to_string()},
+        {"filenm": "tests/test3_and_test4/c", "md5": "c576ec4297a7bdacc878e0061192441e", "ins_ts": "2023-01-01T00:00:00Z", "hostname": hostname::get()?.to_string_lossy().to_string()},
+        {"filenm": "tests/test3_and_test4/d d", "md5": "ef76b4f269b9a5104e4f061419a5f529", "ins_ts": "2023-01-01T00:00:00Z", "hostname": hostname::get()?.to_string_lossy().to_string()}
     ]);
     
     // Write to the temporary file
