@@ -18,9 +18,7 @@ use crate::secrets::error::Result;
 /// Handles the different secret-related modes.
 pub fn process_secrets_mode(args: &Args) -> Result<()> {
     match args.mode {
-        crate::args::Mode::SecretRefresh => {
-            azure::update_mode(args)?;
-        }
+        
         crate::args::Mode::SecretRetrieve => {
             validation::validate(args)?;
         }

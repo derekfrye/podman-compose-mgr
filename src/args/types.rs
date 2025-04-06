@@ -1,5 +1,8 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
+use std::io::Read;
+use serde_json;
+use hostname;
 
 use super::initialization::check_init_filepath;
 use super::validators::{
@@ -70,6 +73,14 @@ pub struct Args {
     /// Backblaze B2 bucket name to use for uploads
     #[arg(long)]
     pub b2_bucket_for_upload: Option<String>,
+    
+    /// Path to file containing Backblaze B2 account ID
+    #[arg(long)]
+    pub b2_account_id_filepath: Option<PathBuf>,
+    
+    /// Path to file containing Backblaze B2 account key
+    #[arg(long)]
+    pub b2_account_key_filepath: Option<PathBuf>,
 }
 
 impl Args {
@@ -109,22 +120,69 @@ impl Args {
         self.validate()
     }
 
+    /// Check if B2 credentials are needed based on entries in the input JSON
+    /// 
+    /// Returns true if there are any entries in the input JSON that:
+    /// 1. Have destination_cloud = "b2"
+    /// 2. Have hostname = current hostname
+    fn needs_b2_credentials_for_upload(&self) -> Result<bool, String> {
+        // Get the input JSON path
+        let input_json_path = match &self.input_json {
+            Some(path) => path,
+            None => return Ok(false), // No input JSON, no B2 credentials needed
+        };
+        
+        // Get current hostname for comparison
+        let current_hostname = match hostname::get() {
+            Ok(hostname) => hostname.to_string_lossy().to_string(),
+            Err(e) => return Err(format!("Failed to get system hostname: {}", e)),
+        };
+        
+        // Try to read the input JSON file
+        let mut file = match std::fs::File::open(input_json_path) {
+            Ok(file) => file,
+            Err(e) => return Err(format!("Failed to open input JSON file: {}", e)),
+        };
+        
+        let mut content = String::new();
+        if let Err(e) = file.read_to_string(&mut content) {
+            return Err(format!("Failed to read input JSON file: {}", e));
+        }
+        
+        // Parse JSON as array
+        let entries: Vec<serde_json::Value> = match serde_json::from_str(&content) {
+            Ok(entries) => entries,
+            Err(e) => return Err(format!("Failed to parse input JSON: {}", e)),
+        };
+        
+        // Check if any entry is for B2 storage and matches the current hostname
+        for entry in entries {
+            // Get hostname
+            let hostname = match entry.get("hostname").and_then(|v| v.as_str()) {
+                Some(h) => h,
+                None => continue, // Skip entries without hostname
+            };
+            
+            // Get destination cloud
+            let destination_cloud = match entry.get("destination_cloud").and_then(|v| v.as_str()) {
+                Some(d) => d,
+                None => continue, // Skip entries without destination_cloud
+            };
+            
+            // If this entry is for B2 storage and matches the current hostname,
+            // we need B2 credentials
+            if destination_cloud == "b2" && hostname == current_hostname {
+                return Ok(true);
+            }
+        }
+        
+        // No B2 entries found for the current hostname
+        Ok(false)
+    }
+
     /// Validate the secrets based on the mode, without modifying the Args
     pub fn validate(&self) -> Result<(), String> {
-        if let Mode::SecretRefresh = self.mode {
-            if let Some(client_id) = &self.secrets_client_id {
-                if client_id.len() != 8 {
-                    return Err(
-                        "secrets_client_id must be exactly 8 characters long when Mode is Secrets."
-                            .to_string(),
-                    );
-                }
-            }
-
-            if let Some(client_secret) = &self.secrets_client_secret_path {
-                check_readable_path(client_secret)?;
-            }
-        } else if let Mode::SecretRetrieve = self.mode {
+        if let Mode::SecretRetrieve = self.mode {
             if let Some(client_id) = &self.secrets_client_id {
                 check_readable_file(client_id)?;
             }
@@ -185,31 +243,45 @@ impl Args {
                 return Err("secrets_client_id is required for SecretUpload mode".to_string());
             }
 
-            // Also check for B2 credentials as they might be needed for large files
-            if self.b2_key_id.is_none() {
-                return Err(
-                    "b2_key_id is required for SecretUpload mode with large files".to_string(),
-                );
-            }
-            if self.b2_application_key.is_none() {
-                return Err(
-                    "b2_application_key is required for SecretUpload mode with large files"
-                        .to_string(),
-                );
-            }
-            if self.b2_bucket_name.is_none() {
-                return Err(
-                    "b2_bucket_name is required for SecretUpload mode with large files".to_string(),
-                );
-            }
-
             // Validate the file paths
             if let Some(input_json) = &self.input_json {
                 check_valid_json_path(input_json)?;
+                
+                // Check if B2 credentials are needed for any entries in the input JSON
+                let need_b2_credentials = self.needs_b2_credentials_for_upload()?;
+                
+                if need_b2_credentials {
+                    // Check if B2 account ID filepath is provided
+                    if self.b2_account_id_filepath.is_none() {
+                        return Err("b2_account_id_filepath is required for upload mode with B2 entries".to_string());
+                    }
+                    
+                    // Check if B2 account key filepath is provided
+                    if self.b2_account_key_filepath.is_none() {
+                        return Err("b2_account_key_filepath is required for upload mode with B2 entries".to_string());
+                    }
+                    
+                    // Check if B2 bucket for upload is provided
+                    if self.b2_bucket_for_upload.is_none() {
+                        return Err("b2_bucket_for_upload is required for upload mode with B2 entries".to_string());
+                    }
+                    
+                    // Validate B2 account ID filepath
+                    if let Some(filepath) = &self.b2_account_id_filepath {
+                        check_readable_path(filepath)?;
+                    }
+                    
+                    // Validate B2 account key filepath
+                    if let Some(filepath) = &self.b2_account_key_filepath {
+                        check_readable_path(filepath)?;
+                    }
+                }
             }
+            
             if let Some(client_secret) = &self.secrets_client_secret_path {
                 check_readable_path(client_secret)?;
             }
+            
             if let Some(output_json) = &self.output_json {
                 check_file_writable_path(output_json)?;
             }
@@ -221,10 +293,8 @@ impl Args {
 /// Enumeration of possible modes
 #[derive(Clone, ValueEnum, Debug, Copy)]
 pub enum Mode {
-    Rebuild,
-    SecretRefresh,
+    Rebuild,    
     SecretRetrieve,
     SecretInitialize,
-    SecretUpload,
-    RestartSvcs,
+    SecretUpload,    
 }

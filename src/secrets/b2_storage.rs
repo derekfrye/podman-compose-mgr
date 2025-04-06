@@ -4,6 +4,8 @@ use crate::secrets::file_details::FileDetails;
 use aws_sdk_s3::Client;
 use aws_sdk_s3::config::Region;
 use aws_sdk_s3::primitives::ByteStream;
+use aws_credential_types::Credentials;
+use aws_config::retry::RetryConfig;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -28,15 +30,32 @@ impl B2Client {
         // Backblaze B2 S3-compatible endpoint
         let endpoint = "https://s3.us-west-004.backblazeb2.com";
         
-        // Since we have issues with credential providers, make this a dummy implementation for now
-        // that only compiles but isn't fully functional yet
-        let s3_config = aws_sdk_s3::Config::builder()
-            .region(Region::new("us-west-004"))
-            .endpoint_url(endpoint)
-            .build();
+        // Create runtime for async operation
+        let runtime = tokio::runtime::Runtime::new()
+            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
+        
+        // Use the tokio runtime to build the AWS config
+        let aws_config = runtime.block_on(async {
+            // Create credentials from the B2 key ID and application key
+            let credentials = Credentials::new(
+                config.key_id.clone(),
+                config.application_key.clone(),
+                None, // No session token
+                None, // No expiry
+                "B2StaticCredentials",
+            );
             
+            // Build the S3 configuration
+            aws_sdk_s3::Config::builder()
+                .region(Region::new("us-west-004"))
+                .endpoint_url(endpoint)
+                .credentials_provider(credentials)
+                .retry_config(RetryConfig::standard().with_max_attempts(3))
+                .build()
+        });
+        
         // Create client
-        let client = Client::from_conf(s3_config);
+        let client = Client::from_conf(aws_config);
         
         Ok(Self {
             bucket_name: config.bucket,
@@ -46,22 +65,69 @@ impl B2Client {
     
     /// Create a new B2 client from the Args struct
     pub fn from_args(args: &Args) -> Result<Self> {
-        let key_id = args.b2_key_id.as_ref()
-            .ok_or_else(|| Box::<dyn std::error::Error>::from("B2 key ID is required"))?;
+        // Prioritize file-based credentials (new approach)
+        if let (Some(account_id_filepath), Some(account_key_filepath)) = 
+            (&args.b2_account_id_filepath, &args.b2_account_key_filepath) {
+            
+            // Read account ID from file
+            let mut account_id = String::new();
+            File::open(account_id_filepath)
+                .map_err(|e| Box::<dyn std::error::Error>::from(
+                    format!("Failed to open B2 account ID file: {}", e)
+                ))?
+                .read_to_string(&mut account_id)
+                .map_err(|e| Box::<dyn std::error::Error>::from(
+                    format!("Failed to read B2 account ID file: {}", e)
+                ))?;
+            
+            // Read account key from file
+            let mut account_key = String::new();
+            File::open(account_key_filepath)
+                .map_err(|e| Box::<dyn std::error::Error>::from(
+                    format!("Failed to open B2 account key file: {}", e)
+                ))?
+                .read_to_string(&mut account_key)
+                .map_err(|e| Box::<dyn std::error::Error>::from(
+                    format!("Failed to read B2 account key file: {}", e)
+                ))?;
+            
+            // Trim whitespace and newlines
+            let account_id = account_id.trim().to_string();
+            let account_key = account_key.trim().to_string();
+            
+            // Get bucket name
+            let bucket_name = args.b2_bucket_for_upload.as_ref()
+                .ok_or_else(|| Box::<dyn std::error::Error>::from("B2 bucket name is required"))?;
+            
+            let config = B2Config {
+                key_id: account_id,
+                application_key: account_key,
+                bucket: bucket_name.clone(),
+            };
+            
+            return Self::new(config);
+        }
         
-        let application_key = args.b2_application_key.as_ref()
-            .ok_or_else(|| Box::<dyn std::error::Error>::from("B2 application key is required"))?;
+        // Fall back to direct parameters (legacy approach)
+        if let (Some(key_id), Some(application_key)) = 
+            (&args.b2_key_id, &args.b2_application_key) {
+            
+            let bucket_name = args.b2_bucket_for_upload.as_ref()
+                .ok_or_else(|| Box::<dyn std::error::Error>::from("B2 bucket name is required"))?;
+            
+            let config = B2Config {
+                key_id: key_id.clone(),
+                application_key: application_key.clone(),
+                bucket: bucket_name.clone(),
+            };
+            
+            return Self::new(config);
+        }
         
-        let bucket_name = args.b2_bucket_name.as_ref()
-            .ok_or_else(|| Box::<dyn std::error::Error>::from("B2 bucket name is required"))?;
-        
-        let config = B2Config {
-            key_id: key_id.clone(),
-            application_key: application_key.clone(),
-            bucket: bucket_name.clone(),
-        };
-        
-        Self::new(config)
+        // If neither approach worked, return an error
+        Err(Box::<dyn std::error::Error>::from(
+            "Either B2 account ID and key files or direct credentials are required"
+        ))
     }
     
     /// Check if a file exists in B2 storage

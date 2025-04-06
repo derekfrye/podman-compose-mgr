@@ -35,6 +35,8 @@ fn test_initialize_process() {
         b2_application_key: None,
         b2_bucket_name: None,
         b2_bucket_for_upload: Some("test_bucket".to_string()), // Add test bucket for B2 uploads
+        b2_account_id_filepath: None,
+        b2_account_key_filepath: None
     };
 
     // Run the initialize process

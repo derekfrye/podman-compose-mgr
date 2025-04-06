@@ -52,6 +52,8 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         b2_application_key: Some("test-b2-application-key".to_string()),
         b2_bucket_name: Some("test-b2-bucket".to_string()),
         b2_bucket_for_upload: Some("test-upload-bucket".to_string()),
+        b2_account_id_filepath: None,
+        b2_account_key_filepath: None,
     };
 
     // List of file paths in our test that will be processed

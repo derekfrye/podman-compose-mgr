@@ -15,6 +15,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::Read;
 use std::path::Path;
 
+
 /// Process the upload operation to cloud storage using default implementations
 pub fn process(args: &Args) -> Result<()> {
     // Use default read helper
@@ -28,7 +29,7 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
     read_val_helper: &R,
 ) -> Result<()> {
     // Validate that required params exist
-    let _ = args
+    let _input_json_path = args
         .input_json
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Input JSON path is required"))?;
@@ -36,6 +37,7 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
         .output_json
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Output JSON path is required"))?;
+        
 
     // Create Azure Key Vault client
     let client_id = args
@@ -168,7 +170,7 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
         let too_large_for_keyvault = encoded_size > 24000;
 
         // Handle different storage backends based on file size
-        if too_large_for_keyvault && destination_cloud == "b2" {
+        if too_large_for_keyvault || destination_cloud == "b2" {
             if args.verbose {
                 println!(
                     "File {} is too large for Azure KeyVault ({}). Uploading to Backblaze B2 instead.",
@@ -258,14 +260,6 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
             continue;
         }
         
-        // For small files, continue with Azure KeyVault
-        if too_large_for_keyvault {
-            eprintln!(
-                "File {} is too large for Azure KeyVault ({}). B2 storage is not configured, skipping.",
-                file_path, encoded_size
-            );
-            continue;
-        }
 
         // Check if the secret already exists in Azure KeyVault
         let (secret_exists, existing_created, existing_updated) =
@@ -366,6 +360,7 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
         processed_entries.push(output_entry);
     }
 
+    
     // Append to output file if we have any entries
     if !processed_entries.is_empty() {
         // Create parent directory if it doesn't exist
