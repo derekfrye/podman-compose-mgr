@@ -410,12 +410,8 @@ pub fn validate_entry(
             }
         };
         
-        // Convert content to string based on encoding (not used for B2 but stored as metadata)
-        let _content_str = if encoding == "base64" {
-            String::from_utf8_lossy(&content).to_string()
-        } else {
-            String::from_utf8_lossy(&content).to_string()
-        };
+        // Convert content to string (not used for B2 but stored as metadata)
+        let _content_str = String::from_utf8_lossy(&content).to_string();
         
         // Get B2 metadata (we don't do checksum validation for B2 here)
         

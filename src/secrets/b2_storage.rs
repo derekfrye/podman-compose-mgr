@@ -110,9 +110,10 @@ impl B2Client {
                 result.insert("content_type".to_string(), content_type.to_string());
             }
             
-            // Content length is an i64
-            let content_length = resp.content_length();
-            result.insert("content_length".to_string(), content_length.to_string());
+            // Content length is an Option<i64>
+            if let Some(content_length) = resp.content_length() {
+                result.insert("content_length".to_string(), content_length.to_string());
+            }
             
             if let Some(etag) = resp.e_tag() {
                 result.insert("etag".to_string(), etag.to_string());

@@ -17,10 +17,10 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 md-5 = "0"
 tokio = { version = "1", features = ["full"] }
-# Use specific versions that are known to work
+# Use consistent versions for Azure packages
 azure_identity = "0.21"
-azure_security_keyvault = "0"
-azure_core = "0"
+azure_security_keyvault = "0.21"
+azure_core = "0.21"
 time = "0"
 hostname = "0"
 terminal_size = "0"
@@ -28,16 +28,15 @@ mockall = "0"
 thiserror = "1"
 async-trait = "0"
 home = "0"
-# New dependencies for enhanced secrets management
-sha1 = "0.10"
-hex = "0.4"
-aws-config = "0.55"
-aws-sdk-s3 = "0.30"
-aws-credential-types = "0.55"
-aws-smithy-runtime = { version = "0.55", features = ["test-util"] }
-base64 = "0.21"
-utf8-read = "0.4"
-anyhow = "1.0"
+sha1 = "0"
+hex = "0"
+aws-config = "1"
+aws-sdk-s3 = "1"
+aws-credential-types = "1"
+aws-smithy-runtime = { version = "1", features = ["test-util"] }
+base64 = "0"
+utf8-read = "0"
+anyhow = "1"
 
 [dev-dependencies]
 tempfile = "3"  # Use the latest version
