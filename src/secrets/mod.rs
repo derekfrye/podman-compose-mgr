@@ -1,8 +1,10 @@
 pub mod azure;
 pub mod error;
+pub mod file_details;
 pub mod initialize;
 pub mod models;
 pub mod upload;
+pub mod upload_utils;
 pub mod user_prompt;
 pub mod utils;
 pub mod validation;

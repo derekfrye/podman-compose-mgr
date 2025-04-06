@@ -1,7 +1,8 @@
 use crate::read_interactive_input::{GrammarFragment, GrammarType};
 use crate::utils::json_utils;
 use crate::secrets::error::Result;
-use crate::secrets::upload::format_file_size;
+use crate::secrets::file_details::{format_file_size, display_file_details, get_file_details};
+use crate::interfaces::ReadInteractiveInputHelper;
 use serde_json::Value;
 
 /// Setup the interactive prompt for validation
@@ -177,4 +178,80 @@ pub fn display_upload_help() {
     println!("n = Skip this secret, don't upload it.");
     println!("d = Display details about the file.");
     println!("? = Display this help.");
+}
+
+/// Prompt the user for confirmation before uploading a file
+/// 
+/// This function uses the default implementation of ReadInteractiveInputHelper
+pub fn prompt_for_upload(
+    file_path: &str, 
+    encoded_name: &str, 
+    secret_exists: bool,
+    az_created: Option<String>,
+    az_updated: Option<String>,
+) -> Result<bool> {
+    use crate::interfaces::DefaultReadInteractiveInputHelper;
+    let read_val_helper = DefaultReadInteractiveInputHelper;
+    prompt_for_upload_with_helper(file_path, encoded_name, &read_val_helper, secret_exists, az_created, az_updated)
+}
+
+/// Version of prompt_for_upload that accepts dependency injection for testing
+pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
+    file_path: &str, 
+    encoded_name: &str, 
+    read_val_helper: &R,
+    secret_exists: bool,
+    az_created: Option<String>,
+    az_updated: Option<String>,
+) -> Result<bool> {
+    // If the secret exists and we're prompting, show an overwrite warning
+    if secret_exists {
+        println!("Warning: This will overwrite the existing secret in Azure Key Vault.");
+    }
+
+    let mut grammars: Vec<GrammarFragment> = Vec::new();
+    
+    // Setup the prompt
+    setup_upload_prompt(&mut grammars, file_path, encoded_name)?;
+    
+    loop {
+        // Display prompt and get user input using the provided helper
+        let result = read_val_helper.read_val_from_cmd_line_and_proceed(&mut grammars, None);
+        
+        match result.user_entered_val {
+            None => return Ok(false), // Empty input means no
+            Some(choice) => {
+                match choice.as_str() {
+                    // Yes, upload the file
+                    "Y" => {
+                        return Ok(true);
+                    },
+                    // No, skip this file
+                    "n" => {
+                        return Ok(false);
+                    },
+                    // Display details about the file
+                    "d" => {
+                        // Get file details
+                        let mut details = get_file_details(file_path, encoded_name)?;
+                        
+                        // Add Azure metadata if available
+                        details.az_created = az_created.clone();
+                        details.az_updated = az_updated.clone();
+                        
+                        // Display the details
+                        display_file_details(&details);
+                    },
+                    // Display help
+                    "?" => {
+                        display_upload_help();
+                    },
+                    // Invalid choice
+                    _ => {
+                        eprintln!("Invalid choice: {}", choice);
+                    }
+                }
+            }
+        }
+    }
 }

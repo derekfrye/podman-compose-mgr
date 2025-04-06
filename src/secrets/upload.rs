@@ -1,17 +1,16 @@
 use crate::args::Args;
-use crate::interfaces::{DefaultReadInteractiveInputHelper, ReadInteractiveInputHelper};
-use crate::read_interactive_input::GrammarFragment;
+use crate::interfaces::{DefaultReadInteractiveInputHelper, ReadInteractiveInputHelper, AzureKeyVaultClient};
 use crate::secrets::azure::get_keyvault_client;
 use crate::secrets::error::Result;
-use crate::secrets::user_prompt::{setup_upload_prompt, display_upload_help};
+use crate::secrets::upload_utils::create_encoded_secret_name;
+use crate::secrets::user_prompt::prompt_for_upload_with_helper;
 use crate::secrets::utils::get_hostname;
 use azure_core::base64;
 
-use chrono::{DateTime, Local};
 use serde_json::{json, Value};
-use std::fs::{self, File, OpenOptions, metadata};
+use std::fs::{self, File, OpenOptions};
 use std::io::Read;
-use std::path::{Path, MAIN_SEPARATOR};
+use std::path::Path;
 
 /// Process the upload operation to Azure Key Vault using default implementations
 pub fn process(args: &Args) -> Result<()> {
@@ -53,7 +52,7 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
 pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelper>(
     args: &Args,
     read_val_helper: &R,
-    kv_client: Box<dyn crate::interfaces::AzureKeyVaultClient>,
+    kv_client: Box<dyn AzureKeyVaultClient>,
 ) -> Result<()> {
     // Get required parameters from args
     let input_filepath = args.input_json.as_ref()
@@ -107,13 +106,15 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
         // Create a secret name from the file path
         let secret_name = create_encoded_secret_name(filenm);
         
-        // Step 2: Check if the secret already exists using the interface
-        let secret_exists = match kv_client.get_secret_value(&secret_name) {
-            Ok(_) => {
+        // Step 2: Check if the secret already exists using the interface and get its metadata
+        let (secret_exists, existing_created, existing_updated) = match kv_client.get_secret_value(&secret_name) {
+            Ok(secret) => {
                 println!("Secret {} already exists in the key vault", secret_name);
-                true
+                (true, 
+                 Some(secret.created.to_string()), 
+                 Some(secret.updated.to_string()))
             },
-            Err(_) => false,
+            Err(_) => (false, None, None),
         };
         
         // Read file content as bytes (handles non-UTF-8 files)
@@ -133,7 +134,14 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
         };
             
         // Prompt the user for confirmation using the injected helper
-        let upload_confirmed = prompt_for_upload_with_helper(filenm, &secret_name, read_val_helper, secret_exists)?;
+        let upload_confirmed = prompt_for_upload_with_helper(
+            filenm, 
+            &secret_name, 
+            read_val_helper, 
+            secret_exists, 
+            existing_created, 
+            existing_updated
+        )?;
         
         if !upload_confirmed {
             if args.verbose {
@@ -215,203 +223,4 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
     }
     
     Ok(())
-}
-
-/// Prompt the user for confirmation before uploading a file
-/// 
-/// This function uses the default ReadInteractiveInputHelper
-#[allow(dead_code)]
-fn prompt_for_upload(file_path: &str, encoded_name: &str, secret_exists: bool) -> Result<bool> {
-    let read_val_helper = DefaultReadInteractiveInputHelper;
-    prompt_for_upload_with_helper(file_path, encoded_name, &read_val_helper, secret_exists)
-}
-
-/// Version of prompt_for_upload that accepts dependency injection for testing
-pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
-    file_path: &str, 
-    encoded_name: &str, 
-    read_val_helper: &R,
-    secret_exists: bool,
-) -> Result<bool> {
-    // If the secret exists and we're prompting, show an overwrite warning
-    if secret_exists {
-        println!("Warning: This will overwrite the existing secret in Azure Key Vault.");
-    }
-
-    let mut grammars: Vec<GrammarFragment> = Vec::new();
-    
-    // Setup the prompt
-    setup_upload_prompt(&mut grammars, file_path, encoded_name)?;
-    
-    loop {
-        // Display prompt and get user input using the provided helper
-        let result = read_val_helper.read_val_from_cmd_line_and_proceed(&mut grammars, None);
-        
-        match result.user_entered_val {
-            None => return Ok(false), // Empty input means no
-            Some(choice) => {
-                match choice.as_str() {
-                    // Yes, upload the file
-                    "Y" => {
-                        return Ok(true);
-                    },
-                    // No, skip this file
-                    "n" => {
-                        return Ok(false);
-                    },
-                    // Display details about the file
-                    "d" => {
-                        display_file_details(file_path, encoded_name)?;
-                    },
-                    // Display help
-                    "?" => {
-                        display_upload_help();
-                    },
-                    // Invalid choice
-                    _ => {
-                        eprintln!("Invalid choice: {}", choice);
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// Represents the detailed information about a file for secret upload
-#[derive(Debug, Clone)]
-pub struct FileDetails {
-    pub file_path: String,
-    pub size_bytes: u64,
-    pub last_modified: String,
-    pub secret_name: String,
-    pub is_utf8: bool,
-}
-
-/// Get detailed information about the file
-pub fn get_file_details(file_path: &str, encoded_name: &str) -> Result<FileDetails> {
-    // Get file metadata for size and last modified time
-    let metadata = metadata(file_path)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get metadata: {}", e)))?;
-    
-    // Get file size in bytes
-    let size_bytes = metadata.len();
-    
-    // Format the last modified time
-    let modified = metadata.modified()
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get modified time: {}", e)))?;
-    
-    let datetime: DateTime<Local> = modified.into();
-    let formatted_time = datetime.format("%m/%d/%y %H:%M:%S").to_string();
-    
-    // Check if the file contains valid UTF-8
-    let is_utf8 = match fs::read(file_path) {
-        Ok(bytes) => std::str::from_utf8(&bytes).is_ok(),
-        Err(_) => false, // If we can't read the file, assume it's not UTF-8
-    };
-    
-    // Return the details
-    Ok(FileDetails {
-        file_path: file_path.to_string(),
-        size_bytes,
-        last_modified: formatted_time,
-        secret_name: encoded_name.to_string(),
-        is_utf8,
-    })
-}
-
-/// Helper function to format file size with appropriate units
-pub fn format_file_size(size_bytes: u64) -> String {
-    if size_bytes < 1024 {
-        // Less than 1 KiB, display in bytes
-        format!("{} bytes", size_bytes)
-    } else if size_bytes < 1024 * 1024 {
-        // Display in KiB with 2 decimal places
-        let size_kib = size_bytes as f64 / 1024.0;
-        format!("{:.2} KiB", size_kib)
-    } else if size_bytes < 1024 * 1024 * 1024 {
-        // Display in MiB with 2 decimal places
-        let size_mib = size_bytes as f64 / (1024.0 * 1024.0);
-        format!("{:.2} MiB", size_mib)
-    } else if size_bytes < 1024 * 1024 * 1024 * 1024 {
-        // Display in GiB with 2 decimal places
-        let size_gib = size_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
-        format!("{:.2} GiB", size_gib)
-    } else if size_bytes < 1024 * 1024 * 1024 * 1024 * 1024 {
-        // Display in TiB with 2 decimal places
-        let size_tib = size_bytes as f64 / (1024.0 * 1024.0 * 1024.0 * 1024.0);
-        format!("{:.2} TiB", size_tib)
-    } else {
-        // Display in PiB with 2 decimal places (for extremely large files)
-        let size_pib = size_bytes as f64 / (1024.0 * 1024.0 * 1024.0 * 1024.0 * 1024.0);
-        format!("{:.2} PiB", size_pib)
-    }
-}
-
-/// Display detailed information about the file
-fn display_file_details(file_path: &str, encoded_name: &str) -> Result<()> {
-    // Get the file details
-    let details = get_file_details(file_path, encoded_name)?;
-    
-    // Display the details
-    println!("File path: {}", details.file_path);
-    println!("Size: {}", format_file_size(details.size_bytes));
-    println!("Last modified: {}", details.last_modified);
-    println!("Secret name: {}", details.secret_name);
-    
-    // Display encoding information
-    if !details.is_utf8 {
-        println!("Encoding: Non-UTF-8 content (will be base64 encoded)");
-    } else {
-        println!("Encoding: UTF-8");
-    }
-    
-    Ok(())
-}
-
-/// Create an encoded secret name from a file path
-/// 
-/// This function takes a file path and converts it to a name suitable for
-/// Azure Key Vault secrets:
-/// 1. Replace path separators with dashes
-/// 2. Replace periods (.) with dashes
-/// 3. Encode any other special characters using hex encoding
-pub fn create_encoded_secret_name(file_path: &str) -> String {
-    // First replace path separators and periods with dashes
-    let secret_name = file_path.replace([MAIN_SEPARATOR, '.'], "-");
-    
-    // Replace spaces and other problematic characters with URL-encoding
-    // Note: In Azure Key Vault, secret names can only contain alphanumeric characters and dashes
-    let mut encoded_name = String::new();
-    
-    for c in secret_name.chars() {
-        if c.is_alphanumeric() || c == '-' {
-            encoded_name.push(c);
-        } else {
-            // For space and other special characters, convert to percent encoding
-            // but use their hex value directly
-            for byte in c.to_string().as_bytes() {
-                encoded_name.push_str(&format!("-{:02X}", byte));
-            }
-        }
-    }
-    
-    encoded_name
-}
-
-pub mod test_utils {
-    use crate::secrets::models::SetSecretResponse;
-    use time::OffsetDateTime;
-
-    // For testing, we can override the get_secret_value and set_secret_value functions
-    // This function is used to get a mock SecretResponse for testing
-    pub fn get_mock_secret_response(name: &str, value: &str) -> SetSecretResponse {
-        let now = OffsetDateTime::now_utc();
-        SetSecretResponse {
-            created: now,
-            updated: now,
-            name: name.to_string(),
-            id: format!("https://keyvault.vault.azure.net/secrets/{}", name),
-            value: value.to_string(),
-        }
-    }
 }

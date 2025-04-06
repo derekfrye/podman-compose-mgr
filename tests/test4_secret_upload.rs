@@ -4,7 +4,9 @@ use podman_compose_mgr::interfaces::{MockAzureKeyVaultClient, MockReadInteractiv
 use podman_compose_mgr::read_interactive_input::ReadValResult;
 use podman_compose_mgr::secrets::models::SetSecretResponse;
 use podman_compose_mgr::args::{Args, Mode};
-use podman_compose_mgr::secrets::upload::{self, FileDetails};
+use podman_compose_mgr::secrets::upload;
+use podman_compose_mgr::secrets::file_details::{FileDetails, get_file_details, format_file_size};
+use podman_compose_mgr::secrets::upload_utils::{create_encoded_secret_name, test_utils};
 use mockall::predicate::*;
 use mockall::Sequence;
 use serde_json::json;
@@ -78,7 +80,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // For each file, expect a get_secret_value call first to check if it exists
         // Then expect a set_secret_value call to upload it
         for file_path in &test_files {
-            let encoded_name = upload::create_encoded_secret_name(file_path);
+            let encoded_name = create_encoded_secret_name(file_path);
             
             // First expect a check if the secret exists - return an error
             let encoded_name_clone = encoded_name.clone();
@@ -177,7 +179,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // Set up expectations: for each file, we only expect the get_secret_value
         // call since the user will decline the upload
         for file_path in &test_files {
-            let encoded_name = upload::create_encoded_secret_name(file_path);
+            let encoded_name = create_encoded_secret_name(file_path);
             
             // Expect a check if the secret exists
             azure_client
@@ -270,12 +272,12 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
             .iter()
             .map(|file_path| {
                 // Calculate the encoded name
-                let encoded_name = upload::create_encoded_secret_name(file_path);
+                let encoded_name = create_encoded_secret_name(file_path);
                 
                 // Create a hard-coded expected FileDetails with known values
                 // Note: We can't predict the exact last_modified time in the test,
                 // so we'll check that field separately, and size_kib is calculated inside get_file_details
-                let mut details = upload::get_file_details(file_path, &encoded_name).unwrap();
+                let mut details = get_file_details(file_path, &encoded_name).unwrap();
                 details.last_modified = "WILL BE VALIDATED SEPARATELY".to_string(); // Will be checked differently
                 details.is_utf8 = true; // Assume all test files are UTF-8 for testing purposes
                 
@@ -299,7 +301,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     .in_sequence(&mut seq)
                     .returning(move |_| {
                         // Return a mock response indicating the secret exists
-                        Ok(upload::test_utils::get_mock_secret_response(
+                        Ok(test_utils::get_mock_secret_response(
                             &encoded_name_clone_inner,
                             "existing-secret-value"
                         ))
@@ -413,17 +415,17 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     println!("User selects 'd' to see details for file {}", current_file);
                     
                     // Get the encoded name
-                    let encoded_name = upload::create_encoded_secret_name(current_file);
+                    let encoded_name = create_encoded_secret_name(current_file);
                     
-                    // Get file details using our extracted function
-                    let details = upload::get_file_details(current_file, &encoded_name).unwrap();
+                    // Get file details
+                    let details = get_file_details(current_file, &encoded_name).unwrap();
                     
                     // Capture the details for later verification
                     captured_details_clone.lock().unwrap().push(details.clone());
                     
                     // Print the details manually since we're in a test
                     println!("File path: {}", details.file_path);
-                    println!("Size: {}", upload::format_file_size(details.size_bytes));
+                    println!("Size: {}", format_file_size(details.size_bytes));
                     println!("Last modified: {}", details.last_modified);
                     println!("Secret name: {}", details.secret_name);
                     println!("Encoding: {}", if details.is_utf8 { "UTF-8" } else { "Non-UTF-8 (base64 encoded)" });
