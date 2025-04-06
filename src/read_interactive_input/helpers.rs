@@ -1,7 +1,9 @@
-use std::collections::HashSet;
-use crate::read_interactive_input::types::{GrammarFragment, GrammarType, ReadValResult, PrintFunction, StdinHelperWrapper};
-use crate::read_interactive_input::format::{unroll_grammar_into_string, do_prompt_formatting};
 use crate::interfaces::CommandHelper;
+use crate::read_interactive_input::format::{do_prompt_formatting, unroll_grammar_into_string};
+use crate::read_interactive_input::types::{
+    GrammarFragment, GrammarType, PrintFunction, ReadValResult, StdinHelperWrapper,
+};
+use std::collections::HashSet;
 
 /// Default print function that writes to stdout
 pub fn default_print(s: &str) {
@@ -48,10 +50,10 @@ fn collect_user_choices(grammars: &[GrammarFragment]) -> HashSet<String> {
 
 /// Process user input and determine action
 fn process_user_input(
-    input: &str, 
-    user_choices: &HashSet<String>, 
+    input: &str,
+    user_choices: &HashSet<String>,
     print_fn: &PrintFunction<'_>,
-    prompt_string: &str
+    prompt_string: &str,
 ) -> Option<Option<String>> {
     if user_choices.contains(input) {
         // Valid choice
@@ -83,7 +85,7 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
     let term_width = cmd_helper.get_terminal_display_width(size);
     do_prompt_formatting(grammars, term_width);
     let prompt_string = unroll_grammar_into_string(grammars, false, true);
-    
+
     // Print the prompt
     print_fn(&prompt_string);
 
@@ -98,7 +100,7 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
     loop {
         // Get input
         let input = stdin_wrapper.read_line();
-        
+
         // Process input
         if let Some(result) = process_user_input(&input, &user_choices, &print_fn, &prompt_string) {
             return_result.user_entered_val = result;

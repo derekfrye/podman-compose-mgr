@@ -1,7 +1,7 @@
 use crate::helpers::cmd_helper_fns as cmd;
+use crate::read_interactive_input::{GrammarFragment, GrammarType};
 use std::path::PathBuf;
 use thiserror::Error;
-use crate::read_interactive_input::{GrammarFragment, GrammarType};
 use walkdir::DirEntry;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -31,10 +31,10 @@ struct WhatWereBuilding {
 pub enum BuildfileError {
     #[error("Regex error: {0}")]
     RegexError(#[from] regex::Error),
-    
+
     #[error("Path contains invalid UTF-8: {0}")]
     InvalidPath(String),
-    
+
     #[error("Rebuild error: {0}")]
     RebuildError(String),
 
@@ -42,7 +42,11 @@ pub enum BuildfileError {
     CommandExecution(#[from] Box<dyn std::error::Error>),
 }
 
-pub fn start(dir: &DirEntry, custom_img_nm: &str, build_args: Vec<&str>)-> Result<(), BuildfileError> {
+pub fn start(
+    dir: &DirEntry,
+    custom_img_nm: &str,
+    build_args: Vec<&str>,
+) -> Result<(), BuildfileError> {
     let buildfiles = find_buildfile(dir, custom_img_nm, build_args);
     if buildfiles.is_none()
         || buildfiles.as_ref().unwrap().is_empty()
@@ -105,8 +109,9 @@ fn read_val_loop(files: Vec<BuildFile>) -> WhatWereBuilding {
 
     if !prompt_grammars.is_empty() {
         loop {
-            let z =
-                crate::read_interactive_input::read_val_from_cmd_line_and_proceed_default(&mut prompt_grammars);
+            let z = crate::read_interactive_input::read_val_from_cmd_line_and_proceed_default(
+                &mut prompt_grammars,
+            );
             if let Some(t) = z.user_entered_val {
                 match t.as_str() {
                     // only set back up near line 95, if both Makefile and Dockerfile exist in dir
@@ -378,7 +383,7 @@ fn build_image_from_spec(build_config: WhatWereBuilding) -> Result<(), Buildfile
 
             podman_args.push(build_config.file.parent_dir.to_str().unwrap());
 
-           Ok( cmd::exec_cmd("podman", &podman_args[..]).map_err(BuildfileError::from)?)
+            Ok(cmd::exec_cmd("podman", &podman_args[..]).map_err(BuildfileError::from)?)
         }
         BuildChoice::Makefile => {
             let chg_dir = if build_config.follow_link {

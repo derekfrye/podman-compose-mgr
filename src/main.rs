@@ -16,16 +16,19 @@ fn main() -> io::Result<()> {
     }
 
     match args.mode {
-        Mode::SecretRefresh | Mode::SecretRetrieve | Mode::SecretInitialize | Mode::SecretUpload => {
+        Mode::SecretRefresh
+        | Mode::SecretRetrieve
+        | Mode::SecretInitialize
+        | Mode::SecretUpload => {
             if let Err(e) = secrets::process_secrets_mode(&args) {
                 eprintln!("Error processing secrets: {}", e);
                 std::process::exit(1);
             }
-        },
+        }
         Mode::RestartSvcs => {
             // Placeholder for service restart functionality
             eprintln!("Restart services mode not yet implemented");
-        },
+        }
         _ => {
             walk_dirs(&args);
         }

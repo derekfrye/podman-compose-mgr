@@ -4,10 +4,10 @@ use crate::read_interactive_input::{self as read_val, GrammarFragment};
 use crate::secrets::azure::{calculate_md5, get_content_from_file, get_keyvault_client};
 use crate::secrets::error::Result;
 use crate::secrets::models::{JsonOutput, JsonOutputControl, SetSecretResponse};
-use crate::secrets::user_prompt::{setup_validation_prompt, display_validation_help};
+use crate::secrets::user_prompt::{display_validation_help, setup_validation_prompt};
 use crate::secrets::utils::{
-    extract_validation_fields, details_about_entry, get_current_timestamp, 
-    get_hostname, write_json_output
+    details_about_entry, extract_validation_fields, get_current_timestamp, get_hostname,
+    write_json_output,
 };
 use serde_json::Value;
 use std::fs::{self, File};
@@ -25,7 +25,7 @@ use std::io::Read;
 pub fn validate(args: &Args) -> Result<()> {
     // Get client for Azure KeyVault
     let (client, json_values) = prepare_validation(args)?;
-    
+
     // Process each entry
     let json_outputs = process_validation_entries(client.as_ref(), &json_values, args)?;
 
@@ -40,38 +40,46 @@ pub fn validate(args: &Args) -> Result<()> {
 /// Prepare for validation by reading the input file and creating a KeyVault client
 pub fn prepare_validation(args: &Args) -> Result<(Box<dyn AzureKeyVaultClient>, Vec<Value>)> {
     // Get input file path
-    let input_path = args.input_json.as_ref()
+    let input_path = args
+        .input_json
+        .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Input JSON path is required"))?;
-    
+
     // Read and validate JSON entries
-    let mut file = File::open(input_path)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to open input JSON file: {}", e)))?;
-    
+    let mut file = File::open(input_path).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to open input JSON file: {}", e))
+    })?;
+
     let mut file_content = String::new();
-    file.read_to_string(&mut file_content)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to read input JSON file: {}", e)))?;
-    
+    file.read_to_string(&mut file_content).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to read input JSON file: {}", e))
+    })?;
+
     let json_values: Vec<Value> = serde_json::from_str(&file_content)
         .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to parse JSON: {}", e)))?;
 
     // Get Azure credentials
     let client_id = get_client_id(args)?;
-    let client_secret = args.secrets_client_secret_path.as_ref()
+    let client_secret = args
+        .secrets_client_secret_path
+        .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Client secret path is required"))?;
     let tenant_id = get_tenant_id(args)?;
     let key_vault_name = get_key_vault_name(args)?;
 
     // Get KeyVault client
     let client = get_keyvault_client(&client_id, client_secret, &tenant_id, &key_vault_name)?;
-    
+
     Ok((client, json_values))
 }
 
 /// Get client ID from args or file
 fn get_client_id(args: &Args) -> Result<String> {
-    let client_id_arg = args.secrets_client_id.as_ref()
+    let client_id_arg = args
+        .secrets_client_id
+        .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Client ID is required"))?;
-    
+
     if client_id_arg.contains(std::path::MAIN_SEPARATOR) {
         get_content_from_file(client_id_arg)
     } else {
@@ -81,9 +89,11 @@ fn get_client_id(args: &Args) -> Result<String> {
 
 /// Get tenant ID from args or file
 fn get_tenant_id(args: &Args) -> Result<String> {
-    let tenant_id_arg = args.secrets_tenant_id.as_ref()
+    let tenant_id_arg = args
+        .secrets_tenant_id
+        .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Tenant ID is required"))?;
-    
+
     if tenant_id_arg.contains(std::path::MAIN_SEPARATOR) {
         get_content_from_file(tenant_id_arg)
     } else {
@@ -93,9 +103,11 @@ fn get_tenant_id(args: &Args) -> Result<String> {
 
 /// Get key vault name from args or file
 fn get_key_vault_name(args: &Args) -> Result<String> {
-    let key_vault_name_arg = args.secrets_vault_name.as_ref()
+    let key_vault_name_arg = args
+        .secrets_vault_name
+        .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Key vault name is required"))?;
-    
+
     if key_vault_name_arg.contains(std::path::MAIN_SEPARATOR) {
         get_content_from_file(key_vault_name_arg)
     } else {
@@ -107,22 +119,24 @@ fn get_key_vault_name(args: &Args) -> Result<String> {
 fn process_validation_entries(
     client: &dyn AzureKeyVaultClient,
     json_values: &Vec<Value>,
-    args: &Args
+    args: &Args,
 ) -> Result<Vec<JsonOutput>> {
     let mut json_outputs: Vec<JsonOutput> = vec![];
-    
+
     // Process each entry
     let mut loop_result: JsonOutputControl = JsonOutputControl::new();
     let hostname = get_hostname()?;
     for entry in json_values {
         if hostname != entry["hostname"].as_str().unwrap_or("") {
             if args.verbose {
-                println!("Skipping entry {} for hostname: {}", entry["filenm"], entry["hostname"]);
+                println!(
+                    "Skipping entry {} for hostname: {}",
+                    entry["filenm"], entry["hostname"]
+                );
             }
             continue; // Skip if hostname doesn't match
         }
         if loop_result.validate_all {
-            
             match validate_entry(entry.clone(), client, args) {
                 Ok(z) => json_outputs.push(z),
                 Err(e) => eprintln!("Error validating entry: {}", e),
@@ -140,7 +154,7 @@ fn process_validation_entries(
             }
         }
     }
-    
+
     Ok(json_outputs)
 }
 
@@ -148,18 +162,25 @@ fn process_validation_entries(
 fn write_validation_results(args: &Args, json_outputs: &[JsonOutput]) -> Result<()> {
     if let Some(output_path) = args.output_json.as_ref() {
         if let Some(output_dir) = output_path.parent() {
-            fs::create_dir_all(output_dir)
-                .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create output directory: {}", e)))?;
+            fs::create_dir_all(output_dir).map_err(|e| {
+                Box::<dyn std::error::Error>::from(format!(
+                    "Failed to create output directory: {}",
+                    e
+                ))
+            })?;
         }
-        
-        let output_str = output_path.to_str()
+
+        let output_str = output_path
+            .to_str()
             .ok_or_else(|| Box::<dyn std::error::Error>::from("Invalid UTF-8 in output path"))?;
-            
+
         write_json_output(json_outputs, output_str)?;
     } else {
-        return Err(Box::<dyn std::error::Error>::from("Output JSON path is required"));
+        return Err(Box::<dyn std::error::Error>::from(
+            "Output JSON path is required",
+        ));
     }
-    
+
     Ok(())
 }
 
@@ -169,7 +190,7 @@ fn process_validation_choice(
     entry: &Value,
     client: &dyn AzureKeyVaultClient,
     args: &Args,
-    output_control: &mut JsonOutputControl
+    output_control: &mut JsonOutputControl,
 ) -> Result<bool> {
     match choice {
         // Display entry details
@@ -215,9 +236,9 @@ pub fn read_val_loop(
 ) -> Result<JsonOutputControl> {
     let mut grammars: Vec<GrammarFragment> = vec![];
     let mut output_control: JsonOutputControl = JsonOutputControl::new();
-    
+
     setup_validation_prompt(&mut grammars, &entry)?;
-    
+
     loop {
         // If validate_all flag is set, validate immediately
         if output_control.validate_all {
@@ -225,7 +246,7 @@ pub fn read_val_loop(
             output_control.json_output = validated_entry;
             break;
         }
-        
+
         // Display prompt and get user input
         let result = read_val::read_val_from_cmd_line_and_proceed_default(&mut grammars);
 
@@ -238,31 +259,39 @@ pub fn read_val_loop(
                     &entry,
                     client,
                     args,
-                    &mut output_control
+                    &mut output_control,
                 )?;
-                
+
                 if should_exit {
                     break;
                 }
             }
         }
     }
-    
+
     Ok(output_control)
 }
 
 /// Get a secret from Azure KeyVault
-fn get_secret_from_azure(az_name: String, client: &dyn AzureKeyVaultClient) -> Result<SetSecretResponse> {
+fn get_secret_from_azure(
+    az_name: String,
+    client: &dyn AzureKeyVaultClient,
+) -> Result<SetSecretResponse> {
     client.get_secret_value(&az_name)
 }
 
 /// Validate MD5 checksums match
-fn validate_checksums(file_nm: &str, secret_value: &str, encoding: &str, args: &Args) -> Result<()> {
+fn validate_checksums(
+    file_nm: &str,
+    secret_value: &str,
+    encoding: &str,
+    args: &Args,
+) -> Result<()> {
     use azure_core::base64;
-    
+
     // Calculate MD5 of Azure value (may need to decode base64 first)
     let azure_md5 = calculate_md5(secret_value);
-    
+
     // Read local file and calculate MD5
     match fs::read(file_nm) {
         Ok(file_bytes) => {
@@ -271,7 +300,7 @@ fn validate_checksums(file_nm: &str, secret_value: &str, encoding: &str, args: &
                 // since that's what we stored in Azure
                 let content_str = match std::str::from_utf8(&file_bytes) {
                     Ok(text) => text.to_string(),
-                    Err(_) => base64::encode(&file_bytes)
+                    Err(_) => base64::encode(&file_bytes),
                 };
                 calculate_md5(&content_str)
             } else {
@@ -279,20 +308,23 @@ fn validate_checksums(file_nm: &str, secret_value: &str, encoding: &str, args: &
                 match std::str::from_utf8(&file_bytes) {
                     Ok(content) => calculate_md5(content),
                     Err(_) => {
-                        eprintln!("Warning: File {} contains non-UTF-8 data but was expected to be UTF-8.", file_nm);
+                        eprintln!(
+                            "Warning: File {} contains non-UTF-8 data but was expected to be UTF-8.",
+                            file_nm
+                        );
                         // Fall back to comparing bytes
                         calculate_md5(&String::from_utf8_lossy(&file_bytes))
                     }
                 }
             };
-            
+
             if azure_md5 != md5_of_file {
                 eprintln!("MD5 mismatch for file: {}", file_nm);
             } else if args.verbose {
                 println!("MD5 match for file: {}", file_nm);
             }
             Ok(())
-        },
+        }
         Err(e) => {
             eprintln!("Error reading file to calculate md5: {} - {}", file_nm, e);
             Ok(())
@@ -351,18 +383,24 @@ pub fn validate_entry(
 ) -> Result<JsonOutput> {
     // Extract required fields
     let (az_id, file_nm, az_name, encoding) = extract_validation_fields(&entry)?;
-    
+
     // Get the secret from Azure KeyVault
     let secret_value = get_secret_from_azure(az_name, client)?;
-    
+
     // Validate checksums and IDs
     validate_checksums(&file_nm, &secret_value.value, &encoding, args)?;
     validate_azure_ids(&az_id, &secret_value.id, args)?;
-    
+
     // Create timestamp and get hostname
     let formatted_date = get_current_timestamp()?;
     let hostname = get_hostname()?;
-    
+
     // Create and return output structure
-    Ok(create_validation_output(file_nm, &secret_value, formatted_date, hostname, encoding))
+    Ok(create_validation_output(
+        file_nm,
+        &secret_value,
+        formatted_date,
+        hostname,
+        encoding,
+    ))
 }

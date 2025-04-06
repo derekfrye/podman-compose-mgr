@@ -7,18 +7,20 @@ use walkdir::WalkDir;
 use crate::{
     Args, args,
     image_build::{self as build, rebuild::RebuildManager},
-    interfaces::{CommandHelper, DefaultCommandHelper, DefaultReadInteractiveInputHelper, ReadInteractiveInputHelper},
-    
+    interfaces::{
+        CommandHelper, DefaultCommandHelper, DefaultReadInteractiveInputHelper,
+        ReadInteractiveInputHelper,
+    },
 };
 
 #[derive(Debug, Error)]
 pub enum StartError {
     #[error("Regex error: {0}")]
     RegexError(#[from] regex::Error),
-    
+
     #[error("Path contains invalid UTF-8: {0}")]
     InvalidPath(String),
-    
+
     #[error("Rebuild error: {0}")]
     RebuildError(String),
 }
@@ -51,19 +53,19 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
         if args.verbose {
             println!("Excluding paths: {:?}", args.exclude_path_patterns);
         }
-        
+
         for pattern in &args.exclude_path_patterns {
             let regex = Regex::new(pattern)?;
             exclude_patterns.push(regex);
         }
     }
-    
+
     // Compile include patterns
     if !args.include_path_patterns.is_empty() {
         if args.verbose {
             println!("Including paths: {:?}", args.include_path_patterns);
         }
-        
+
         for pattern in &args.include_path_patterns {
             let regex = Regex::new(pattern)?;
             include_patterns.push(regex);
@@ -91,27 +93,34 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
                     continue;
                 }
             };
-            
+
             // Check exclude patterns - skip if any match
-            if !exclude_patterns.is_empty() 
-                && exclude_patterns.iter().any(|pattern| pattern.is_match(entry_path_str)) 
+            if !exclude_patterns.is_empty()
+                && exclude_patterns
+                    .iter()
+                    .any(|pattern| pattern.is_match(entry_path_str))
             {
                 // if args.verbose {
                 //     println!("Excluding path due to exclude pattern: {}", entry_path_str);
                 // }
                 continue;
             }
-            
+
             // Check include patterns - skip if none match
-            if !include_patterns.is_empty() 
-                && include_patterns.iter().all(|pattern| !pattern.is_match(entry_path_str)) 
+            if !include_patterns.is_empty()
+                && include_patterns
+                    .iter()
+                    .all(|pattern| !pattern.is_match(entry_path_str))
             {
                 if args.verbose {
-                    println!("Skipping path as it doesn't match any include pattern: {}", entry_path_str);
+                    println!(
+                        "Skipping path as it doesn't match any include pattern: {}",
+                        entry_path_str
+                    );
                 }
                 continue;
             }
-            
+
             // Process according to mode
             match args.mode {
                 args::Mode::Rebuild => {
@@ -121,15 +130,19 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
                         }
                     }
                 }
-                _ => {drop_mgr(&mut manager);}
+                _ => {
+                    drop_mgr(&mut manager);
+                }
             }
         }
     }
-    
+
     Ok(())
 }
 
-fn drop_mgr<C: CommandHelper, R: ReadInteractiveInputHelper>(manager: &mut Option<RebuildManager<'_, C, R>>) {
+fn drop_mgr<C: CommandHelper, R: ReadInteractiveInputHelper>(
+    manager: &mut Option<RebuildManager<'_, C, R>>,
+) {
     if let Some(manager) = manager.take() {
         mem::drop(manager);
     }

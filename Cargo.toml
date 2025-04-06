@@ -28,6 +28,14 @@ mockall = "0"
 thiserror = "1"
 async-trait = "0"
 home = "0"
+# New dependencies for enhanced secrets management
+sha1 = "0.10"
+hex = "0.4"
+opendal = { version = "0.52.0", features = ["services-b2"] }
+base64 = "0.21"
+utf8-read = "0.4"
+async-std = "1.12"
+anyhow = "1.0"
 
 [dev-dependencies]
 tempfile = "3"  # Use the latest version

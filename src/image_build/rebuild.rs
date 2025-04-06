@@ -1,6 +1,6 @@
 use crate::args::Args;
-use crate::image_build::buildfile::start;
 use crate::helpers::podman_helper_fns;
+use crate::image_build::buildfile::start;
 use crate::interfaces::{CommandHelper, ReadInteractiveInputHelper};
 use crate::read_interactive_input::{GrammarFragment, GrammarType};
 
@@ -16,25 +16,25 @@ use walkdir::DirEntry;
 pub enum RebuildError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     #[error("YAML parsing error: {0}")]
     YamlParse(#[from] serde_yaml::Error),
-    
+
     #[error("Path not found: {0}")]
     PathNotFound(String),
-    
+
     #[error("Missing field in YAML: {0}")]
     MissingField(String),
-    
+
     #[error("Invalid container configuration: {0}")]
     InvalidConfig(String),
-    
+
     #[error("Command execution error: {0}")]
     CommandExecution(String),
-    
+
     #[error("Date parsing error: {0}")]
     DateParse(String),
-    
+
     #[error("Error: {0}")]
     Other(String),
 }
@@ -69,24 +69,23 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
     /// - Unable to get the file path as a string
     /// - Unable to read or parse the YAML file
     /// - Service configurations are invalid
-    pub fn rebuild(
-        &mut self,
-        entry: &DirEntry,
-        args: &Args,
-    ) -> Result<(), RebuildError> {
+    pub fn rebuild(&mut self, entry: &DirEntry, args: &Args) -> Result<(), RebuildError> {
         // Get file path safely
-        let file_path = entry.path().to_str()
-            .ok_or_else(|| RebuildError::PathNotFound(format!("Invalid UTF-8 in path: {:?}", entry.path())))?;
-        
+        let file_path = entry.path().to_str().ok_or_else(|| {
+            RebuildError::PathNotFound(format!("Invalid UTF-8 in path: {:?}", entry.path()))
+        })?;
+
         let yaml = self.read_yaml_file(file_path)?;
-        
+
         // Get services from YAML
-        let services = yaml.get("services")
-            .ok_or_else(|| RebuildError::MissingField("No 'services' section found in compose file".to_string()))?;
-            
-        let services_map = services.as_mapping()
-            .ok_or_else(|| RebuildError::InvalidConfig("'services' is not a mapping".to_string()))?;
-        
+        let services = yaml.get("services").ok_or_else(|| {
+            RebuildError::MissingField("No 'services' section found in compose file".to_string())
+        })?;
+
+        let services_map = services.as_mapping().ok_or_else(|| {
+            RebuildError::InvalidConfig("'services' is not a mapping".to_string())
+        })?;
+
         // Process each service
         for (_, service_config) in services_map {
             // Get image name if present
@@ -94,12 +93,20 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                 // Get container name if present
                 if let Some(container_name) = service_config.get("container_name") {
                     // Extract string values safely
-                    let image_string = image.as_str()
-                        .ok_or_else(|| RebuildError::InvalidConfig("'image' is not a string".to_string()))?
+                    let image_string = image
+                        .as_str()
+                        .ok_or_else(|| {
+                            RebuildError::InvalidConfig("'image' is not a string".to_string())
+                        })?
                         .to_string();
-                    
-                    let container_nm_string = container_name.as_str()
-                        .ok_or_else(|| RebuildError::InvalidConfig("'container_name' is not a string".to_string()))?
+
+                    let container_nm_string = container_name
+                        .as_str()
+                        .ok_or_else(|| {
+                            RebuildError::InvalidConfig(
+                                "'container_name' is not a string".to_string(),
+                            )
+                        })?
                         .to_string();
 
                     // Check if this image should be skipped
@@ -116,8 +123,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                         self.images_checked.iter().any(|i| {
                             if let Some(ref name) = i.name {
                                 if let Some(ref container_name) = i.container {
-                                    name == &image_string
-                                        && container_name == &container_nm_string
+                                    name == &image_string && container_name == &container_nm_string
                                 } else {
                                     false
                                 }
@@ -137,7 +143,8 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                             &image_string,
                             &args.build_args,
                             &container_nm_string,
-                        ).map_err(|e| RebuildError::Other(e.to_string()))?;
+                        )
+                        .map_err(|e| RebuildError::Other(e.to_string()))?;
 
                         // Add to our list of checked images
                         let c = Image {
@@ -150,7 +157,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -206,9 +213,9 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
             .parent()
             .unwrap_or_else(|| Path::new("/")) // Fallback to root if parent doesn't exist
             .display();
-            
+
         let docker_compose_pth_fmtted = docker_compose_pth.to_string();
-        
+
         let grm4 = GrammarFragment {
             original_val_for_prompt: Some(docker_compose_pth_fmtted.clone()),
             shortened_val_for_prompt: None,
@@ -278,42 +285,43 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                             println!("Container name: {}", container_name);
                             println!("Compose file: {}", docker_compose_pth_fmtted);
                             // Display image creation time
-                            match podman_helper_fns::get_podman_image_upstream_create_time(custom_img_nm) {
+                            match podman_helper_fns::get_podman_image_upstream_create_time(
+                                custom_img_nm,
+                            ) {
                                 Ok(created_time) => {
                                     println!("Created: {}", self.format_time_ago(created_time));
-                                },
+                                }
                                 Err(e) => {
                                     println!("Created: Error getting creation time - {}", e);
                                 }
                             }
-                            
+
                             // Display image pull time
                             match podman_helper_fns::get_podman_ondisk_modify_time(custom_img_nm) {
                                 Ok(pull_time) => {
                                     println!("Pulled: {}", self.format_time_ago(pull_time));
-                                },
+                                }
                                 Err(e) => {
                                     println!("Pulled: Error getting pull time - {}", e);
                                 }
                             }
-                            
+
                             // Get parent directory safely
-                            let parent_dir = entry.path().parent().unwrap_or_else(|| Path::new("/"));
-                            
+                            let parent_dir =
+                                entry.path().parent().unwrap_or_else(|| Path::new("/"));
+
                             // Check if Dockerfile exists
                             println!(
                                 "Dockerfile exists: {}",
-                                self.cmd_helper.file_exists_and_readable(
-                                    &parent_dir.join("Dockerfile")
-                                )
+                                self.cmd_helper
+                                    .file_exists_and_readable(&parent_dir.join("Dockerfile"))
                             );
-                            
+
                             // Check if Makefile exists
                             println!(
                                 "Makefile exists: {}",
-                                self.cmd_helper.file_exists_and_readable(
-                                    &parent_dir.join("Makefile")
-                                )
+                                self.cmd_helper
+                                    .file_exists_and_readable(&parent_dir.join("Makefile"))
                             );
                         }
                         "?" => {
@@ -387,13 +395,11 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
     /// - Unable to parse the file as YAML
     fn read_yaml_file(&mut self, file_path: &str) -> Result<Value, RebuildError> {
         // Open the file
-        let file = File::open(file_path)
-            .map_err(RebuildError::Io)?;
-            
+        let file = File::open(file_path).map_err(RebuildError::Io)?;
+
         // Parse as YAML
-        let yaml: Value = serde_yaml::from_reader(file)
-            .map_err(RebuildError::YamlParse)?;
-            
+        let yaml: Value = serde_yaml::from_reader(file).map_err(RebuildError::YamlParse)?;
+
         Ok(yaml)
     }
 
@@ -407,7 +413,10 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
     fn pull_image(&mut self, image: &str) -> Result<(), RebuildError> {
         let podman_args = vec!["pull".to_string(), image.to_string()];
 
-        self.cmd_helper.exec_cmd("podman", podman_args)
-            .map_err(|e| RebuildError::CommandExecution(format!("Failed to pull image {}: {}", image, e)))
+        self.cmd_helper
+            .exec_cmd("podman", podman_args)
+            .map_err(|e| {
+                RebuildError::CommandExecution(format!("Failed to pull image {}: {}", image, e))
+            })
     }
 }

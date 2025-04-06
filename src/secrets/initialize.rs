@@ -4,8 +4,10 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 use chrono::{DateTime, Local};
-use md5::{Digest, Md5};
 use serde_json::json;
+
+use crate::secrets::file_details::check_encoding_and_size;
+use crate::secrets::upload_utils::create_secret_name;
 
 use crate::Args;
 use crate::secrets::error::Result;
@@ -19,12 +21,12 @@ pub fn process(args: &Args) -> Result<()> {
     // Get the required file paths from args
     let init_filepath = args.secrets_init_filepath.as_ref().unwrap();
     let output_filepath = args.output_json.as_ref().unwrap();
-    
+
     // Read the input file containing the file paths
     let mut file = File::open(init_filepath)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
-    
+
     // Parse the JSON - it's either a map or an array of objects with filenm key
     let files: Vec<String> = if contents.trim().starts_with('{') {
         // Handle map format
@@ -33,109 +35,117 @@ pub fn process(args: &Args) -> Result<()> {
     } else {
         // Handle array format with objects that have filenm field
         let files_array: Vec<serde_json::Value> = serde_json::from_str(&contents)?;
-        files_array.iter()
+        files_array
+            .iter()
             .filter_map(|obj| obj.get("filenm").and_then(|v| v.as_str()).map(String::from))
             .collect()
     };
-    
+
     // Get the hostname
     let hostname = hostname()?;
-    
+
     // Create new entries for each file
     let mut new_entries = Vec::new();
-    
-    for filenm in files {
+
+    for file_nm in files {
         // Check if file exists
-        if !Path::new(&filenm).exists() {
-            return Err(Box::<dyn std::error::Error>::from(
-                format!("File {} does not exist", filenm),
-            ));
+        if !Path::new(&file_nm).exists() {
+            return Err(Box::<dyn std::error::Error>::from(format!(
+                "File {} does not exist",
+                file_nm
+            )));
         }
-        
-        // Calculate MD5
-        let md5 = calculate_md5(&filenm)?;
-        
+
+        // Calculate SHA-1 hash
+        let hash = calculate_hash(&file_nm)?;
+
         // Get current timestamp
         let now: DateTime<Local> = Local::now();
         let ins_ts = now.to_rfc3339();
-        
-        // Read file content as bytes to check encoding
-        let file_bytes = std::fs::read(&filenm)?;
-        
-        // Check if the file is valid UTF-8
-        let encoding = match std::str::from_utf8(&file_bytes) {
-            Ok(_) => "utf8",
-            Err(_) => {
-                if args.verbose {
-                    println!("Warning: File {} contains non-UTF-8 data. Will use base64 encoding when uploaded.", filenm);
-                }
-                "base64"
-            }
+
+        // Check encoding and get file sizes (creates base64 encoded file if needed)
+        let (encoding, file_size, encoded_size) = check_encoding_and_size(&file_nm)?;
+
+        // Determine destination cloud based on encoded size
+        let destination_cloud = if encoded_size > 24000 {
+            "b2"
+        } else {
+            "azure_kv"
         };
-        
+
+        // Create secret name from hash
+        let secret_name = create_secret_name(&hash);
+
+        // Log verbose message for base64 encoding
+        if encoding == "base64" && args.verbose {
+            println!(
+                "File {} contains non-UTF-8 data. Created base64 version ({}.base64). Will use base64 encoding when uploaded.",
+                file_nm, file_nm
+            );
+        }
+
         // Create JSON entry
         let entry = json!({
-            "filenm": filenm,
-            "md5": md5,
+            "file_nm": file_nm,
+            "hash": hash,
+            "hash_algo": "sha1",
             "ins_ts": ins_ts,
-            "az_id": "", // These will be filled in later by Azure Key Vault
-            "az_create": "",
-            "az_updated": "",
-            "az_name": "",
+            "cloud_id": "", // These will be filled in later by cloud storage
+            "cloud_cr_ts": "",
+            "cloud_upd_ts": "",
             "hostname": hostname,
-            "encoding": encoding
+            "encoding": encoding,
+            "file_size": file_size,
+            "encoded_size": encoded_size,
+            "destination_cloud": destination_cloud,
+            "secret_name": secret_name
         });
-        
+
         new_entries.push(entry);
     }
-    
+
     // Create or read existing entries
     let mut all_entries = Vec::new();
-    
+
     // Check if output file already exists and read its contents if it does
     if Path::new(output_filepath).exists() {
         let mut existing_file = File::open(output_filepath)?;
         let mut existing_content = String::new();
         existing_file.read_to_string(&mut existing_content)?;
-        
+
         if !existing_content.trim().is_empty() {
             // Parse existing JSON entries
             let existing_entries: Vec<serde_json::Value> = serde_json::from_str(&existing_content)?;
-            
+
             // Add existing entries to all_entries
             all_entries.extend(existing_entries);
         }
     }
-    
+
     // Store the count of new entries
     let new_entries_count = new_entries.len();
-    
+
     // Add new entries to all_entries
     all_entries.extend(new_entries);
-    
+
     // Write all entries to the output file
     let output_content = serde_json::to_string_pretty(&all_entries)?;
     let mut output_file = File::create(output_filepath)?;
     output_file.write_all(output_content.as_bytes())?;
-    
+
     if args.verbose {
-        println!("Successfully updated output file with {} new entries", new_entries_count);
+        println!(
+            "Successfully updated output file with {} new entries",
+            new_entries_count
+        );
     }
-    
+
     Ok(())
 }
 
-/// Calculate MD5 hash for a file
-fn calculate_md5(filepath: &str) -> Result<String> {
-    let mut file = File::open(filepath)?;
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer)?;
-    
-    let mut hasher = Md5::new();
-    hasher.update(&buffer);
-    let result = hasher.finalize();
-    
-    Ok(format!("{:x}", result))
+/// Calculate hash for a file (using streaming for large files)
+fn calculate_hash(filepath: &str) -> Result<String> {
+    crate::secrets::utils::calculate_hash(filepath)
 }
 
 /// Get the system hostname
@@ -143,6 +153,6 @@ fn hostname() -> Result<String> {
     let hostname = cmd_utils::run_command_with_output("hostname", &[])?
         .trim()
         .to_string();
-    
+
     Ok(hostname)
 }

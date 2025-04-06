@@ -61,7 +61,7 @@ fn collect_shortenable_fragments(grammars: &mut [GrammarFragment]) -> Vec<&mut G
 /// Shorten a grammar fragment based on its type
 fn shorten_fragment(grammar: &mut GrammarFragment, allowed_len: usize) {
     let orig = grammar.original_val_for_prompt.as_ref().unwrap();
-    
+
     // If the original is longer than the allowed length, shorten it
     if orig.len() > allowed_len {
         if grammar.grammar_type == GrammarType::Image {
@@ -103,7 +103,7 @@ pub fn do_prompt_formatting(grammars: &mut [GrammarFragment], term_width: usize)
         if total_remaining_space > 0 && n > 0 && total_remaining_space > 3 {
             // Calculate allowed length per fragment
             let allowed_len = ((total_remaining_space - 3) as f64 / n as f64).floor() as usize;
-            
+
             // Shorten each fragment
             for grammar in shortenable_grammars.iter_mut() {
                 shorten_fragment(grammar, allowed_len);

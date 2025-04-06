@@ -3,13 +3,14 @@ use crate::interfaces::{AzureKeyVaultClient, DefaultAzureKeyVaultClient};
 use crate::secrets::error::Result;
 use crate::secrets::models::SetSecretResponse;
 
+use azure_core::Url;
+use azure_core::auth::TokenCredential;
 use azure_identity::ClientSecretCredential;
 use azure_security_keyvault::KeyvaultClient;
-use azure_core::auth::TokenCredential;
-use azure_core::Url;
-use reqwest::Client;
+use md5::Digest;
 use regex::Regex;
-use serde_json::{json, Value};
+use reqwest::Client;
+use serde_json::{Value, json};
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -17,7 +18,6 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::runtime::Runtime;
 use walkdir::WalkDir;
-use md5::Digest;
 
 /// Update mode for secrets management
 ///
@@ -28,13 +28,21 @@ pub fn update_mode(args: &Args) -> Result<()> {
     // Regex to replace non-alphanumeric characters
     let re = Regex::new(r"[^a-zA-Z0-9-]")?;
 
-    let client_id = args.secrets_client_id.as_ref()
+    let client_id = args
+        .secrets_client_id
+        .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Client ID is required"))?;
-    let client_secret = args.secrets_client_secret_path.as_ref()
+    let client_secret = args
+        .secrets_client_secret_path
+        .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Client secret path is required"))?;
-    let tenant_id = args.secrets_tenant_id.as_ref()
+    let tenant_id = args
+        .secrets_tenant_id
+        .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Tenant ID is required"))?;
-    let key_vault_name = args.secrets_vault_name.as_ref()
+    let key_vault_name = args
+        .secrets_vault_name
+        .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Key vault name is required"))?;
 
     let client = get_keyvault_client(client_id, client_secret, tenant_id, key_vault_name)?;
@@ -58,7 +66,7 @@ fn process_env_file(
     entry: walkdir::DirEntry,
     re: &Regex,
     client: &dyn AzureKeyVaultClient,
-    _rt: &Runtime
+    _rt: &Runtime,
 ) -> Result<()> {
     if entry.file_name() == ".env" && entry.file_type().is_file() {
         let full_path = entry.path().to_string_lossy().to_string();
@@ -69,18 +77,26 @@ fn process_env_file(
         let secret_name = re.replace_all(stripped_path, "-");
 
         // Read file content
-        let content = fs::read_to_string(&full_path)
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to read file {}: {}", full_path, e)))?;
+        let content = fs::read_to_string(&full_path).map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!("Failed to read file {}: {}", full_path, e))
+        })?;
         let md5_checksum = calculate_md5(content.as_str());
 
         // Insert secret into Azure Key Vault using the interface
-        let azure_response = client.set_secret_value(&secret_name, &content)
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to set secret: {}", e)))?;
+        let azure_response = client
+            .set_secret_value(&secret_name, &content)
+            .map_err(|e| {
+                Box::<dyn std::error::Error>::from(format!("Failed to set secret: {}", e))
+            })?;
 
         // Get current timestamp
         let start = SystemTime::now();
-        let ins_ts = start.duration_since(UNIX_EPOCH)
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get timestamp: {}", e)))?.as_secs();
+        let ins_ts = start
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| {
+                Box::<dyn std::error::Error>::from(format!("Failed to get timestamp: {}", e))
+            })?
+            .as_secs();
 
         // Build output entry
         let output_entry = json!({
@@ -95,20 +111,26 @@ fn process_env_file(
 
         output_entries.push(output_entry);
     }
-    
+
     Ok(())
 }
 
 /// Write output entries to the specified JSON file
 fn write_output_entries(args: &Args, output_entries: Vec<Value>) -> Result<()> {
     // Make sure output path exists
-    let output_path = args.output_json.as_ref()
+    let output_path = args
+        .output_json
+        .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Output JSON path is required"))?;
-    
+
     // Create parent directory if it doesn't exist
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent).map_err(|e| {
-            Box::<dyn std::error::Error>::from(format!("Failed to create directory {}: {}", parent.display(), e))
+            Box::<dyn std::error::Error>::from(format!(
+                "Failed to create directory {}: {}",
+                parent.display(),
+                e
+            ))
         })?;
     }
 
@@ -117,13 +139,17 @@ fn write_output_entries(args: &Args, output_entries: Vec<Value>) -> Result<()> {
         .create(true)
         .append(true)
         .open(output_path)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to open output file: {}", e)))?;
+        .map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!("Failed to open output file: {}", e))
+        })?;
 
     for entry in output_entries {
-        serde_json::to_writer(&mut file, &entry)
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to write JSON: {}", e)))?;
-        writeln!(file)
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to write newline: {}", e)))?;
+        serde_json::to_writer(&mut file, &entry).map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!("Failed to write JSON: {}", e))
+        })?;
+        writeln!(file).map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!("Failed to write newline: {}", e))
+        })?;
     }
 
     Ok(())
@@ -136,7 +162,7 @@ fn write_output_entries(args: &Args, output_entries: Vec<Value>) -> Result<()> {
 /// Returns an error if:
 /// - The secret set operation fails
 /// - Retrieving the secret after setting fails
-/// 
+///
 /// This function is used by the DefaultAzureKeyVaultClient implementation
 pub async fn set_secret_value(
     secret_name: &str,
@@ -145,16 +171,22 @@ pub async fn set_secret_value(
 ) -> Result<SetSecretResponse> {
     // For the Azure 0.21 API version
     let secret_client = kv_client.secret_client();
-    
+
     // The Set operation in v0.21 returns a unit value
-    secret_client.set(secret_name, secret_value)
+    secret_client
+        .set(secret_name, secret_value)
         .await
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to set secret '{}': {}", secret_name, e)))?;
-    
+        .map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!(
+                "Failed to set secret '{}': {}",
+                secret_name, e
+            ))
+        })?;
+
     // Similar to get_secret_value, populate with what we know
     use time::OffsetDateTime;
     let now = OffsetDateTime::now_utc();
-    
+
     Ok(SetSecretResponse {
         created: now,
         updated: now,
@@ -169,7 +201,7 @@ pub async fn set_secret_value(
 /// # Errors
 ///
 /// Returns an error if the Azure API call fails
-/// 
+///
 /// This function is used by the DefaultAzureKeyVaultClient implementation
 pub async fn get_secret_value(
     secret_name: &str,
@@ -177,19 +209,18 @@ pub async fn get_secret_value(
 ) -> Result<SetSecretResponse> {
     // For the Azure 0.21 API version
     let secret_client = kv_client.secret_client();
-    
+
     // Get the secret - azure_security_keyvault v0.21 API
     // In v0.21, response has different structure
-    let response = secret_client
-        .get(secret_name)
-        .await
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get secret '{}': {}", secret_name, e)))?;
-    
+    let response = secret_client.get(secret_name).await.map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to get secret '{}': {}", secret_name, e))
+    })?;
+
     // Based on error messages, we know response has: value, id, attributes fields
     // Create a response with the retrieved information
     use time::OffsetDateTime;
     let now = OffsetDateTime::now_utc();
-    
+
     Ok(SetSecretResponse {
         // Get created/updated from attributes if available, or use current time
         created: now,
@@ -216,12 +247,14 @@ pub fn get_keyvault_client(
 ) -> Result<Box<dyn AzureKeyVaultClient>> {
     // Read client secret from file
     let mut secret = String::new();
-    let mut file = File::open(client_secret_path)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to open client secret file: {}", e)))?;
-    
-    file.read_to_string(&mut secret)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to read client secret: {}", e)))?;
-    
+    let mut file = File::open(client_secret_path).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to open client secret file: {}", e))
+    })?;
+
+    file.read_to_string(&mut secret).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to read client secret: {}", e))
+    })?;
+
     // Remove newlines from secret
     secret = secret.trim().to_string();
 
@@ -264,9 +297,10 @@ pub fn get_keyvault_client(
 
     // Create HTTP client and Azure authority URL
     let http_client = Arc::new(Client::new());
-    let authority_host = Url::parse("https://login.microsoftonline.com/")
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to parse authority URL: {}", e)))?;
-    
+    let authority_host = Url::parse("https://login.microsoftonline.com/").map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to parse authority URL: {}", e))
+    })?;
+
     // Create credential for Azure using ClientSecretCredential (no environment variables needed)
     let credential = Arc::new(ClientSecretCredential::new(
         http_client,
@@ -275,17 +309,18 @@ pub fn get_keyvault_client(
         actual_client_id.to_string(),
         secret,
     )) as Arc<dyn TokenCredential>;
-    
+
     // Create KeyVault client
     let vault_url = format!("https://{}.vault.azure.net", actual_key_vault_name);
-    
+
     // Create the concrete KeyvaultClient from the SDK
-    let sdk_client = KeyvaultClient::new(&vault_url, credential)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create KeyVault client: {}", e)))?;
-    
+    let sdk_client = KeyvaultClient::new(&vault_url, credential).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to create KeyVault client: {}", e))
+    })?;
+
     // Wrap in our interface implementation
     let client = DefaultAzureKeyVaultClient::new(sdk_client);
-    
+
     Ok(Box::new(client))
 }
 
@@ -296,12 +331,13 @@ pub fn calculate_md5(content: &str) -> String {
     format!("{:x}", md5::Digest::finalize(hasher))
 }
 
-/// Read content from a file 
+/// Read content from a file
 ///
 /// # Errors
 ///
 /// Returns an error if the file cannot be read
 pub fn get_content_from_file(file_path: &str) -> Result<String> {
-    fs::read_to_string(file_path)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to read file '{}': {}", file_path, e)))
+    fs::read_to_string(file_path).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to read file '{}': {}", file_path, e))
+    })
 }

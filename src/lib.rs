@@ -12,9 +12,9 @@ pub mod interfaces;
 pub mod read_interactive_input;
 
 pub mod secrets;
-pub mod walk_dirs;
 pub mod testing;
 pub mod utils;
+pub mod walk_dirs;
 
 pub use args::Args;
 pub use interfaces::{CommandHelper, ReadInteractiveInputHelper};

@@ -80,15 +80,15 @@ impl ReadInteractiveInputHelper for DefaultReadInteractiveInputHelper {
 pub trait AzureKeyVaultClient {
     /// Sets a secret value in Azure KeyVault
     fn set_secret_value(
-        &self, 
-        secret_name: &str, 
-        secret_value: &str
+        &self,
+        secret_name: &str,
+        secret_value: &str,
     ) -> Result<SetSecretResponse, Box<dyn std::error::Error>>;
-    
+
     /// Gets a secret value from Azure KeyVault
     fn get_secret_value(
-        &self, 
-        secret_name: &str
+        &self,
+        secret_name: &str,
     ) -> Result<SetSecretResponse, Box<dyn std::error::Error>>;
 }
 
@@ -108,30 +108,30 @@ impl AzureKeyVaultClient for DefaultAzureKeyVaultClient {
     fn set_secret_value(
         &self,
         secret_name: &str,
-        secret_value: &str
+        secret_value: &str,
     ) -> Result<SetSecretResponse, Box<dyn std::error::Error>> {
         // Create a runtime for the async functions
         let rt = tokio::runtime::Runtime::new()?;
-        
+
         // Call the actual implementation
         rt.block_on(crate::secrets::azure::set_secret_value(
             secret_name,
             &self.client,
-            secret_value
+            secret_value,
         ))
     }
-    
+
     fn get_secret_value(
         &self,
-        secret_name: &str
+        secret_name: &str,
     ) -> Result<SetSecretResponse, Box<dyn std::error::Error>> {
         // Create a runtime for the async functions
         let rt = tokio::runtime::Runtime::new()?;
-        
+
         // Call the actual implementation
         rt.block_on(crate::secrets::azure::get_secret_value(
             secret_name,
-            &self.client
+            &self.client,
         ))
     }
 }

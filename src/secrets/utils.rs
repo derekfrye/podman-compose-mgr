@@ -1,9 +1,11 @@
 use crate::secrets::error::Result;
 use crate::secrets::models::JsonOutput;
 use chrono::{DateTime, Local, TimeZone, Utc};
+use hex;
 use serde_json::Value;
+use sha1::{Digest, Sha1};
 use std::fs;
-use std::io::Write;
+use std::io::{BufReader, Read, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 use time::OffsetDateTime;
 
@@ -13,23 +15,20 @@ pub fn extract_validation_fields(entry: &Value) -> Result<(String, String, Strin
         .as_str()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("az_id missing in input json"))?
         .to_string();
-        
+
     let file_nm = entry["file_nm"]
         .as_str()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("file_nm missing in input json"))?
         .to_string();
-        
+
     let az_name = entry["az_name"]
         .as_str()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("az_name missing in input json"))?
         .to_string();
-    
+
     // Get encoding, defaulting to "utf8" for backward compatibility
-    let encoding = entry["encoding"]
-        .as_str()
-        .unwrap_or("utf8")
-        .to_string();
-        
+    let encoding = entry["encoding"].as_str().unwrap_or("utf8").to_string();
+
     Ok((az_id, file_nm, az_name, encoding))
 }
 
@@ -75,14 +74,17 @@ pub fn details_about_entry(entry: &Value) -> Result<()> {
 /// Get current timestamp formatted as RFC3339
 pub fn get_current_timestamp() -> Result<String> {
     let start = SystemTime::now();
-    let duration = start.duration_since(UNIX_EPOCH)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get timestamp: {}", e)))?;
-    
+    let duration = start.duration_since(UNIX_EPOCH).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to get timestamp: {}", e))
+    })?;
+
     let datetime_utc = Utc
         .timestamp_opt(duration.as_secs() as i64, duration.subsec_nanos())
         .single()
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("Failed to create DateTime from timestamp"))?;
-        
+        .ok_or_else(|| {
+            Box::<dyn std::error::Error>::from("Failed to create DateTime from timestamp")
+        })?;
+
     let datetime_local: DateTime<Local> = datetime_utc.with_timezone(&Local);
     Ok(datetime_local.to_rfc3339())
 }
@@ -93,6 +95,32 @@ pub fn get_hostname() -> Result<String> {
         .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to get hostname: {}", e)))?
         .into_string()
         .map_err(|_| Box::<dyn std::error::Error>::from("Hostname contains non-UTF8 characters"))
+}
+
+/// Calculate SHA-1 hash for a file using streaming to handle large files
+pub fn calculate_hash(filepath: &str) -> Result<String> {
+    let file = fs::File::open(filepath).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to open file {}: {}", filepath, e))
+    })?;
+
+    let mut reader = BufReader::new(file);
+    let mut hasher = Sha1::new();
+    let mut buffer = [0; 8192]; // 8KB buffer
+
+    loop {
+        let bytes_read = reader.read(&mut buffer).map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!("Failed to read file {}: {}", filepath, e))
+        })?;
+
+        if bytes_read == 0 {
+            break;
+        }
+
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    let result = hasher.finalize();
+    Ok(hex::encode(result))
 }
 
 /// Writes JSON output to a file
@@ -109,13 +137,20 @@ pub fn write_json_output(input: &[JsonOutput], output_file: &str) -> Result<()> 
         .write(true)
         .truncate(true)
         .open(output_file)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to open output file '{}': {}", output_file, e)))?;
-    
-    let json = serde_json::to_string_pretty(input)
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to serialize JSON: {}", e)))?;
-    
-    file.write_all(json.as_bytes())
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to write JSON to file: {}", e)))?;
-    
+        .map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!(
+                "Failed to open output file '{}': {}",
+                output_file, e
+            ))
+        })?;
+
+    let json = serde_json::to_string_pretty(input).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to serialize JSON: {}", e))
+    })?;
+
+    file.write_all(json.as_bytes()).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to write JSON to file: {}", e))
+    })?;
+
     Ok(())
 }

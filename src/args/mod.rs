@@ -1,12 +1,12 @@
 // Public modules
+mod initialization;
 mod types;
 mod validators;
-mod initialization;
 
 // Re-export everything from the submodules
+pub use initialization::*;
 pub use types::*;
 pub use validators::*;
-pub use initialization::*;
 
 use clap::Parser;
 use std::process;
@@ -27,12 +27,12 @@ use std::process;
 /// Panics if validation fails
 pub fn args_checks() -> Args {
     let mut args = Args::parse();
-    
+
     // Process and validate the arguments
     if let Err(e) = args.validate_and_process() {
         eprintln!("Error: {}", e);
         process::exit(1);
     }
-    
+
     args
 }

@@ -1,11 +1,11 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use super::validators::{
-    check_file_writable, check_readable_dir, check_readable_file, check_readable_path,
-    check_file_writable_path, check_valid_json_path
-};
 use super::initialization::check_init_filepath;
+use super::validators::{
+    check_file_writable, check_file_writable_path, check_readable_dir, check_readable_file,
+    check_readable_path, check_valid_json_path,
+};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -22,7 +22,7 @@ pub struct Args {
     /// rebuild = pull latest docker.io images and rebuild custom images, secrets = refresh secrets files (not impl yet)
     #[arg(short = 'm', long, default_value = "Rebuild", value_parser = clap::value_parser!(Mode))]
     pub mode: Mode,
-    
+
     /// Print extra stuff
     #[arg(short, long)]
     pub verbose: bool,
@@ -53,16 +53,29 @@ pub struct Args {
     /// Path to the JSON file containing secret files to initialize
     #[arg(long, value_parser = check_readable_file)]
     pub secrets_init_filepath: Option<PathBuf>,
+
+    // B2 credentials and configuration
+    /// Backblaze B2 key ID
+    #[arg(long)]
+    pub b2_key_id: Option<String>,
+
+    /// Backblaze B2 application key
+    #[arg(long)]
+    pub b2_application_key: Option<String>,
+
+    /// Backblaze B2 bucket name
+    #[arg(long)]
+    pub b2_bucket_name: Option<String>,
 }
 
 impl Args {
     /// Validates and processes the secrets init filepath, updating it if necessary.
-    /// 
+    ///
     /// When in SecretInitialize mode, if secrets_init_filepath is a list of filenames,
     /// this function will create a new JSON file and update the filepath.
     ///
     /// # Returns
-    /// 
+    ///
     /// * `Result<(), String>` - Success or error message
     pub fn validate_and_process(&mut self) -> Result<(), String> {
         if let Mode::SecretInitialize = self.mode {
@@ -73,17 +86,21 @@ impl Args {
                     // Update the filepath with the processed one
                     self.secrets_init_filepath = Some(new_path);
                 } else {
-                    return Err("secrets_init_filepath contains invalid UTF-8 characters".to_string());
+                    return Err(
+                        "secrets_init_filepath contains invalid UTF-8 characters".to_string()
+                    );
                 }
             } else {
-                return Err("secrets_init_filepath is required for SecretInitialize mode".to_string());
+                return Err(
+                    "secrets_init_filepath is required for SecretInitialize mode".to_string(),
+                );
             }
-            
+
             if self.output_json.is_none() {
                 return Err("output_json is required for SecretInitialize mode".to_string());
             }
         }
-        
+
         // Call the regular validation for other checks
         self.validate()
     }
@@ -105,7 +122,7 @@ impl Args {
             }
         } else if let Mode::SecretRetrieve = self.mode {
             if let Some(client_id) = &self.secrets_client_id {
-               check_readable_file(client_id)?;
+                check_readable_file(client_id)?;
             }
 
             if let Some(client_secret) = &self.secrets_client_secret_path {
@@ -122,21 +139,28 @@ impl Args {
         } else if let Mode::SecretInitialize = self.mode {
             // Basic validation - make sure fields exist
             if self.secrets_init_filepath.is_none() {
-                return Err("secrets_init_filepath is required for SecretInitialize mode".to_string());
+                return Err(
+                    "secrets_init_filepath is required for SecretInitialize mode".to_string(),
+                );
             }
-            
+
             if let Some(output_path) = &self.output_json {
                 check_file_writable_path(output_path)?;
             } else {
                 return Err("output_json is required for SecretInitialize mode".to_string());
             }
-            
+
             // The actual processing of secrets_init_filepath happens in validate_and_process()
         } else if let Mode::SecretUpload = self.mode {
             // Check for required fields for SecretUpload mode
             if self.input_json.is_none() {
-                return Err("secret_mode_input_json is required for SecretUpload mode".to_string());
+                return Err("input_json is required for SecretUpload mode".to_string());
             }
+            if self.output_json.is_none() {
+                return Err("output_json is required for SecretUpload mode".to_string());
+            }
+
+            // Check for Azure KeyVault credentials
             if self.secrets_vault_name.is_none() {
                 return Err("secrets_vault_name is required for SecretUpload mode".to_string());
             }
@@ -144,15 +168,32 @@ impl Args {
                 return Err("secrets_tenant_id is required for SecretUpload mode".to_string());
             }
             if self.secrets_client_secret_path.is_none() {
-                return Err("secrets_client_secret_path is required for SecretUpload mode".to_string());
+                return Err(
+                    "secrets_client_secret_path is required for SecretUpload mode".to_string(),
+                );
             }
             if self.secrets_client_id.is_none() {
                 return Err("secrets_client_id is required for SecretUpload mode".to_string());
             }
-            if self.output_json.is_none() {
-                return Err("secret_mode_output_json is required for SecretUpload mode".to_string());
+
+            // Also check for B2 credentials as they might be needed for large files
+            if self.b2_key_id.is_none() {
+                return Err(
+                    "b2_key_id is required for SecretUpload mode with large files".to_string(),
+                );
             }
-            
+            if self.b2_application_key.is_none() {
+                return Err(
+                    "b2_application_key is required for SecretUpload mode with large files"
+                        .to_string(),
+                );
+            }
+            if self.b2_bucket_name.is_none() {
+                return Err(
+                    "b2_bucket_name is required for SecretUpload mode with large files".to_string(),
+                );
+            }
+
             // Validate the file paths
             if let Some(input_json) = &self.input_json {
                 check_valid_json_path(input_json)?;

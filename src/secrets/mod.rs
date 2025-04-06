@@ -1,4 +1,5 @@
 pub mod azure;
+//pub mod b2_storage;
 pub mod error;
 pub mod file_details;
 pub mod initialize;
@@ -30,7 +31,9 @@ pub fn process_secrets_mode(args: &Args) -> Result<()> {
             upload::process(args)?;
         }
         _ => {
-            return Err(Box::<dyn std::error::Error>::from("Unsupported mode for secrets processing"));
+            return Err(Box::<dyn std::error::Error>::from(
+                "Unsupported mode for secrets processing",
+            ));
         }
     }
     Ok(())
