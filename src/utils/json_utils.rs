@@ -21,6 +21,16 @@ pub fn extract_string_field(value: &Value, field: &str) -> Result<String, Box<dy
         .ok_or_else(|| error_utils::new_error(&format!("{} missing or not a string", field)))
 }
 
+/// Extract a string field from a JSON Value with a fallback field name
+pub fn extract_string_field_or(value: &Value, field: &str, fallback: &str) -> Result<String, Box<dyn Error>> {
+    value
+        .get(field)
+        .and_then(|v| v.as_str())
+        .or_else(|| value.get(fallback).and_then(|v| v.as_str()))
+        .map(|s| s.to_string())
+        .ok_or_else(|| error_utils::new_error(&format!("Both {} and {} missing or not a string", field, fallback)))
+}
+
 /// Extract a number field from a JSON Value
 pub fn extract_number_field<T: std::str::FromStr>(
     value: &Value,

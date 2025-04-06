@@ -1,5 +1,5 @@
 pub mod azure;
-//pub mod b2_storage;
+pub mod b2_storage;
 pub mod error;
 pub mod file_details;
 pub mod initialize;

@@ -3,8 +3,9 @@ use crate::interfaces::{
     AzureKeyVaultClient, DefaultReadInteractiveInputHelper, ReadInteractiveInputHelper,
 };
 use crate::secrets::azure::get_keyvault_client;
+use crate::secrets::b2_storage::B2Client;
 use crate::secrets::error::Result;
-use crate::secrets::file_details::check_encoding_and_size;
+use crate::secrets::file_details::{check_encoding_and_size, FileDetails};
 use crate::secrets::upload_utils::create_secret_name;
 use crate::secrets::user_prompt::prompt_for_upload_with_helper;
 use crate::secrets::utils::get_hostname;
@@ -163,10 +164,99 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
         let destination_cloud = entry["destination_cloud"].as_str().unwrap_or("azure_kv");
         let too_large_for_keyvault = encoded_size > 24000;
 
-        // Check if the file is too large for Azure KeyVault
+        // Handle different storage backends based on file size
+        if too_large_for_keyvault && destination_cloud == "b2" {
+            if args.verbose {
+                println!(
+                    "File {} is too large for Azure KeyVault ({}). Uploading to Backblaze B2 instead.",
+                    file_path, encoded_size
+                );
+            }
+            
+            // NOTE: This is a partial implementation that compiles but may not be fully functional yet
+            // until we resolve issues with AWS SDK credentials
+            let b2_client = match B2Client::from_args(args) {
+                Ok(client) => client,
+                Err(e) => {
+                    eprintln!("Failed to create B2 client: {}", e);
+                    continue;
+                }
+            };
+            
+            // Create a FileDetails struct for the file
+            let file_details = FileDetails {
+                file_path: file_path.to_string(),
+                file_size,
+                encoded_size,
+                last_modified: String::new(), // Not needed for upload
+                secret_name: secret_name.clone(),
+                encoding: encoding.to_string(),
+                cloud_created: None,
+                cloud_updated: None,
+                cloud_type: Some("b2".to_string()),
+                hash: hash.to_string(),
+                hash_algo: hash_algo.to_string(),
+            };
+            
+            // Prompt the user for confirmation
+            let upload_confirmed = prompt_for_upload_with_helper(
+                file_path,
+                &secret_name,
+                read_val_helper,
+                false, // Don't check B2 existence yet
+                None,
+                None,
+                Some("b2"),
+            )?;
+            
+            if !upload_confirmed {
+                if args.verbose {
+                    println!("Skipping upload of {}", file_path);
+                }
+                continue;
+            }
+            
+            // Upload to B2
+            let b2_result = match b2_client.upload_file_with_details(&file_details) {
+                Ok(result) => result,
+                Err(e) => {
+                    eprintln!("Failed to upload to B2: {}", e);
+                    continue;
+                }
+            };
+            
+            if args.verbose {
+                println!("Successfully uploaded to Backblaze B2 storage");
+            }
+            
+            // Create output entry with updated fields
+            let output_entry = json!({
+                "file_nm": file_path,
+                "hash": hash,
+                "hash_algo": hash_algo,
+                "ins_ts": ins_ts,
+                "cloud_id": b2_result.id,
+                "cloud_cr_ts": "",  // B2 doesn't provide created time separately
+                "cloud_upd_ts": "", // Use current time if needed
+                "hostname": hostname,
+                "encoding": encoding,
+                "file_size": file_size,
+                "encoded_size": encoded_size,
+                "destination_cloud": "b2",
+                "secret_name": secret_name,
+                "b2_hash": b2_result.hash,
+                "b2_bucket_id": b2_result.bucket_id,
+                "b2_name": b2_result.name
+            });
+            
+            processed_entries.push(output_entry);
+            continue;
+        }
+        
+        // For small files, continue with Azure KeyVault
         if too_large_for_keyvault {
             eprintln!(
-                "File {} is too large for Azure KeyVault ({}). It should be uploaded to Backblaze B2 instead.",
+                "File {} is too large for Azure KeyVault ({}). B2 storage is not configured, skipping.",
                 file_path, encoded_size
             );
             continue;

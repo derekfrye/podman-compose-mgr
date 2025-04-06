@@ -10,44 +10,84 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use time::OffsetDateTime;
 
 /// Extract required fields for validation
-pub fn extract_validation_fields(entry: &Value) -> Result<(String, String, String, String)> {
-    let az_id = entry["az_id"]
+pub fn extract_validation_fields(entry: &Value) -> Result<(String, String, String, String, String)> {
+    // Support both old and new field names
+    let cloud_id = entry["cloud_id"]
         .as_str()
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("az_id missing in input json"))?
+        .or_else(|| entry["az_id"].as_str())
+        .ok_or_else(|| Box::<dyn std::error::Error>::from("cloud_id missing in input json"))?
         .to_string();
 
     let file_nm = entry["file_nm"]
         .as_str()
+        .or_else(|| entry["filenm"].as_str())
         .ok_or_else(|| Box::<dyn std::error::Error>::from("file_nm missing in input json"))?
         .to_string();
 
-    let az_name = entry["az_name"]
+    let secret_name = entry["secret_name"]
         .as_str()
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("az_name missing in input json"))?
+        .or_else(|| entry["az_name"].as_str())
+        .ok_or_else(|| Box::<dyn std::error::Error>::from("secret_name missing in input json"))?
         .to_string();
 
     // Get encoding, defaulting to "utf8" for backward compatibility
     let encoding = entry["encoding"].as_str().unwrap_or("utf8").to_string();
+    
+    // Get storage type (azure_kv or b2)
+    let storage_type = entry["destination_cloud"]
+        .as_str()
+        .or_else(|| entry["cloud_type"].as_str())
+        .unwrap_or("azure_kv")
+        .to_string();
 
-    Ok((az_id, file_nm, az_name, encoding))
+    Ok((cloud_id, file_nm, secret_name, encoding, storage_type))
 }
 
 /// Display details about a validation entry
 pub fn details_about_entry(entry: &Value) -> Result<()> {
-    let file_nm = crate::utils::json_utils::extract_string_field(entry, "file_nm")?;
-    let az_name = crate::utils::json_utils::extract_string_field(entry, "az_name")?;
-    let az_create = crate::utils::json_utils::extract_string_field(entry, "az_create")?;
-    let az_updated = crate::utils::json_utils::extract_string_field(entry, "az_updated")?;
+    // Support both old and new field names
+    let file_nm = crate::utils::json_utils::extract_string_field_or(entry, "file_nm", "filenm")?;
+    
+    // Get secret name (from either az_name or secret_name)
+    let secret_name = entry["secret_name"]
+        .as_str()
+        .or_else(|| entry["az_name"].as_str())
+        .unwrap_or("unknown");
+        
+    // Get cloud timestamps
+    let cloud_created = entry["cloud_cr_ts"]
+        .as_str()
+        .or_else(|| entry["az_create"].as_str())
+        .unwrap_or("");
+        
+    let cloud_updated = entry["cloud_upd_ts"]
+        .as_str()
+        .or_else(|| entry["az_updated"].as_str())
+        .unwrap_or("");
+        
     // Get encoding with default value for backward compatibility
     let encoding = entry["encoding"].as_str().unwrap_or("utf8");
+    
+    // Get storage type
+    let storage_type = entry["destination_cloud"]
+        .as_str()
+        .or_else(|| entry["cloud_type"].as_str())
+        .unwrap_or("azure_kv");
 
     println!("File: {}", file_nm);
-    println!("Azure Key Vault Name: {}", az_name);
+    println!("Secret Name: {}", secret_name);
+    println!("Storage Type: {}", storage_type);
     println!("Encoding: {}", encoding);
+    
+    // Show hash information if available
+    if let Some(hash) = entry["hash"].as_str() {
+        let hash_algo = entry["hash_algo"].as_str().unwrap_or("sha1");
+        println!("Hash ({}):{}", hash_algo, hash);
+    }
 
     let datetime_entries = vec![
-        vec![az_create, "az create dt".to_string()],
-        vec![az_updated, "az update dt".to_string()],
+        vec![cloud_created, "Cloud created"],
+        vec![cloud_updated, "Cloud updated"],
     ];
 
     for entry in datetime_entries {

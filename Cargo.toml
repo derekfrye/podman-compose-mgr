@@ -31,10 +31,12 @@ home = "0"
 # New dependencies for enhanced secrets management
 sha1 = "0.10"
 hex = "0.4"
-opendal = { version = "0.52.0", features = ["services-b2"] }
+aws-config = "0.55"
+aws-sdk-s3 = "0.30"
+aws-credential-types = "0.55"
+aws-smithy-runtime = { version = "0.55", features = ["test-util"] }
 base64 = "0.21"
 utf8-read = "0.4"
-async-std = "1.12"
 anyhow = "1.0"
 
 [dev-dependencies]
