@@ -170,7 +170,7 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
         let too_large_for_keyvault = encoded_size > 24000;
 
         // Handle different storage backends based on file size
-        if too_large_for_keyvault || destination_cloud == "b2" {
+        let output_entry = if too_large_for_keyvault || destination_cloud == "b2" {
             if args.verbose {
                 println!(
                     "File {} is too large for Azure KeyVault ({}). Uploading to Backblaze B2 instead.",
@@ -235,8 +235,8 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
                 println!("Successfully uploaded to Backblaze B2 storage");
             }
             
-            // Create output entry with updated fields
-            let output_entry = json!({
+            // Create output entry with updated fields for B2
+            json!({
                 "file_nm": file_path,
                 "hash": hash,
                 "hash_algo": hash_algo,
@@ -254,108 +254,105 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
                 "b2_hash": b2_result.hash,
                 "b2_bucket_id": b2_result.bucket_id,
                 "b2_name": b2_result.name
-            });
-            
-            processed_entries.push(output_entry);
-            continue;
-        }
-        
+            })
+        } else {
+            // Azure KeyVault path
+            // Check if the secret already exists in Azure KeyVault
+            let (secret_exists, existing_created, existing_updated) =
+                match kv_client.get_secret_value(&secret_name) {
+                    Ok(secret) => {
+                        println!("Secret {} already exists in Azure Key Vault", secret_name);
+                        (
+                            true,
+                            Some(secret.created.to_string()),
+                            Some(secret.updated.to_string()),
+                        )
+                    }
+                    Err(_) => (false, None, None),
+                };
 
-        // Check if the secret already exists in Azure KeyVault
-        let (secret_exists, existing_created, existing_updated) =
-            match kv_client.get_secret_value(&secret_name) {
-                Ok(secret) => {
-                    println!("Secret {} already exists in Azure Key Vault", secret_name);
-                    (
-                        true,
-                        Some(secret.created.to_string()),
-                        Some(secret.updated.to_string()),
-                    )
-                }
-                Err(_) => (false, None, None),
+            // Determine which file to use (original or base64 encoded)
+            let file_to_use = if encoding == "base64" {
+                format!("{}.base64", file_path)
+            } else {
+                file_path.to_string()
             };
 
-        // Determine which file to use (original or base64 encoded)
-        let file_to_use = if encoding == "base64" {
-            format!("{}.base64", file_path)
-        } else {
-            file_path.to_string()
-        };
+            // Verify the file exists
+            if !Path::new(&file_to_use).exists() {
+                // If base64 file doesn't exist, try to create it now
+                if encoding == "base64" {
+                    if args.verbose {
+                        println!("Base64 file {} doesn't exist, creating now", file_to_use);
+                    }
+                    // This will create the base64 file if it doesn't exist
+                    let _ = check_encoding_and_size(file_path)?;
 
-        // Verify the file exists
-        if !Path::new(&file_to_use).exists() {
-            // If base64 file doesn't exist, try to create it now
-            if encoding == "base64" {
-                if args.verbose {
-                    println!("Base64 file {} doesn't exist, creating now", file_to_use);
-                }
-                // This will create the base64 file if it doesn't exist
-                let _ = check_encoding_and_size(file_path)?;
-
-                // Check again if it exists
-                if !Path::new(&file_to_use).exists() {
-                    eprintln!("Failed to create base64 file for {}, skipping", file_path);
+                    // Check again if it exists
+                    if !Path::new(&file_to_use).exists() {
+                        eprintln!("Failed to create base64 file for {}, skipping", file_path);
+                        continue;
+                    }
+                } else {
+                    eprintln!("File {} does not exist, skipping", file_to_use);
                     continue;
                 }
-            } else {
-                eprintln!("File {} does not exist, skipping", file_to_use);
+            }
+
+            // Prompt the user for confirmation
+            let upload_confirmed = prompt_for_upload_with_helper(
+                file_path,
+                &secret_name,
+                read_val_helper,
+                secret_exists,
+                existing_created,
+                existing_updated,
+                Some(destination_cloud),
+            )?;
+
+            if !upload_confirmed {
+                if args.verbose {
+                    println!("Skipping upload of {}", file_path);
+                }
                 continue;
             }
-        }
 
-        // Prompt the user for confirmation
-        let upload_confirmed = prompt_for_upload_with_helper(
-            file_path,
-            &secret_name,
-            read_val_helper,
-            secret_exists,
-            existing_created,
-            existing_updated,
-            Some(destination_cloud),
-        )?;
+            // Upload to Azure KeyVault
+            // Read file content
+            let content = fs::read_to_string(&file_to_use)?;
 
-        if !upload_confirmed {
+            // Upload to Key Vault
+            let response = kv_client
+                .set_secret_value(&secret_name, &content)
+                .map_err(|e| {
+                    Box::<dyn std::error::Error>::from(format!(
+                        "Failed to upload secret {}: {}",
+                        secret_name, e
+                    ))
+                })?;
+
             if args.verbose {
-                println!("Skipping upload of {}", file_path);
+                println!("Successfully uploaded to Azure Key Vault storage");
             }
-            continue;
-        }
 
-        // Upload to Azure KeyVault
-        // Read file content
-        let content = fs::read_to_string(&file_to_use)?;
-
-        // Upload to Key Vault
-        let response = kv_client
-            .set_secret_value(&secret_name, &content)
-            .map_err(|e| {
-                Box::<dyn std::error::Error>::from(format!(
-                    "Failed to upload secret {}: {}",
-                    secret_name, e
-                ))
-            })?;
-
-        if args.verbose {
-            println!("Successfully uploaded to Azure Key Vault storage");
-        }
-
-        // Create output entry with updated fields
-        let output_entry = json!({
-            "file_nm": file_path,
-            "hash": hash,
-            "hash_algo": hash_algo,
-            "ins_ts": ins_ts,
-            "cloud_id": response.id,
-            "cloud_cr_ts": response.created.to_string(),
-            "cloud_upd_ts": response.updated.to_string(),
-            "hostname": hostname,
-            "encoding": encoding,
-            "file_size": file_size,
-            "encoded_size": encoded_size,
-            "destination_cloud": destination_cloud,
-            "secret_name": secret_name,
-            "cloud_upload_bucket": cloud_upload_bucket.unwrap_or_else(|| "".to_string())
-        });
+            // Create output entry with updated fields for Azure
+            json!({
+                "file_nm": file_path,
+                "hash": hash,
+                "hash_algo": hash_algo,
+                "ins_ts": ins_ts,
+                "cloud_id": response.id,
+                "cloud_cr_ts": response.created.to_string(),
+                "cloud_upd_ts": response.updated.to_string(),
+                "hostname": hostname,
+                "encoding": encoding,
+                "file_size": file_size,
+                "encoded_size": encoded_size,
+                "destination_cloud": destination_cloud,
+                "secret_name": secret_name,
+                "cloud_upload_bucket": cloud_upload_bucket.unwrap_or_else(|| "".to_string())
+            })
+        };
 
         processed_entries.push(output_entry);
     }
