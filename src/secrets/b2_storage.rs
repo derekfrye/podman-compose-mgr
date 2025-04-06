@@ -205,8 +205,24 @@ impl B2Client {
         metadata.insert("encoding".to_string(), file_details.encoding.clone());
         metadata.insert("size".to_string(), file_details.file_size.to_string());
         
+        // If a specific bucket is set in the file details, add it to metadata
+        if let Some(bucket) = &file_details.cloud_upload_bucket {
+            metadata.insert("bucket".to_string(), bucket.clone());
+        }
+        
+        // Determine the path in B2 based on bucket details
+        let prefix = if let Some(bucket) = &file_details.cloud_upload_bucket {
+            if !bucket.is_empty() {
+                format!("{}/secrets", bucket)
+            } else {
+                "secrets".to_string()
+            }
+        } else {
+            "secrets".to_string()
+        };
+        
         // Use hash as the object key for deduplication and consistent naming
-        let object_key = format!("secrets/{}", file_details.hash);
+        let object_key = format!("{}/{}", prefix, file_details.hash);
         
         // Upload the file
         self.upload_file(&file_to_use, &object_key, Some(metadata))

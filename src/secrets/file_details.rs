@@ -19,6 +19,7 @@ pub struct FileDetails {
     pub cloud_type: Option<String>, // "azure_kv" or "b2"
     pub hash: String,
     pub hash_algo: String,
+    pub cloud_upload_bucket: Option<String>, // Bucket name for B2 storage
 }
 
 /// Check if file is UTF-8 encoded and return encoding info
@@ -176,6 +177,7 @@ pub fn get_file_details(file_path: &str, secret_name: &str) -> Result<FileDetail
         cloud_type: destination_cloud,
         hash,
         hash_algo: "sha1".to_string(),
+        cloud_upload_bucket: None, // Will be set during upload
     })
 }
 

@@ -84,6 +84,15 @@ pub fn process(args: &Args) -> Result<()> {
             );
         }
 
+        // Get the upload bucket name based on destination cloud
+        let cloud_upload_bucket = if destination_cloud == "b2" {
+            // For B2, use the specified bucket name
+            args.b2_bucket_for_upload.as_ref().unwrap().clone()
+        } else {
+            // For Azure KeyVault, this is not needed
+            "".to_string()
+        };
+        
         // Create JSON entry
         let entry = json!({
             "file_nm": file_nm,
@@ -98,7 +107,8 @@ pub fn process(args: &Args) -> Result<()> {
             "file_size": file_size,
             "encoded_size": encoded_size,
             "destination_cloud": destination_cloud,
-            "secret_name": secret_name
+            "secret_name": secret_name,
+            "cloud_upload_bucket": cloud_upload_bucket
         });
 
         new_entries.push(entry);

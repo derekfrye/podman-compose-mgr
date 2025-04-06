@@ -162,6 +162,9 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
 
         // Determine which storage backend to use
         let destination_cloud = entry["destination_cloud"].as_str().unwrap_or("azure_kv");
+
+        // Get cloud upload bucket if specified
+        let cloud_upload_bucket = entry["cloud_upload_bucket"].as_str().map(String::from);
         let too_large_for_keyvault = encoded_size > 24000;
 
         // Handle different storage backends based on file size
@@ -196,6 +199,7 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
                 cloud_type: Some("b2".to_string()),
                 hash: hash.to_string(),
                 hash_algo: hash_algo.to_string(),
+                cloud_upload_bucket: cloud_upload_bucket.clone(), // Use the bucket from JSON
             };
             
             // Prompt the user for confirmation
@@ -244,6 +248,7 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
                 "encoded_size": encoded_size,
                 "destination_cloud": "b2",
                 "secret_name": secret_name,
+                "cloud_upload_bucket": cloud_upload_bucket.unwrap_or_else(|| "".to_string()),
                 "b2_hash": b2_result.hash,
                 "b2_bucket_id": b2_result.bucket_id,
                 "b2_name": b2_result.name
@@ -354,7 +359,8 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
             "file_size": file_size,
             "encoded_size": encoded_size,
             "destination_cloud": destination_cloud,
-            "secret_name": secret_name
+            "secret_name": secret_name,
+            "cloud_upload_bucket": cloud_upload_bucket.unwrap_or_else(|| "".to_string())
         });
 
         processed_entries.push(output_entry);

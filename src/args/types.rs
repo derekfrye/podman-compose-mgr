@@ -66,6 +66,10 @@ pub struct Args {
     /// Backblaze B2 bucket name
     #[arg(long)]
     pub b2_bucket_name: Option<String>,
+
+    /// Backblaze B2 bucket name to use for uploads
+    #[arg(long)]
+    pub b2_bucket_for_upload: Option<String>,
 }
 
 impl Args {
@@ -148,6 +152,11 @@ impl Args {
                 check_file_writable_path(output_path)?;
             } else {
                 return Err("output_json is required for SecretInitialize mode".to_string());
+            }
+            
+            // B2 bucket for upload is required for SecretInitialize mode
+            if self.b2_bucket_for_upload.is_none() {
+                return Err("b2_bucket_for_upload is required for SecretInitialize mode".to_string());
             }
 
             // The actual processing of secrets_init_filepath happens in validate_and_process()

@@ -34,6 +34,7 @@ fn test_initialize_process() {
         b2_key_id: None,
         b2_application_key: None,
         b2_bucket_name: None,
+        b2_bucket_for_upload: Some("test_bucket".to_string()), // Add test bucket for B2 uploads
     };
 
     // Run the initialize process
@@ -73,6 +74,17 @@ fn test_initialize_process() {
         assert_eq!(entry["cloud_id"].as_str().unwrap(), "");
         assert_eq!(entry["cloud_cr_ts"].as_str().unwrap(), "");
         assert_eq!(entry["cloud_upd_ts"].as_str().unwrap(), "");
+        
+        // Verify cloud_upload_bucket based on destination cloud
+        let destination_cloud = entry["destination_cloud"].as_str().unwrap();
+        let cloud_upload_bucket = entry["cloud_upload_bucket"].as_str().unwrap();
+        if destination_cloud == "b2" {
+            assert_eq!(cloud_upload_bucket, "test_bucket", 
+                       "B2 destination should have bucket set to 'test_bucket'");
+        } else {
+            assert_eq!(cloud_upload_bucket, "", 
+                       "Azure KeyVault destination should have empty bucket");
+        }
 
         // Verify secret_name is not empty (format is "file-<hash>")
         let secret_name = entry["secret_name"].as_str().unwrap();
@@ -91,6 +103,18 @@ fn test_initialize_process() {
 
         // Verify encoding exists
         let encoding = entry["encoding"].as_str().unwrap();
+        
+        // Verify destination cloud based on file size
+        let encoded_size = entry["encoded_size"].as_u64().unwrap();
+        let destination_cloud = entry["destination_cloud"].as_str().unwrap();
+        
+        if encoded_size > 24000 {
+            assert_eq!(destination_cloud, "b2", 
+                      "Files larger than 24KB should use B2 storage");
+        } else {
+            assert_eq!(destination_cloud, "azure_kv", 
+                      "Files smaller than 24KB should use Azure KeyVault");
+        }
 
         // Verify hash based on file content and check encoding
         match filenm {
@@ -222,6 +246,11 @@ fn test_initialize_process() {
         assert_eq!(
             first["encoding"], second["encoding"],
             "encoding doesn't match for {}",
+            filename
+        );
+        assert_eq!(
+            first["cloud_upload_bucket"], second["cloud_upload_bucket"],
+            "cloud_upload_bucket doesn't match for {}",
             filename
         );
 
