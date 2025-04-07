@@ -222,7 +222,7 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "file_size": fs::metadata("tests/test3_and_test4/a")?.len(),
             "encoded_size": 25000, // > 24000 to trigger B2 path
             "destination_cloud": "b2",
-            "secret_name": format!("file-{}", a_hash),
+            // "secret_name": format!("file-{}", a_hash),
             "cloud_upload_bucket": "test-upload-bucket"
         },
         {
@@ -235,7 +235,7 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "file_size": fs::metadata("tests/test3_and_test4/b")?.len(),
             "encoded_size": 26000, // > 24000 to trigger B2 path
             "destination_cloud": "b2",
-            "secret_name": format!("file-{}", b_hash),
+            // "secret_name": format!("file-{}", b_hash),
             "cloud_upload_bucket": "test-upload-bucket"
         },
         {
@@ -248,7 +248,7 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "file_size": fs::metadata("tests/test3_and_test4/c")?.len(),
             "encoded_size": 27000, // > 24000 to trigger B2 path
             "destination_cloud": "b2",
-            "secret_name": format!("file-{}", c_hash),
+            // "secret_name": format!("file-{}", c_hash),
             "cloud_upload_bucket": "test-upload-bucket"
         },
         {
@@ -261,7 +261,7 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "file_size": fs::metadata("tests/test3_and_test4/d d")?.len(),
             "encoded_size": 28000, // > 24000 to trigger B2 path
             "destination_cloud": "b2",
-            "secret_name": format!("file-{}", d_hash),
+            // "secret_name": format!("file-{}", d_hash),
             "cloud_upload_bucket": "test-upload-bucket"
         }
     ]);

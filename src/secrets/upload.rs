@@ -7,7 +7,7 @@ use crate::interfaces::{
 use crate::secrets::azure::get_keyvault_client;
 use crate::secrets::error::Result;
 use crate::secrets::file_details::{check_encoding_and_size, FileDetails};
-use crate::secrets::upload_utils::create_secret_name;
+// Removed create_secret_name import as it's no longer used
 use crate::secrets::user_prompt::prompt_for_upload_with_helper;
 use crate::secrets::utils::get_hostname;
 
@@ -242,11 +242,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             continue;
         }
 
-        // Get or generate secret name
-        let secret_name = entry["secret_name"]
-            .as_str()
-            .map(String::from)
-            .unwrap_or_else(|| create_secret_name(hash));
+        // We now use hash directly instead of secret_name
 
         // Determine which storage backend to use
         let destination_cloud = entry["destination_cloud"].as_str().unwrap_or("azure_kv");
@@ -283,13 +279,17 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 (false, None, None)
             };
             
+            // Get the cloud prefix if specified - if not present or empty, set to None
+            let cloud_prefix = entry["cloud_prefix"].as_str()
+                .filter(|s| !s.is_empty())
+                .map(String::from);
+            
             // Create a FileDetails struct for the file
             let file_details = FileDetails {
                 file_path: file_path.to_string(),
                 file_size,
                 encoded_size,
                 last_modified: String::new(), // Not needed for upload
-                secret_name: secret_name.clone(),
                 encoding: encoding.to_string(),
                 cloud_created: None,
                 cloud_updated: None,
@@ -297,12 +297,12 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 hash: hash.to_string(),
                 hash_algo: hash_algo.to_string(),
                 cloud_upload_bucket: cloud_upload_bucket.clone(), // Use the bucket from JSON
+                cloud_prefix: cloud_prefix.clone(), // Use prefix from JSON if specified
             };
             
             // Prompt the user for confirmation
             let upload_confirmed = prompt_for_upload_with_helper(
                 file_path,
-                &secret_name,
                 read_val_helper,
                 file_exists,
                 cloud_created,
@@ -344,8 +344,8 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 "file_size": file_size,
                 "encoded_size": encoded_size,
                 "destination_cloud": "r2",
-                "secret_name": secret_name,
                 "cloud_upload_bucket": cloud_upload_bucket.unwrap_or_else(|| "".to_string()),
+                "cloud_prefix": entry["cloud_prefix"].as_str().unwrap_or("").to_string(),
                 "r2_hash": r2_result.hash,
                 "r2_bucket_id": r2_result.bucket_id,
                 "r2_name": r2_result.name
@@ -373,13 +373,17 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 (false, None, None)
             };
             
+            // Get the cloud prefix if specified - if not present or empty, set to None
+            let cloud_prefix = entry["cloud_prefix"].as_str()
+                .filter(|s| !s.is_empty())
+                .map(String::from);
+            
             // Create a FileDetails struct for the file
             let file_details = FileDetails {
                 file_path: file_path.to_string(),
                 file_size,
                 encoded_size,
                 last_modified: String::new(), // Not needed for upload
-                secret_name: secret_name.clone(),
                 encoding: encoding.to_string(),
                 cloud_created: None,
                 cloud_updated: None,
@@ -387,12 +391,12 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 hash: hash.to_string(),
                 hash_algo: hash_algo.to_string(),
                 cloud_upload_bucket: cloud_upload_bucket.clone(), // Use the bucket from JSON
+                cloud_prefix, // Use prefix from JSON if specified
             };
             
             // Prompt the user for confirmation
             let upload_confirmed = prompt_for_upload_with_helper(
                 file_path,
-                &secret_name,
                 read_val_helper,
                 file_exists,
                 cloud_created,
@@ -434,8 +438,8 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 "file_size": file_size,
                 "encoded_size": encoded_size,
                 "destination_cloud": "b2",
-                "secret_name": secret_name,
                 "cloud_upload_bucket": cloud_upload_bucket.unwrap_or_else(|| "".to_string()),
+                "cloud_prefix": entry["cloud_prefix"].as_str().unwrap_or("").to_string(),
                 "b2_hash": b2_result.hash,
                 "b2_bucket_id": b2_result.bucket_id,
                 "b2_name": b2_result.name
@@ -444,9 +448,9 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             // Azure KeyVault path
             // Check if the secret already exists in Azure KeyVault
             let (secret_exists, existing_created, existing_updated) =
-                match kv_client.get_secret_value(&secret_name) {
+                match kv_client.get_secret_value(hash) {
                     Ok(secret) => {
-                        println!("Secret {} already exists in Azure Key Vault", secret_name);
+                        println!("Secret {} already exists in Azure Key Vault", hash);
                         (
                             true,
                             Some(secret.created.to_string()),
@@ -487,7 +491,6 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             // Prompt the user for confirmation
             let upload_confirmed = prompt_for_upload_with_helper(
                 file_path,
-                &secret_name,
                 read_val_helper,
                 secret_exists,
                 existing_created,
@@ -506,13 +509,13 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             // Read file content
             let content = fs::read_to_string(&file_to_use)?;
 
-            // Upload to Key Vault
+            // Upload to Key Vault using hash as the key
             let response = kv_client
-                .set_secret_value(&secret_name, &content)
+                .set_secret_value(hash, &content)
                 .map_err(|e| {
                     Box::<dyn std::error::Error>::from(format!(
                         "Failed to upload secret {}: {}",
-                        secret_name, e
+                        hash, e
                     ))
                 })?;
 
@@ -534,7 +537,6 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 "file_size": file_size,
                 "encoded_size": encoded_size,
                 "destination_cloud": destination_cloud,
-                "secret_name": secret_name,
                 "cloud_upload_bucket": cloud_upload_bucket.unwrap_or_else(|| "".to_string())
             })
         };

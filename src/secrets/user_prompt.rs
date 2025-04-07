@@ -88,7 +88,6 @@ pub fn add_upload_choice_options(grammars: &mut Vec<GrammarFragment>) {
 pub fn setup_upload_prompt(
     grammars: &mut Vec<GrammarFragment>,
     file_path: &str,
-    _encoded_name: &str, // Still keeping parameter for backward compatibility
 ) -> Result<()> {
     // Calculate file size
     let metadata = std::fs::metadata(file_path).map_err(|e| {
@@ -189,7 +188,6 @@ pub fn display_upload_help() {
 /// This function uses the default implementation of ReadInteractiveInputHelper
 pub fn prompt_for_upload(
     file_path: &str,
-    secret_name: &str,
     secret_exists: bool,
     cloud_created: Option<String>,
     cloud_updated: Option<String>,
@@ -199,7 +197,6 @@ pub fn prompt_for_upload(
     let read_val_helper = DefaultReadInteractiveInputHelper;
     prompt_for_upload_with_helper(
         file_path,
-        secret_name,
         &read_val_helper,
         secret_exists,
         cloud_created,
@@ -211,7 +208,6 @@ pub fn prompt_for_upload(
 /// Version of prompt_for_upload that accepts dependency injection for testing
 pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
     file_path: &str,
-    secret_name: &str,
     read_val_helper: &R,
     secret_exists: bool,
     cloud_created: Option<String>,
@@ -227,7 +223,7 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
     let mut grammars: Vec<GrammarFragment> = Vec::new();
 
     // Setup the prompt
-    setup_upload_prompt(&mut grammars, file_path, secret_name)?;
+    setup_upload_prompt(&mut grammars, file_path)?;
 
     loop {
         // Display prompt and get user input using the provided helper
@@ -248,7 +244,7 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
                     // Display details about the file
                     "d" => {
                         // Get file details
-                        let mut details = get_file_details(file_path, secret_name)?;
+                        let mut details = get_file_details(file_path)?;
 
                         // Add cloud metadata if available
                         details.cloud_created = cloud_created.clone();

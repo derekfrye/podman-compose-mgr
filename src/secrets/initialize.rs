@@ -7,7 +7,7 @@ use chrono::{DateTime, Local};
 use serde_json::json;
 
 use crate::secrets::file_details::check_encoding_and_size;
-use crate::secrets::upload_utils::create_secret_name;
+// Removed create_secret_name import as it's no longer used
 
 use crate::Args;
 use crate::secrets::error::Result;
@@ -73,8 +73,7 @@ pub fn process(args: &Args) -> Result<()> {
             "azure_kv"
         };
 
-        // Create secret name from hash
-        let secret_name = create_secret_name(&hash);
+        // We now use hash directly instead of creating a secret name
 
         // Log verbose message for base64 encoding
         if encoding == "base64" && args.verbose > 0 {
@@ -107,7 +106,6 @@ pub fn process(args: &Args) -> Result<()> {
             "file_size": file_size,
             "encoded_size": encoded_size,
             "destination_cloud": destination_cloud,
-            "secret_name": secret_name,
             "cloud_upload_bucket": cloud_upload_bucket
         });
 

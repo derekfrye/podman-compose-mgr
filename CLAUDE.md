@@ -8,8 +8,8 @@
 - Format: `cargo fmt`
 - Test all: `cargo t` (limited to 2 parallel tests to prevent OOM)
 - Test single: `cargo test --test test1` (Replace "test1" with specific test name)
-- Test with output: `cargo test -- --nocapture`
-- Sequential tests: `cargo test -- --test-threads=1` (use if memory issues occur)
+- Test with output: `cargo test -- --nocapture --test-threads=2`
+- Sequential tests: `cargo test -- --test-threads=2` (use if memory issues occur)
 
 ## Code Style Guidelines
 - Use Rust 2024 edition

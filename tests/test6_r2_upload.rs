@@ -216,7 +216,7 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "file_size": fs::metadata("tests/test3_and_test4/a")?.len(),
             "encoded_size": 2000, // Size doesn't matter for R2, just the destination_cloud
             "destination_cloud": "r2",
-            "secret_name": format!("file-{}", a_hash),
+            // "secret_name": format!("file-{}", a_hash),
             "cloud_upload_bucket": "test-r2-upload-bucket"
         },
         {
@@ -229,7 +229,7 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "file_size": fs::metadata("tests/test3_and_test4/b")?.len(),
             "encoded_size": 2000,
             "destination_cloud": "r2",
-            "secret_name": format!("file-{}", b_hash),
+            // "secret_name": format!("file-{}", b_hash),
             "cloud_upload_bucket": "test-r2-upload-bucket"
         },
         {
@@ -242,7 +242,7 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "file_size": fs::metadata("tests/test3_and_test4/c")?.len(),
             "encoded_size": 2000,
             "destination_cloud": "r2",
-            "secret_name": format!("file-{}", c_hash),
+            // "secret_name": format!("file-{}", c_hash),
             "cloud_upload_bucket": "test-r2-upload-bucket"
         },
         {
@@ -255,7 +255,7 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "file_size": fs::metadata("tests/test3_and_test4/d d")?.len(),
             "encoded_size": 2000,
             "destination_cloud": "r2",
-            "secret_name": format!("file-{}", d_hash),
+            // "secret_name": format!("file-{}", d_hash),
             "cloud_upload_bucket": "test-r2-upload-bucket"
         }
     ]);

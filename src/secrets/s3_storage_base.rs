@@ -259,9 +259,14 @@ impl S3StorageClient {
     }
     
     /// Check if a file exists and get its metadata for specific path
-    pub fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<&str>) -> Result<Option<(bool, String, String)>> {
-        // Construct the object key - this should match the key used in upload
-        let object_key = format!("secrets/{}", hash);
+    pub fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<&str>, prefix: Option<&str>) -> Result<Option<(bool, String, String)>> {
+        // Construct the object key based on whether a prefix is provided
+        let object_key = if let Some(prefix_path) = prefix {
+            format!("{}/{}", prefix_path, hash)
+        } else {
+            // No prefix, use hash directly as the key
+            hash.to_string()
+        };
         
         // For non-real clients, return mock data
         if !self.is_real_client {
@@ -424,6 +429,14 @@ impl S3StorageClient {
         if !self.is_real_client {
             let hash = format!("mock-hash-{}", file_details.hash);
             
+            // Determine the object key based on whether a prefix is provided
+            let name = if let Some(prefix) = &file_details.cloud_prefix {
+                format!("{}/{}", prefix, file_details.hash)
+            } else {
+                // No prefix, use hash directly as the key
+                file_details.hash.clone()
+            };
+            
             if self.verbose {
                 println!("Using mock S3-compatible storage client - would have uploaded {} using hash {}", 
                         file_details.file_path, file_details.hash);
@@ -433,7 +446,7 @@ impl S3StorageClient {
                 hash: hash.clone(),
                 id: hash,
                 bucket_id: file_details.cloud_upload_bucket.clone().unwrap_or_else(|| "mock-bucket".to_string()),
-                name: format!("secrets/{}", file_details.hash),
+                name,
                 created: "2025-01-01T00:00:00Z".to_string(),
                 updated: "2025-01-01T00:00:00Z".to_string(),
             });
@@ -474,11 +487,13 @@ impl S3StorageClient {
         // Add bucket to metadata
         metadata.insert("bucket".to_string(), upload_bucket.clone());
         
-        // Determine the prefix path in storage
-        let prefix = "secrets".to_string();
-        
-        // Use hash as the object key for deduplication and consistent naming
-        let object_key = format!("{}/{}", prefix, file_details.hash);
+        // Determine the object key using the prefix if provided
+        let object_key = if let Some(prefix) = &file_details.cloud_prefix {
+            format!("{}/{}", prefix, file_details.hash)
+        } else {
+            // No prefix, use hash directly as the key
+            file_details.hash.clone()
+        };
         
         // If we're using a placeholder bucket, we need to ensure the real bucket exists before upload
         if using_placeholder_bucket {

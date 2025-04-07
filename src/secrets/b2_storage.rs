@@ -94,7 +94,7 @@ impl B2Client {
     
     /// Check if a file exists in B2 storage with detailed information
     pub fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<&str>) -> Result<Option<(bool, String, String)>> {
-        self.client.check_file_exists_with_details(hash, bucket_name)
+        self.client.check_file_exists_with_details(hash, bucket_name, None)
     }
     
     /// Get file metadata from B2 - delegated to S3 client

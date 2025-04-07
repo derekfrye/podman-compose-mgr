@@ -93,16 +93,11 @@ fn test_initialize_process() {
                        "Azure KeyVault destination should have empty bucket");
         }
 
-        // Verify secret_name is not empty (format is "file-<hash>")
-        let secret_name = entry["secret_name"].as_str().unwrap();
+        // Verify hash is present and not empty
+        let hash = entry["hash"].as_str().unwrap();
         assert!(
-            secret_name.starts_with("file-"),
-            "Secret name should start with 'file-'"
-        );
-        assert_eq!(
-            secret_name.len(),
-            45,
-            "Secret name should be 45 characters long (5 for 'file-' + 40 for SHA-1 hash)"
+            !hash.is_empty(),
+            "Hash should not be empty"
         );
 
         // Verify hostname is not empty

@@ -12,7 +12,6 @@ pub struct FileDetails {
     pub file_size: u64,    // Original file size
     pub encoded_size: u64, // Size after encoding (if base64)
     pub last_modified: String,
-    pub secret_name: String,
     pub encoding: String, // "utf8" or "base64"
     pub cloud_created: Option<String>,
     pub cloud_updated: Option<String>,
@@ -20,6 +19,7 @@ pub struct FileDetails {
     pub hash: String,
     pub hash_algo: String,
     pub cloud_upload_bucket: Option<String>, // Bucket name for B2 storage
+    pub cloud_prefix: Option<String>, // Storage prefix (folder path)
 }
 
 /// Check if file is UTF-8 encoded and return encoding info
@@ -137,7 +137,7 @@ pub fn check_encoding_and_size(filepath: &str) -> Result<(String, u64, u64)> {
 }
 
 /// Get detailed information about the file
-pub fn get_file_details(file_path: &str, secret_name: &str) -> Result<FileDetails> {
+pub fn get_file_details(file_path: &str) -> Result<FileDetails> {
     // Get file metadata for size and last modified time
     let metadata = metadata(file_path).map_err(|e| {
         Box::<dyn std::error::Error>::from(format!("Failed to get metadata: {}", e))
@@ -170,7 +170,6 @@ pub fn get_file_details(file_path: &str, secret_name: &str) -> Result<FileDetail
         file_size,
         encoded_size,
         last_modified: formatted_time,
-        secret_name: secret_name.to_string(),
         encoding,
         cloud_created: None,
         cloud_updated: None,
@@ -178,6 +177,7 @@ pub fn get_file_details(file_path: &str, secret_name: &str) -> Result<FileDetail
         hash,
         hash_algo: "sha1".to_string(),
         cloud_upload_bucket: None, // Will be set during upload
+        cloud_prefix: None, // Will be set during upload
     })
 }
 
@@ -221,7 +221,6 @@ pub fn display_file_details(details: &FileDetails) {
     }
 
     println!("Last modified: {}", details.last_modified);
-    println!("Secret name: {}", details.secret_name);
     println!("Hash: {} ({})", details.hash, details.hash_algo);
 
     // Display encoding information

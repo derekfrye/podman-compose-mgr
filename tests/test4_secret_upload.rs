@@ -9,7 +9,7 @@ use podman_compose_mgr::read_interactive_input::ReadValResult;
 use podman_compose_mgr::secrets::file_details::{FileDetails, format_file_size, get_file_details};
 use podman_compose_mgr::secrets::models::SetSecretResponse;
 use podman_compose_mgr::secrets::upload;
-use podman_compose_mgr::secrets::upload_utils::{create_secret_name, test_utils};
+use podman_compose_mgr::secrets::upload_utils::test_utils;
 use podman_compose_mgr::secrets::utils::calculate_hash;
 use serde_json::json;
 use std::sync::{Arc, Mutex};
@@ -95,7 +95,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         for file_path in &test_files {
             // Calculate the hash first, then create secret name from hash
             let hash = calculate_hash(file_path).unwrap();
-            let encoded_name = create_secret_name(&hash);
+            let encoded_name = hash.clone();
 
             // First expect a check if the secret exists - return an error
             let encoded_name_clone = encoded_name.clone();
@@ -201,14 +201,13 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // Set up expectations: for each file, we only expect the get_secret_value
         // call since the user will decline the upload
         for file_path in &test_files {
-            // Calculate the hash first, then create secret name from hash
+            // Calculate the hash
             let hash = calculate_hash(file_path).unwrap();
-            let encoded_name = create_secret_name(&hash);
 
             // Expect a check if the secret exists
             azure_client
                 .expect_get_secret_value()
-                .with(eq(encoded_name.clone()))
+                .with(eq(hash.clone()))
                 .times(1)
                 .returning(|name| {
                     Err(Box::new(std::io::Error::new(
@@ -304,19 +303,17 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         let expected_file_details: Vec<(String, FileDetails)> = test_files
             .iter()
             .map(|file_path| {
-                // Calculate the encoded name
-                // Calculate the hash first, then create secret name from hash
+                // Calculate the hash
                 let hash = calculate_hash(file_path).unwrap();
-                let encoded_name = create_secret_name(&hash);
 
                 // Create a hard-coded expected FileDetails with known values
                 // Note: We can't predict the exact last_modified time in the test,
-                // so we'll check that field separately, and size_kib is calculated inside get_file_details
-                let mut details = get_file_details(file_path, &encoded_name).unwrap();
+                // so we'll check that field separately
+                let mut details = get_file_details(file_path).unwrap();
                 details.last_modified = "WILL BE VALIDATED SEPARATELY".to_string(); // Will be checked differently
                 details.encoding = "utf8".to_string(); // Assume all test files are UTF-8 for testing purposes
 
-                (encoded_name, details)
+                (hash.clone(), details)
             })
             .collect();
 
@@ -459,12 +456,11 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     println!("User selects 'd' to see details for file {}", current_file);
 
                     // Get the encoded name
-                    // Calculate the hash first, then create secret name from hash
-                    let hash = calculate_hash(current_file).unwrap();
-                    let encoded_name = create_secret_name(&hash);
+                    // Calculate the hash
+                    let _hash = calculate_hash(current_file).unwrap();
 
                     // Get file details
-                    let details = get_file_details(current_file, &encoded_name).unwrap();
+                    let details = get_file_details(current_file).unwrap();
 
                     // Capture the details for later verification
                     captured_details_clone.lock().unwrap().push(details.clone());
@@ -473,7 +469,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     println!("File path: {}", details.file_path);
                     println!("Size: {}", format_file_size(details.file_size));
                     println!("Last modified: {}", details.last_modified);
-                    println!("Secret name: {}", details.secret_name);
+                    println!("Hash: {}", details.hash);
                     println!("Encoding: {}", details.encoding);
 
                     // Return "d" for details
@@ -541,10 +537,10 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                 details.file_path, details.file_size, expected_details.file_size
             );
 
-            // Verify secret name
+            // Verify hash
             assert_eq!(
-                details.secret_name, expected_details.secret_name,
-                "Secret name mismatch for file {}",
+                details.hash, expected_details.hash,
+                "Hash mismatch for file {}",
                 details.file_path
             );
 
