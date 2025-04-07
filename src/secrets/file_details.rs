@@ -1,5 +1,5 @@
 use crate::secrets::error::Result;
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+use base64;
 use chrono::{DateTime, Local, TimeZone, Utc, NaiveDateTime, ParseError};
 use std::fs::{File, metadata};
 use std::io::{BufReader, BufWriter, Read, Write};
@@ -105,7 +105,7 @@ pub fn check_encoding_and_size(filepath: &str) -> Result<(String, u64, u64)> {
                 break;
             }
 
-            let encoded = BASE64_STANDARD.encode(&buffer[..bytes_read]);
+            let encoded = base64::encode(&buffer[..bytes_read]);
             writer.write_all(encoded.as_bytes()).map_err(|e| {
                 Box::<dyn std::error::Error>::from(format!("Failed to write to base64 file: {}", e))
             })?;
