@@ -117,9 +117,10 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
             eprintln!("Warning: B2 client initialization failed but B2 uploads are needed: {}", e);
             DefaultB2StorageClient::new_dummy()
         })
-    } else {
+    } else  {
         // Create dummy client if not needed
-        println!("No B2 uploads required for this host, using dummy client");
+        if args.verbose > 0 {
+        println!("No B2 uploads required for this host, using dummy client");}
         DefaultB2StorageClient::new_dummy()
     };
     
@@ -132,7 +133,7 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
         })
     } else {
         // Create dummy client if not needed
-        println!("No R2 uploads required for this host, using dummy client");
+        if args.verbose > 0 {println!("No R2 uploads required for this host, using dummy client");}
         DefaultR2StorageClient::new_dummy()
     };
 
@@ -167,7 +168,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Output JSON path is required"))?;
 
     // Test connection to storage
-    if args.verbose {
+    if args.verbose > 0 {
         println!("Testing connection to cloud storage services...");
     }
 
@@ -231,7 +232,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
 
         // Skip this entry if it's not for this host
         if hostname != our_hostname {
-            if args.verbose {
+            if args.verbose > 0 {
                 println!(
                     "Skipping file {} because it is not on the current host",
                     file_path
@@ -268,7 +269,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
 
         // Handle different storage backends based on file size and destination_cloud
         let output_entry = if destination_cloud == "r2" {
-            if args.verbose {
+            if args.verbose > 0 {
                 println!("Uploading file {} to Cloudflare R2 storage", file_path);
             }
             
@@ -300,7 +301,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             )?;
             
             if !upload_confirmed {
-                if args.verbose {
+                if args.verbose > 0 {
                     println!("Skipping upload of {}", file_path);
                 }
                 continue;
@@ -315,7 +316,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 }
             };
             
-            if args.verbose {
+            if args.verbose > 0 {
                 println!("Successfully uploaded to Cloudflare R2 storage");
             }
             
@@ -340,7 +341,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 "r2_name": r2_result.name
             })
         } else if too_large_for_keyvault || destination_cloud == "b2" {
-            if args.verbose {
+            if args.verbose > 0 {
                 println!(
                     "File {} is too large for Azure KeyVault ({}). Uploading to Backblaze B2 instead.",
                     file_path, encoded_size
@@ -375,7 +376,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             )?;
             
             if !upload_confirmed {
-                if args.verbose {
+                if args.verbose > 0 {
                     println!("Skipping upload of {}", file_path);
                 }
                 continue;
@@ -390,7 +391,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 }
             };
             
-            if args.verbose {
+            if args.verbose > 0 {
                 println!("Successfully uploaded to Backblaze B2 storage");
             }
             
@@ -441,7 +442,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             if !Path::new(&file_to_use).exists() {
                 // If base64 file doesn't exist, try to create it now
                 if encoding == "base64" {
-                    if args.verbose {
+                    if args.verbose > 0 {
                         println!("Base64 file {} doesn't exist, creating now", file_to_use);
                     }
                     // This will create the base64 file if it doesn't exist
@@ -470,7 +471,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             )?;
 
             if !upload_confirmed {
-                if args.verbose {
+                if args.verbose > 0 {
                     println!("Skipping upload of {}", file_path);
                 }
                 continue;
@@ -490,7 +491,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                     ))
                 })?;
 
-            if args.verbose {
+            if args.verbose > 0 {
                 println!("Successfully uploaded to Azure Key Vault storage");
             }
 
@@ -562,14 +563,14 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             serde_json::to_writer_pretty(&mut file, &processed_entries)?;
         }
 
-        if args.verbose {
+        if args.verbose > 0 {
             println!(
                 "Successfully saved {} entries to {}",
                 processed_entries.len(),
                 output_filepath.display()
             );
         }
-    } else if args.verbose {
+    } else if args.verbose > 0 {
         println!("No entries were processed successfully.");
     }
 

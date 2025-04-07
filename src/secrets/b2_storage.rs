@@ -27,8 +27,8 @@ impl B2Client {
             account_id: None, // Not needed for B2
         };
         
-        // Create the base S3 client
-        let client = S3StorageClient::new(s3_config)?;
+        // Create the base S3 client - default to non-verbose
+        let client = S3StorageClient::new(s3_config, false)?;
         
         Ok(Self { client })
     }
@@ -53,7 +53,11 @@ impl B2Client {
                 bucket: bucket_name,
             };
             
-            return Self::new(config);
+            // Create a client and then update the verbose flag
+            let mut client = Self::new(config)?;
+            // Set verbose flag based on args
+            client.client.verbose = args.verbose > 0;
+            return Ok(client);
         }
         
         // Fall back to direct parameters (legacy approach)
@@ -70,7 +74,11 @@ impl B2Client {
                 bucket: bucket_name,
             };
             
-            return Self::new(config);
+            // Create a client and then update the verbose flag
+            let mut client = Self::new(config)?;
+            // Set verbose flag based on args
+            client.client.verbose = args.verbose > 0;
+            return Ok(client);
         }
         
         // If neither approach worked, return an error

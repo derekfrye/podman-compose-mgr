@@ -77,7 +77,7 @@ pub fn process(args: &Args) -> Result<()> {
         let secret_name = create_secret_name(&hash);
 
         // Log verbose message for base64 encoding
-        if encoding == "base64" && args.verbose {
+        if encoding == "base64" && args.verbose > 0 {
             println!(
                 "File {} contains non-UTF-8 data. Created base64 version ({}.base64). Will use base64 encoding when uploaded.",
                 file_nm, file_nm
@@ -143,7 +143,7 @@ pub fn process(args: &Args) -> Result<()> {
     let mut output_file = File::create(output_filepath)?;
     output_file.write_all(output_content.as_bytes())?;
 
-    if args.verbose {
+    if args.verbose > 0 {
         println!(
             "Successfully updated output file with {} new entries",
             new_entries_count

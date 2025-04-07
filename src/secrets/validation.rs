@@ -129,7 +129,7 @@ fn process_validation_entries(
     let hostname = get_hostname()?;
     for entry in json_values {
         if hostname != entry["hostname"].as_str().unwrap_or("") {
-            if args.verbose {
+            if args.verbose > 0 {
                 println!(
                     "Skipping entry {} for hostname: {}",
                     entry["filenm"], entry["hostname"]
@@ -321,7 +321,7 @@ fn validate_checksums(
 
             if azure_md5 != md5_of_file {
                 eprintln!("MD5 mismatch for file: {}", file_nm);
-            } else if args.verbose {
+            } else if args.verbose > 0 {
                 println!("MD5 match for file: {}", file_nm);
             }
             Ok(())
@@ -340,7 +340,7 @@ fn validate_azure_ids(az_id: &str, secret_id: &str, args: &Args) -> Result<()> {
             "Azure ID mismatch: id from azure {}, id from file {}",
             secret_id, az_id
         );
-    } else if args.verbose {
+    } else if args.verbose > 0 {
         println!("Azure ID match");
     }
     Ok(())

@@ -37,7 +37,7 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         secrets_client_secret_path: Some(client_secret_path),
         secrets_tenant_id: Some("test-tenant-id".to_string()),
         secrets_vault_name: Some("test-vault".to_string()),
-        verbose: true,
+        verbose: 1,
         exclude_path_patterns: vec![],
         include_path_patterns: vec![],
         build_args: vec![],

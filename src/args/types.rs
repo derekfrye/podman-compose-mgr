@@ -10,7 +10,7 @@ use super::validators::{
     check_readable_path, check_valid_json_path,
 };
 
-#[derive(Parser)]
+#[derive(Parser, Debug, serde::Serialize)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     /// Search path for docker-compose files
@@ -26,9 +26,9 @@ pub struct Args {
     #[arg(short = 'm', long, default_value = "Rebuild", value_parser = clap::value_parser!(Mode))]
     pub mode: Mode,
 
-    /// Print extra stuff
-    #[arg(short, long)]
-    pub verbose: bool,
+    /// Print extra stuff (use -v -v or --verbose --verbose for even more detail)
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    pub verbose: u8,
     /// Regex pattern(s) to exclude paths, e.g., docker/archive or [^\.]+/archive
     #[arg(short, long)]
     pub exclude_path_patterns: Vec<String>,
@@ -353,7 +353,7 @@ impl Args {
 }
 
 /// Enumeration of possible modes
-#[derive(Clone, ValueEnum, Debug, Copy)]
+#[derive(Clone, ValueEnum, Debug, Copy, serde::Serialize)]
 pub enum Mode {
     Rebuild,    
     SecretRetrieve,

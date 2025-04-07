@@ -22,7 +22,7 @@ fn test_initialize_process() {
         input_json: None,
         path: PathBuf::from("."),
 
-        verbose: true,
+        verbose: 1,
         exclude_path_patterns: vec![],
         include_path_patterns: vec![],
         build_args: vec![],

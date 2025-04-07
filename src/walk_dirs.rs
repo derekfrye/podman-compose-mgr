@@ -50,7 +50,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
 
     // Compile exclude patterns
     if !args.exclude_path_patterns.is_empty() {
-        if args.verbose {
+        if args.verbose > 0 {
             println!("Excluding paths: {:?}", args.exclude_path_patterns);
         }
 
@@ -62,7 +62,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
 
     // Compile include patterns
     if !args.include_path_patterns.is_empty() {
-        if args.verbose {
+        if args.verbose > 0 {
             println!("Including paths: {:?}", args.include_path_patterns);
         }
 
@@ -72,7 +72,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
         }
     }
 
-    if args.verbose {
+    if args.verbose > 0 {
         println!("Rebuild images in path: {}", args.path.display());
     }
 
@@ -100,7 +100,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
                     .iter()
                     .any(|pattern| pattern.is_match(entry_path_str))
             {
-                // if args.verbose {
+                // if args.verbose > 0 {
                 //     println!("Excluding path due to exclude pattern: {}", entry_path_str);
                 // }
                 continue;
@@ -112,7 +112,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
                     .iter()
                     .all(|pattern| !pattern.is_match(entry_path_str))
             {
-                if args.verbose {
+                if args.verbose > 0 {
                     println!(
                         "Skipping path as it doesn't match any include pattern: {}",
                         entry_path_str

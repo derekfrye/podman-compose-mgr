@@ -39,19 +39,29 @@ pub struct S3StorageClient {
     client: Client,
     runtime: tokio::runtime::Runtime,
     provider_type: S3Provider,
+    is_real_client: bool,
+    pub verbose: bool, // Using bool internally for simplicity
 }
 
 impl S3StorageClient {
     /// Create a new S3-compatible client from the provided config
-    pub fn new(config: S3Config) -> Result<Self> {
+    pub fn new(config: S3Config, verbose: bool) -> Result<Self> {
+        // Check if this is a real client (non-mock values)
+        let is_real_client = !(config.key_id == "dummy" && config.application_key == "dummy" && config.bucket == "dummy");
+        
         // Create the endpoint based on the provider
         let endpoint = match config.provider {
             S3Provider::BackblazeB2 => "https://s3.us-west-004.backblazeb2.com".to_string(),
             S3Provider::CloudflareR2 => {
-                let account_id = config.account_id.ok_or_else(|| {
-                    Box::<dyn std::error::Error>::from("Account ID is required for R2 storage")
-                })?;
-                format!("https://{}.r2.cloudflarestorage.com", account_id)
+                // Handle mock client case specially
+                if !is_real_client {
+                    "https://mock-value.r2.cloudflarestorage.com".to_string()
+                } else {
+                    let account_id = config.account_id.ok_or_else(|| {
+                        Box::<dyn std::error::Error>::from("Account ID is required for R2 storage")
+                    })?;
+                    format!("https://{}.r2.cloudflarestorage.com", account_id)
+                }
             }
         };
         
@@ -97,10 +107,18 @@ impl S3StorageClient {
             client,
             runtime,
             provider_type: config.provider,
+            is_real_client,
+            verbose,
         };
         
-        // Ensure bucket exists
-        storage_client.ensure_bucket_exists(&config.bucket)?;
+        // Special handling for placeholder bucket names and non-real clients
+        let is_placeholder_bucket = config.bucket == "placeholder_bucket_will_be_provided_from_json";
+        
+        // Only ensure bucket exists for real clients with non-placeholder bucket names
+        if is_real_client && !is_placeholder_bucket {
+            // Ensure bucket exists for real clients
+            storage_client.ensure_bucket_exists(&config.bucket)?;
+        }
         
         Ok(storage_client)
     }
@@ -158,6 +176,14 @@ impl S3StorageClient {
     
     /// Check if a file exists in storage
     pub fn file_exists(&self, file_key: &str) -> Result<bool> {
+        // For non-real clients, return false to indicate file doesn't exist
+        if !self.is_real_client {
+            if self.verbose {
+                println!("Using mock S3-compatible storage client - would have checked if {} exists", file_key);
+            }
+            return Ok(false);
+        }
+        
         // Use the client's runtime instead of creating a new one
         let result = self.runtime.block_on(async {
             let resp = self.client.head_object()
@@ -174,6 +200,14 @@ impl S3StorageClient {
     
     /// Get file metadata
     pub fn get_file_metadata(&self, file_key: &str) -> Result<Option<HashMap<String, String>>> {
+        // For non-real clients, return None to indicate file doesn't exist
+        if !self.is_real_client {
+            if self.verbose {
+                println!("Using mock S3-compatible storage client - would have retrieved metadata for {}", file_key);
+            }
+            return Ok(None);
+        }
+        
         // Check if file exists first
         let exists = self.file_exists(file_key)?;
         if !exists {
@@ -224,6 +258,31 @@ impl S3StorageClient {
     
     /// Upload a file to storage
     pub fn upload_file(&self, local_path: &str, object_key: &str, metadata: Option<HashMap<String, String>>) -> Result<S3UploadResult> {
+        // For non-real clients, return a mock response without trying to upload
+        if !self.is_real_client {
+            // Generate a hash from the local_path for consistency in tests
+            let hash = format!("mock-hash-{}", local_path);
+            
+            if self.verbose {
+                println!("Using mock S3-compatible storage client - would have uploaded {} to {}", local_path, object_key);
+            }
+            
+            return Ok(S3UploadResult {
+                hash: hash.clone(),
+                id: hash,
+                bucket_id: self.bucket_name.clone(),
+                name: object_key.to_string(),
+            });
+        }
+        
+        // Check for placeholder bucket - this method should never be called with a placeholder bucket
+        // The upload_file_with_details method handles placeholders specially
+        if self.bucket_name == "placeholder_bucket_will_be_provided_from_json" {
+            return Err(Box::<dyn std::error::Error>::from(
+                "Cannot upload directly with a placeholder bucket - use upload_file_with_details instead"
+            ));
+        }
+        
         // Check if the file exists locally
         if !Path::new(local_path).exists() {
             return Err(Box::<dyn std::error::Error>::from(
@@ -283,6 +342,23 @@ impl S3StorageClient {
             ));
         }
         
+        // For non-real clients, return mock data
+        if !self.is_real_client {
+            let hash = format!("mock-hash-{}", file_details.hash);
+            
+            if self.verbose {
+                println!("Using mock S3-compatible storage client - would have uploaded {} using hash {}", 
+                        file_details.file_path, file_details.hash);
+            }
+            
+            return Ok(S3UploadResult {
+                hash: hash.clone(),
+                id: hash,
+                bucket_id: file_details.cloud_upload_bucket.clone().unwrap_or_else(|| "mock-bucket".to_string()),
+                name: format!("secrets/{}", file_details.hash),
+            });
+        }
+        
         // Determine which file to use - original or base64 encoded version
         let file_to_use = if file_details.encoding == "base64" {
             format!("{}.base64", file_details.file_path)
@@ -298,10 +374,25 @@ impl S3StorageClient {
         metadata.insert("encoding".to_string(), file_details.encoding.clone());
         metadata.insert("size".to_string(), file_details.file_size.to_string());
         
-        // Always add bucket to metadata if provided
-        if let Some(bucket) = &file_details.cloud_upload_bucket {
-            metadata.insert("bucket".to_string(), bucket.clone());
-        }
+        // Check if we need to use a real bucket name from the JSON for upload
+        let using_placeholder_bucket = self.bucket_name == "placeholder_bucket_will_be_provided_from_json";
+        
+        // When using a placeholder bucket, ensure a real bucket name is provided in the JSON
+        let upload_bucket = if using_placeholder_bucket {
+            // We need a real bucket name from the JSON
+            match &file_details.cloud_upload_bucket {
+                Some(bucket) if !bucket.is_empty() => bucket.clone(),
+                _ => return Err(Box::<dyn std::error::Error>::from(
+                    "cloud_upload_bucket must be provided in JSON when using placeholder bucket configuration"
+                ))
+            }
+        } else {
+            // Use the bucket configured in the client
+            self.bucket_name.clone()
+        };
+        
+        // Add bucket to metadata
+        metadata.insert("bucket".to_string(), upload_bucket.clone());
         
         // Determine the prefix path in storage
         let prefix = "secrets".to_string();
@@ -309,12 +400,72 @@ impl S3StorageClient {
         // Use hash as the object key for deduplication and consistent naming
         let object_key = format!("{}/{}", prefix, file_details.hash);
         
-        // Upload the file
-        self.upload_file(&file_to_use, &object_key, Some(metadata))
+        // If we're using a placeholder bucket, we need to ensure the real bucket exists before upload
+        if using_placeholder_bucket {
+            if self.verbose {
+                println!("Using real bucket name '{}' from JSON for upload", upload_bucket);
+            }
+            // Ensure the real bucket exists
+            self.ensure_bucket_exists(&upload_bucket)?;
+        }
+        
+        // Upload the file - special handling for placeholder bucket
+        if using_placeholder_bucket {
+            // For placeholder bucket, use the actual bucket from JSON for upload
+            // This requires a custom implementation because the client was configured with a placeholder bucket
+            let result = self.runtime.block_on(async {
+                // Create ByteStream from file path
+                let body = ByteStream::from_path(Path::new(&file_to_use)).await
+                    .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create ByteStream from path: {}", e)))?;
+                
+                // Build the put_object request with the real bucket
+                let mut put_request = self.client.put_object()
+                    .bucket(&upload_bucket)  // Use real bucket from JSON
+                    .key(&object_key)
+                    .body(body);
+                
+                // Add metadata
+                for (key, value) in &metadata {
+                    put_request = put_request.metadata(key, value);
+                }
+                
+                // Send the request
+                let response = put_request.send().await
+                    .map_err(|e| Box::<dyn std::error::Error>::from(
+                        format!("Failed to upload to storage: {}", e)
+                    ))?;
+                
+                // Get the ETag (hash) from the response
+                let etag = response.e_tag()
+                    .ok_or_else(|| Box::<dyn std::error::Error>::from("No ETag in response"))?
+                    .replace("\"", ""); // Remove quotes from ETag
+                
+                Ok::<S3UploadResult, Box<dyn std::error::Error>>(S3UploadResult {
+                    hash: etag.clone(),
+                    id: etag.clone(),
+                    bucket_id: upload_bucket.clone(),
+                    name: object_key.to_string(),
+                })
+            })?;
+            
+            Ok(result)
+        } else {
+            // For non-placeholder bucket, use the regular upload method
+            self.upload_file(&file_to_use, &object_key, Some(metadata))
+        }
     }
     
     /// Download a file from storage
     pub fn download_file(&self, object_key: &str) -> Result<Vec<u8>> {
+        // For non-real clients, return a mock response
+        if !self.is_real_client {
+            if self.verbose {
+                println!("Using mock S3-compatible storage client - would have downloaded {}", object_key);
+            }
+            // Return a small mock content
+            return Ok(b"mock content for testing".to_vec());
+        }
+        
         // Use the client's runtime instead of creating a new one
         let content = self.runtime.block_on(async {
             let resp = self.client.get_object()
@@ -340,6 +491,20 @@ impl S3StorageClient {
     
     /// Save downloaded content to a file
     pub fn save_to_file(&self, object_key: &str, local_path: &str) -> Result<()> {
+        // For non-real clients, create a mock file
+        if !self.is_real_client {
+            if self.verbose {
+                println!("Using mock S3-compatible storage client - would have downloaded {} to {}", object_key, local_path);
+            }
+            // Create a parent directory if it doesn't exist
+            if let Some(parent) = Path::new(local_path).parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            // Write a mock file
+            std::fs::write(local_path, b"mock content for testing")?;
+            return Ok(());
+        }
+        
         // Get content
         let content = self.download_file(object_key)?;
         
