@@ -5,6 +5,7 @@ pub mod file_details;
 pub mod initialize;
 pub mod models;
 pub mod r2_storage;
+pub mod s3_storage_base;
 pub mod upload;
 pub mod upload_utils;
 pub mod user_prompt;

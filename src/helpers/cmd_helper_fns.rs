@@ -50,20 +50,6 @@ pub fn file_exists_and_readable(file: &Path) -> bool {
     }
 }
 
-/// Execute a command with the given arguments
-///
-/// # Arguments
-/// * `cmd` - The command to execute
-/// * `args` - The arguments to pass to the command
-///
-/// # Errors
-///
-/// Returns an error if the command fails to execute
-pub fn exec_cmd(cmd: &str, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
-    // Delegate to the utility function and properly propagate errors
-    crate::utils::cmd_utils::exec_cmd(cmd, args)
-}
-
 pub fn get_terminal_display_width(specify_size: Option<usize>) -> usize {
     if let Some(size) = specify_size {
         return size;

@@ -30,7 +30,7 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
     read_val_helper: &R,
 ) -> Result<()> {
     // Validate that required params exist
-    let _input_json_path = args
+    let input_json_path = args
         .input_json
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Input JSON path is required"))?;
@@ -38,42 +38,103 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
         .output_json
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Output JSON path is required"))?;
+    
+    // First, check if any entries in the JSON file match our hostname
+    // Only initialize clients if needed
+    let mut file = File::open(input_json_path)?;
+    let mut content = String::new();
+    file.read_to_string(&mut content)?;
+    let our_hostname = get_hostname()?;
+    
+    // Parse JSON as array
+    let entries: Vec<Value> = serde_json::from_str(&content)?;
+    
+    // Initialize flags to track which clients we need
+    let mut need_azure_client = false;
+    let mut need_b2_client = false;
+    let mut need_r2_client = false;
+    
+    // Check all entries to see if any match our hostname
+    for entry in &entries {
+        // Get hostname - legacy or new, default to current hostname if missing
+        let hostname = match entry["hostname"].as_str() {
+            Some(h) => h,
+            None => &our_hostname, // Use current hostname if missing
+        };
         
-
-    // Create Azure Key Vault client
-    let client_id = args
-        .secrets_client_id
-        .as_ref()
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("Client ID is required"))?;
-    let client_secret_path = args
-        .secrets_client_secret_path
-        .as_ref()
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("Client secret path is required"))?;
-    let tenant_id = args
-        .secrets_tenant_id
-        .as_ref()
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("Tenant ID is required"))?;
-    let key_vault_name = args
-        .secrets_vault_name
-        .as_ref()
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("Key vault name is required"))?;
-
-    // Create KeyVault client
-    let kv_client = get_keyvault_client(client_id, client_secret_path, tenant_id, key_vault_name)?;
+        // If this entry is not for our host, skip it
+        if hostname != our_hostname {
+            continue;
+        }
+        
+        // This entry is for our host, determine which client it needs
+        let destination_cloud = entry["destination_cloud"].as_str().unwrap_or("azure_kv");
+        let encoded_size = entry["encoded_size"].as_u64().unwrap_or_else(|| entry["file_size"].as_u64().unwrap_or(0));
+        let too_large_for_keyvault = encoded_size > 24000;
+        
+        if destination_cloud == "r2" {
+            need_r2_client = true;
+        } else if too_large_for_keyvault || destination_cloud == "b2" {
+            need_b2_client = true;
+        } else {
+            need_azure_client = true;
+        }
+    }
     
-    // Create B2 client using the default implementation
-    let b2_client = DefaultB2StorageClient::from_args(args).unwrap_or_else(|_| {
-        // It's ok if B2 client creation fails - we'll only use it if needed
-        println!("Note: B2 client initialization failed, but will continue unless B2 storage is needed");
+    // Only create clients that are actually needed
+    
+    // Create Azure Key Vault client if needed
+    let kv_client = if need_azure_client {
+        let client_id = args
+            .secrets_client_id
+            .as_ref()
+            .ok_or_else(|| Box::<dyn std::error::Error>::from("Client ID is required for Azure uploads"))?;
+        let client_secret_path = args
+            .secrets_client_secret_path
+            .as_ref()
+            .ok_or_else(|| Box::<dyn std::error::Error>::from("Client secret path is required for Azure uploads"))?;
+        let tenant_id = args
+            .secrets_tenant_id
+            .as_ref()
+            .ok_or_else(|| Box::<dyn std::error::Error>::from("Tenant ID is required for Azure uploads"))?;
+        let key_vault_name = args
+            .secrets_vault_name
+            .as_ref()
+            .ok_or_else(|| Box::<dyn std::error::Error>::from("Key vault name is required for Azure uploads"))?;
+
+        // Create KeyVault client
+        get_keyvault_client(client_id, client_secret_path, tenant_id, key_vault_name)?
+    } else {
+        // Create dummy client if not needed
+        println!("No Azure KeyVault uploads required for this host, using dummy client");
+        Box::new(crate::interfaces::MockAzureKeyVaultClient::new())
+    };
+    
+    // Create B2 client if needed
+    let b2_client = if need_b2_client {
+        DefaultB2StorageClient::from_args(args).unwrap_or_else(|e| {
+            // This is an error if we actually need the B2 client
+            eprintln!("Warning: B2 client initialization failed but B2 uploads are needed: {}", e);
+            DefaultB2StorageClient::new_dummy()
+        })
+    } else {
+        // Create dummy client if not needed
+        println!("No B2 uploads required for this host, using dummy client");
         DefaultB2StorageClient::new_dummy()
-    });
+    };
     
-    // Create R2 client using the default implementation
-    let r2_client = DefaultR2StorageClient::from_args(args).unwrap_or_else(|_| {
-        // It's ok if R2 client creation fails - we'll only use it if needed
-        println!("Note: R2 client initialization failed, but will continue unless R2 storage is needed");
+    // Create R2 client if needed
+    let r2_client = if need_r2_client {
+        DefaultR2StorageClient::from_args(args).unwrap_or_else(|e| {
+            // This is an error if we actually need the R2 client
+            eprintln!("Warning: R2 client initialization failed but R2 uploads are needed: {}", e);
+            DefaultR2StorageClient::new_dummy()
+        })
+    } else {
+        // Create dummy client if not needed
+        println!("No R2 uploads required for this host, using dummy client");
         DefaultR2StorageClient::new_dummy()
-    });
+    };
 
     // Call the function that allows injection of the clients
     process_with_injected_dependencies_and_clients(
@@ -85,36 +146,6 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
     )
 }
 
-/// Process the upload operation with full dependency injection for testing (legacy version)
-/// This version only allows injecting the Azure KeyVault client
-/// 
-/// Use process_with_injected_dependencies_and_clients instead for new code.
-pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelper>(
-    args: &Args,
-    read_val_helper: &R,
-    kv_client: Box<dyn AzureKeyVaultClient>,
-) -> Result<()> {
-    // Create B2 client using the default implementation
-    let b2_client = DefaultB2StorageClient::from_args(args).unwrap_or_else(|_| {
-        println!("Note: B2 client initialization failed, but will continue unless B2 storage is needed");
-        DefaultB2StorageClient::new_dummy()
-    });
-    
-    // Create R2 client using the default implementation
-    let r2_client = DefaultR2StorageClient::from_args(args).unwrap_or_else(|_| {
-        println!("Note: R2 client initialization failed, but will continue unless R2 storage is needed");
-        DefaultR2StorageClient::new_dummy()
-    });
-    
-    // Forward to the new method
-    process_with_injected_dependencies_and_clients(
-        args, 
-        read_val_helper, 
-        kv_client, 
-        Box::new(b2_client),
-        Box::new(r2_client)
-    )
-}
 
 /// Process the upload operation with full dependency injection for testing
 /// This version allows injecting Azure KeyVault, B2 Storage and R2 Storage clients for testing

@@ -1,4 +1,4 @@
-use crate::helpers::cmd_helper_fns as cmd;
+use crate::utils::cmd_utils;
 use crate::read_interactive_input::{GrammarFragment, GrammarType};
 use std::path::PathBuf;
 use thiserror::Error;
@@ -354,7 +354,7 @@ fn find_buildfile(
 fn build_image_from_spec(build_config: WhatWereBuilding) -> Result<(), BuildfileError> {
     match build_config.file.filetype {
         BuildChoice::Dockerfile => {
-            let _ = cmd::pull_base_image(build_config.file.filepath.as_ref().unwrap());
+            let _ = crate::helpers::cmd_helper_fns::pull_base_image(build_config.file.filepath.as_ref().unwrap());
 
             let dockerfile_path = build_config
                 .file
@@ -383,7 +383,7 @@ fn build_image_from_spec(build_config: WhatWereBuilding) -> Result<(), Buildfile
 
             podman_args.push(build_config.file.parent_dir.to_str().unwrap());
 
-            Ok(cmd::exec_cmd("podman", &podman_args[..]).map_err(BuildfileError::from)?)
+            Ok(cmd_utils::exec_cmd("podman", &podman_args[..]).map_err(BuildfileError::from)?)
         }
         BuildChoice::Makefile => {
             let chg_dir = if build_config.follow_link {
@@ -400,8 +400,8 @@ fn build_image_from_spec(build_config: WhatWereBuilding) -> Result<(), Buildfile
                 build_config.file.parent_dir.to_str().unwrap()
             };
 
-            cmd::exec_cmd("make", &["-C", chg_dir, "clean"])?;
-            Ok(cmd::exec_cmd("make", &["-C", chg_dir])?)
+            cmd_utils::exec_cmd("make", &["-C", chg_dir, "clean"])?;
+            Ok(cmd_utils::exec_cmd("make", &["-C", chg_dir])?)
         }
     }
 }

@@ -40,7 +40,7 @@ impl CommandHelper for DefaultCommandHelper {
     fn exec_cmd(&self, cmd: &str, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         // Convert Vec<String> to Vec<&str> for compatibility with existing function
         let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-        crate::helpers::cmd_helper_fns::exec_cmd(cmd, &args_ref)?;
+        crate::utils::cmd_utils::exec_cmd(cmd, &args_ref)?;
         Ok(())
     }
 
@@ -163,7 +163,8 @@ impl DefaultB2StorageClient {
     /// Create a dummy client for when B2 credentials aren't available
     /// but we want to continue without failing
     pub fn new_dummy() -> Self {
-        // This will intentionally fail if used, but allows the program to continue
+        // This will create a non-functional dummy client
+        // It will fail if actually used, but allows the program to continue
         // if B2 storage isn't actually needed
         let dummy_config = crate::secrets::b2_storage::B2Config {
             key_id: "dummy".to_string(),
@@ -214,7 +215,8 @@ impl DefaultR2StorageClient {
     /// Create a dummy client for when R2 credentials aren't available
     /// but we want to continue without failing
     pub fn new_dummy() -> Self {
-        // This will intentionally fail if used, but allows the program to continue
+        // This will create a non-functional dummy client
+        // It will fail if actually used, but allows the program to continue
         // if R2 storage isn't actually needed
         let dummy_config = crate::secrets::r2_storage::R2Config {
             key_id: "dummy".to_string(),
