@@ -211,21 +211,20 @@ impl B2Client {
             ));
         }
         
-        // Read file content
-        let mut file = File::open(local_path)?;
-        let mut content = Vec::new();
-        file.read_to_end(&mut content)?;
-        
         // We need to use tokio runtime for this
         let runtime = tokio::runtime::Runtime::new()
             .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
         
         let result = runtime.block_on(async {
+            // Create ByteStream directly from file path - no loading into memory
+            let body = ByteStream::from_path(Path::new(local_path)).await
+                .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create ByteStream from path: {}", e)))?;
+            
             // Build the put_object request
             let mut put_request = self.client.put_object()
                 .bucket(&self.bucket_name)
                 .key(object_key)
-                .body(ByteStream::from(content));
+                .body(body);
             
             // Add metadata if provided
             if let Some(meta) = metadata {
