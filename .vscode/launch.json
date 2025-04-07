@@ -59,11 +59,11 @@
         "${env:HOME}/docker/podman-compose-mgr/output.json",
         "--input-json",
         "${env:HOME}/docker/podman-compose-mgr/input.json",
-        "--s3-endpoint-id-filepath",
+        "--s3-endpoint-filepath",
         "${workspaceFolder}/tests/test2_personal_testing_data/r2_endpoint.txt",
         "--s3-secret-key-filepath",
         "${workspaceFolder}/tests/test2_personal_testing_data/r2_secret.txt",
-        "--r2-account-id-filepath",
+        "--s3-account-id-filepath",
         "${workspaceFolder}/tests/test2_personal_testing_data/r2_account_id.txt"
       ],
       "cwd": "${workspaceFolder}"

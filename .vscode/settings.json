@@ -4,6 +4,7 @@
         "buildfile",
         "buildfiles",
         "confs",
+        "creds",
         "dnsmasq",
         "dont",
         "mockall",
