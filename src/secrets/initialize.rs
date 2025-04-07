@@ -93,9 +93,19 @@ pub fn process(args: &Args) -> Result<()> {
             );
         }
 
-        // Set a default cloud_upload_bucket value
-        // For B2 and R2, this will need to be specified in the JSON when uploading
-        let cloud_upload_bucket = "".to_string();
+        // Look for cloud_upload_bucket in the input file
+        let cloud_upload_bucket = if destination_cloud == "r2" || destination_cloud == "b2" {
+            files_array
+                .iter()
+                .find(|obj| obj.get("filenm").and_then(|v| v.as_str()) == Some(&file_nm))
+                .and_then(|obj| obj.get("cloud_upload_bucket"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string()
+        } else {
+            // For Azure, always use empty string as it doesn't need a bucket
+            "".to_string()
+        };
         
         // Create JSON entry
         let entry = json!({

@@ -33,40 +33,61 @@ fn test_cloud_section_parsing() {
     let processed_json: Vec<Value> = serde_json::from_str(&processed_content).unwrap();
     let expected_json: Vec<Value> = serde_json::from_str(&expected_content).unwrap();
     
-    // Create mappings from filename to destination_cloud for comparison
-    let processed_map: std::collections::HashMap<String, String> = processed_json
+    // Create a more comprehensive mapping with both destination_cloud and cloud_upload_bucket
+    let expected_entries: std::collections::HashMap<String, serde_json::Value> = expected_json
         .iter()
         .map(|entry| {
             (
                 entry["filenm"].as_str().unwrap().to_string(),
-                entry["destination_cloud"].as_str().unwrap().to_string(),
+                entry.clone(),
             )
         })
         .collect();
     
-    let expected_map: std::collections::HashMap<String, String> = expected_json
+    let processed_entries: std::collections::HashMap<String, serde_json::Value> = processed_json
         .iter()
         .map(|entry| {
             (
                 entry["filenm"].as_str().unwrap().to_string(),
-                entry["destination_cloud"].as_str().unwrap().to_string(),
+                entry.clone(),
             )
         })
         .collect();
     
-    // Verify that each file in the expected output has the correct destination_cloud in the processed output
-    for (filename, expected_cloud) in &expected_map {
+    // Verify that each file in the expected output has the correct values in the processed output
+    for (filename, expected_entry) in &expected_entries {
         assert!(
-            processed_map.contains_key(filename),
+            processed_entries.contains_key(filename),
             "Missing file {} in processed output",
             filename
         );
         
+        // Verify destination_cloud
+        let expected_cloud = expected_entry["destination_cloud"].as_str().unwrap();
+        let processed_cloud = processed_entries[filename]["destination_cloud"].as_str().unwrap();
         assert_eq!(
-            processed_map[filename], *expected_cloud,
+            processed_cloud, expected_cloud,
             "Mismatch for file {}: expected cloud {}, got {}",
-            filename, expected_cloud, processed_map[filename]
+            filename, expected_cloud, processed_cloud
         );
+        
+        // Verify cloud_upload_bucket if present in expected entry
+        if expected_entry.get("cloud_upload_bucket").is_some() {
+            let expected_bucket = expected_entry["cloud_upload_bucket"].as_str().unwrap();
+            
+            assert!(
+                processed_entries[filename].get("cloud_upload_bucket").is_some(),
+                "Missing cloud_upload_bucket for file {}",
+                filename
+            );
+            
+            let processed_bucket = processed_entries[filename]["cloud_upload_bucket"].as_str().unwrap();
+            assert_eq!(
+                processed_bucket, expected_bucket,
+                "Mismatch for file {}: expected bucket {}, got {}",
+                filename, expected_bucket, processed_bucket
+            );
+        }
     }
     
     // Now test that initialize.rs respects the cloud provider from the input JSON
@@ -98,29 +119,45 @@ fn test_cloud_section_parsing() {
     
     let output_json: Vec<Value> = serde_json::from_str(&output_content).unwrap();
     
-    // Create a mapping from filename to destination_cloud for comparison
-    let output_map: std::collections::HashMap<String, String> = output_json
+    // Create a mapping from filename to entry for comparison
+    let output_entries: std::collections::HashMap<String, serde_json::Value> = output_json
         .iter()
         .map(|entry| {
             (
                 entry["file_nm"].as_str().unwrap().to_string(),
-                entry["destination_cloud"].as_str().unwrap().to_string(),
+                entry.clone(),
             )
         })
         .collect();
     
-    // Verify that each file in the expected output has the correct destination_cloud in the processed output
-    for (filename, expected_cloud) in &expected_map {
+    // Verify that each file in the expected output has the correct values in the final output
+    for (filename, expected_entry) in &expected_entries {
         assert!(
-            output_map.contains_key(filename),
+            output_entries.contains_key(filename),
             "Missing file {} in final output",
             filename
         );
         
+        // Verify destination_cloud
+        let expected_cloud = expected_entry["destination_cloud"].as_str().unwrap();
+        let output_cloud = output_entries[filename]["destination_cloud"].as_str().unwrap();
         assert_eq!(
-            output_map[filename], *expected_cloud,
+            output_cloud, expected_cloud,
             "Mismatch for file {}: expected cloud {}, got {}",
-            filename, expected_cloud, output_map[filename]
+            filename, expected_cloud, output_cloud
         );
+        
+        // Verify cloud_upload_bucket if present in expected entry and if cloud is r2 or b2
+        if expected_entry.get("cloud_upload_bucket").is_some() && 
+           (expected_cloud == "r2" || expected_cloud == "b2") {
+            let expected_bucket = expected_entry["cloud_upload_bucket"].as_str().unwrap();
+            
+            let output_bucket = output_entries[filename]["cloud_upload_bucket"].as_str().unwrap();
+            assert_eq!(
+                output_bucket, expected_bucket,
+                "Mismatch for file {}: expected bucket {}, got {}",
+                filename, expected_bucket, output_bucket
+            );
+        }
     }
 }

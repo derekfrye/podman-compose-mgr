@@ -88,7 +88,11 @@ fn process_input_lines(lines: Vec<&str>) -> Result<Vec<serde_json::Value>, Strin
     let cloud_section_regex = Regex::new(r"^\s*#{1,}\s*([Aa][Zz][Uu][Rr][Ee]|[Rr]2|[Bb]2)\s*#{1,}\s*$")
         .map_err(|e| format!("Failed to compile regex: {}", e))?;
     
+    let bucket_regex = Regex::new(r"^\s*#{1,}\s*[Bb][Uu][Cc][Kk][Ee][Tt]\s+([a-zA-Z0-9_-]+)\s*#{1,}\s*$")
+        .map_err(|e| format!("Failed to compile bucket regex: {}", e))?;
+    
     let mut current_cloud = "azure_kv"; // Default to azure_kv
+    let mut current_bucket = String::new(); // Empty default bucket
     let mut file_array = Vec::new();
     
     for line in lines {
@@ -113,6 +117,14 @@ fn process_input_lines(lines: Vec<&str>) -> Result<Vec<serde_json::Value>, Strin
             continue;
         }
         
+        // Check if this is a bucket specification
+        if let Some(captures) = bucket_regex.captures(trimmed) {
+            if let Some(bucket_match) = captures.get(1) {
+                current_bucket = bucket_match.as_str().to_string();
+            }
+            continue;
+        }
+        
         // Skip other commented lines
         if trimmed.starts_with('#') {
             continue;
@@ -122,10 +134,20 @@ fn process_input_lines(lines: Vec<&str>) -> Result<Vec<serde_json::Value>, Strin
         match check_readable_file(trimmed) {
             Ok(path) => {
                 if let Some(path_str) = path.to_str() {
-                    file_array.push(serde_json::json!({
+                    // Create the JSON entry
+                    let mut entry = serde_json::json!({
                         "filenm": path_str,
                         "destination_cloud": current_cloud
-                    }));
+                    });
+                    
+                    // Add bucket name only for r2 or b2 cloud types
+                    if (current_cloud == "r2" || current_cloud == "b2") && !current_bucket.is_empty() {
+                        if let Some(obj) = entry.as_object_mut() {
+                            obj.insert("cloud_upload_bucket".to_string(), serde_json::Value::String(current_bucket.clone()));
+                        }
+                    }
+                    
+                    file_array.push(entry);
                 } else {
                     eprintln!(
                         "Warning: Path '{}' contains invalid UTF-8 characters, skipping",
