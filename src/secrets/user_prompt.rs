@@ -98,10 +98,10 @@ pub fn setup_upload_prompt(grammars: &mut Vec<GrammarFragment>, file_path: &str)
     // Format file size with appropriate units
     let formatted_size = format_file_size(size_bytes);
 
-    // Split the formatted size into value and unit (e.g., "123.45 KiB" -> "123.45", "KiB ")
+    // Split the formatted size into value and unit (e.g., "123.45 KiB" -> "123.45", "KiB")
     let parts: Vec<&str> = formatted_size.split_whitespace().collect();
     let size_value = parts[0];
-    let size_unit = format!("{} ", parts[1]); // Add space after unit
+    let size_unit = parts[1].to_string(); // Just the unit without added spaces
 
     // Add "Upload" text
     let upload_grammar = GrammarFragment {
@@ -122,7 +122,7 @@ pub fn setup_upload_prompt(grammars: &mut Vec<GrammarFragment>, file_path: &str)
         shortened_val_for_prompt: None,
         pos: 1,
         prefix: None,
-        suffix: Some(size_unit),
+        suffix: Some(format!(" {} ", size_unit)), // Add space followed by unit and an additional space
         grammar_type: GrammarType::Verbiage,
         can_shorten: false,
         display_at_all: true,
