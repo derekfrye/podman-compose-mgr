@@ -7,6 +7,7 @@ tests/test2_personal_testing_data/client_id.txt
 tests/test2_personal_testing_data/secret.txt
 
 #  r2 #
+# bucket secrets-bucket #
 # r2 creds
 tests/test2_personal_testing_data/r2_endpoint.txt
 tests/test2_personal_testing_data/r2_account_id.txt
@@ -19,5 +20,6 @@ tests/test2_personal_testing_data/b2_key.txt
 tests/test2_personal_testing_data/b2_account.txt
 
 # general files, should still be r2
+# bucket diff-bucket #
 tests/test3_and_test4/a
 tests/test3_and_test4/b
