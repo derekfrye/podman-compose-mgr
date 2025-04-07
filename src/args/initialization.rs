@@ -1,4 +1,5 @@
 use chrono::Utc;
+use regex::Regex;
 use serde_json;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -49,58 +50,9 @@ pub fn check_init_filepath(file_path: &str) -> Result<PathBuf, String> {
         Err(_) => {
             // Not valid JSON, check if it's a list of filenames (one per line)
             let lines: Vec<&str> = file_content.lines().collect();
-
-            // Filter out empty lines and commented lines
-            let non_empty_lines: Vec<&str> = lines
-                .iter()
-                .filter(|line| !line.trim().is_empty() && !line.trim().starts_with('#'))
-                .copied()
-                .collect();
-
-            if non_empty_lines.is_empty() {
-                return Err(format!(
-                    "The file '{}' does not contain valid JSON or filenames.",
-                    file_path
-                ));
-            }
-
-            // Check if each filename is a readable file
-            let mut all_valid = true;
-            for line in &non_empty_lines {
-                let filename = line.trim();
-                if check_readable_file(filename).is_err() {
-                    eprintln!(
-                        "Warning: File '{}' does not exist or is not readable.",
-                        filename
-                    );
-                    all_valid = false;
-                }
-            }
-
-            if !all_valid {
-                eprintln!(
-                    "Warning: Some files are not readable. Continuing with valid files only."
-                );
-            }
-
-            // Create JSON array with filenames (only for files that exist and are readable)
-            let mut file_array = Vec::new();
-            for line in non_empty_lines {
-                let filename = line.trim();
-                match check_readable_file(filename) {
-                    Ok(path) => {
-                        if let Some(path_str) = path.to_str() {
-                            file_array.push(serde_json::json!({"filenm": path_str}));
-                        } else {
-                            eprintln!(
-                                "Warning: Path '{}' contains invalid UTF-8 characters, skipping",
-                                filename
-                            );
-                        }
-                    }
-                    Err(_) => continue, // Skip invalid files
-                }
-            }
+            
+            // Process lines with cloud section detection
+            let file_array = process_input_lines(lines)?;
 
             // If no valid files found, return an error
             if file_array.is_empty() {
@@ -123,4 +75,76 @@ pub fn check_init_filepath(file_path: &str) -> Result<PathBuf, String> {
             Ok(new_file_path)
         }
     }
+}
+
+/// Process input lines and detect cloud provider sections
+/// 
+/// This function:
+/// 1. Processes each line in the input file
+/// 2. Detects cloud provider section headers (e.g. #AZURE#)
+/// 3. Associates files with the appropriate cloud provider
+/// 4. Creates a JSON array with filenames and their cloud providers
+fn process_input_lines(lines: Vec<&str>) -> Result<Vec<serde_json::Value>, String> {
+    let cloud_section_regex = Regex::new(r"^\s*#{1,}\s*([Aa][Zz][Uu][Rr][Ee]|[Rr]2|[Bb]2)\s*#{1,}\s*$")
+        .map_err(|e| format!("Failed to compile regex: {}", e))?;
+    
+    let mut current_cloud = "azure_kv"; // Default to azure_kv
+    let mut file_array = Vec::new();
+    
+    for line in lines {
+        let trimmed = line.trim();
+        
+        // Skip empty lines
+        if trimmed.is_empty() {
+            continue;
+        }
+        
+        // Check if this is a cloud section header
+        if let Some(captures) = cloud_section_regex.captures(trimmed) {
+            if let Some(cloud_match) = captures.get(1) {
+                let cloud_name = cloud_match.as_str().to_lowercase();
+                current_cloud = match cloud_name.as_str() {
+                    "azure" => "azure_kv",
+                    "r2" => "r2",
+                    "b2" => "b2",
+                    _ => "azure_kv", // Default to azure_kv for unknown
+                };
+            }
+            continue;
+        }
+        
+        // Skip other commented lines
+        if trimmed.starts_with('#') {
+            continue;
+        }
+        
+        // Process the file
+        match check_readable_file(trimmed) {
+            Ok(path) => {
+                if let Some(path_str) = path.to_str() {
+                    file_array.push(serde_json::json!({
+                        "filenm": path_str,
+                        "destination_cloud": current_cloud
+                    }));
+                } else {
+                    eprintln!(
+                        "Warning: Path '{}' contains invalid UTF-8 characters, skipping",
+                        trimmed
+                    );
+                }
+            }
+            Err(_) => {
+                eprintln!(
+                    "Warning: File '{}' does not exist or is not readable.",
+                    trimmed
+                );
+            }
+        }
+    }
+    
+    if file_array.is_empty() {
+        return Err("No readable files found in the input.".to_string());
+    }
+    
+    Ok(file_array)
 }

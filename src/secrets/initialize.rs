@@ -28,13 +28,14 @@ pub fn process(args: &Args) -> Result<()> {
     file.read_to_string(&mut contents)?;
 
     // Parse the JSON - it's either a map or an array of objects with filenm key
+    let files_array: Vec<serde_json::Value> = serde_json::from_str(&contents).unwrap_or_default();
+    
     let files: Vec<String> = if contents.trim().starts_with('{') {
         // Handle map format
         let files_map: HashMap<String, String> = serde_json::from_str(&contents)?;
         files_map.values().cloned().collect()
     } else {
         // Handle array format with objects that have filenm field
-        let files_array: Vec<serde_json::Value> = serde_json::from_str(&contents)?;
         files_array
             .iter()
             .filter_map(|obj| obj.get("filenm").and_then(|v| v.as_str()).map(String::from))
@@ -66,8 +67,17 @@ pub fn process(args: &Args) -> Result<()> {
         // Check encoding and get file sizes (creates base64 encoded file if needed)
         let (encoding, file_size, encoded_size) = check_encoding_and_size(&file_nm)?;
 
-        // Determine destination cloud based on encoded size
-        let destination_cloud = if encoded_size > 24000 {
+        // Determine if there's a cloud provider in the input file
+        let cloud_from_input = files_array
+            .iter()
+            .find(|obj| obj.get("filenm").and_then(|v| v.as_str()) == Some(&file_nm))
+            .and_then(|obj| obj.get("destination_cloud"))
+            .and_then(|v| v.as_str());
+            
+        // If cloud provider is specified in input, use it; otherwise fall back to size-based logic
+        let destination_cloud = if let Some(cloud) = cloud_from_input {
+            cloud
+        } else if encoded_size > 24000 {
             "r2"
         } else {
             "azure_kv"
