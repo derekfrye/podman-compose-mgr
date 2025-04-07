@@ -122,7 +122,7 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
     } else  {
         // Create dummy client if not needed
         if args.verbose > 0 {
-        println!("No B2 uploads required for this host, using dummy client");}
+        println!("info: No B2 uploads required for this host, using dummy client");}
         DefaultB2StorageClient::new_dummy()
     };
     
@@ -135,7 +135,7 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
         })
     } else {
         // Create dummy client if not needed
-        if args.verbose > 0 {println!("No R2 uploads required for this host, using dummy client");}
+        if args.verbose > 0 {println!("info: No R2 uploads required for this host, using dummy client");}
         DefaultR2StorageClient::new_dummy()
     };
 
@@ -171,7 +171,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
 
     // Test connection to storage
     if args.verbose > 0 {
-        println!("Testing connection to cloud storage services...");
+        println!("info: Testing connection to cloud storage services...");
     }
 
     // Read input JSON file
@@ -229,7 +229,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         if hostname != our_hostname {
             if args.verbose > 0 {
                 println!(
-                    "Skipping file {} because it is not on the current host",
+                    "info: Skipping file {} because it is not on the current host",
                     file_path
                 );
             }
@@ -265,7 +265,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         // Handle different storage backends based on file size and destination_cloud
         let output_entry = if destination_cloud == "r2" {
             if args.verbose > 0 {
-                println!("Uploading file {} to Cloudflare R2 storage", file_path);
+                println!("info: Uploading file {} to Cloudflare R2 storage", file_path);
             }
             
             // Create a FileDetails struct for the file
@@ -297,7 +297,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             
             if !upload_confirmed {
                 if args.verbose > 0 {
-                    println!("Skipping upload of {}", file_path);
+                    println!("info: Skipping upload of {}", file_path);
                 }
                 continue;
             }
@@ -312,7 +312,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             };
             
             if args.verbose > 0 {
-                println!("Successfully uploaded to Cloudflare R2 storage");
+                println!("info: Successfully uploaded to Cloudflare R2 storage");
             }
             
             // Create output entry with updated fields for R2
@@ -372,7 +372,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             
             if !upload_confirmed {
                 if args.verbose > 0 {
-                    println!("Skipping upload of {}", file_path);
+                    println!("info: Skipping upload of {}", file_path);
                 }
                 continue;
             }
@@ -387,7 +387,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             };
             
             if args.verbose > 0 {
-                println!("Successfully uploaded to Backblaze B2 storage");
+                println!("info: Successfully uploaded to Backblaze B2 storage");
             }
             
             // Create output entry with updated fields for B2
@@ -438,7 +438,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 // If base64 file doesn't exist, try to create it now
                 if encoding == "base64" {
                     if args.verbose > 0 {
-                        println!("Base64 file {} doesn't exist, creating now", file_to_use);
+                        println!("info: Base64 file {} doesn't exist, creating now", file_to_use);
                     }
                     // This will create the base64 file if it doesn't exist
                     let _ = check_encoding_and_size(file_path)?;
@@ -467,7 +467,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
 
             if !upload_confirmed {
                 if args.verbose > 0 {
-                    println!("Skipping upload of {}", file_path);
+                    println!("info: Skipping upload of {}", file_path);
                 }
                 continue;
             }
@@ -487,7 +487,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 })?;
 
             if args.verbose > 0 {
-                println!("Successfully uploaded to Azure Key Vault storage");
+                println!("info: Successfully uploaded to Azure Key Vault storage");
             }
 
             // Create output entry with updated fields for Azure
@@ -560,13 +560,13 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
 
         if args.verbose > 0 {
             println!(
-                "Successfully saved {} entries to {}",
+                "info: Successfully saved {} entries to {}",
                 processed_entries.len(),
                 output_filepath.display()
             );
         }
     } else if args.verbose > 0 {
-        println!("No entries were processed successfully.");
+        println!("info: No entries were processed successfully.");
     }
 
     Ok(())

@@ -51,7 +51,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
     // Compile exclude patterns
     if !args.exclude_path_patterns.is_empty() {
         if args.verbose > 0 {
-            println!("Excluding paths: {:?}", args.exclude_path_patterns);
+            println!("info: Excluding paths: {:?}", args.exclude_path_patterns);
         }
 
         for pattern in &args.exclude_path_patterns {
@@ -63,7 +63,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
     // Compile include patterns
     if !args.include_path_patterns.is_empty() {
         if args.verbose > 0 {
-            println!("Including paths: {:?}", args.include_path_patterns);
+            println!("info: Including paths: {:?}", args.include_path_patterns);
         }
 
         for pattern in &args.include_path_patterns {
@@ -73,7 +73,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
     }
 
     if args.verbose > 0 {
-        println!("Rebuild images in path: {}", args.path.display());
+        println!("info: Rebuild images in path: {}", args.path.display());
     }
 
     // Create rebuild manager
@@ -101,7 +101,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
                     .any(|pattern| pattern.is_match(entry_path_str))
             {
                 // if args.verbose > 0 {
-                //     println!("Excluding path due to exclude pattern: {}", entry_path_str);
+                //     println!("info: Excluding path due to exclude pattern: {}", entry_path_str);
                 // }
                 continue;
             }
@@ -114,7 +114,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
             {
                 if args.verbose > 0 {
                     println!(
-                        "Skipping path as it doesn't match any include pattern: {}",
+                        "info: Skipping path as it doesn't match any include pattern: {}",
                         entry_path_str
                     );
                 }

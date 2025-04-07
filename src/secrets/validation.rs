@@ -131,7 +131,7 @@ fn process_validation_entries(
         if hostname != entry["hostname"].as_str().unwrap_or("") {
             if args.verbose > 0 {
                 println!(
-                    "Skipping entry {} for hostname: {}",
+                    "info: Skipping entry {} for hostname: {}",
                     entry["filenm"], entry["hostname"]
                 );
             }
@@ -322,7 +322,7 @@ fn validate_checksums(
             if azure_md5 != md5_of_file {
                 eprintln!("MD5 mismatch for file: {}", file_nm);
             } else if args.verbose > 0 {
-                println!("MD5 match for file: {}", file_nm);
+                println!("info: MD5 match for file: {}", file_nm);
             }
             Ok(())
         }
@@ -341,7 +341,7 @@ fn validate_azure_ids(az_id: &str, secret_id: &str, args: &Args) -> Result<()> {
             secret_id, az_id
         );
     } else if args.verbose > 0 {
-        println!("Azure ID match");
+        println!("info: Azure ID match");
     }
     Ok(())
 }

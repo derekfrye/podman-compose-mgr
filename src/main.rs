@@ -86,11 +86,11 @@ fn main() -> io::Result<()> {
                 }
             }
             
-            println!("Command: {}", cmd_line);
+            println!("dbg: Command: {}", cmd_line);
             println!();
         } else {
             // Fallback if the conversion fails
-            println!("Command: {} {:?}", exe_name.to_string_lossy(), args);
+            println!("dbg: Command: {} {:?}", exe_name.to_string_lossy(), args);
             println!();
         }
     }
@@ -110,7 +110,7 @@ fn main() -> io::Result<()> {
     }
 
     if args.verbose > 0 {
-        println!("Done.");
+        println!("info: Done.");
     }
 
     Ok(())
