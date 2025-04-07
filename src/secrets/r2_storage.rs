@@ -40,7 +40,7 @@ impl R2Client {
         };
         
         // Create the base S3 client - default to non-verbose
-        let client = S3StorageClient::new(s3_config, false)?;
+        let client = S3StorageClient::new(s3_config, 0)?;
         
         Ok(Self { client })
     }
@@ -73,8 +73,8 @@ impl R2Client {
             
             // Create a client and then update the verbose flag
             let mut client = Self::new(config)?;
-            // Set verbose flag based on args
-            client.client.verbose = args.verbose > 0;
+            // Set verbose level based on args (convert u8 to u32)
+            client.client.verbose = args.verbose as u32;
             return Ok(client);
         }
         

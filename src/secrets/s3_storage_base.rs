@@ -42,12 +42,12 @@ pub struct S3StorageClient {
     runtime: tokio::runtime::Runtime,
     provider_type: S3Provider,
     is_real_client: bool,
-    pub verbose: bool, // Using bool internally for simplicity
+    pub verbose: u32, // Using u32 for multiple verbosity levels
 }
 
 impl S3StorageClient {
     /// Create a new S3-compatible client from the provided config
-    pub fn new(config: S3Config, verbose: bool) -> Result<Self> {
+    pub fn new(config: S3Config, verbose: u32) -> Result<Self> {
         // Check if this is a real client (non-mock values)
         let is_real_client = !(config.key_id == "dummy" && config.application_key == "dummy" && config.bucket == "dummy");
         
@@ -180,8 +180,8 @@ impl S3StorageClient {
     pub fn file_exists(&self, file_key: &str) -> Result<bool> {
         // For non-real clients, return false to indicate file doesn't exist
         if !self.is_real_client {
-            if self.verbose {
-                println!("Using mock S3-compatible storage client - would have checked if {} exists", file_key);
+            if self.verbose >= 1 {
+                println!("info: Using mock S3-compatible storage client - would have checked if {} exists", file_key);
             }
             return Ok(false);
         }
@@ -204,7 +204,7 @@ impl S3StorageClient {
     pub fn get_file_metadata(&self, file_key: &str) -> Result<Option<HashMap<String, String>>> {
         // For non-real clients, return None to indicate file doesn't exist
         if !self.is_real_client {
-            if self.verbose {
+            if self.verbose >= 1 {
                 println!("info: Using mock S3-compatible storage client - would have retrieved metadata for {}", file_key);
             }
             return Ok(None);
@@ -270,7 +270,7 @@ impl S3StorageClient {
         
         // For non-real clients, return mock data
         if !self.is_real_client {
-            if self.verbose {
+            if self.verbose >= 1 {
                 println!("info: Using mock S3-compatible storage client - would have checked if file with hash {} exists", hash);
             }
             // Return mock data for testing: (exists, created_time, updated_time)
@@ -284,7 +284,7 @@ impl S3StorageClient {
             // Check if we need to use a placeholder bucket
             if self.bucket_name == "placeholder_bucket_will_be_provided_from_json" {
                 // We can't check for existence if the bucket name is a placeholder
-                if self.verbose {
+                if self.verbose >= 1 {
                     println!("info: Can't check if file exists because bucket name is a placeholder. Please provide bucket name in JSON.");
                 }
                 return Ok(None);
@@ -292,7 +292,7 @@ impl S3StorageClient {
             &self.bucket_name
         };
 
-        if self.verbose {
+        if self.verbose >= 2 {
             println!("dbg: Checking if object '{}' exists in bucket '{}'", object_key, bucket_to_use);
         }
         
@@ -305,7 +305,7 @@ impl S3StorageClient {
                 .await;
                 
             if resp.is_err() {
-                if self.verbose {
+                if self.verbose >= 2 {
                     println!("dbg: Object does not exist or error occurred: {:?}", resp.err());
                 }
                 return Ok::<Option<(bool, String, String)>, Box<dyn std::error::Error>>(Some((false, "".to_string(), "".to_string())));
@@ -321,7 +321,7 @@ impl S3StorageClient {
                 "Unknown".to_string()
             };
             
-            if self.verbose {
+            if self.verbose >= 2 {
                 println!("dbg: Object exists with last modified time: {}", last_modified);
             }
             
@@ -339,7 +339,7 @@ impl S3StorageClient {
             // Generate a hash from the local_path for consistency in tests
             let hash = format!("mock-hash-{}", local_path);
             
-            if self.verbose {
+            if self.verbose >= 1 {
                 println!("info: Using mock S3-compatible storage client - would have uploaded {} to {}", local_path, object_key);
             }
             
@@ -437,8 +437,8 @@ impl S3StorageClient {
                 file_details.hash.clone()
             };
             
-            if self.verbose {
-                println!("Using mock S3-compatible storage client - would have uploaded {} using hash {}", 
+            if self.verbose >= 1 {
+                println!("info: Using mock S3-compatible storage client - would have uploaded {} using hash {}", 
                         file_details.file_path, file_details.hash);
             }
             
@@ -497,8 +497,8 @@ impl S3StorageClient {
         
         // If we're using a placeholder bucket, we need to ensure the real bucket exists before upload
         if using_placeholder_bucket {
-            if self.verbose {
-                println!("Using real bucket name '{}' from JSON for upload", upload_bucket);
+            if self.verbose >= 1 {
+                println!("info: Using real bucket name '{}' from JSON for upload", upload_bucket);
             }
             // Ensure the real bucket exists
             self.ensure_bucket_exists(&upload_bucket)?;
@@ -559,8 +559,8 @@ impl S3StorageClient {
     pub fn download_file(&self, object_key: &str) -> Result<Vec<u8>> {
         // For non-real clients, return a mock response
         if !self.is_real_client {
-            if self.verbose {
-                println!("Using mock S3-compatible storage client - would have downloaded {}", object_key);
+            if self.verbose >= 1 {
+                println!("info: Using mock S3-compatible storage client - would have downloaded {}", object_key);
             }
             // Return a small mock content
             return Ok(b"mock content for testing".to_vec());
@@ -593,8 +593,8 @@ impl S3StorageClient {
     pub fn save_to_file(&self, object_key: &str, local_path: &str) -> Result<()> {
         // For non-real clients, create a mock file
         if !self.is_real_client {
-            if self.verbose {
-                println!("Using mock S3-compatible storage client - would have downloaded {} to {}", object_key, local_path);
+            if self.verbose >= 1 {
+                println!("info: Using mock S3-compatible storage client - would have downloaded {} to {}", object_key, local_path);
             }
             // Create a parent directory if it doesn't exist
             if let Some(parent) = Path::new(local_path).parent() {
