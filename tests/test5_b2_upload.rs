@@ -4,7 +4,7 @@ use mockall::predicate as testing;
 use podman_compose_mgr::args::{Args, Mode};
 use podman_compose_mgr::interfaces::{MockAzureKeyVaultClient, MockB2StorageClient, MockR2StorageClient, MockReadInteractiveInputHelper};
 use podman_compose_mgr::read_interactive_input::ReadValResult;
-use podman_compose_mgr::secrets::b2_storage::B2UploadResult;
+use podman_compose_mgr::secrets::r2_storage::R2UploadResult;
 use podman_compose_mgr::secrets::upload;
 use podman_compose_mgr::secrets::utils::calculate_hash;
 use serde_json::json;
@@ -39,6 +39,7 @@ fn test_b2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         verbose: 1,
         s3_account_id_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/a")),
         s3_secret_key_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/b")),
+        s3_endpoint_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/c")),
         ..Default::default()
     };
 
@@ -77,30 +78,20 @@ fn test_b2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
                 }
             });
             
-        // Create mock B2 storage client
-        let mut b2_client = MockB2StorageClient::new();
+        // We no longer need to mock the B2 client as it's just redirecting to R2
+        // Create a dummy B2 client since we're bypassing it
+        let b2_client = MockB2StorageClient::new();
         
-        // Create expected B2UploadResults for each file
-        let expected_results: Vec<(String, B2UploadResult)> = test_files
-            .iter()
-            .map(|file_path| {
-                let hash = calculate_hash(file_path).unwrap();
-                let b2_result = B2UploadResult {
-                    hash: format!("test-etag-{}", hash),
-                    id: format!("test-id-{}", hash),
-                    bucket_id: "test-b2-bucket".to_string(),
-                    name: format!("secrets/{}", hash),
-                    created: "2023-01-01T00:00:00Z".to_string(),
-                    updated: "2023-01-01T00:00:00Z".to_string(),
-                };
-                (file_path.clone(), b2_result)
-            })
-            .collect();
-            
-        // Set up expectations for check_file_exists_with_details for each file
+        // We don't need from_args since we're manually injecting the client
+        
+        // Create a mock R2 client - now the B2 client redirects to R2, so set up expectations
+        let mut r2_client = MockR2StorageClient::new();
+        
+        // Set up the same expectations for the R2 client as we did for the B2 client
+        // First, check_file_exists_with_details expectations
         for file_path in test_files.iter() {
             let hash = calculate_hash(file_path).unwrap();
-            b2_client
+            r2_client
                 .expect_check_file_exists_with_details()
                 .with(
                     testing::eq(hash.clone()),
@@ -112,29 +103,40 @@ fn test_b2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
                 });
         }
         
-        // Set up expectations for upload_file_with_details for each file
-        for (file_path, b2_result) in expected_results {
+        // Then, upload_file_with_details expectations
+        let upload_results: Vec<(String, R2UploadResult)> = test_files
+            .iter()
+            .map(|file_path| {
+                let hash = calculate_hash(file_path).unwrap();
+                let result = R2UploadResult {
+                    hash: format!("test-etag-{}", hash),
+                    id: format!("test-id-{}", hash),
+                    bucket_id: "test-r2-bucket".to_string(),
+                    name: format!("secrets/{}", hash),
+                    created: "2023-01-01T00:00:00Z".to_string(),
+                    updated: "2023-01-01T00:00:00Z".to_string(),
+                };
+                (file_path.clone(), result)
+            })
+            .collect();
+            
+        for (file_path, result) in upload_results {
             let file_path_clone = file_path.clone();
-            b2_client
+            r2_client
                 .expect_upload_file_with_details()
                 .withf(move |details| details.file_path == file_path_clone)
                 .times(1)
                 .returning(move |_| {
-                    Ok(B2UploadResult {
-                        hash: b2_result.hash.clone(),
-                        id: b2_result.id.clone(),
-                        bucket_id: b2_result.bucket_id.clone(),
-                        name: b2_result.name.clone(),
-                        created: b2_result.created.clone(),
-                        updated: b2_result.updated.clone(),
+                    Ok(R2UploadResult {
+                        hash: result.hash.clone(),
+                        id: result.id.clone(),
+                        bucket_id: result.bucket_id.clone(),
+                        name: result.name.clone(),
+                        created: result.created.clone(),
+                        updated: result.updated.clone(),
                     })
                 });
         }
-        
-        // We don't need from_args since we're manually injecting the client
-        
-        // Create a mock R2 client (not used in this test)
-        let r2_client = MockR2StorageClient::new();
         
         // Run the process function with our mock clients
         let result = upload::process_with_injected_dependencies_and_clients(
@@ -160,12 +162,12 @@ fn test_b2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
             let file_path = &test_files[i];
             let hash = calculate_hash(file_path)?;
             
-            // B2-specific fields
-            assert_eq!(entry["destination_cloud"].as_str().unwrap(), "b2");
+            // R2-specific fields
+            assert_eq!(entry["destination_cloud"].as_str().unwrap(), "r2");
             assert_eq!(entry["cloud_id"].as_str().unwrap(), format!("test-id-{}", hash));
-            assert_eq!(entry["b2_hash"].as_str().unwrap(), format!("test-etag-{}", hash));
-            assert_eq!(entry["b2_bucket_id"].as_str().unwrap(), "test-b2-bucket");
-            assert_eq!(entry["b2_name"].as_str().unwrap(), format!("secrets/{}", hash));
+            assert_eq!(entry["r2_hash"].as_str().unwrap(), format!("test-etag-{}", hash));
+            assert_eq!(entry["r2_bucket_id"].as_str().unwrap(), "test-r2-bucket");
+            assert_eq!(entry["r2_name"].as_str().unwrap(), format!("secrets/{}", hash));
             
             // Common fields
             assert_eq!(entry["file_nm"].as_str().unwrap(), file_path);
@@ -173,7 +175,7 @@ fn test_b2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
             assert_eq!(entry["cloud_upload_bucket"].as_str().unwrap(), "test-upload-bucket");
         }
         
-        println!("B2 upload test succeeded!");
+        println!("R2 upload test succeeded!");
     }
 
     // Clean up
@@ -196,7 +198,7 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
     let d_hash = calculate_hash("tests/test3_and_test4/d d")?;
 
     // Create JSON content with updated field names and hash values
-    // Using large encoded_size values to trigger B2 upload path
+    // Using large encoded_size values to trigger R2 upload path
     let json_content = json!([
         {
             "file_nm": "tests/test3_and_test4/a",
@@ -206,8 +208,8 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "hostname": hostname::get()?.to_string_lossy().to_string(),
             "encoding": "utf8",
             "file_size": fs::metadata("tests/test3_and_test4/a")?.len(),
-            "encoded_size": 25000, // > 24000 to trigger B2 path
-            "destination_cloud": "b2",
+            "encoded_size": 25000, // > 24000 to trigger R2 path
+            "destination_cloud": "r2",
             // "secret_name": format!("file-{}", a_hash),
             "cloud_upload_bucket": "test-upload-bucket"
         },
@@ -219,8 +221,8 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "hostname": hostname::get()?.to_string_lossy().to_string(),
             "encoding": "utf8",
             "file_size": fs::metadata("tests/test3_and_test4/b")?.len(),
-            "encoded_size": 26000, // > 24000 to trigger B2 path
-            "destination_cloud": "b2",
+            "encoded_size": 26000, // > 24000 to trigger R2 path
+            "destination_cloud": "r2",
             // "secret_name": format!("file-{}", b_hash),
             "cloud_upload_bucket": "test-upload-bucket"
         },
@@ -232,8 +234,8 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "hostname": hostname::get()?.to_string_lossy().to_string(),
             "encoding": "utf8",
             "file_size": fs::metadata("tests/test3_and_test4/c")?.len(),
-            "encoded_size": 27000, // > 24000 to trigger B2 path
-            "destination_cloud": "b2",
+            "encoded_size": 27000, // > 24000 to trigger R2 path
+            "destination_cloud": "r2",
             // "secret_name": format!("file-{}", c_hash),
             "cloud_upload_bucket": "test-upload-bucket"
         },
@@ -245,8 +247,8 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "hostname": hostname::get()?.to_string_lossy().to_string(),
             "encoding": "utf8",
             "file_size": fs::metadata("tests/test3_and_test4/d d")?.len(),
-            "encoded_size": 28000, // > 24000 to trigger B2 path
-            "destination_cloud": "b2",
+            "encoded_size": 28000, // > 24000 to trigger R2 path
+            "destination_cloud": "r2",
             // "secret_name": format!("file-{}", d_hash),
             "cloud_upload_bucket": "test-upload-bucket"
         }

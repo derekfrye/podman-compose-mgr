@@ -39,6 +39,7 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         verbose: 1,
         s3_account_id_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/a")),
         s3_secret_key_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/b")),
+        s3_endpoint_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/c")),
         ..Default::default()
     };
 

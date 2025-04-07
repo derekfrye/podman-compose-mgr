@@ -47,30 +47,18 @@ impl R2Client {
     
     /// Create a new R2 client from the Args struct
     pub fn from_args(args: &Args) -> Result<Self> {
-        // Prioritize unified S3 parameters
-        if let (Some(account_id_filepath), Some(secret_key_filepath)) = 
-            (&args.s3_account_id_filepath, &args.s3_secret_key_filepath) {
+        // Use the unified S3 parameters
+        if let (Some(access_key_id_filepath), Some(secret_key_filepath), Some(endpoint_filepath)) = 
+            (&args.s3_account_id_filepath, &args.s3_secret_key_filepath, &args.s3_endpoint_filepath) {
             
-            // Read account ID (Cloudflare account ID) and Access Key ID from the same file
-            let account_id = read_value_from_file(account_id_filepath)?;
-            
-            // The s3_account_id_filepath for R2 contains both the Cloudflare account ID
-            // and the access key ID in the same file (first line is account ID)
-            // Read file again to get access key ID (second line)
-            let account_id_content = std::fs::read_to_string(account_id_filepath)
-                .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to read account ID file: {}", e)))?;
-            
-            // Split by lines and get the access key ID (second line if it exists)
-            let lines: Vec<&str> = account_id_content.lines().collect();
-            let access_key_id = if lines.len() > 1 {
-                lines[1].trim().to_string()
-            } else {
-                // If there's only one line, use that as both account ID and access key ID
-                account_id.clone()
-            };
+            // Read access key ID from file
+            let access_key_id = read_value_from_file(access_key_id_filepath)?;
             
             // Read secret key from file
             let access_key = read_value_from_file(secret_key_filepath)?;
+            
+            // Read Cloudflare account ID (endpoint) from file
+            let account_id = read_value_from_file(endpoint_filepath)?;
             
             // R2 bucket is now required to be in the input JSON
             // Use a placeholder here that will be replaced during upload
@@ -90,17 +78,9 @@ impl R2Client {
             return Ok(client);
         }
         
-        // Fall back to legacy direct parameter (only handle the one we kept)
-        if args.r2_access_key_id.is_some() {
-            // We still need an account ID for R2, but don't have a way to get it
-            return Err(Box::<dyn std::error::Error>::from(
-                "Legacy R2 parameters are no longer fully supported. Please use s3_account_id_filepath and s3_secret_key_filepath."
-            ));
-        }
-        
-        // If neither approach worked, return an error
+        // If parameters are missing, return an error
         Err(Box::<dyn std::error::Error>::from(
-            "S3-compatible credentials are required for R2 storage"
+            "S3-compatible credentials are required for R2 storage (s3_account_id_filepath, s3_secret_key_filepath, and s3_endpoint_filepath)"
         ))
     }
     

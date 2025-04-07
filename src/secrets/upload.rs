@@ -51,7 +51,6 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
     
     // Initialize flags to track which clients we need
     let mut need_azure_client = false;
-    let mut need_b2_client = false;
     let mut need_r2_client = false;
     
     // Check all entries to see if any match our hostname
@@ -74,10 +73,9 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
         let encoded_size = entry["encoded_size"].as_u64().unwrap_or_else(|| entry["file_size"].as_u64().unwrap_or(0));
         let too_large_for_keyvault = encoded_size > 24000;
         
-        if destination_cloud == "r2" {
+        if destination_cloud == "r2" || destination_cloud == "b2" || too_large_for_keyvault {
+            // Both B2 and R2 now use the R2 client
             need_r2_client = true;
-        } else if too_large_for_keyvault || destination_cloud == "b2" {
-            need_b2_client = true;
         } else {
             need_azure_client = true;
         }
@@ -112,19 +110,8 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
         Box::new(crate::interfaces::MockAzureKeyVaultClient::new())
     };
     
-    // Create B2 client if needed
-    let b2_client = if need_b2_client {
-        DefaultB2StorageClient::from_args(args).unwrap_or_else(|e| {
-            // This is an error if we actually need the B2 client
-            eprintln!("Warning: B2 client initialization failed but B2 uploads are needed: {}", e);
-            DefaultB2StorageClient::new_dummy()
-        })
-    } else  {
-        // Create dummy client if not needed
-        if args.verbose > 0 {
-        println!("info: No B2 uploads required for this host, using dummy client");}
-        DefaultB2StorageClient::new_dummy()
-    };
+    // Create dummy B2 client (all B2 operations now redirect to R2)
+    let b2_client = DefaultB2StorageClient::new_dummy();
     
     // Create R2 client if needed
     let r2_client = if need_r2_client {
@@ -364,7 +351,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             // If file exists, print a concise warning
             let (file_exists, cloud_created, cloud_updated) = if let Some((exists, created, updated)) = b2_file_exists {
                 if exists {
-                    println!("Warning: File already exists in b2.");
+                    println!("Warning: File already exists in R2 storage.");
                     (true, Some(created), Some(updated))
                 } else {
                     (false, None, None)
@@ -387,7 +374,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 encoding: encoding.to_string(),
                 cloud_created: None,
                 cloud_updated: None,
-                cloud_type: Some("b2".to_string()),
+                cloud_type: Some("r2".to_string()),
                 hash: hash.to_string(),
                 hash_algo: hash_algo.to_string(),
                 cloud_upload_bucket: cloud_upload_bucket.clone(), // Use the bucket from JSON
@@ -401,7 +388,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 file_exists,
                 cloud_created,
                 cloud_updated,
-                Some("b2"),
+                Some("r2"),
             )?;
             
             if !upload_confirmed {
@@ -411,38 +398,38 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 continue;
             }
             
-            // Upload to B2
-            let b2_result = match b2_client.upload_file_with_details(&file_details) {
+            // Upload to R2 (redirected from B2)
+            let r2_result = match b2_client.upload_file_with_details(&file_details) {
                 Ok(result) => result,
                 Err(e) => {
-                    eprintln!("Failed to upload to B2: {}", e);
+                    eprintln!("Failed to upload to R2 storage: {}", e);
                     continue;
                 }
             };
             
             if args.verbose > 0 {
-                println!("info: Successfully uploaded to Backblaze B2 storage");
+                println!("info: Successfully uploaded to R2 storage");
             }
             
-            // Create output entry with updated fields for B2
+            // Create output entry with updated fields for R2 (redirected from B2)
             json!({
                 "file_nm": file_path,
                 "hash": hash,
                 "hash_algo": hash_algo,
                 "ins_ts": ins_ts,
-                "cloud_id": b2_result.id,
-                "cloud_cr_ts": "",  // B2 doesn't provide created time separately
-                "cloud_upd_ts": "", // Use current time if needed
+                "cloud_id": r2_result.id,
+                "cloud_cr_ts": r2_result.created,  
+                "cloud_upd_ts": r2_result.updated,
                 "hostname": hostname,
                 "encoding": encoding,
                 "file_size": file_size,
                 "encoded_size": encoded_size,
-                "destination_cloud": "b2",
+                "destination_cloud": "r2",
                 "cloud_upload_bucket": cloud_upload_bucket.unwrap_or_else(|| "".to_string()),
                 "cloud_prefix": entry["cloud_prefix"].as_str().unwrap_or("").to_string(),
-                "b2_hash": b2_result.hash,
-                "b2_bucket_id": b2_result.bucket_id,
-                "b2_name": b2_result.name
+                "r2_hash": r2_result.hash,
+                "r2_bucket_id": r2_result.bucket_id,
+                "r2_name": r2_result.name
             })
         } else {
             // Azure KeyVault path

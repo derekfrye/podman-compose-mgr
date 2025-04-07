@@ -1,6 +1,5 @@
 use crate::read_interactive_input::{GrammarFragment, ReadValResult};
 use crate::secrets::models::SetSecretResponse;
-use crate::secrets::b2_storage::B2UploadResult;
 use crate::secrets::r2_storage::R2UploadResult;
 use crate::secrets::file_details::FileDetails;
 use mockall::automock;
@@ -142,103 +141,47 @@ impl AzureKeyVaultClient for DefaultAzureKeyVaultClient {
     }
 }
 
-/// Interface for B2 storage operations to facilitate testing
+/// Mock B2StorageClient with the same interface as R2StorageClient for backward compatibility in tests
 #[automock]
 pub trait B2StorageClient {
     /// Creates a client from Args
     fn from_args(args: &crate::args::Args) -> Result<Self, Box<dyn std::error::Error>> where Self: Sized;
     
-    /// Uploads a file to B2 storage
-    fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<B2UploadResult, Box<dyn std::error::Error>>;
+    /// Uploads a file to B2 storage (now redirects to R2)
+    fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<R2UploadResult, Box<dyn std::error::Error>>;
     
-    /// Checks if a file exists in B2 storage
+    /// Checks if a file exists (now redirects to R2)
     fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<FileExistenceCheckResult, Box<dyn std::error::Error>>;
 }
 
-/// Default implementation that uses the actual B2 client
+/// B2 storage is being removed, this now just redirects to R2
 pub struct DefaultB2StorageClient {
-    // The real B2Client 
-    client: crate::secrets::b2_storage::B2Client,
-    // Flag to track if this is a real client
-    is_real_client: bool,
+    // Actually using R2 client under the hood
+    r2_client: DefaultR2StorageClient,
 }
 
 impl DefaultB2StorageClient {
-    pub fn new(client: crate::secrets::b2_storage::B2Client) -> Self {
-        Self { 
-            client,
-            is_real_client: true 
-        }
-    }
-    
-    /// Create a mock client for when B2 credentials aren't available
-    /// but we want to continue without failing
     pub fn new_dummy() -> Self {
-        // Load a mock config that won't actually be used for real operations
-        let mock_config = crate::secrets::b2_storage::B2Config {
-            key_id: "dummy".to_string(),
-            application_key: "dummy".to_string(),
-            bucket: "dummy".to_string(),
-        };
-        
-        // Create a mock client but mark it as non-real so we never try to use it for real operations
-        let client = match crate::secrets::b2_storage::B2Client::new(mock_config) {
-            Ok(client) => client,
-            Err(_) => {
-                // If creating a mock client failed, we'll create a fake client
-                // Since we mark it as non-real, it won't be used for real operations
-                // Just do the same thing again since the error doesn't matter
-                let mock_config = crate::secrets::b2_storage::B2Config {
-                    key_id: "dummy".to_string(),
-                    application_key: "dummy".to_string(),
-                    bucket: "dummy".to_string(),
-                };
-                crate::secrets::b2_storage::B2Client::new(mock_config)
-                    .expect("Failed to create mock B2 client even with error handling")
-            }
-        };
-        
-        Self { 
-            client, 
-            is_real_client: false 
+        Self {
+            r2_client: DefaultR2StorageClient::new_dummy(),
         }
     }
 }
 
 impl B2StorageClient for DefaultB2StorageClient {
     fn from_args(args: &crate::args::Args) -> Result<Self, Box<dyn std::error::Error>> {
-        let client = crate::secrets::b2_storage::B2Client::from_args(args)?;
-        Ok(Self::new(client))
+        let r2_client = DefaultR2StorageClient::from_args(args)?;
+        Ok(Self { r2_client })
     }
     
-    fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<B2UploadResult, Box<dyn std::error::Error>> {
-        // If this is not a real client, provide a mock response instead of attempting to use the real client
-        if !self.is_real_client {
-            // For a mock client, create a mock response with details from the file
-            // The verbose flag is handled by the underlying S3 client
-            return Ok(B2UploadResult {
-                hash: format!("mock-hash-{}", file_details.hash),
-                id: format!("mock-id-{}", file_details.hash),
-                bucket_id: "mock-bucket".to_string(),
-                name: format!("secrets/{}", file_details.hash),
-                created: "2025-01-01T00:00:00Z".to_string(),
-                updated: "2025-01-01T00:00:00Z".to_string(),
-            });
-        }
-        
-        // Otherwise, use the real client
-        self.client.upload_file_with_details(file_details)
+    fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<R2UploadResult, Box<dyn std::error::Error>> {
+        // Just redirect to R2 client
+        self.r2_client.upload_file_with_details(file_details)
     }
     
     fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<Option<(bool, String, String)>, Box<dyn std::error::Error>> {
-        // If this is not a real client, return mock data
-        if !self.is_real_client {
-            return Ok(Some((true, "2025-01-01T00:00:00Z".to_string(), "2025-01-01T00:00:00Z".to_string())));
-        }
-        
-        // Otherwise, use the real client
-        let bucket_ref = bucket_name.as_deref();
-        self.client.check_file_exists_with_details(hash, bucket_ref)
+        // Just redirect to R2 client
+        self.r2_client.check_file_exists_with_details(hash, bucket_name)
     }
 }
 

@@ -2,7 +2,7 @@ use crate::args::Args;
 use crate::interfaces::AzureKeyVaultClient;
 use crate::read_interactive_input::{self as read_val, GrammarFragment};
 use crate::secrets::azure::{calculate_md5, get_content_from_file, get_keyvault_client};
-use crate::secrets::b2_storage::B2Client;
+use crate::secrets::r2_storage::R2Client;
 use crate::secrets::error::Result;
 use crate::secrets::models::{JsonOutput, JsonOutputControl, SetSecretResponse};
 use crate::secrets::user_prompt::{display_validation_help, setup_validation_prompt};
@@ -388,14 +388,13 @@ pub fn validate_entry(
     let (cloud_id, file_nm, secret_name, encoding, storage_type) = extract_validation_fields(&entry)?;
 
     // Handle different storage backends
-    if storage_type == "b2" {
-        // NOTE: This is a partial implementation that compiles but may not be fully functional yet
-        // until we resolve issues with AWS SDK credentials
-        let b2_client = match B2Client::from_args(args) {
+    if storage_type == "b2" || storage_type == "r2" {
+        // R2 storage handles both r2 and b2 (redirected) entries
+        let r2_client = match R2Client::from_args(args) {
             Ok(client) => client,
             Err(e) => {
                 return Err(Box::<dyn std::error::Error>::from(
-                    format!("Failed to create B2 client: {}", e)
+                    format!("Failed to create R2 client: {}", e)
                 ));
             }
         };
@@ -403,26 +402,26 @@ pub fn validate_entry(
         // Object key is typically in format "secrets/{hash}"
         let object_key = format!("secrets/{}", entry["hash"].as_str().unwrap_or(""));
         
-        // Download content from B2
-        let content = match b2_client.download_file(&object_key) {
+        // Download content from R2
+        let content = match r2_client.download_file(&object_key) {
             Ok(data) => data,
             Err(e) => {
                 return Err(Box::<dyn std::error::Error>::from(
-                    format!("Failed to retrieve file from B2: {}", e)
+                    format!("Failed to retrieve file from R2 storage: {}", e)
                 ));
             }
         };
         
-        // Convert content to string (not used for B2 but stored as metadata)
+        // Convert content to string (not used for R2 but stored as metadata)
         let _content_str = String::from_utf8_lossy(&content).to_string();
         
-        // Get B2 metadata (we don't do checksum validation for B2 here)
+        // Get R2 metadata (we don't do checksum validation for R2 here)
         
         // Create timestamp and get hostname
         let formatted_date = get_current_timestamp()?;
         let hostname = get_hostname()?;
         
-        // Create output with B2 specifics
+        // Create output with R2 specifics
         let hash_value = entry["hash"].as_str()
             .or_else(|| entry["md5"].as_str())
             .unwrap_or("")

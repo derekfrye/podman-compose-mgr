@@ -66,18 +66,9 @@ pub struct Args {
     #[arg(long)]
     pub s3_secret_key_filepath: Option<PathBuf>,
     
-    // Legacy parameters maintained for backwards compatibility
-    /// Backblaze B2 key ID
-    #[arg(long, hide = true)]
-    pub b2_key_id: Option<String>,
-
-    /// Backblaze B2 application key
-    #[arg(long, hide = true)]
-    pub b2_application_key: Option<String>,
-    
-    /// Cloudflare R2 Access Key ID
-    #[arg(long, hide = true)]
-    pub r2_access_key_id: Option<String>,
+    /// Path to file containing S3-compatible endpoint (for R2, the Cloudflare account ID)
+    #[arg(long)]
+    pub s3_endpoint_filepath: Option<PathBuf>,
     
 }
 
@@ -99,9 +90,7 @@ impl Default for Args {
             secrets_init_filepath: None,
             s3_account_id_filepath: None,
             s3_secret_key_filepath: None,
-            b2_key_id: None,
-            b2_application_key: None,
-            r2_access_key_id: None,
+            s3_endpoint_filepath: None,
         }
     }
 }
@@ -306,10 +295,20 @@ impl Args {
                         check_readable_path(filepath)?;
                     }
                     
-                    // For R2, we also need to check if account ID is provided directly
-                    // when using legacy parameters
-                    if need_r2_credentials && self.s3_account_id_filepath.is_none() && self.r2_access_key_id.is_none() {
-                        return Err("s3_account_id_filepath is required for upload mode with R2 entries when not using legacy parameters".to_string());
+                    // For R2, we need to check if both access key ID and endpoint (account ID) are provided
+                    if need_r2_credentials {
+                        if self.s3_account_id_filepath.is_none() {
+                            return Err("s3_account_id_filepath is required for upload mode with R2 entries".to_string());
+                        }
+                        
+                        if self.s3_endpoint_filepath.is_none() {
+                            return Err("s3_endpoint_filepath is required for upload mode with R2 entries".to_string());
+                        }
+                        
+                        // Validate s3_endpoint_filepath if provided
+                        if let Some(filepath) = &self.s3_endpoint_filepath {
+                            check_readable_path(filepath)?;
+                        }
                     }
                 }
             }

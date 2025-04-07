@@ -35,7 +35,7 @@ impl B2Client {
     
     /// Create a new B2 client from the Args struct
     pub fn from_args(args: &Args) -> Result<Self> {
-        // Prioritize unified S3 parameters
+        // Use the unified S3 parameters
         if let (Some(account_id_filepath), Some(secret_key_filepath)) = 
             (&args.s3_account_id_filepath, &args.s3_secret_key_filepath) {
             
@@ -60,30 +60,9 @@ impl B2Client {
             return Ok(client);
         }
         
-        // Fall back to legacy direct parameters
-        if let (Some(key_id), Some(application_key)) = 
-            (&args.b2_key_id, &args.b2_application_key) {
-            
-            // B2 bucket is now required to be in the input JSON
-            // Use a placeholder here that will be replaced during upload
-            let bucket_name = "placeholder_bucket_will_be_provided_from_json".to_string();
-            
-            let config = B2Config {
-                key_id: key_id.clone(),
-                application_key: application_key.clone(),
-                bucket: bucket_name,
-            };
-            
-            // Create a client and then update the verbose flag
-            let mut client = Self::new(config)?;
-            // Set verbose flag based on args
-            client.client.verbose = args.verbose > 0;
-            return Ok(client);
-        }
-        
-        // If neither approach worked, return an error
+        // If parameters are missing, return an error
         Err(Box::<dyn std::error::Error>::from(
-            "Either S3-compatible credentials or legacy B2 credentials are required"
+            "S3-compatible credentials are required for B2 storage"
         ))
     }
     
