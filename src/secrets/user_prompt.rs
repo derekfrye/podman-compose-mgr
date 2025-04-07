@@ -273,8 +273,8 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
                                     (size_diff as f64 / config.local_file_size as f64) * 100.0;
 
                                 if cloud_size > config.local_file_size {
-                                    println!(
-                                        "Warning: Cloud file size ({}) is LARGER than local file size ({}) by {} ({:.2}%)",
+                                    eprintln!(
+                                        "warn: Cloud file size ({}) is LARGER than local file size ({}) by {} ({:.2}%)",
                                         crate::secrets::file_details::format_file_size(cloud_size),
                                         crate::secrets::file_details::format_file_size(
                                             config.local_file_size
@@ -283,8 +283,8 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
                                         diff_percentage
                                     );
                                 } else {
-                                    println!(
-                                        "Warning: Cloud file size ({}) is SMALLER than local file size ({}) by {} ({:.2}%)",
+                                    eprintln!(
+                                        "warn: Cloud file size ({}) is SMALLER than local file size ({}) by {} ({:.2}%)",
                                         crate::secrets::file_details::format_file_size(cloud_size),
                                         crate::secrets::file_details::format_file_size(
                                             config.local_file_size

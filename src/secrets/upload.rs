@@ -114,7 +114,7 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
         DefaultR2StorageClient::from_args(args).unwrap_or_else(|e| {
             // This is an error if we actually need the R2 client
             eprintln!(
-                "Warning: R2 client initialization failed but R2 uploads are needed: {}",
+                "warn: R2 client initialization failed but R2 uploads are needed: {}",
                 e
             );
             DefaultR2StorageClient::new_dummy()
@@ -277,7 +277,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             let (file_exists, cloud_created, cloud_updated) =
                 if let Some((exists, created, updated)) = r2_file_exists {
                     if exists {
-                        println!("Warning: File already exists in R2 storage.");
+                        eprintln!("warn: File already exists in R2 storage.");
 
                         // Also get file metadata to check size
                         if let Ok(Some(metadata)) = r2_client.get_file_metadata(hash) {
@@ -341,7 +341,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             let r2_result = match r2_client.upload_file_with_details(&file_details) {
                 Ok(result) => result,
                 Err(e) => {
-                    eprintln!("Failed to upload to R2: {}", e);
+                    eprintln!("warn: Failed to upload to R2: {}", e);
                     continue;
                 }
             };
@@ -391,7 +391,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             let (file_exists, cloud_created, cloud_updated) =
                 if let Some((exists, created, updated)) = b2_file_exists {
                     if exists {
-                        println!("Warning: File already exists in R2 storage.");
+                        eprintln!("warn: File already exists in R2 storage.");
 
                         // Also get file metadata to check size
                         if let Ok(Some(metadata)) = b2_client.get_file_metadata(hash) {
@@ -455,7 +455,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             let r2_result = match b2_client.upload_file_with_details(&file_details) {
                 Ok(result) => result,
                 Err(e) => {
-                    eprintln!("Failed to upload to R2 storage: {}", e);
+                    eprintln!("warn: Failed to upload to R2 storage: {}", e);
                     continue;
                 }
             };

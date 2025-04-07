@@ -310,7 +310,7 @@ fn validate_checksums(
                     Ok(content) => calculate_md5(content),
                     Err(_) => {
                         eprintln!(
-                            "Warning: File {} contains non-UTF-8 data but was expected to be UTF-8.",
+                            "warn: File {} contains non-UTF-8 data but was expected to be UTF-8.",
                             file_nm
                         );
                         // Fall back to comparing bytes

@@ -167,7 +167,7 @@ impl S3StorageClient {
                         // For S3 providers, we'll assume the bucket already exists in production and continue
                         // This is because some accounts may not have bucket creation permissions
                         // but still have upload permissions to existing buckets
-                        println!("WARNING: Failed to create bucket '{}', but will attempt to use it anyway", bucket_name);
+                        eprintln!("warn: Failed to create bucket '{}', but will attempt to use it anyway", bucket_name);
                         
                         // Instead of failing, we'll try to continue
                         // If the bucket truly doesn't exist, operations will fail later naturally

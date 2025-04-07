@@ -157,14 +157,14 @@ fn process_input_lines(lines: Vec<&str>) -> Result<Vec<serde_json::Value>, Strin
                     file_array.push(entry);
                 } else {
                     eprintln!(
-                        "Warning: Path '{}' contains invalid UTF-8 characters, skipping",
+                        "warn: Path '{}' contains invalid UTF-8 characters, skipping",
                         trimmed
                     );
                 }
             }
             Err(_) => {
                 eprintln!(
-                    "Warning: File '{}' does not exist or is not readable.",
+                    "warn: File '{}' does not exist or is not readable.",
                     trimmed
                 );
             }
