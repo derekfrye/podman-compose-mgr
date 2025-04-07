@@ -56,14 +56,16 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
     
     // Check all entries to see if any match our hostname
     for entry in &entries {
-        // Get hostname - legacy or new, default to current hostname if missing
-        let hostname = match entry["hostname"].as_str() {
+        // This variable removal is intentional - we use entry_hostname instead
+        
+        // Get hostname - convert to string for consistent comparison
+        let entry_hostname = match entry["hostname"].as_str() {
             Some(h) => h,
-            None => &our_hostname, // Use current hostname if missing
+            None => &our_hostname // Use current hostname if missing
         };
         
         // If this entry is not for our host, skip it
-        if hostname != our_hostname {
+        if entry_hostname != our_hostname {
             continue;
         }
         
@@ -212,15 +214,8 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
 
         // Get hostname - legacy or new, default to current hostname if missing
         let hostname = match entry["hostname"].as_str() {
-            Some(h) => h,
-            None => {
-                // Create a host string and store it so we can return a reference
-                let host_str = get_hostname().unwrap_or_else(|_| "unknown_host".to_string());
-                // We need to leak this string to make it live long enough
-                // This is a small memory leak but acceptable for this case
-                // since it only happens when hostname is missing in JSON
-                Box::leak(Box::new(host_str))
-            }
+            Some(h) => h.to_string(),
+            None => get_hostname().unwrap_or_else(|_| "unknown_host".to_string())
         };
 
         // Get encoding - defaults to utf8 for backward compatibility
