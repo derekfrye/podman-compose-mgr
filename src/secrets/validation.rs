@@ -2,9 +2,9 @@ use crate::args::Args;
 use crate::interfaces::AzureKeyVaultClient;
 use crate::read_interactive_input::{self as read_val, GrammarFragment};
 use crate::secrets::azure::{calculate_md5, get_content_from_file, get_keyvault_client};
-use crate::secrets::r2_storage::R2Client;
 use crate::secrets::error::Result;
 use crate::secrets::models::{JsonOutput, JsonOutputControl, SetSecretResponse};
+use crate::secrets::r2_storage::R2Client;
 use crate::secrets::user_prompt::{display_validation_help, setup_validation_prompt};
 use crate::secrets::utils::{
     details_about_entry, extract_validation_fields, get_current_timestamp, get_hostname,
@@ -385,7 +385,8 @@ pub fn validate_entry(
     args: &Args,
 ) -> Result<JsonOutput> {
     // Extract required fields
-    let (cloud_id, file_nm, secret_name, encoding, storage_type) = extract_validation_fields(&entry)?;
+    let (cloud_id, file_nm, secret_name, encoding, storage_type) =
+        extract_validation_fields(&entry)?;
 
     // Handle different storage backends
     if storage_type == "b2" || storage_type == "r2" {
@@ -393,40 +394,43 @@ pub fn validate_entry(
         let r2_client = match R2Client::from_args(args) {
             Ok(client) => client,
             Err(e) => {
-                return Err(Box::<dyn std::error::Error>::from(
-                    format!("Failed to create R2 client: {}", e)
-                ));
+                return Err(Box::<dyn std::error::Error>::from(format!(
+                    "Failed to create R2 client: {}",
+                    e
+                )));
             }
         };
-        
+
         // Object key is typically in format "secrets/{hash}"
         let object_key = format!("secrets/{}", entry["hash"].as_str().unwrap_or(""));
-        
+
         // Download content from R2
         let content = match r2_client.download_file(&object_key) {
             Ok(data) => data,
             Err(e) => {
-                return Err(Box::<dyn std::error::Error>::from(
-                    format!("Failed to retrieve file from R2 storage: {}", e)
-                ));
+                return Err(Box::<dyn std::error::Error>::from(format!(
+                    "Failed to retrieve file from R2 storage: {}",
+                    e
+                )));
             }
         };
-        
+
         // Convert content to string (not used for R2 but stored as metadata)
         let _content_str = String::from_utf8_lossy(&content).to_string();
-        
+
         // Get R2 metadata (we don't do checksum validation for R2 here)
-        
+
         // Create timestamp and get hostname
         let formatted_date = get_current_timestamp()?;
         let hostname = get_hostname()?;
-        
+
         // Create output with R2 specifics
-        let hash_value = entry["hash"].as_str()
+        let hash_value = entry["hash"]
+            .as_str()
             .or_else(|| entry["md5"].as_str())
             .unwrap_or("")
             .to_string();
-        
+
         let output = JsonOutput {
             file_nm: file_nm.clone(),
             md5: hash_value.clone(),
@@ -440,11 +444,11 @@ pub fn validate_entry(
             hash_val: hash_value.clone(),
             hash_algo: entry["hash_algo"].as_str().unwrap_or("sha1").to_string(),
         };
-        
+
         Ok(output)
     } else {
         // Default to Azure KeyVault
-        
+
         // Get the secret from Azure KeyVault
         let secret_value = get_secret_from_azure(secret_name, client)?;
 

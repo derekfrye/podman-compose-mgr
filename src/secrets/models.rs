@@ -12,7 +12,7 @@ pub struct SetSecretResponse {
 #[derive(Serialize)]
 pub struct JsonOutput {
     pub file_nm: String,
-    pub md5: String,  // This is the file hash
+    pub md5: String, // This is the file hash
     pub ins_ts: String,
     pub az_id: String,
     pub az_create: String,
@@ -22,7 +22,7 @@ pub struct JsonOutput {
     #[serde(default = "default_encoding")]
     pub encoding: String,
     #[serde(rename = "hash", default = "String::new")]
-    pub hash_val: String,  // Added for compatibility with B2 storage
+    pub hash_val: String, // Added for compatibility with B2 storage
     #[serde(default = "default_hash_algo")]
     pub hash_algo: String, // Added for compatibility with B2 storage
 }

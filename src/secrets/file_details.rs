@@ -1,6 +1,6 @@
 use crate::secrets::error::Result;
 use base64;
-use chrono::{DateTime, Local, TimeZone, Utc, NaiveDateTime, ParseError};
+use chrono::{DateTime, Local, NaiveDateTime, ParseError, TimeZone, Utc};
 use std::fs::{File, metadata};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::Path;
@@ -19,7 +19,7 @@ pub struct FileDetails {
     pub hash: String,
     pub hash_algo: String,
     pub cloud_upload_bucket: Option<String>, // Bucket name for B2 storage
-    pub cloud_prefix: Option<String>, // Storage prefix (folder path)
+    pub cloud_prefix: Option<String>,        // Storage prefix (folder path)
 }
 
 /// Check if file is UTF-8 encoded and return encoding info
@@ -177,7 +177,7 @@ pub fn get_file_details(file_path: &str) -> Result<FileDetails> {
         hash,
         hash_algo: "sha1".to_string(),
         cloud_upload_bucket: None, // Will be set during upload
-        cloud_prefix: None, // Will be set during upload
+        cloud_prefix: None,        // Will be set during upload
     })
 }
 
@@ -270,7 +270,7 @@ fn parse_and_format_cloud_date(date_str: &str) -> std::result::Result<String, Pa
             }
         }
     };
-    
+
     // Format the datetime in the desired 12-hour format with am/pm
     Ok(datetime.format("%m/%d/%y %I:%M%p").to_string())
 }

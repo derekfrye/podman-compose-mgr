@@ -29,7 +29,7 @@ pub fn process(args: &Args) -> Result<()> {
 
     // Parse the JSON - it's either a map or an array of objects with filenm key
     let files_array: Vec<serde_json::Value> = serde_json::from_str(&contents).unwrap_or_default();
-    
+
     let files: Vec<String> = if contents.trim().starts_with('{') {
         // Handle map format
         let files_map: HashMap<String, String> = serde_json::from_str(&contents)?;
@@ -73,7 +73,7 @@ pub fn process(args: &Args) -> Result<()> {
             .find(|obj| obj.get("filenm").and_then(|v| v.as_str()) == Some(&file_nm))
             .and_then(|obj| obj.get("destination_cloud"))
             .and_then(|v| v.as_str());
-            
+
         // If cloud provider is specified in input, use it; otherwise fall back to size-based logic
         let destination_cloud = if let Some(cloud) = cloud_from_input {
             cloud
@@ -106,7 +106,7 @@ pub fn process(args: &Args) -> Result<()> {
             // For Azure, always use empty string as it doesn't need a bucket
             "".to_string()
         };
-        
+
         // Create JSON entry
         let entry = json!({
             "file_nm": file_nm,
@@ -140,55 +140,56 @@ pub fn process(args: &Args) -> Result<()> {
 
         if !existing_content.trim().is_empty() {
             // Parse existing JSON entries
-            let mut existing_entries: Vec<serde_json::Value> = serde_json::from_str(&existing_content)?;
-            
+            let mut existing_entries: Vec<serde_json::Value> =
+                serde_json::from_str(&existing_content)?;
+
             // Create a lookup map for existing entries (key = file_nm + hostname)
             let mut updated_indices = std::collections::HashSet::new();
-            
+
             // Create a set to track which new entries have been processed
             let mut processed_new_entries = std::collections::HashSet::new();
-            
+
             // Go through each new entry
             for (new_idx, new_entry) in new_entries.iter().enumerate() {
                 // Get file_nm and hostname from the new entry
                 if let (Some(file_nm), Some(hostname)) = (
                     new_entry.get("file_nm").and_then(|v| v.as_str()),
-                    new_entry.get("hostname").and_then(|v| v.as_str())
+                    new_entry.get("hostname").and_then(|v| v.as_str()),
                 ) {
                     let lookup_key = format!("{}-{}", file_nm, hostname);
-                    
+
                     // Look for a matching entry in existing entries
                     let mut found_match = false;
-                    
+
                     for (idx, existing_entry) in existing_entries.iter_mut().enumerate() {
                         if let (Some(existing_file_nm), Some(existing_hostname)) = (
                             existing_entry.get("file_nm").and_then(|v| v.as_str()),
-                            existing_entry.get("hostname").and_then(|v| v.as_str())
+                            existing_entry.get("hostname").and_then(|v| v.as_str()),
                         ) {
-                            let existing_key = format!("{}-{}", existing_file_nm, existing_hostname);
-                            
+                            let existing_key =
+                                format!("{}-{}", existing_file_nm, existing_hostname);
+
                             // If match found, update the existing entry
                             if existing_key == lookup_key {
                                 found_match = true;
                                 updated_indices.insert(idx);
                                 processed_new_entries.insert(new_idx);
-                                
+
                                 // Update fields from new entry to existing entry
-                                if let (Some(new_obj), Some(existing_obj)) = (
-                                    new_entry.as_object(),
-                                    existing_entry.as_object_mut()
-                                ) {
+                                if let (Some(new_obj), Some(existing_obj)) =
+                                    (new_entry.as_object(), existing_entry.as_object_mut())
+                                {
                                     for (key, value) in new_obj {
                                         existing_obj.insert(key.clone(), value.clone());
                                     }
                                 }
-                                
+
                                 updated_entries_count += 1;
                                 break;
                             }
                         }
                     }
-                    
+
                     // No need to add new entries here - we'll do it in one pass below
                     if !found_match {
                         // Mark this entry as not processed
@@ -196,12 +197,12 @@ pub fn process(args: &Args) -> Result<()> {
                     }
                 }
             }
-            
+
             // Start with all existing entries in the output
             for entry in existing_entries {
                 all_entries.push(entry);
             }
-            
+
             // Add all new entries that weren't updates to existing ones
             for (idx, new_entry) in new_entries.iter().enumerate() {
                 if !processed_new_entries.contains(&idx) {

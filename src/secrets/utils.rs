@@ -10,7 +10,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use time::OffsetDateTime;
 
 /// Extract required fields for validation
-pub fn extract_validation_fields(entry: &Value) -> Result<(String, String, String, String, String)> {
+pub fn extract_validation_fields(
+    entry: &Value,
+) -> Result<(String, String, String, String, String)> {
     // Support both old and new field names
     let cloud_id = entry["cloud_id"]
         .as_str()
@@ -32,7 +34,7 @@ pub fn extract_validation_fields(entry: &Value) -> Result<(String, String, Strin
 
     // Get encoding, defaulting to "utf8" for backward compatibility
     let encoding = entry["encoding"].as_str().unwrap_or("utf8").to_string();
-    
+
     // Get storage type (azure_kv or b2)
     let storage_type = entry["destination_cloud"]
         .as_str()
@@ -47,27 +49,27 @@ pub fn extract_validation_fields(entry: &Value) -> Result<(String, String, Strin
 pub fn details_about_entry(entry: &Value) -> Result<()> {
     // Support both old and new field names
     let file_nm = crate::utils::json_utils::extract_string_field_or(entry, "file_nm", "filenm")?;
-    
+
     // Get secret name (from either az_name or secret_name)
     let secret_name = entry["secret_name"]
         .as_str()
         .or_else(|| entry["az_name"].as_str())
         .unwrap_or("unknown");
-        
+
     // Get cloud timestamps
     let cloud_created = entry["cloud_cr_ts"]
         .as_str()
         .or_else(|| entry["az_create"].as_str())
         .unwrap_or("");
-        
+
     let cloud_updated = entry["cloud_upd_ts"]
         .as_str()
         .or_else(|| entry["az_updated"].as_str())
         .unwrap_or("");
-        
+
     // Get encoding with default value for backward compatibility
     let encoding = entry["encoding"].as_str().unwrap_or("utf8");
-    
+
     // Get storage type
     let storage_type = entry["destination_cloud"]
         .as_str()
@@ -78,7 +80,7 @@ pub fn details_about_entry(entry: &Value) -> Result<()> {
     println!("Secret Name: {}", secret_name);
     println!("Storage Type: {}", storage_type);
     println!("Encoding: {}", encoding);
-    
+
     // Show hash information if available
     if let Some(hash) = entry["hash"].as_str() {
         let hash_algo = entry["hash_algo"].as_str().unwrap_or("sha1");
@@ -143,7 +145,7 @@ pub fn calculate_hash(filepath: &str) -> Result<String> {
     // Create a hasher and update it with the filepath bytes
     let mut hasher = Sha1::new();
     hasher.update(filepath.as_bytes());
-    
+
     // Finalize and return the hex-encoded hash
     let result = hasher.finalize();
     Ok(hex::encode(result))

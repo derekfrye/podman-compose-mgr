@@ -13,7 +13,7 @@ use serde::Deserialize;
 fn test1() -> Result<(), Box<dyn std::error::Error>> {
     // Set up the test directory structure
     let contents = fs::read_to_string(".vscode/launch.json")?;
-    
+
     // Filter out lines that are comments and also lines with trailing comments
     let filtered: String = contents
         .lines()

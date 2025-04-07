@@ -85,10 +85,7 @@ pub fn add_upload_choice_options(grammars: &mut Vec<GrammarFragment>) {
 }
 
 /// Setup the prompt for uploading a secret
-pub fn setup_upload_prompt(
-    grammars: &mut Vec<GrammarFragment>,
-    file_path: &str,
-) -> Result<()> {
+pub fn setup_upload_prompt(grammars: &mut Vec<GrammarFragment>, file_path: &str) -> Result<()> {
     // Calculate file size
     let metadata = std::fs::metadata(file_path).map_err(|e| {
         Box::<dyn std::error::Error>::from(format!(
@@ -256,11 +253,14 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
 
                         // Display the details
                         display_file_details(&details);
-                        
+
                         // If file exists in cloud and cloud_file_size is available, show the size comparison
-                        if config.secret_exists && config.cloud_type == Some("r2") && config.cloud_file_size.is_some() {
+                        if config.secret_exists
+                            && config.cloud_type == Some("r2")
+                            && config.cloud_file_size.is_some()
+                        {
                             let cloud_size = config.cloud_file_size.unwrap();
-                            
+
                             // Compare file sizes and show difference
                             if cloud_size != config.local_file_size {
                                 let size_diff = if cloud_size > config.local_file_size {
@@ -268,31 +268,41 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
                                 } else {
                                     config.local_file_size - cloud_size
                                 };
-                                
-                                let diff_percentage = (size_diff as f64 / config.local_file_size as f64) * 100.0;
-                                
+
+                                let diff_percentage =
+                                    (size_diff as f64 / config.local_file_size as f64) * 100.0;
+
                                 if cloud_size > config.local_file_size {
-                                    println!("Warning: Cloud file size ({}) is LARGER than local file size ({}) by {} ({:.2}%)",
+                                    println!(
+                                        "Warning: Cloud file size ({}) is LARGER than local file size ({}) by {} ({:.2}%)",
                                         crate::secrets::file_details::format_file_size(cloud_size),
-                                        crate::secrets::file_details::format_file_size(config.local_file_size),
+                                        crate::secrets::file_details::format_file_size(
+                                            config.local_file_size
+                                        ),
                                         crate::secrets::file_details::format_file_size(size_diff),
                                         diff_percentage
                                     );
                                 } else {
-                                    println!("Warning: Cloud file size ({}) is SMALLER than local file size ({}) by {} ({:.2}%)",
+                                    println!(
+                                        "Warning: Cloud file size ({}) is SMALLER than local file size ({}) by {} ({:.2}%)",
                                         crate::secrets::file_details::format_file_size(cloud_size),
-                                        crate::secrets::file_details::format_file_size(config.local_file_size),
+                                        crate::secrets::file_details::format_file_size(
+                                            config.local_file_size
+                                        ),
                                         crate::secrets::file_details::format_file_size(size_diff),
                                         diff_percentage
                                     );
                                 }
                             } else {
-                                println!("File sizes match: Cloud file size equals local file size ({})",
-                                    crate::secrets::file_details::format_file_size(config.local_file_size)
+                                println!(
+                                    "File sizes match: Cloud file size equals local file size ({})",
+                                    crate::secrets::file_details::format_file_size(
+                                        config.local_file_size
+                                    )
                                 );
                             }
                         }
-                        
+
                         // Add an extra newline for better readability
                         println!();
                     }

@@ -1,8 +1,11 @@
-use std::fs;
 use mockall::predicate as testing;
+use std::fs;
 
 use podman_compose_mgr::args::{Args, Mode};
-use podman_compose_mgr::interfaces::{MockAzureKeyVaultClient, MockB2StorageClient, MockR2StorageClient, MockReadInteractiveInputHelper};
+use podman_compose_mgr::interfaces::{
+    MockAzureKeyVaultClient, MockB2StorageClient, MockR2StorageClient,
+    MockReadInteractiveInputHelper,
+};
 use podman_compose_mgr::read_interactive_input::ReadValResult;
 use podman_compose_mgr::secrets::r2_storage::R2UploadResult;
 use podman_compose_mgr::secrets::upload;
@@ -71,16 +74,16 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
                 // Get the current file being processed and increment counter
                 let current_index = file_index.get();
                 file_index.set(current_index + 1);
-                
+
                 // Return "Y" to approve all uploads
                 ReadValResult {
                     user_entered_val: Some("Y".to_string()),
                 }
             });
-            
+
         // Create mock R2 storage client
         let mut r2_client = MockR2StorageClient::new();
-        
+
         // Create expected R2UploadResults for each file
         let expected_results: Vec<(String, R2UploadResult)> = test_files
             .iter()
@@ -97,7 +100,7 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
                 (file_path.clone(), r2_result)
             })
             .collect();
-        
+
         // Set up expectations for check_file_exists_with_details for each file
         for file_path in test_files.iter() {
             let hash = calculate_hash(file_path).unwrap();
@@ -105,14 +108,12 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
                 .expect_check_file_exists_with_details()
                 .with(
                     testing::eq(hash.clone()),
-                    testing::eq(Some("test-r2-upload-bucket".to_string()))
+                    testing::eq(Some("test-r2-upload-bucket".to_string())),
                 )
                 .times(1)
-                .returning(|_, _| {
-                    Ok(Some((false, "".to_string(), "".to_string())))
-                });
+                .returning(|_, _| Ok(Some((false, "".to_string(), "".to_string()))));
         }
-        
+
         // Set up expectations for upload_file_with_details for each file
         for (file_path, r2_result) in expected_results {
             let file_path_clone = file_path.clone();
@@ -131,7 +132,7 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
                     })
                 });
         }
-        
+
         // Run the process function with our mock clients
         let result = upload::process_with_injected_dependencies_and_clients(
             &args,
@@ -147,28 +148,40 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         // Check the output JSON file to verify the uploads were processed correctly
         let output_content = fs::read_to_string(output_path.clone())?;
         let output_entries: Vec<serde_json::Value> = serde_json::from_str(&output_content)?;
-        
+
         // Verify we have 4 entries
         assert_eq!(output_entries.len(), 4, "Expected 4 entries in output JSON");
-        
+
         // Verify each entry has the correct R2-specific fields
         for (i, entry) in output_entries.iter().enumerate() {
             let file_path = &test_files[i];
             let hash = calculate_hash(file_path)?;
-            
+
             // R2-specific fields
             assert_eq!(entry["destination_cloud"].as_str().unwrap(), "r2");
-            assert_eq!(entry["cloud_id"].as_str().unwrap(), format!("test-id-{}", hash));
-            assert_eq!(entry["r2_hash"].as_str().unwrap(), format!("test-etag-{}", hash));
+            assert_eq!(
+                entry["cloud_id"].as_str().unwrap(),
+                format!("test-id-{}", hash)
+            );
+            assert_eq!(
+                entry["r2_hash"].as_str().unwrap(),
+                format!("test-etag-{}", hash)
+            );
             assert_eq!(entry["r2_bucket_id"].as_str().unwrap(), "test-r2-bucket");
-            assert_eq!(entry["r2_name"].as_str().unwrap(), format!("secrets/{}", hash));
-            
+            assert_eq!(
+                entry["r2_name"].as_str().unwrap(),
+                format!("secrets/{}", hash)
+            );
+
             // Common fields
             assert_eq!(entry["file_nm"].as_str().unwrap(), file_path);
             assert_eq!(entry["hash"].as_str().unwrap(), hash);
-            assert_eq!(entry["cloud_upload_bucket"].as_str().unwrap(), "test-r2-upload-bucket");
+            assert_eq!(
+                entry["cloud_upload_bucket"].as_str().unwrap(),
+                "test-r2-upload-bucket"
+            );
         }
-        
+
         println!("R2 upload test succeeded!");
     }
 

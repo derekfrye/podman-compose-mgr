@@ -1,21 +1,19 @@
 use crate::args::Args;
 use crate::interfaces::{
-    AzureKeyVaultClient, B2StorageClient, DefaultB2StorageClient,
-    DefaultReadInteractiveInputHelper, ReadInteractiveInputHelper,
-    R2StorageClient, DefaultR2StorageClient,
+    AzureKeyVaultClient, B2StorageClient, DefaultB2StorageClient, DefaultR2StorageClient,
+    DefaultReadInteractiveInputHelper, R2StorageClient, ReadInteractiveInputHelper,
 };
 use crate::secrets::azure::get_keyvault_client;
 use crate::secrets::error::Result;
-use crate::secrets::file_details::{check_encoding_and_size, FileDetails};
+use crate::secrets::file_details::{FileDetails, check_encoding_and_size};
 // Removed create_secret_name import as it's no longer used
-use crate::secrets::{user_prompt, user_prompt::prompt_for_upload_with_helper};
 use crate::secrets::utils::get_hostname;
+use crate::secrets::{user_prompt, user_prompt::prompt_for_upload_with_helper};
 
 use serde_json::{Value, json};
 use std::fs::{self, File, OpenOptions};
 use std::io::Read;
 use std::path::Path;
-
 
 /// Process the upload operation to cloud storage using default implementations
 pub fn process(args: &Args) -> Result<()> {
@@ -38,41 +36,43 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
         .output_json
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Output JSON path is required"))?;
-    
+
     // First, check if any entries in the JSON file match our hostname
     // Only initialize clients if needed
     let mut file = File::open(input_json_path)?;
     let mut content = String::new();
     file.read_to_string(&mut content)?;
     let our_hostname = get_hostname()?;
-    
+
     // Parse JSON as array
     let entries: Vec<Value> = serde_json::from_str(&content)?;
-    
+
     // Initialize flags to track which clients we need
     let mut need_azure_client = false;
     let mut need_r2_client = false;
-    
+
     // Check all entries to see if any match our hostname
     for entry in &entries {
         // This variable removal is intentional - we use entry_hostname instead
-        
+
         // Get hostname - convert to string for consistent comparison
         let entry_hostname = match entry["hostname"].as_str() {
             Some(h) => h,
-            None => &our_hostname // Use current hostname if missing
+            None => &our_hostname, // Use current hostname if missing
         };
-        
+
         // If this entry is not for our host, skip it
         if entry_hostname != our_hostname {
             continue;
         }
-        
+
         // This entry is for our host, determine which client it needs
         let destination_cloud = entry["destination_cloud"].as_str().unwrap_or("azure_kv");
-        let encoded_size = entry["encoded_size"].as_u64().unwrap_or_else(|| entry["file_size"].as_u64().unwrap_or(0));
+        let encoded_size = entry["encoded_size"]
+            .as_u64()
+            .unwrap_or_else(|| entry["file_size"].as_u64().unwrap_or(0));
         let too_large_for_keyvault = encoded_size > 24000;
-        
+
         if destination_cloud == "r2" || destination_cloud == "b2" || too_large_for_keyvault {
             // Both B2 and R2 now use the R2 client
             need_r2_client = true;
@@ -80,27 +80,23 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
             need_azure_client = true;
         }
     }
-    
+
     // Only create clients that are actually needed
-    
+
     // Create Azure Key Vault client if needed
     let kv_client = if need_azure_client {
-        let client_id = args
-            .secrets_client_id
-            .as_ref()
-            .ok_or_else(|| Box::<dyn std::error::Error>::from("Client ID is required for Azure uploads"))?;
-        let client_secret_path = args
-            .secrets_client_secret_path
-            .as_ref()
-            .ok_or_else(|| Box::<dyn std::error::Error>::from("Client secret path is required for Azure uploads"))?;
-        let tenant_id = args
-            .secrets_tenant_id
-            .as_ref()
-            .ok_or_else(|| Box::<dyn std::error::Error>::from("Tenant ID is required for Azure uploads"))?;
-        let key_vault_name = args
-            .secrets_vault_name
-            .as_ref()
-            .ok_or_else(|| Box::<dyn std::error::Error>::from("Key vault name is required for Azure uploads"))?;
+        let client_id = args.secrets_client_id.as_ref().ok_or_else(|| {
+            Box::<dyn std::error::Error>::from("Client ID is required for Azure uploads")
+        })?;
+        let client_secret_path = args.secrets_client_secret_path.as_ref().ok_or_else(|| {
+            Box::<dyn std::error::Error>::from("Client secret path is required for Azure uploads")
+        })?;
+        let tenant_id = args.secrets_tenant_id.as_ref().ok_or_else(|| {
+            Box::<dyn std::error::Error>::from("Tenant ID is required for Azure uploads")
+        })?;
+        let key_vault_name = args.secrets_vault_name.as_ref().ok_or_else(|| {
+            Box::<dyn std::error::Error>::from("Key vault name is required for Azure uploads")
+        })?;
 
         // Create KeyVault client
         get_keyvault_client(client_id, client_secret_path, tenant_id, key_vault_name)?
@@ -109,33 +105,37 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
         println!("No Azure KeyVault uploads required for this host, using dummy client");
         Box::new(crate::interfaces::MockAzureKeyVaultClient::new())
     };
-    
+
     // Create dummy B2 client (all B2 operations now redirect to R2)
     let b2_client = DefaultB2StorageClient::new_dummy();
-    
+
     // Create R2 client if needed
     let r2_client = if need_r2_client {
         DefaultR2StorageClient::from_args(args).unwrap_or_else(|e| {
             // This is an error if we actually need the R2 client
-            eprintln!("Warning: R2 client initialization failed but R2 uploads are needed: {}", e);
+            eprintln!(
+                "Warning: R2 client initialization failed but R2 uploads are needed: {}",
+                e
+            );
             DefaultR2StorageClient::new_dummy()
         })
     } else {
         // Create dummy client if not needed
-        if args.verbose > 0 {println!("info: No R2 uploads required for this host, using dummy client");}
+        if args.verbose > 0 {
+            println!("info: No R2 uploads required for this host, using dummy client");
+        }
         DefaultR2StorageClient::new_dummy()
     };
 
     // Call the function that allows injection of the clients
     process_with_injected_dependencies_and_clients(
-        args, 
-        read_val_helper, 
-        kv_client, 
+        args,
+        read_val_helper,
+        kv_client,
         Box::new(b2_client),
-        Box::new(r2_client)
+        Box::new(r2_client),
     )
 }
-
 
 /// Process the upload operation with full dependency injection for testing
 /// This version allows injecting Azure KeyVault, B2 Storage and R2 Storage clients for testing
@@ -187,9 +187,15 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             })?;
 
         // Get hash value - try both hash and md5 fields for compatibility
-        let hash = entry["hash"].as_str().or_else(|| entry["md5"].as_str()).ok_or_else(|| {
-            Box::<dyn std::error::Error>::from(format!("Missing hash/md5 field in entry: {}", entry))
-        })?;
+        let hash = entry["hash"]
+            .as_str()
+            .or_else(|| entry["md5"].as_str())
+            .ok_or_else(|| {
+                Box::<dyn std::error::Error>::from(format!(
+                    "Missing hash/md5 field in entry: {}",
+                    entry
+                ))
+            })?;
 
         // Get hash algorithm
         let hash_algo = entry["hash_algo"].as_str().unwrap_or("sha1");
@@ -202,7 +208,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         // Get hostname - legacy or new, default to current hostname if missing
         let hostname = match entry["hostname"].as_str() {
             Some(h) => h.to_string(),
-            None => get_hostname().unwrap_or_else(|_| "unknown_host".to_string())
+            None => get_hostname().unwrap_or_else(|_| "unknown_host".to_string()),
         };
 
         // Get encoding - defaults to utf8 for backward compatibility
@@ -235,9 +241,13 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         let destination_cloud = entry["destination_cloud"].as_str().unwrap_or("azure_kv");
 
         // For B2 and R2, cloud_upload_bucket is required
-        if (destination_cloud == "b2" || destination_cloud == "r2") && entry["cloud_upload_bucket"].as_str().is_none() {
-            eprintln!("Error: cloud_upload_bucket is required in JSON when destination_cloud is '{}' for file {}", 
-                      destination_cloud, file_path);
+        if (destination_cloud == "b2" || destination_cloud == "r2")
+            && entry["cloud_upload_bucket"].as_str().is_none()
+        {
+            eprintln!(
+                "Error: cloud_upload_bucket is required in JSON when destination_cloud is '{}' for file {}",
+                destination_cloud, file_path
+            );
             continue;
         }
 
@@ -248,42 +258,50 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         // Handle different storage backends based on file size and destination_cloud
         let output_entry = if destination_cloud == "r2" {
             if args.verbose > 0 {
-                println!("info: Uploading file {} to Cloudflare R2 storage", file_path);
+                println!(
+                    "info: Uploading file {} to Cloudflare R2 storage",
+                    file_path
+                );
             }
-            
+
             // Check if the file already exists in R2 storage
-            let r2_file_exists = r2_client.check_file_exists_with_details(hash, cloud_upload_bucket.clone()).ok().flatten();
-            
+            let r2_file_exists = r2_client
+                .check_file_exists_with_details(hash, cloud_upload_bucket.clone())
+                .ok()
+                .flatten();
+
             // Get metadata to check file size if the file exists
             let mut r2_file_size: Option<u64> = None;
-            
+
             // If file exists, print a concise warning
-            let (file_exists, cloud_created, cloud_updated) = if let Some((exists, created, updated)) = r2_file_exists {
-                if exists {
-                    println!("Warning: File already exists in r2.");
-                    
-                    // Also get file metadata to check size
-                    if let Ok(Some(metadata)) = r2_client.get_file_metadata(hash) {
-                        if let Some(content_length) = metadata.get("content_length") {
-                            if let Ok(size) = content_length.parse::<u64>() {
-                                r2_file_size = Some(size);
+            let (file_exists, cloud_created, cloud_updated) =
+                if let Some((exists, created, updated)) = r2_file_exists {
+                    if exists {
+                        println!("Warning: File already exists in r2.");
+
+                        // Also get file metadata to check size
+                        if let Ok(Some(metadata)) = r2_client.get_file_metadata(hash) {
+                            if let Some(content_length) = metadata.get("content_length") {
+                                if let Ok(size) = content_length.parse::<u64>() {
+                                    r2_file_size = Some(size);
+                                }
                             }
                         }
+
+                        (true, Some(created), Some(updated))
+                    } else {
+                        (false, None, None)
                     }
-                    
-                    (true, Some(created), Some(updated))
                 } else {
                     (false, None, None)
-                }
-            } else {
-                (false, None, None)
-            };
-            
+                };
+
             // Get the cloud prefix if specified - if not present or empty, set to None
-            let cloud_prefix = entry["cloud_prefix"].as_str()
+            let cloud_prefix = entry["cloud_prefix"]
+                .as_str()
                 .filter(|s| !s.is_empty())
                 .map(String::from);
-            
+
             // Create a FileDetails struct for the file
             let file_details = FileDetails {
                 file_path: file_path.to_string(),
@@ -299,7 +317,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 cloud_upload_bucket: cloud_upload_bucket.clone(), // Use the bucket from JSON
                 cloud_prefix: cloud_prefix.clone(), // Use prefix from JSON if specified
             };
-            
+
             // Prompt the user for confirmation
             let upload_config = user_prompt::UploadPromptConfig {
                 file_path,
@@ -311,14 +329,14 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 local_file_size: encoded_size,
             };
             let upload_confirmed = prompt_for_upload_with_helper(&upload_config, read_val_helper)?;
-            
+
             if !upload_confirmed {
                 if args.verbose > 0 {
                     println!("info: Skipping upload of {}", file_path);
                 }
                 continue;
             }
-            
+
             // Upload to R2
             let r2_result = match r2_client.upload_file_with_details(&file_details) {
                 Ok(result) => result,
@@ -327,11 +345,11 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                     continue;
                 }
             };
-            
+
             if args.verbose > 0 {
                 println!("info: Successfully uploaded to Cloudflare R2 storage");
             }
-            
+
             // Create output entry with updated fields for R2
             json!({
                 "file_nm": file_path,
@@ -359,40 +377,45 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                     file_path, encoded_size
                 );
             }
-            
+
             // Check if the file already exists in B2 storage
-            let b2_file_exists = b2_client.check_file_exists_with_details(hash, cloud_upload_bucket.clone()).ok().flatten();
-            
+            let b2_file_exists = b2_client
+                .check_file_exists_with_details(hash, cloud_upload_bucket.clone())
+                .ok()
+                .flatten();
+
             // Get metadata to check file size if the file exists
             let mut r2_file_size: Option<u64> = None;
-            
+
             // If file exists, print a concise warning
-            let (file_exists, cloud_created, cloud_updated) = if let Some((exists, created, updated)) = b2_file_exists {
-                if exists {
-                    println!("Warning: File already exists in R2 storage.");
-                    
-                    // Also get file metadata to check size
-                    if let Ok(Some(metadata)) = b2_client.get_file_metadata(hash) {
-                        if let Some(content_length) = metadata.get("content_length") {
-                            if let Ok(size) = content_length.parse::<u64>() {
-                                r2_file_size = Some(size);
+            let (file_exists, cloud_created, cloud_updated) =
+                if let Some((exists, created, updated)) = b2_file_exists {
+                    if exists {
+                        println!("Warning: File already exists in R2 storage.");
+
+                        // Also get file metadata to check size
+                        if let Ok(Some(metadata)) = b2_client.get_file_metadata(hash) {
+                            if let Some(content_length) = metadata.get("content_length") {
+                                if let Ok(size) = content_length.parse::<u64>() {
+                                    r2_file_size = Some(size);
+                                }
                             }
                         }
+
+                        (true, Some(created), Some(updated))
+                    } else {
+                        (false, None, None)
                     }
-                    
-                    (true, Some(created), Some(updated))
                 } else {
                     (false, None, None)
-                }
-            } else {
-                (false, None, None)
-            };
-            
+                };
+
             // Get the cloud prefix if specified - if not present or empty, set to None
-            let cloud_prefix = entry["cloud_prefix"].as_str()
+            let cloud_prefix = entry["cloud_prefix"]
+                .as_str()
                 .filter(|s| !s.is_empty())
                 .map(String::from);
-            
+
             // Create a FileDetails struct for the file
             let file_details = FileDetails {
                 file_path: file_path.to_string(),
@@ -408,7 +431,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 cloud_upload_bucket: cloud_upload_bucket.clone(), // Use the bucket from JSON
                 cloud_prefix, // Use prefix from JSON if specified
             };
-            
+
             // Prompt the user for confirmation
             let upload_config = user_prompt::UploadPromptConfig {
                 file_path,
@@ -420,14 +443,14 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 local_file_size: encoded_size,
             };
             let upload_confirmed = prompt_for_upload_with_helper(&upload_config, read_val_helper)?;
-            
+
             if !upload_confirmed {
                 if args.verbose > 0 {
                     println!("info: Skipping upload of {}", file_path);
                 }
                 continue;
             }
-            
+
             // Upload to R2 (redirected from B2)
             let r2_result = match b2_client.upload_file_with_details(&file_details) {
                 Ok(result) => result,
@@ -436,11 +459,11 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                     continue;
                 }
             };
-            
+
             if args.verbose > 0 {
                 println!("info: Successfully uploaded to R2 storage");
             }
-            
+
             // Create output entry with updated fields for R2 (redirected from B2)
             json!({
                 "file_nm": file_path,
@@ -448,7 +471,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 "hash_algo": hash_algo,
                 "ins_ts": ins_ts,
                 "cloud_id": r2_result.id,
-                "cloud_cr_ts": r2_result.created,  
+                "cloud_cr_ts": r2_result.created,
                 "cloud_upd_ts": r2_result.updated,
                 "hostname": hostname,
                 "encoding": encoding,
@@ -489,7 +512,10 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 // If base64 file doesn't exist, try to create it now
                 if encoding == "base64" {
                     if args.verbose > 0 {
-                        println!("info: Base64 file {} doesn't exist, creating now", file_to_use);
+                        println!(
+                            "info: Base64 file {} doesn't exist, creating now",
+                            file_to_use
+                        );
                     }
                     // This will create the base64 file if it doesn't exist
                     let _ = check_encoding_and_size(file_path)?;
@@ -529,14 +555,12 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             let content = fs::read_to_string(&file_to_use)?;
 
             // Upload to Key Vault using hash as the key
-            let response = kv_client
-                .set_secret_value(hash, &content)
-                .map_err(|e| {
-                    Box::<dyn std::error::Error>::from(format!(
-                        "Failed to upload secret {}: {}",
-                        hash, e
-                    ))
-                })?;
+            let response = kv_client.set_secret_value(hash, &content).map_err(|e| {
+                Box::<dyn std::error::Error>::from(format!(
+                    "Failed to upload secret {}: {}",
+                    hash, e
+                ))
+            })?;
 
             if args.verbose > 0 {
                 println!("info: Successfully uploaded to Azure Key Vault storage");
@@ -563,7 +587,6 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         processed_entries.push(output_entry);
     }
 
-    
     // Append to output file if we have any entries
     if !processed_entries.is_empty() {
         // Create parent directory if it doesn't exist

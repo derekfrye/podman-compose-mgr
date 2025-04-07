@@ -1,8 +1,8 @@
 use clap::{Parser, ValueEnum};
-use std::path::PathBuf;
-use std::io::Read;
-use serde_json;
 use hostname;
+use serde_json;
+use std::io::Read;
+use std::path::PathBuf;
 
 use super::initialization::check_init_filepath;
 use super::validators::{
@@ -61,15 +61,14 @@ pub struct Args {
     /// Path to file containing S3-compatible account ID/key ID (for B2/R2)
     #[arg(long)]
     pub s3_account_id_filepath: Option<PathBuf>,
-    
+
     /// Path to file containing S3-compatible access key/secret (for B2/R2)
     #[arg(long)]
     pub s3_secret_key_filepath: Option<PathBuf>,
-    
+
     /// Path to file containing S3-compatible endpoint (for R2, the Cloudflare account ID)
     #[arg(long)]
     pub s3_endpoint_filepath: Option<PathBuf>,
-    
 }
 
 impl Default for Args {
@@ -133,7 +132,7 @@ impl Args {
     }
 
     /// Check if cloud storage credentials are needed based on entries in the input JSON
-    /// 
+    ///
     /// Returns a tuple of booleans (need_b2, need_r2) indicating if credentials
     /// are needed for each cloud storage type.
     fn needs_cloud_credentials_for_upload(&self) -> Result<(bool, bool), String> {
@@ -142,34 +141,34 @@ impl Args {
             Some(path) => path,
             None => return Ok((false, false)), // No input JSON, no cloud credentials needed
         };
-        
+
         // Get current hostname for comparison
         let current_hostname = match hostname::get() {
             Ok(hostname) => hostname.to_string_lossy().to_string(),
             Err(e) => return Err(format!("Failed to get system hostname: {}", e)),
         };
-        
+
         // Try to read the input JSON file
         let mut file = match std::fs::File::open(input_json_path) {
             Ok(file) => file,
             Err(e) => return Err(format!("Failed to open input JSON file: {}", e)),
         };
-        
+
         let mut content = String::new();
         if let Err(e) = file.read_to_string(&mut content) {
             return Err(format!("Failed to read input JSON file: {}", e));
         }
-        
+
         // Parse JSON as array
         let entries: Vec<serde_json::Value> = match serde_json::from_str(&content) {
             Ok(entries) => entries,
             Err(e) => return Err(format!("Failed to parse input JSON: {}", e)),
         };
-        
+
         // Variables to track if we need credentials for each cloud provider
         let mut need_b2 = false;
         let mut need_r2 = false;
-        
+
         // Check if any entry is for cloud storage and matches the current hostname
         for entry in entries {
             // Get hostname
@@ -177,31 +176,31 @@ impl Args {
                 Some(h) => h,
                 None => continue, // Skip entries without hostname
             };
-            
+
             // Get destination cloud
             let destination_cloud = match entry.get("destination_cloud").and_then(|v| v.as_str()) {
                 Some(d) => d,
                 None => continue, // Skip entries without destination_cloud
             };
-            
+
             // Skip if the hostname doesn't match current host
             if hostname != current_hostname {
                 continue;
             }
-            
+
             // Check the destination cloud type
             match destination_cloud {
                 "b2" => need_b2 = true,
                 "r2" => need_r2 = true,
                 _ => {} // Other cloud types (including azure_kv) don't need special handling here
             }
-            
+
             // If we already need both types of credentials, we can exit early
             if need_b2 && need_r2 {
                 break;
             }
         }
-        
+
         // Return which cloud credentials are needed
         Ok((need_b2, need_r2))
     }
@@ -237,7 +236,7 @@ impl Args {
             } else {
                 return Err("output_json is required for SecretInitialize mode".to_string());
             }
-            
+
             // Bucket for upload is now specified in the JSON file, no longer a command-line argument
 
             // The actual processing of secrets_init_filepath happens in validate_and_process()
@@ -269,42 +268,46 @@ impl Args {
             // Validate the file paths
             if let Some(input_json) = &self.input_json {
                 check_valid_json_path(input_json)?;
-                
+
                 // Check if cloud credentials are needed for any entries in the input JSON
-                let (need_b2_credentials, need_r2_credentials) = self.needs_cloud_credentials_for_upload()?;
-                
+                let (need_b2_credentials, need_r2_credentials) =
+                    self.needs_cloud_credentials_for_upload()?;
+
                 // Handle both B2 and R2 credentials with shared parameters
                 if need_b2_credentials || need_r2_credentials {
                     // Check if s3_account_id_filepath is provided
                     if self.s3_account_id_filepath.is_none() {
                         return Err("s3_account_id_filepath is required for upload mode when input json contains B2 or R2 entries".to_string());
                     }
-                    
+
                     // Check if s3_secret_key_filepath is provided
                     if self.s3_secret_key_filepath.is_none() {
                         return Err("s3_secret_key_filepath is required for upload mode when input json contains B2 or R2 entries".to_string());
                     }
-                    
+
                     // Validate s3_account_id_filepath
                     if let Some(filepath) = &self.s3_account_id_filepath {
                         check_readable_path(filepath)?;
                     }
-                    
+
                     // Validate s3_secret_key_filepath
                     if let Some(filepath) = &self.s3_secret_key_filepath {
                         check_readable_path(filepath)?;
                     }
-                    
+
                     // For R2, we need to check if both access key ID and endpoint (account ID) are provided
                     if need_r2_credentials {
                         if self.s3_account_id_filepath.is_none() {
                             return Err("s3_account_id_filepath is required for upload mode with R2 entries".to_string());
                         }
-                        
+
                         if self.s3_endpoint_filepath.is_none() {
-                            return Err("s3_endpoint_filepath is required for upload mode with R2 entries".to_string());
+                            return Err(
+                                "s3_endpoint_filepath is required for upload mode with R2 entries"
+                                    .to_string(),
+                            );
                         }
-                        
+
                         // Validate s3_endpoint_filepath if provided
                         if let Some(filepath) = &self.s3_endpoint_filepath {
                             check_readable_path(filepath)?;
@@ -312,11 +315,11 @@ impl Args {
                     }
                 }
             }
-            
+
             if let Some(client_secret) = &self.secrets_client_secret_path {
                 check_readable_path(client_secret)?;
             }
-            
+
             if let Some(output_json) = &self.output_json {
                 check_file_writable_path(output_json)?;
             }
@@ -328,8 +331,8 @@ impl Args {
 /// Enumeration of possible modes
 #[derive(Clone, ValueEnum, Debug, Copy, serde::Serialize)]
 pub enum Mode {
-    Rebuild,    
+    Rebuild,
     SecretRetrieve,
     SecretInitialize,
-    SecretUpload,    
+    SecretUpload,
 }
