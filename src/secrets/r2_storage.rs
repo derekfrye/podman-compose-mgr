@@ -18,6 +18,8 @@ pub struct R2UploadResult {
     pub id: String,
     pub bucket_id: String,
     pub name: String,
+    pub created: String,
+    pub updated: String,
 }
 
 /// R2 client wrapper around the base S3StorageClient
@@ -113,6 +115,11 @@ impl R2Client {
         self.client.file_exists(file_key)
     }
     
+    /// Check if a file exists in R2 storage with detailed information
+    pub fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<&str>) -> Result<Option<(bool, String, String)>> {
+        self.client.check_file_exists_with_details(hash, bucket_name)
+    }
+    
     /// Get file metadata from R2 - delegated to S3 client
     pub fn get_file_metadata(&self, file_key: &str) -> Result<Option<HashMap<String, String>>> {
         self.client.get_file_metadata(file_key)
@@ -129,6 +136,8 @@ impl R2Client {
             id: s3_result.id,
             bucket_id: s3_result.bucket_id,
             name: s3_result.name,
+            created: s3_result.created,
+            updated: s3_result.updated,
         })
     }
     
@@ -143,6 +152,8 @@ impl R2Client {
             id: s3_result.id,
             bucket_id: s3_result.bucket_id,
             name: s3_result.name,
+            created: s3_result.created,
+            updated: s3_result.updated,
         })
     }
     

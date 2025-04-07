@@ -45,7 +45,7 @@
         "--mode", 
         "secret-upload",
         "--verbose",
-        // "--verbose", // use if you want the full command and params printed to stdout
+        "--verbose", // use if you want the full command and params printed to stdout
         "--secrets-client-id",
         "${workspaceFolder}/tests/test2_personal_testing_data/client_id.txt",
         "--secrets-client-secret-path",

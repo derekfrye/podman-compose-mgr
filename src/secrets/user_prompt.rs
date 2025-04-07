@@ -220,7 +220,19 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
 ) -> Result<bool> {
     // If the secret exists and we're prompting, show an overwrite warning
     if secret_exists {
-        println!("Warning: This will overwrite the existing secret in the cloud storage.");
+        let storage_type = cloud_type.unwrap_or("cloud");
+        
+        // Show warning with creation and update times if available
+        match (cloud_created.as_deref(), cloud_updated.as_deref()) {
+            (Some(created), Some(updated)) => {
+                println!("Warning: This will overwrite the existing file in {} storage.", storage_type);
+                println!("Existing file was created on: {}", created);
+                println!("Last updated on: {}", updated);
+            },
+            _ => {
+                println!("Warning: This will overwrite the existing file in {} storage.", storage_type);
+            }
+        }
     }
 
     let mut grammars: Vec<GrammarFragment> = Vec::new();

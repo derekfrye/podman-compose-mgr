@@ -28,3 +28,15 @@
 - Mock clients are used for cloud storage when credentials aren't needed 
 - If memory issues occur during testing, use `--test-threads=1` flag
 - Be cautious with large file operations, especially in CI environments
+
+## Verbosity Levels
+- Use `-v` or `--verbose` for basic informational messages (prefixed with "info:")
+- Use `-v -v` or double `--verbose --verbose` for debug output (prefixed with "dbg:")
+- Double verbose shows a copy-paste friendly command reconstruction
+- Only essential messages are shown without verbose flags
+
+## Cloud Storage Features
+- Checks if files already exist in B2/R2 storage before uploading
+- Warns users when overwriting existing files in cloud storage
+- Shows creation and update timestamps when viewing file details
+- Requires bucket names to be specified in JSON for B2/R2 uploads

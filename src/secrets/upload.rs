@@ -268,6 +268,21 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 println!("info: Uploading file {} to Cloudflare R2 storage", file_path);
             }
             
+            // Check if the file already exists in R2 storage
+            let r2_file_exists = r2_client.check_file_exists_with_details(&hash, cloud_upload_bucket.clone()).ok().flatten();
+            
+            // If file exists, print a warning
+            let (file_exists, cloud_created, cloud_updated) = if let Some((exists, created, updated)) = r2_file_exists {
+                if exists {
+                    println!("WARNING: File already exists in R2 storage with the same hash!");
+                    (true, Some(created), Some(updated))
+                } else {
+                    (false, None, None)
+                }
+            } else {
+                (false, None, None)
+            };
+            
             // Create a FileDetails struct for the file
             let file_details = FileDetails {
                 file_path: file_path.to_string(),
@@ -289,9 +304,9 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 file_path,
                 &secret_name,
                 read_val_helper,
-                false, // Don't check R2 existence yet
-                None,
-                None,
+                file_exists,
+                cloud_created,
+                cloud_updated,
                 Some("r2"),
             )?;
             
@@ -338,10 +353,25 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         } else if too_large_for_keyvault || destination_cloud == "b2" {
             if args.verbose > 0 {
                 println!(
-                    "File {} is too large for Azure KeyVault ({}). Uploading to Backblaze B2 instead.",
+                    "info: File {} is too large for Azure KeyVault ({}). Uploading to Backblaze B2 instead.",
                     file_path, encoded_size
                 );
             }
+            
+            // Check if the file already exists in B2 storage
+            let b2_file_exists = b2_client.check_file_exists_with_details(&hash, cloud_upload_bucket.clone()).ok().flatten();
+            
+            // If file exists, print a warning
+            let (file_exists, cloud_created, cloud_updated) = if let Some((exists, created, updated)) = b2_file_exists {
+                if exists {
+                    println!("WARNING: File already exists in B2 storage with the same hash!");
+                    (true, Some(created), Some(updated))
+                } else {
+                    (false, None, None)
+                }
+            } else {
+                (false, None, None)
+            };
             
             // Create a FileDetails struct for the file
             let file_details = FileDetails {
@@ -364,9 +394,9 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 file_path,
                 &secret_name,
                 read_val_helper,
-                false, // Don't check B2 existence yet
-                None,
-                None,
+                file_exists,
+                cloud_created,
+                cloud_updated,
                 Some("b2"),
             )?;
             

@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
+use mockall::predicate as testing;
 
 use podman_compose_mgr::args::{Args, Mode};
 use podman_compose_mgr::interfaces::{MockAzureKeyVaultClient, MockB2StorageClient, MockR2StorageClient, MockReadInteractiveInputHelper};
@@ -103,10 +104,27 @@ fn test_b2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
                     id: format!("test-id-{}", hash),
                     bucket_id: "test-b2-bucket".to_string(),
                     name: format!("secrets/{}", hash),
+                    created: "2023-01-01T00:00:00Z".to_string(),
+                    updated: "2023-01-01T00:00:00Z".to_string(),
                 };
                 (file_path.clone(), b2_result)
             })
             .collect();
+            
+        // Set up expectations for check_file_exists_with_details for each file
+        for file_path in test_files.iter() {
+            let hash = calculate_hash(file_path).unwrap();
+            b2_client
+                .expect_check_file_exists_with_details()
+                .with(
+                    testing::eq(hash.clone()),
+                    testing::eq(Some("test-upload-bucket".to_string()))
+                )
+                .times(1)
+                .returning(|_, _| {
+                    Ok(Some((false, "".to_string(), "".to_string())))
+                });
+        }
         
         // Set up expectations for upload_file_with_details for each file
         for (file_path, b2_result) in expected_results {
@@ -121,6 +139,8 @@ fn test_b2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
                         id: b2_result.id.clone(),
                         bucket_id: b2_result.bucket_id.clone(),
                         name: b2_result.name.clone(),
+                        created: b2_result.created.clone(),
+                        updated: b2_result.updated.clone(),
                     })
                 });
         }

@@ -147,6 +147,9 @@ pub trait B2StorageClient {
     
     /// Uploads a file to B2 storage
     fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<B2UploadResult, Box<dyn std::error::Error>>;
+    
+    /// Checks if a file exists in B2 storage
+    fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<Option<(bool, String, String)>, Box<dyn std::error::Error>>;
 }
 
 /// Default implementation that uses the actual B2 client
@@ -215,11 +218,24 @@ impl B2StorageClient for DefaultB2StorageClient {
                 id: format!("mock-id-{}", file_details.hash),
                 bucket_id: "mock-bucket".to_string(),
                 name: format!("secrets/{}", file_details.hash),
+                created: "2025-01-01T00:00:00Z".to_string(),
+                updated: "2025-01-01T00:00:00Z".to_string(),
             });
         }
         
         // Otherwise, use the real client
         self.client.upload_file_with_details(file_details)
+    }
+    
+    fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<Option<(bool, String, String)>, Box<dyn std::error::Error>> {
+        // If this is not a real client, return mock data
+        if !self.is_real_client {
+            return Ok(Some((true, "2025-01-01T00:00:00Z".to_string(), "2025-01-01T00:00:00Z".to_string())));
+        }
+        
+        // Otherwise, use the real client
+        let bucket_ref = bucket_name.as_deref();
+        self.client.check_file_exists_with_details(hash, bucket_ref)
     }
 }
 
@@ -231,6 +247,9 @@ pub trait R2StorageClient {
     
     /// Uploads a file to R2 storage
     fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<R2UploadResult, Box<dyn std::error::Error>>;
+    
+    /// Checks if a file exists in R2 storage
+    fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<Option<(bool, String, String)>, Box<dyn std::error::Error>>;
 }
 
 /// Default implementation that uses the actual R2 client
@@ -301,10 +320,23 @@ impl R2StorageClient for DefaultR2StorageClient {
                 id: format!("mock-id-{}", file_details.hash),
                 bucket_id: "mock-bucket".to_string(),
                 name: format!("secrets/{}", file_details.hash),
+                created: "2025-01-01T00:00:00Z".to_string(),
+                updated: "2025-01-01T00:00:00Z".to_string(),
             });
         }
         
         // Otherwise, use the real client
         self.client.upload_file_with_details(file_details)
+    }
+    
+    fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<Option<(bool, String, String)>, Box<dyn std::error::Error>> {
+        // If this is not a real client, return mock data
+        if !self.is_real_client {
+            return Ok(Some((true, "2025-01-01T00:00:00Z".to_string(), "2025-01-01T00:00:00Z".to_string())));
+        }
+        
+        // Otherwise, use the real client
+        let bucket_ref = bucket_name.as_deref();
+        self.client.check_file_exists_with_details(hash, bucket_ref)
     }
 }

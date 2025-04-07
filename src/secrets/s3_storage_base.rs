@@ -31,6 +31,8 @@ pub struct S3UploadResult {
     pub id: String,
     pub bucket_id: String,
     pub name: String,
+    pub created: String,
+    pub updated: String,
 }
 
 /// Base client for S3-compatible storage providers
@@ -203,7 +205,7 @@ impl S3StorageClient {
         // For non-real clients, return None to indicate file doesn't exist
         if !self.is_real_client {
             if self.verbose {
-                println!("Using mock S3-compatible storage client - would have retrieved metadata for {}", file_key);
+                println!("info: Using mock S3-compatible storage client - would have retrieved metadata for {}", file_key);
             }
             return Ok(None);
         }
@@ -256,6 +258,75 @@ impl S3StorageClient {
         Ok(Some(metadata))
     }
     
+    /// Check if a file exists and get its metadata for specific path
+    pub fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<&str>) -> Result<Option<(bool, String, String)>> {
+        // Construct the object key - this should match the key used in upload
+        let object_key = format!("secrets/{}", hash);
+        
+        // For non-real clients, return mock data
+        if !self.is_real_client {
+            if self.verbose {
+                println!("info: Using mock S3-compatible storage client - would have checked if file with hash {} exists", hash);
+            }
+            // Return mock data for testing: (exists, created_time, updated_time)
+            return Ok(Some((true, "2025-01-01T00:00:00Z".to_string(), "2025-01-01T00:00:00Z".to_string())));
+        }
+        
+        // Determine which bucket to use
+        let bucket_to_use = if let Some(b) = bucket_name {
+            b
+        } else {
+            // Check if we need to use a placeholder bucket
+            if self.bucket_name == "placeholder_bucket_will_be_provided_from_json" {
+                // We can't check for existence if the bucket name is a placeholder
+                if self.verbose {
+                    println!("info: Can't check if file exists because bucket name is a placeholder. Please provide bucket name in JSON.");
+                }
+                return Ok(None);
+            }
+            &self.bucket_name
+        };
+
+        if self.verbose {
+            println!("dbg: Checking if object '{}' exists in bucket '{}'", object_key, bucket_to_use);
+        }
+        
+        // Use the client's runtime to check if the object exists
+        let result = self.runtime.block_on(async {
+            let resp = self.client.head_object()
+                .bucket(bucket_to_use)
+                .key(&object_key)
+                .send()
+                .await;
+                
+            if resp.is_err() {
+                if self.verbose {
+                    println!("dbg: Object does not exist or error occurred: {:?}", resp.err());
+                }
+                return Ok::<Option<(bool, String, String)>, Box<dyn std::error::Error>>(Some((false, "".to_string(), "".to_string())));
+            }
+            
+            let response = resp.unwrap();
+            
+            // Get last_modified as a string
+            let last_modified = if let Some(lm) = response.last_modified() {
+                // Use standard DateTime formatting for AWS DateTime
+                format!("{}", lm)
+            } else {
+                "Unknown".to_string()
+            };
+            
+            if self.verbose {
+                println!("dbg: Object exists with last modified time: {}", last_modified);
+            }
+            
+            // For S3 compatible services, we don't have created time, so use last_modified
+            Ok(Some((true, last_modified.clone(), last_modified)))
+        })?;
+        
+        Ok(result)
+    }
+    
     /// Upload a file to storage
     pub fn upload_file(&self, local_path: &str, object_key: &str, metadata: Option<HashMap<String, String>>) -> Result<S3UploadResult> {
         // For non-real clients, return a mock response without trying to upload
@@ -264,7 +335,7 @@ impl S3StorageClient {
             let hash = format!("mock-hash-{}", local_path);
             
             if self.verbose {
-                println!("Using mock S3-compatible storage client - would have uploaded {} to {}", local_path, object_key);
+                println!("info: Using mock S3-compatible storage client - would have uploaded {} to {}", local_path, object_key);
             }
             
             return Ok(S3UploadResult {
@@ -272,6 +343,8 @@ impl S3StorageClient {
                 id: hash,
                 bucket_id: self.bucket_name.clone(),
                 name: object_key.to_string(),
+                created: "2025-01-01T00:00:00Z".to_string(),
+                updated: "2025-01-01T00:00:00Z".to_string(),
             });
         }
         
@@ -320,11 +393,16 @@ impl S3StorageClient {
                 .ok_or_else(|| Box::<dyn std::error::Error>::from("No ETag in response"))?
                 .replace("\"", ""); // Remove quotes from ETag
             
+            // Get current time for timestamps
+            let current_time = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+            
             Ok::<S3UploadResult, Box<dyn std::error::Error>>(S3UploadResult {
                 hash: etag.clone(),
                 id: etag.clone(),
                 bucket_id: self.bucket_name.clone(),
                 name: object_key.to_string(),
+                created: current_time.clone(),
+                updated: current_time,
             })
         })?;
         
@@ -356,6 +434,8 @@ impl S3StorageClient {
                 id: hash,
                 bucket_id: file_details.cloud_upload_bucket.clone().unwrap_or_else(|| "mock-bucket".to_string()),
                 name: format!("secrets/{}", file_details.hash),
+                created: "2025-01-01T00:00:00Z".to_string(),
+                updated: "2025-01-01T00:00:00Z".to_string(),
             });
         }
         
@@ -440,11 +520,16 @@ impl S3StorageClient {
                     .ok_or_else(|| Box::<dyn std::error::Error>::from("No ETag in response"))?
                     .replace("\"", ""); // Remove quotes from ETag
                 
+                // Get current time for timestamps
+                let current_time = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+                
                 Ok::<S3UploadResult, Box<dyn std::error::Error>>(S3UploadResult {
                     hash: etag.clone(),
                     id: etag.clone(),
                     bucket_id: upload_bucket.clone(),
                     name: object_key.to_string(),
+                    created: current_time.clone(),
+                    updated: current_time,
                 })
             })?;
             
