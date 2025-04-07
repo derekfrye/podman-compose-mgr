@@ -88,7 +88,7 @@ pub fn add_upload_choice_options(grammars: &mut Vec<GrammarFragment>) {
 pub fn setup_upload_prompt(
     grammars: &mut Vec<GrammarFragment>,
     file_path: &str,
-    encoded_name: &str,
+    _encoded_name: &str, // Still keeping parameter for backward compatibility
 ) -> Result<()> {
     // Calculate file size
     let metadata = std::fs::metadata(file_path).map_err(|e| {
@@ -146,9 +146,9 @@ pub fn setup_upload_prompt(
     };
     grammars.push(for_grammar);
 
-    // Add encoded name
+    // Add file path (instead of encoded name/hash)
     let name_grammar = GrammarFragment {
-        original_val_for_prompt: Some(encoded_name.to_string()),
+        original_val_for_prompt: Some(file_path.to_string()),
         shortened_val_for_prompt: None,
         pos: 3,
         prefix: None,
@@ -234,11 +234,11 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
         let result = read_val_helper.read_val_from_cmd_line_and_proceed(&mut grammars, None);
 
         match result.user_entered_val {
-            None => return Ok(false), // Empty input means no
+            None => return Ok(true), // Empty input means yes (same as "Y")
             Some(choice) => {
                 match choice.as_str() {
-                    // Yes, upload the file
-                    "Y" => {
+                    // Yes or empty response - upload the file
+                    "Y" | "y" | "" => {
                         return Ok(true);
                     }
                     // No, skip this file
@@ -259,6 +259,8 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
 
                         // Display the details
                         display_file_details(&details);
+                        // Add an extra newline for better readability
+                        println!();
                     }
                     // Display help
                     "?" => {
