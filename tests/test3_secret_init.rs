@@ -124,11 +124,14 @@ fn test_initialize_process() {
         }
     }
 
-    // Test append functionality - run the process again
+    // Run the second process right away
+    // We don't need to wait since the test is checking for updates, not timestamp changes
+    
+    // Test update functionality - run the process again with the same files
     let result = secrets::initialize::process(&args);
     assert!(
         result.is_ok(),
-        "Failed to process secrets (append): {:?}",
+        "Failed to process secrets (update): {:?}",
         result.err()
     );
 
@@ -136,132 +139,102 @@ fn test_initialize_process() {
     let mut output_content = String::new();
     let mut file = File::open(&temp_path).unwrap();
     file.read_to_string(&mut output_content).unwrap();
+    
+    println!("Output file content: {}", output_content);
 
-    let output_json: Vec<Value> = serde_json::from_str(&output_content).unwrap();
+    let output_json: Vec<Value> = match serde_json::from_str(&output_content) {
+        Ok(json) => json,
+        Err(e) => {
+            println!("Error parsing JSON: {}", e);
+            println!("Content: {}", output_content);
+            Vec::new()
+        }
+    };
 
-    // Verify there are now 10 entries (5 original + 5 appended)
-    assert_eq!(output_json.len(), 10);
+    // With the new update behavior, we should still have 5 entries, not 10
+    assert_eq!(output_json.len(), 5, "Expected 5 entries after update");
 
-    // Group entries by filename for more rigorous comparison
+    // Create a map of entries by filename for easier reference
     let mut entries_by_filename = std::collections::HashMap::new();
-
-    // First make sure we have all expected files and each has exactly 2 entries
-    let mut file_counts = std::collections::HashMap::new();
+    let mut file_seen = std::collections::HashSet::new();
 
     for entry in &output_json {
         let filenm = entry["file_nm"].as_str().unwrap().to_string();
-        *file_counts.entry(filenm.to_string()).or_insert(0) += 1;
+        file_seen.insert(filenm.clone());
+        entries_by_filename.insert(filenm.clone(), entry.clone());
+        
+        // Get the entry's timestamp and verify it's the current date
+        let ins_ts = entry["ins_ts"].as_str().unwrap();
+        let entry_date_str = &ins_ts[0..10]; // Extract YYYY-MM-DD
+        let entry_date = chrono::NaiveDate::parse_from_str(entry_date_str, "%Y-%m-%d").unwrap();
+        
+        // The ins_ts date should be today
+        assert_eq!(entry_date, today, "Expected entry to have today's date");
     }
 
-    // Verify all files have exactly 2 entries
-    assert_eq!(
-        file_counts["tests/test3_and_test4/a"], 2,
-        "Expected 2 entries for file a"
-    );
-    assert_eq!(
-        file_counts["tests/test3_and_test4/b"], 2,
-        "Expected 2 entries for file b"
-    );
-    assert_eq!(
-        file_counts["tests/test3_and_test4/c"], 2,
-        "Expected 2 entries for file c"
-    );
-    assert_eq!(
-        file_counts["tests/test3_and_test4/d d"], 2,
-        "Expected 2 entries for file 'd d'"
-    );
-    assert_eq!(
-        file_counts["tests/test3_and_test4/e e"], 2,
-        "Expected 2 entries for file 'e e'"
-    );
-
-    // Group entries by filename for comparison
-    for entry in output_json {
-        let filenm = entry["file_nm"].as_str().unwrap().to_string();
-        entries_by_filename
-            .entry(filenm)
-            .or_insert_with(Vec::new)
-            .push(entry);
-    }
-
-    // Verify that entries for each file match exactly
-    for (filename, entries) in &entries_by_filename {
-        let first = &entries[0];
-        let second = &entries[1];
-
-        // Compare all fields
-        assert_eq!(
-            first["file_nm"], second["file_nm"],
-            "file_nm doesn't match for {}",
-            filename
-        );
-        assert_eq!(
-            first["hash"], second["hash"],
-            "hash doesn't match for {}",
-            filename
-        );
-        assert_eq!(
-            first["cloud_id"], second["cloud_id"],
-            "cloud_id doesn't match for {}",
-            filename
-        );
-        assert_eq!(
-            first["cloud_cr_ts"], second["cloud_cr_ts"],
-            "cloud_cr_ts doesn't match for {}",
-            filename
-        );
-        assert_eq!(
-            first["cloud_upd_ts"], second["cloud_upd_ts"],
-            "cloud_upd_ts doesn't match for {}",
-            filename
-        );
-        assert_eq!(
-            first["secret_name"], second["secret_name"],
-            "secret_name doesn't match for {}",
-            filename
-        );
-        assert_eq!(
-            first["hostname"], second["hostname"],
-            "hostname doesn't match for {}",
-            filename
-        );
-        assert_eq!(
-            first["encoding"], second["encoding"],
-            "encoding doesn't match for {}",
-            filename
-        );
-        assert_eq!(
-            first["cloud_upload_bucket"], second["cloud_upload_bucket"],
-            "cloud_upload_bucket doesn't match for {}",
-            filename
-        );
-
-        // Double-check hash algorithm and verify encoding
-        let hash_algo = first["hash_algo"].as_str().unwrap();
-        let encoding = first["encoding"].as_str().unwrap();
-
-        // Verify hash algorithm is SHA-1
-        assert_eq!(hash_algo, "sha1", "Hash algorithm should be SHA-1");
-
-        match filename.as_str() {
-            "tests/test3_and_test4/a" => {
-                assert_eq!(encoding, "utf8", "File 'a' should be utf8 encoded");
+    // Verify we saw all expected files
+    assert!(file_seen.contains("tests/test3_and_test4/a"), "Missing file 'a'");
+    assert!(file_seen.contains("tests/test3_and_test4/b"), "Missing file 'b'");
+    assert!(file_seen.contains("tests/test3_and_test4/c"), "Missing file 'c'");
+    assert!(file_seen.contains("tests/test3_and_test4/d d"), "Missing file 'd d'");
+    assert!(file_seen.contains("tests/test3_and_test4/e e"), "Missing file 'e e'");
+    
+    // Verify fields for each file
+    // Verify 'a' file
+    let a_entry = &entries_by_filename["tests/test3_and_test4/a"];
+    assert_eq!(a_entry["hash_algo"].as_str().unwrap(), "sha1", "Hash algorithm should be SHA-1");
+    assert_eq!(a_entry["encoding"].as_str().unwrap(), "utf8", "File 'a' should be utf8 encoded");
+    assert_eq!(a_entry["cloud_id"].as_str().unwrap(), "", "cloud_id should be empty");
+    assert_eq!(a_entry["cloud_cr_ts"].as_str().unwrap(), "", "cloud_cr_ts should be empty");
+    assert_eq!(a_entry["cloud_upd_ts"].as_str().unwrap(), "", "cloud_upd_ts should be empty");
+    
+    // Verify 'b' file
+    let b_entry = &entries_by_filename["tests/test3_and_test4/b"];
+    assert_eq!(b_entry["hash_algo"].as_str().unwrap(), "sha1", "Hash algorithm should be SHA-1");
+    assert_eq!(b_entry["encoding"].as_str().unwrap(), "utf8", "File 'b' should be utf8 encoded");
+    
+    // Verify 'c' file
+    let c_entry = &entries_by_filename["tests/test3_and_test4/c"];
+    assert_eq!(c_entry["hash_algo"].as_str().unwrap(), "sha1", "Hash algorithm should be SHA-1");
+    assert_eq!(c_entry["encoding"].as_str().unwrap(), "utf8", "File 'c' should be utf8 encoded");
+    
+    // Verify 'd d' file
+    let d_entry = &entries_by_filename["tests/test3_and_test4/d d"];
+    assert_eq!(d_entry["hash_algo"].as_str().unwrap(), "sha1", "Hash algorithm should be SHA-1");
+    assert_eq!(d_entry["encoding"].as_str().unwrap(), "utf8", "File 'd d' should be utf8 encoded");
+    
+    // Verify 'e e' file
+    let e_entry = &entries_by_filename["tests/test3_and_test4/e e"];
+    assert_eq!(e_entry["hash_algo"].as_str().unwrap(), "sha1", "Hash algorithm should be SHA-1");
+    assert_eq!(e_entry["encoding"].as_str().unwrap(), "base64", "File 'e e' should be base64 encoded");
+    
+    // Verify each file has the expected cloud destination based on size
+    for (_filename, entry) in &entries_by_filename {
+        let encoded_size = entry["encoded_size"].as_u64().unwrap();
+        let destination_cloud = entry["destination_cloud"].as_str().unwrap();
+        
+        if encoded_size > 24000 {
+            assert_eq!(destination_cloud, "r2", 
+                      "Files larger than 24KB should use R2 storage");
+        } else {
+            assert_eq!(destination_cloud, "azure_kv", 
+                      "Files smaller than 24KB should use Azure KeyVault");
+        }
+        
+        // Verify cloud_upload_bucket based on destination cloud
+        let cloud_upload_bucket = entry["cloud_upload_bucket"].as_str().unwrap();
+        match destination_cloud {
+            "b2" | "r2" => {
+                assert_eq!(cloud_upload_bucket, "", 
+                         "B2/R2 destination should have empty bucket at initialize time");
+            },
+            _ => {
+                assert_eq!(cloud_upload_bucket, "", 
+                         "Azure KeyVault destination should have empty bucket");
             }
-            "tests/test3_and_test4/b" => {
-                assert_eq!(encoding, "utf8", "File 'b' should be utf8 encoded");
-            }
-            "tests/test3_and_test4/c" => {
-                assert_eq!(encoding, "utf8", "File 'c' should be utf8 encoded");
-            }
-            "tests/test3_and_test4/d d" => {
-                assert_eq!(encoding, "utf8", "File 'd d' should be utf8 encoded");
-            }
-            "tests/test3_and_test4/e e" => {
-                assert_eq!(encoding, "base64", "File 'e e' should be base64 encoded");
-            }
-            _ => panic!("Unexpected filename: {}", filename),
         }
     }
+    
     // The tempfile will be automatically removed when it's dropped
     drop(temp_file);
 }

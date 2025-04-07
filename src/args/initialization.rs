@@ -50,10 +50,10 @@ pub fn check_init_filepath(file_path: &str) -> Result<PathBuf, String> {
             // Not valid JSON, check if it's a list of filenames (one per line)
             let lines: Vec<&str> = file_content.lines().collect();
 
-            // Filter out empty lines
+            // Filter out empty lines and commented lines
             let non_empty_lines: Vec<&str> = lines
                 .iter()
-                .filter(|line| !line.trim().is_empty())
+                .filter(|line| !line.trim().is_empty() && !line.trim().starts_with('#'))
                 .copied()
                 .collect();
 

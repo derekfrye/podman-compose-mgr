@@ -68,7 +68,7 @@ pub fn process(args: &Args) -> Result<()> {
 
         // Determine destination cloud based on encoded size
         let destination_cloud = if encoded_size > 24000 {
-            "b2"
+            "r2"
         } else {
             "azure_kv"
         };
@@ -85,12 +85,7 @@ pub fn process(args: &Args) -> Result<()> {
 
         // Set a default cloud_upload_bucket value
         // For B2 and R2, this will need to be specified in the JSON when uploading
-        let cloud_upload_bucket = if destination_cloud == "b2" || destination_cloud == "r2" {
-            "bucket_required_during_upload".to_string()
-        } else {
-            // For Azure KeyVault, this is not needed
-            "".to_string()
-        };
+        let cloud_upload_bucket = "".to_string();
         
         // Create JSON entry
         let entry = json!({
@@ -114,6 +109,8 @@ pub fn process(args: &Args) -> Result<()> {
 
     // Create or read existing entries
     let mut all_entries = Vec::new();
+    let mut updated_entries_count = 0;
+    let mut new_entries_count = 0;
 
     // Check if output file already exists and read its contents if it does
     if Path::new(output_filepath).exists() {
@@ -123,18 +120,76 @@ pub fn process(args: &Args) -> Result<()> {
 
         if !existing_content.trim().is_empty() {
             // Parse existing JSON entries
-            let existing_entries: Vec<serde_json::Value> = serde_json::from_str(&existing_content)?;
-
-            // Add existing entries to all_entries
-            all_entries.extend(existing_entries);
+            let mut existing_entries: Vec<serde_json::Value> = serde_json::from_str(&existing_content)?;
+            
+            // Create a lookup map for existing entries (key = file_nm + hostname)
+            let mut updated_indices = std::collections::HashSet::new();
+            
+            // Process each new entry
+            for new_entry in new_entries.iter() {
+                // Get file_nm and hostname from the new entry
+                if let (Some(file_nm), Some(hostname)) = (
+                    new_entry.get("file_nm").and_then(|v| v.as_str()),
+                    new_entry.get("hostname").and_then(|v| v.as_str())
+                ) {
+                    let lookup_key = format!("{}-{}", file_nm, hostname);
+                    
+                    // Look for a matching entry in existing entries
+                    let mut found_match = false;
+                    
+                    for (idx, existing_entry) in existing_entries.iter_mut().enumerate() {
+                        if let (Some(existing_file_nm), Some(existing_hostname)) = (
+                            existing_entry.get("file_nm").and_then(|v| v.as_str()),
+                            existing_entry.get("hostname").and_then(|v| v.as_str())
+                        ) {
+                            let existing_key = format!("{}-{}", existing_file_nm, existing_hostname);
+                            
+                            // If match found, update the existing entry
+                            if existing_key == lookup_key {
+                                found_match = true;
+                                updated_indices.insert(idx);
+                                
+                                // Update fields from new entry to existing entry
+                                if let (Some(new_obj), Some(existing_obj)) = (
+                                    new_entry.as_object(),
+                                    existing_entry.as_object_mut()
+                                ) {
+                                    for (key, value) in new_obj {
+                                        existing_obj.insert(key.clone(), value.clone());
+                                    }
+                                }
+                                
+                                updated_entries_count += 1;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // If no match found, this is a truly new entry
+                    if !found_match {
+                        all_entries.push(new_entry.clone());
+                        new_entries_count += 1;
+                    }
+                } else {
+                    // Missing required fields, add as a new entry
+                    all_entries.push(new_entry.clone());
+                    new_entries_count += 1;
+                }
+            }
+            
+            // Add all existing entries (both updated and non-updated)
+            // The updates were already applied in place when we processed new entries
+            all_entries = existing_entries;
+        } else {
+            // No existing content, all entries are new
+            all_entries.extend(new_entries.clone());
+            new_entries_count = new_entries.len();
         }
+    } else {
+        // No existing file, all entries are new
+        all_entries.extend(new_entries.clone());
+        new_entries_count = new_entries.len();
     }
-
-    // Store the count of new entries
-    let new_entries_count = new_entries.len();
-
-    // Add new entries to all_entries
-    all_entries.extend(new_entries);
 
     // Write all entries to the output file
     let output_content = serde_json::to_string_pretty(&all_entries)?;
@@ -142,10 +197,22 @@ pub fn process(args: &Args) -> Result<()> {
     output_file.write_all(output_content.as_bytes())?;
 
     if args.verbose > 0 {
-        println!(
-            "info: Successfully updated output file with {} new entries",
-            new_entries_count
-        );
+        if updated_entries_count > 0 && new_entries_count > 0 {
+            println!(
+                "info: Successfully updated output file with {} new entries and {} updated entries",
+                new_entries_count, updated_entries_count
+            );
+        } else if updated_entries_count > 0 {
+            println!(
+                "info: Successfully updated output file with {} updated entries",
+                updated_entries_count
+            );
+        } else {
+            println!(
+                "info: Successfully updated output file with {} new entries",
+                new_entries_count
+            );
+        }
     }
 
     Ok(())
