@@ -183,39 +183,40 @@ pub fn display_upload_help() {
     println!("? = Display this help.");
 }
 
+/// Upload prompt configuration
+pub struct UploadPromptConfig<'a> {
+    /// Path to the file being uploaded
+    pub file_path: &'a str,
+    /// Whether the file already exists in the cloud
+    pub secret_exists: bool,
+    /// Cloud file creation timestamp
+    pub cloud_created: Option<String>,
+    /// Cloud file update timestamp
+    pub cloud_updated: Option<String>,
+    /// Type of cloud storage (azure_kv, r2, b2)
+    pub cloud_type: Option<&'a str>,
+    /// Size of the file in cloud storage
+    pub cloud_file_size: Option<u64>,
+    /// Size of the local file
+    pub local_file_size: u64,
+}
+
 /// Prompt the user for confirmation before uploading a file
 ///
 /// This function uses the default implementation of ReadInteractiveInputHelper
-pub fn prompt_for_upload(
-    file_path: &str,
-    secret_exists: bool,
-    cloud_created: Option<String>,
-    cloud_updated: Option<String>,
-    cloud_type: Option<&str>,
-) -> Result<bool> {
+pub fn prompt_for_upload(config: UploadPromptConfig) -> Result<bool> {
     use crate::interfaces::DefaultReadInteractiveInputHelper;
     let read_val_helper = DefaultReadInteractiveInputHelper;
-    prompt_for_upload_with_helper(
-        file_path,
-        &read_val_helper,
-        secret_exists,
-        cloud_created,
-        cloud_updated,
-        cloud_type,
-    )
+    prompt_for_upload_with_helper(&config, &read_val_helper)
 }
 
 /// Version of prompt_for_upload that accepts dependency injection for testing
 pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
-    file_path: &str,
+    config: &UploadPromptConfig<'_>,
     read_val_helper: &R,
-    secret_exists: bool,
-    cloud_created: Option<String>,
-    cloud_updated: Option<String>,
-    cloud_type: Option<&str>,
 ) -> Result<bool> {
     // If the secret exists and we're prompting, show an overwrite warning
-    if secret_exists {
+    if config.secret_exists {
         // We'll show the detailed warning only if the user selects 'd'
         // The main warning was already printed in the upload.rs file
     }
@@ -223,7 +224,7 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
     let mut grammars: Vec<GrammarFragment> = Vec::new();
 
     // Setup the prompt
-    setup_upload_prompt(&mut grammars, file_path)?;
+    setup_upload_prompt(&mut grammars, config.file_path)?;
 
     loop {
         // Display prompt and get user input using the provided helper
@@ -244,17 +245,54 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
                     // Display details about the file
                     "d" => {
                         // Get file details
-                        let mut details = get_file_details(file_path)?;
+                        let mut details = get_file_details(config.file_path)?;
 
                         // Add cloud metadata if available
-                        details.cloud_created = cloud_created.clone();
-                        details.cloud_updated = cloud_updated.clone();
-                        if let Some(ct) = cloud_type {
+                        details.cloud_created = config.cloud_created.clone();
+                        details.cloud_updated = config.cloud_updated.clone();
+                        if let Some(ct) = config.cloud_type {
                             details.cloud_type = Some(ct.to_string());
                         }
 
                         // Display the details
                         display_file_details(&details);
+                        
+                        // If file exists in cloud and cloud_file_size is available, show the size comparison
+                        if config.secret_exists && config.cloud_type == Some("r2") && config.cloud_file_size.is_some() {
+                            let cloud_size = config.cloud_file_size.unwrap();
+                            
+                            // Compare file sizes and show difference
+                            if cloud_size != config.local_file_size {
+                                let size_diff = if cloud_size > config.local_file_size {
+                                    cloud_size - config.local_file_size
+                                } else {
+                                    config.local_file_size - cloud_size
+                                };
+                                
+                                let diff_percentage = (size_diff as f64 / config.local_file_size as f64) * 100.0;
+                                
+                                if cloud_size > config.local_file_size {
+                                    println!("Warning: Cloud file size ({}) is LARGER than local file size ({}) by {} ({:.2}%)",
+                                        crate::secrets::file_details::format_file_size(cloud_size),
+                                        crate::secrets::file_details::format_file_size(config.local_file_size),
+                                        crate::secrets::file_details::format_file_size(size_diff),
+                                        diff_percentage
+                                    );
+                                } else {
+                                    println!("Warning: Cloud file size ({}) is SMALLER than local file size ({}) by {} ({:.2}%)",
+                                        crate::secrets::file_details::format_file_size(cloud_size),
+                                        crate::secrets::file_details::format_file_size(config.local_file_size),
+                                        crate::secrets::file_details::format_file_size(size_diff),
+                                        diff_percentage
+                                    );
+                                }
+                            } else {
+                                println!("File sizes match: Cloud file size equals local file size ({})",
+                                    crate::secrets::file_details::format_file_size(config.local_file_size)
+                                );
+                            }
+                        }
+                        
                         // Add an extra newline for better readability
                         println!();
                     }

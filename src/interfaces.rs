@@ -152,6 +152,9 @@ pub trait B2StorageClient {
     
     /// Checks if a file exists (now redirects to R2)
     fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<FileExistenceCheckResult, Box<dyn std::error::Error>>;
+    
+    /// Get file metadata from B2 storage (now redirects to R2)
+    fn get_file_metadata(&self, file_key: &str) -> Result<Option<std::collections::HashMap<String, String>>, Box<dyn std::error::Error>>;
 }
 
 /// B2 storage is being removed, this now just redirects to R2
@@ -183,6 +186,11 @@ impl B2StorageClient for DefaultB2StorageClient {
         // Just redirect to R2 client
         self.r2_client.check_file_exists_with_details(hash, bucket_name)
     }
+    
+    fn get_file_metadata(&self, file_key: &str) -> Result<Option<std::collections::HashMap<String, String>>, Box<dyn std::error::Error>> {
+        // Just redirect to R2 client
+        self.r2_client.get_file_metadata(file_key)
+    }
 }
 
 /// Interface for R2 storage operations to facilitate testing
@@ -196,6 +204,9 @@ pub trait R2StorageClient {
     
     /// Checks if a file exists in R2 storage
     fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<FileExistenceCheckResult, Box<dyn std::error::Error>>;
+    
+    /// Get file metadata from R2 storage
+    fn get_file_metadata(&self, file_key: &str) -> Result<Option<std::collections::HashMap<String, String>>, Box<dyn std::error::Error>>;
 }
 
 /// Default implementation that uses the actual R2 client
@@ -284,5 +295,20 @@ impl R2StorageClient for DefaultR2StorageClient {
         // Otherwise, use the real client
         let bucket_ref = bucket_name.as_deref();
         self.client.check_file_exists_with_details(hash, bucket_ref)
+    }
+    
+    fn get_file_metadata(&self, file_key: &str) -> Result<Option<std::collections::HashMap<String, String>>, Box<dyn std::error::Error>> {
+        // If this is not a real client, return mock data
+        if !self.is_real_client {
+            let mut metadata = std::collections::HashMap::new();
+            metadata.insert("content_type".to_string(), "application/octet-stream".to_string());
+            metadata.insert("content_length".to_string(), "1024".to_string()); // Mock 1KB file
+            metadata.insert("etag".to_string(), format!("\"mock-etag-{}\"", file_key));
+            metadata.insert("last_modified".to_string(), "2025-01-01T00:00:00Z".to_string());
+            return Ok(Some(metadata));
+        }
+        
+        // Otherwise, use the real client
+        self.client.get_file_metadata(file_key)
     }
 }

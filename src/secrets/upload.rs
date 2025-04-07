@@ -8,7 +8,7 @@ use crate::secrets::azure::get_keyvault_client;
 use crate::secrets::error::Result;
 use crate::secrets::file_details::{check_encoding_and_size, FileDetails};
 // Removed create_secret_name import as it's no longer used
-use crate::secrets::user_prompt::prompt_for_upload_with_helper;
+use crate::secrets::{user_prompt, user_prompt::prompt_for_upload_with_helper};
 use crate::secrets::utils::get_hostname;
 
 use serde_json::{Value, json};
@@ -254,10 +254,23 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             // Check if the file already exists in R2 storage
             let r2_file_exists = r2_client.check_file_exists_with_details(hash, cloud_upload_bucket.clone()).ok().flatten();
             
+            // Get metadata to check file size if the file exists
+            let mut r2_file_size: Option<u64> = None;
+            
             // If file exists, print a concise warning
             let (file_exists, cloud_created, cloud_updated) = if let Some((exists, created, updated)) = r2_file_exists {
                 if exists {
                     println!("Warning: File already exists in r2.");
+                    
+                    // Also get file metadata to check size
+                    if let Ok(Some(metadata)) = r2_client.get_file_metadata(hash) {
+                        if let Some(content_length) = metadata.get("content_length") {
+                            if let Ok(size) = content_length.parse::<u64>() {
+                                r2_file_size = Some(size);
+                            }
+                        }
+                    }
+                    
                     (true, Some(created), Some(updated))
                 } else {
                     (false, None, None)
@@ -288,14 +301,16 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             };
             
             // Prompt the user for confirmation
-            let upload_confirmed = prompt_for_upload_with_helper(
+            let upload_config = user_prompt::UploadPromptConfig {
                 file_path,
-                read_val_helper,
-                file_exists,
+                secret_exists: file_exists,
                 cloud_created,
                 cloud_updated,
-                Some("r2"),
-            )?;
+                cloud_type: Some("r2"),
+                cloud_file_size: r2_file_size,
+                local_file_size: encoded_size,
+            };
+            let upload_confirmed = prompt_for_upload_with_helper(&upload_config, read_val_helper)?;
             
             if !upload_confirmed {
                 if args.verbose > 0 {
@@ -348,10 +363,23 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             // Check if the file already exists in B2 storage
             let b2_file_exists = b2_client.check_file_exists_with_details(hash, cloud_upload_bucket.clone()).ok().flatten();
             
+            // Get metadata to check file size if the file exists
+            let mut r2_file_size: Option<u64> = None;
+            
             // If file exists, print a concise warning
             let (file_exists, cloud_created, cloud_updated) = if let Some((exists, created, updated)) = b2_file_exists {
                 if exists {
                     println!("Warning: File already exists in R2 storage.");
+                    
+                    // Also get file metadata to check size
+                    if let Ok(Some(metadata)) = b2_client.get_file_metadata(hash) {
+                        if let Some(content_length) = metadata.get("content_length") {
+                            if let Ok(size) = content_length.parse::<u64>() {
+                                r2_file_size = Some(size);
+                            }
+                        }
+                    }
+                    
                     (true, Some(created), Some(updated))
                 } else {
                     (false, None, None)
@@ -382,14 +410,16 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             };
             
             // Prompt the user for confirmation
-            let upload_confirmed = prompt_for_upload_with_helper(
+            let upload_config = user_prompt::UploadPromptConfig {
                 file_path,
-                read_val_helper,
-                file_exists,
+                secret_exists: file_exists,
                 cloud_created,
                 cloud_updated,
-                Some("r2"),
-            )?;
+                cloud_type: Some("r2"),
+                cloud_file_size: r2_file_size,
+                local_file_size: encoded_size,
+            };
+            let upload_confirmed = prompt_for_upload_with_helper(&upload_config, read_val_helper)?;
             
             if !upload_confirmed {
                 if args.verbose > 0 {
@@ -476,14 +506,16 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             }
 
             // Prompt the user for confirmation
-            let upload_confirmed = prompt_for_upload_with_helper(
+            let upload_config = user_prompt::UploadPromptConfig {
                 file_path,
-                read_val_helper,
                 secret_exists,
-                existing_created,
-                existing_updated,
-                Some(destination_cloud),
-            )?;
+                cloud_created: existing_created,
+                cloud_updated: existing_updated,
+                cloud_type: Some(destination_cloud),
+                cloud_file_size: None, // Azure KeyVault doesn't expose secret size
+                local_file_size: encoded_size,
+            };
+            let upload_confirmed = prompt_for_upload_with_helper(&upload_config, read_val_helper)?;
 
             if !upload_confirmed {
                 if args.verbose > 0 {
