@@ -64,7 +64,7 @@ pub fn add_choice_options(grammars: &mut Vec<GrammarFragment>) {
 
 /// Add user choice options to the prompt for upload
 pub fn add_upload_choice_options(grammars: &mut Vec<GrammarFragment>) {
-    let choices = ["d", "Y", "n", "?"];
+    let choices = ["d", "y", "N", "?"];
     for i in 0..choices.len() {
         let mut choice_separator = Some("/".to_string());
         if i == choices.len() - 1 {
@@ -165,17 +165,17 @@ pub fn setup_upload_prompt(grammars: &mut Vec<GrammarFragment>, file_path: &str)
 pub fn display_validation_help() {
     println!("N = Do nothing, skip this secret.");
     println!(
-        "d = Display info (file name, Azure KV name, upstream secret create date, and file name modify date)."
+        "d = Display info (file name, cloud storage name, upstream secret create date, and file name modify date)."
     );
-    println!("v = Validate on-disk item matches the Azure Key Vault secret.");
+    println!("v = Validate on-disk item matches the cloud storage secret.");
     println!("a = Validate all items.");
     println!("? = Display this help.");
 }
 
 /// Display help for upload options
 pub fn display_upload_help() {
-    println!("Y = Upload this secret to Azure Key Vault.");
-    println!("n = Skip this secret, don't upload it.");
+    println!("y = Upload this secret to cloud storage.");
+    println!("N = Skip this secret, don't upload it (default).");
     println!("d = Display details about the file.");
     println!("? = Display this help.");
 }
@@ -228,15 +228,15 @@ pub fn prompt_for_upload_with_helper<R: ReadInteractiveInputHelper>(
         let result = read_val_helper.read_val_from_cmd_line_and_proceed(&mut grammars, None);
 
         match result.user_entered_val {
-            None => return Ok(true), // Empty input means yes (same as "Y")
+            None => return Ok(false), // Empty input means no (same as "N")
             Some(choice) => {
                 match choice.as_str() {
-                    // Yes or empty response - upload the file
-                    "Y" | "y" | "" => {
+                    // Yes - upload the file
+                    "y" | "Y" => {
                         return Ok(true);
                     }
                     // No, skip this file
-                    "n" => {
+                    "n" | "N" | "" => {
                         return Ok(false);
                     }
                     // Display details about the file
