@@ -1,7 +1,7 @@
 use crate::args::Args;
 use crate::secrets::error::Result;
 use crate::secrets::file_details::FileDetails;
-use crate::secrets::s3_storage_base::{S3StorageClient, S3Config, S3Provider, read_value_from_file, get_bucket_name};
+use crate::secrets::s3_storage_base::{S3StorageClient, S3Config, S3Provider, read_value_from_file};
 
 /// Configuration for the B2 client (for backwards compatibility)
 pub struct B2Config {
@@ -43,11 +43,9 @@ impl B2Client {
             let account_id = read_value_from_file(account_id_filepath)?;
             let account_key = read_value_from_file(account_key_filepath)?;
             
-            // Get bucket name from args
-            let bucket_name = match args.b2_bucket_for_upload.as_ref() {
-                Some(bucket_path) => get_bucket_name(bucket_path)?,
-                None => return Err(Box::<dyn std::error::Error>::from("B2 bucket name is required")),
-            };
+            // B2 bucket is now required to be in the input JSON
+            // Use a placeholder here that will be replaced during upload
+            let bucket_name = "placeholder_bucket_will_be_provided_from_json".to_string();
             
             let config = B2Config {
                 key_id: account_id,
@@ -62,11 +60,9 @@ impl B2Client {
         if let (Some(key_id), Some(application_key)) = 
             (&args.b2_key_id, &args.b2_application_key) {
             
-            // Get bucket name from args
-            let bucket_name = match args.b2_bucket_for_upload.as_ref() {
-                Some(bucket_path) => get_bucket_name(bucket_path)?,
-                None => return Err(Box::<dyn std::error::Error>::from("B2 bucket name is required")),
-            };
+            // B2 bucket is now required to be in the input JSON
+            // Use a placeholder here that will be replaced during upload
+            let bucket_name = "placeholder_bucket_will_be_provided_from_json".to_string();
             
             let config = B2Config {
                 key_id: key_id.clone(),

@@ -70,10 +70,6 @@ pub struct Args {
     #[arg(long)]
     pub b2_bucket_name: Option<String>,
 
-    /// Backblaze B2 bucket name to use for uploads
-    #[arg(long)]
-    pub b2_bucket_for_upload: Option<String>,
-    
     /// Path to file containing Backblaze B2 account ID
     #[arg(long)]
     pub b2_account_id_filepath: Option<PathBuf>,
@@ -107,9 +103,6 @@ pub struct Args {
     #[arg(long)]
     pub r2_access_key_filepath: Option<PathBuf>,
     
-    /// Cloudflare R2 bucket name to use for uploads
-    #[arg(long)]
-    pub r2_bucket_for_upload: Option<String>,
 }
 
 impl Args {
@@ -255,10 +248,7 @@ impl Args {
                 return Err("output_json is required for SecretInitialize mode".to_string());
             }
             
-            // B2 bucket for upload is required for SecretInitialize mode
-            if self.b2_bucket_for_upload.is_none() {
-                return Err("b2_bucket_for_upload is required for SecretInitialize mode".to_string());
-            }
+            // Bucket for upload is now specified in the JSON file, no longer a command-line argument
 
             // The actual processing of secrets_init_filepath happens in validate_and_process()
         } else if let Mode::SecretUpload = self.mode {
@@ -304,10 +294,6 @@ impl Args {
                         return Err("b2_account_key_filepath is required for upload mode when input json contains B2 entries".to_string());
                     }
                     
-                    // Check if B2 bucket for upload is provided
-                    if self.b2_bucket_for_upload.is_none() {
-                        return Err("b2_bucket_for_upload is required for upload mode when input json contains B2 entries".to_string());
-                    }
                     
                     // Validate B2 account ID filepath
                     if let Some(filepath) = &self.b2_account_id_filepath {
@@ -336,10 +322,6 @@ impl Args {
                         return Err("r2_access_key_filepath is required for upload mode when input json contains R2 entries".to_string());
                     }
                     
-                    // Check if R2 bucket for upload is provided
-                    if self.r2_bucket_for_upload.is_none() {
-                        return Err("r2_bucket_for_upload is required for upload mode when input json contains R2 entries".to_string());
-                    }
                     
                     // Validate R2 account ID filepath if provided
                     if let Some(filepath) = &self.r2_account_id_filepath {

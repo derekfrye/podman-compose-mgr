@@ -86,7 +86,6 @@ fn test_azure_integration() -> Result<(), Box<dyn std::error::Error>> {
         b2_key_id: None,
         b2_application_key: None,
         b2_bucket_name: None,
-        b2_bucket_for_upload: None,
         b2_account_id_filepath: None,
         b2_account_key_filepath: None,
         r2_account_id: None,
@@ -95,7 +94,6 @@ fn test_azure_integration() -> Result<(), Box<dyn std::error::Error>> {
         r2_access_key: None,
         r2_access_key_id_filepath: None,
         r2_access_key_filepath: None,
-        r2_bucket_for_upload: None,
     };
 
     // 4. Display test information

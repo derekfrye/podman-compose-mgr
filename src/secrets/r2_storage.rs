@@ -1,7 +1,7 @@
 use crate::args::Args;
 use crate::secrets::error::Result;
 use crate::secrets::file_details::FileDetails;
-use crate::secrets::s3_storage_base::{S3StorageClient, S3Config, S3Provider, read_value_from_file, get_bucket_name};
+use crate::secrets::s3_storage_base::{S3StorageClient, S3Config, S3Provider, read_value_from_file};
 use std::collections::HashMap;
 
 /// Configuration for the R2 client (for backwards compatibility)
@@ -62,17 +62,15 @@ impl R2Client {
             let access_key_id = read_value_from_file(access_key_id_filepath)?;
             let access_key = read_value_from_file(access_key_filepath)?;
             
-            // Get bucket name from args
-            let bucket_name = match args.r2_bucket_for_upload.as_ref() {
-                Some(bucket_path) => get_bucket_name(bucket_path)?,
-                None => return Err(Box::<dyn std::error::Error>::from("R2 bucket name is required")),
-            };
+            // R2 bucket is now required to be in the input JSON
+            // Use a placeholder here that will be replaced during upload
+            let bucket_name = "placeholder_bucket_will_be_provided_from_json".to_string();
             
             let config = R2Config {
                 key_id: access_key_id,
                 application_key: access_key,
                 bucket: bucket_name,
-                account_id: account_id,
+                account_id,
             };
             
             return Self::new(config);
@@ -82,17 +80,15 @@ impl R2Client {
         if let (Some(access_key_id), Some(access_key)) = 
             (&args.r2_access_key_id, &args.r2_access_key) {
             
-            // Get bucket name from args
-            let bucket_name = match args.r2_bucket_for_upload.as_ref() {
-                Some(bucket_path) => get_bucket_name(bucket_path)?,
-                None => return Err(Box::<dyn std::error::Error>::from("R2 bucket name is required")),
-            };
+            // R2 bucket is now required to be in the input JSON
+            // Use a placeholder here that will be replaced during upload
+            let bucket_name = "placeholder_bucket_will_be_provided_from_json".to_string();
             
             let config = R2Config {
                 key_id: access_key_id.clone(),
                 application_key: access_key.clone(),
                 bucket: bucket_name,
-                account_id: account_id,
+                account_id,
             };
             
             return Self::new(config);

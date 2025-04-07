@@ -84,10 +84,10 @@ pub fn process(args: &Args) -> Result<()> {
             );
         }
 
-        // Get the upload bucket name based on destination cloud
-        let cloud_upload_bucket = if destination_cloud == "b2" {
-            // For B2, use the specified bucket name
-            args.b2_bucket_for_upload.as_ref().unwrap().clone()
+        // Set a default cloud_upload_bucket value
+        // For B2 and R2, this will need to be specified in the JSON when uploading
+        let cloud_upload_bucket = if destination_cloud == "b2" || destination_cloud == "r2" {
+            "bucket_required_during_upload".to_string()
         } else {
             // For Azure KeyVault, this is not needed
             "".to_string()

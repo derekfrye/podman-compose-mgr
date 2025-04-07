@@ -274,6 +274,15 @@ impl S3StorageClient {
     
     /// Upload a file with details from FileDetails struct
     pub fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<S3UploadResult> {
+        // Check if cloud_upload_bucket is provided for B2/R2 storage
+        if (matches!(self.provider_type, S3Provider::BackblazeB2) || 
+            matches!(self.provider_type, S3Provider::CloudflareR2)) && 
+            file_details.cloud_upload_bucket.is_none() {
+            return Err(Box::<dyn std::error::Error>::from(
+                "cloud_upload_bucket is required in JSON for B2/R2 storage"
+            ));
+        }
+        
         // Determine which file to use - original or base64 encoded version
         let file_to_use = if file_details.encoding == "base64" {
             format!("{}.base64", file_details.file_path)
@@ -289,21 +298,13 @@ impl S3StorageClient {
         metadata.insert("encoding".to_string(), file_details.encoding.clone());
         metadata.insert("size".to_string(), file_details.file_size.to_string());
         
-        // If a specific bucket is set in the file details, add it to metadata
+        // Always add bucket to metadata if provided
         if let Some(bucket) = &file_details.cloud_upload_bucket {
             metadata.insert("bucket".to_string(), bucket.clone());
         }
         
-        // Determine the path in storage based on bucket details
-        let prefix = if let Some(bucket) = &file_details.cloud_upload_bucket {
-            if !bucket.is_empty() {
-                format!("{}/secrets", bucket)
-            } else {
-                "secrets".to_string()
-            }
-        } else {
-            "secrets".to_string()
-        };
+        // Determine the prefix path in storage
+        let prefix = "secrets".to_string();
         
         // Use hash as the object key for deduplication and consistent naming
         let object_key = format!("{}/{}", prefix, file_details.hash);

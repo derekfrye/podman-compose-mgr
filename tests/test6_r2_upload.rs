@@ -45,7 +45,6 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         b2_key_id: None,
         b2_application_key: None,
         b2_bucket_name: None,
-        b2_bucket_for_upload: None,
         b2_account_id_filepath: None,
         b2_account_key_filepath: None,
         r2_account_id: Some("test-cloudflare-account-id".to_string()),
@@ -54,7 +53,6 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         r2_access_key: Some("test-r2-access-key".to_string()),
         r2_access_key_id_filepath: None,
         r2_access_key_filepath: None,
-        r2_bucket_for_upload: Some("test-r2-upload-bucket".to_string()),
     };
 
     // List of file paths in our test that will be processed

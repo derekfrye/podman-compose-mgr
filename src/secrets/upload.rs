@@ -255,6 +255,13 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         // Determine which storage backend to use
         let destination_cloud = entry["destination_cloud"].as_str().unwrap_or("azure_kv");
 
+        // For B2 and R2, cloud_upload_bucket is required
+        if (destination_cloud == "b2" || destination_cloud == "r2") && entry["cloud_upload_bucket"].as_str().is_none() {
+            eprintln!("Error: cloud_upload_bucket is required in JSON when destination_cloud is '{}' for file {}", 
+                      destination_cloud, file_path);
+            continue;
+        }
+
         // Get cloud upload bucket if specified
         let cloud_upload_bucket = entry["cloud_upload_bucket"].as_str().map(String::from);
         let too_large_for_keyvault = encoded_size > 24000;
