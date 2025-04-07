@@ -227,7 +227,8 @@ pub fn process(args: &Args) -> Result<()> {
     Ok(())
 }
 
-/// Calculate hash for a file (using streaming for large files)
+/// Calculate hash for a filepath (not the file contents)
+/// This ensures consistent locations for files even if their content changes
 fn calculate_hash(filepath: &str) -> Result<String> {
     crate::secrets::utils::calculate_hash(filepath)
 }

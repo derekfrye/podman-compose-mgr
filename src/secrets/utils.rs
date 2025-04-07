@@ -5,7 +5,7 @@ use hex;
 use serde_json::Value;
 use sha1::{Digest, Sha1};
 use std::fs;
-use std::io::{BufReader, Read, Write};
+use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 use time::OffsetDateTime;
 
@@ -137,28 +137,14 @@ pub fn get_hostname() -> Result<String> {
         .map_err(|_| Box::<dyn std::error::Error>::from("Hostname contains non-UTF8 characters"))
 }
 
-/// Calculate SHA-1 hash for a file using streaming to handle large files
+/// Calculate SHA-1 hash of the filepath (not the file contents)
+/// This ensures consistent locations for files even when their content changes
 pub fn calculate_hash(filepath: &str) -> Result<String> {
-    let file = fs::File::open(filepath).map_err(|e| {
-        Box::<dyn std::error::Error>::from(format!("Failed to open file {}: {}", filepath, e))
-    })?;
-
-    let mut reader = BufReader::new(file);
+    // Create a hasher and update it with the filepath bytes
     let mut hasher = Sha1::new();
-    let mut buffer = [0; 8192]; // 8KB buffer
-
-    loop {
-        let bytes_read = reader.read(&mut buffer).map_err(|e| {
-            Box::<dyn std::error::Error>::from(format!("Failed to read file {}: {}", filepath, e))
-        })?;
-
-        if bytes_read == 0 {
-            break;
-        }
-
-        hasher.update(&buffer[..bytes_read]);
-    }
-
+    hasher.update(filepath.as_bytes());
+    
+    // Finalize and return the hex-encoded hash
     let result = hasher.finalize();
     Ok(hex::encode(result))
 }
