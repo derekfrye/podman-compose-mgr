@@ -1,5 +1,4 @@
 use std::fs;
-use std::path::PathBuf;
 
 use mockall::Sequence;
 use mockall::predicate::*;
@@ -36,7 +35,6 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
     // Create Args for the process function
     let args = Args {
         mode: Mode::SecretUpload,
-        path: PathBuf::from("."),
         input_json: Some(input_path.clone()),
         output_json: Some(output_path.clone()),
         secrets_client_id: Some("test-client-id".to_string()),
@@ -44,21 +42,10 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         secrets_tenant_id: Some("test-tenant-id".to_string()),
         secrets_vault_name: Some("test-vault".to_string()),
         verbose: 1,
-        exclude_path_patterns: vec![],
-        include_path_patterns: vec![],
-        build_args: vec![],
-        secrets_init_filepath: None,
         b2_key_id: Some("test-b2-key-id".to_string()),
         b2_application_key: Some("test-b2-application-key".to_string()),
         b2_bucket_name: Some("test-b2-bucket".to_string()),
-        b2_account_id_filepath: None,
-        b2_account_key_filepath: None,
-        r2_account_id: None,
-        r2_account_id_filepath: None,
-        r2_access_key_id: None,
-        r2_access_key: None,
-        r2_access_key_id_filepath: None,
-        r2_access_key_filepath: None,
+        ..Default::default()
     };
 
     // List of file paths in our test that will be processed

@@ -71,29 +71,14 @@ fn test_azure_integration() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args {
         path: PathBuf::from("~/docker"),
         mode: podman_compose_mgr::args::Mode::SecretRetrieve,
-
         verbose: 1,
-        exclude_path_patterns: vec![],
-        include_path_patterns: vec![],
-        build_args: vec![],
         secrets_client_id: Some("tests/personal_testing_data/client_id.txt".to_string()),
         secrets_client_secret_path: Some(PathBuf::from("tests/personal_testing_data/secret.txt")),
         secrets_tenant_id: Some("tests/personal_testing_data/tenant_id.txt".to_string()),
         secrets_vault_name: Some("tests/personal_testing_data/vault_name.txt".to_string()),
         output_json: Some(PathBuf::from("tests/personal_testing_data/outfile.json")),
         input_json: Some(PathBuf::from("tests/personal_testing_data/input.json")),
-        secrets_init_filepath: None,
-        b2_key_id: None,
-        b2_application_key: None,
-        b2_bucket_name: None,
-        b2_account_id_filepath: None,
-        b2_account_key_filepath: None,
-        r2_account_id: None,
-        r2_account_id_filepath: None,
-        r2_access_key_id: None,
-        r2_access_key: None,
-        r2_access_key_id_filepath: None,
-        r2_access_key_filepath: None,
+        ..Default::default()
     };
 
     // 4. Display test information

@@ -105,6 +105,37 @@ pub struct Args {
     
 }
 
+impl Default for Args {
+    fn default() -> Self {
+        Self {
+            path: PathBuf::from("."),
+            mode: Mode::Rebuild,
+            verbose: 0,
+            exclude_path_patterns: Vec::new(),
+            include_path_patterns: Vec::new(),
+            build_args: Vec::new(),
+            secrets_client_id: None,
+            secrets_client_secret_path: None,
+            secrets_tenant_id: None,
+            secrets_vault_name: None,
+            output_json: None,
+            input_json: None,
+            secrets_init_filepath: None,
+            b2_key_id: None,
+            b2_application_key: None,
+            b2_bucket_name: None,
+            b2_account_id_filepath: None,
+            b2_account_key_filepath: None,
+            r2_account_id: None,
+            r2_account_id_filepath: None,
+            r2_access_key_id: None,
+            r2_access_key: None,
+            r2_access_key_id_filepath: None,
+            r2_access_key_filepath: None,
+        }
+    }
+}
+
 impl Args {
     /// Validates and processes the secrets init filepath, updating it if necessary.
     ///
