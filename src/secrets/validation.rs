@@ -354,9 +354,10 @@ fn create_validation_output(
     hostname: String,
     encoding: String,
 ) -> JsonOutput {
+    let md5_hash = calculate_md5(&secret_value.value);
     JsonOutput {
         file_nm,
-        md5: calculate_md5(&secret_value.value),
+        md5: md5_hash.clone(),
         ins_ts: formatted_date,
         az_id: secret_value.id.to_string(),
         az_create: secret_value.created.to_string(),
@@ -364,6 +365,8 @@ fn create_validation_output(
         az_name: secret_value.name.to_string(),
         hostname,
         encoding,
+        hash_val: md5_hash.clone(),
+        hash_algo: "md5".to_string(),
     }
 }
 
@@ -420,9 +423,14 @@ pub fn validate_entry(
         let hostname = get_hostname()?;
         
         // Create output with B2 specifics
+        let hash_value = entry["hash"].as_str()
+            .or_else(|| entry["md5"].as_str())
+            .unwrap_or("")
+            .to_string();
+        
         let output = JsonOutput {
             file_nm: file_nm.clone(),
-            md5: entry["hash"].as_str().unwrap_or("").to_string(), // We use SHA-1 hash now
+            md5: hash_value.clone(),
             ins_ts: formatted_date,
             az_id: cloud_id,
             az_create: entry["cloud_cr_ts"].as_str().unwrap_or("").to_string(),
@@ -430,6 +438,8 @@ pub fn validate_entry(
             az_name: secret_name,
             hostname,
             encoding,
+            hash_val: hash_value.clone(),
+            hash_algo: entry["hash_algo"].as_str().unwrap_or("sha1").to_string(),
         };
         
         Ok(output)

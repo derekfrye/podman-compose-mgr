@@ -12,7 +12,7 @@ pub struct SetSecretResponse {
 #[derive(Serialize)]
 pub struct JsonOutput {
     pub file_nm: String,
-    pub md5: String,
+    pub md5: String,  // This is the file hash
     pub ins_ts: String,
     pub az_id: String,
     pub az_create: String,
@@ -21,12 +21,22 @@ pub struct JsonOutput {
     pub hostname: String,
     #[serde(default = "default_encoding")]
     pub encoding: String,
+    #[serde(rename = "hash", default = "String::new")]
+    pub hash_val: String,  // Added for compatibility with B2 storage
+    #[serde(default = "default_hash_algo")]
+    pub hash_algo: String, // Added for compatibility with B2 storage
 }
 
 // Default encoding for backward compatibility with existing JSON files
 #[allow(dead_code)]
 fn default_encoding() -> String {
     "utf8".to_string()
+}
+
+// Default hash algorithm for backward compatibility
+#[allow(dead_code)]
+fn default_hash_algo() -> String {
+    "sha1".to_string()
 }
 
 pub struct JsonOutputControl {
@@ -47,6 +57,8 @@ impl Default for JsonOutputControl {
                 az_name: String::new(),
                 hostname: String::new(),
                 encoding: "utf8".to_string(),
+                hash_val: String::new(),
+                hash_algo: "sha1".to_string(),
             },
             validate_all: false,
         }

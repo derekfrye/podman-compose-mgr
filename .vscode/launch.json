@@ -57,7 +57,13 @@
         "--output-json",
         "${env:HOME}/docker/podman-compose-mgr/output.json",
         "--input-json",
-        "${env:HOME}/docker/podman-compose-mgr/input.json"
+        "${env:HOME}/docker/podman-compose-mgr/input.json",
+        "--b2-account-id-filepath",
+        "${workspaceFolder}/tests/test2_personal_testing_data/b2_account.txt",
+        "--b2-account-key-filepath",
+        "${workspaceFolder}/tests/test2_personal_testing_data/b2_key.txt",
+        "--b2-bucket-for-upload",
+        "${workspaceFolder}/tests/test2_personal_testing_data/bucket_name.txt",
       ],
       "cwd": "${workspaceFolder}"
     },

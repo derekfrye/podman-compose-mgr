@@ -51,15 +51,73 @@ impl B2Client {
                 .endpoint_url(endpoint)
                 .credentials_provider(credentials)
                 .retry_config(RetryConfig::standard().with_max_attempts(3))
+                .behavior_version(aws_sdk_s3::config::BehaviorVersion::latest())
                 .build()
         });
         
         // Create client
         let client = Client::from_conf(aws_config);
         
-        Ok(Self {
-            bucket_name: config.bucket,
+        let b2_client = Self {
+            bucket_name: config.bucket.clone(),
             client,
+        };
+        
+        // Ensure bucket exists
+        b2_client.ensure_bucket_exists(&config.bucket)?;
+        
+        Ok(b2_client)
+    }
+    
+    /// Ensure bucket exists, create it if it doesn't
+    fn ensure_bucket_exists(&self, bucket_name: &str) -> Result<()> {
+        let runtime = tokio::runtime::Runtime::new()
+            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
+            
+        runtime.block_on(async {
+            // Check if bucket exists
+            let bucket_exists = self.client.head_bucket()
+                .bucket(bucket_name)
+                .send()
+                .await
+                .is_ok();
+                
+            // Create bucket if it doesn't exist
+            if !bucket_exists {
+                println!("Bucket '{}' doesn't exist, creating it...", bucket_name);
+                // For B2, we should not specify location constraint
+                let result = self.client.create_bucket()
+                    .bucket(bucket_name)
+                    .send()
+                    .await;
+                    
+                match result {
+                    Ok(_) => println!("Successfully created bucket '{}'", bucket_name),
+                    Err(e) => {
+                        // If error is because bucket already exists, that's fine
+                        let err_str = format!("{}", e);
+                        println!("Bucket creation error details: {}", err_str);
+                        
+                        if err_str.contains("BucketAlreadyExists") || 
+                           err_str.contains("BucketAlreadyOwnedByYou") || 
+                           err_str.contains("already exists") {
+                            println!("Bucket '{}' already exists, proceeding...", bucket_name);
+                            return Ok(());
+                        }
+                        
+                        // For B2, we'll assume the bucket already exists in production and continue
+                        // This is because some B2 accounts may not have bucket creation permissions
+                        // but still have upload permissions to existing buckets
+                        println!("WARNING: Failed to create bucket '{}', but will attempt to use it anyway", bucket_name);
+                        
+                        // Instead of failing, we'll try to continue
+                        // If the bucket truly doesn't exist, operations will fail later naturally
+                        return Ok(());
+                    }
+                }
+            }
+            
+            Ok(())
         })
     }
     
@@ -95,9 +153,30 @@ impl B2Client {
             let account_id = account_id.trim().to_string();
             let account_key = account_key.trim().to_string();
             
-            // Get bucket name
-            let bucket_name = args.b2_bucket_for_upload.as_ref()
-                .ok_or_else(|| Box::<dyn std::error::Error>::from("B2 bucket name is required"))?;
+            // Get bucket name from file if it's a filepath
+            let bucket_name = if let Some(bucket_path) = args.b2_bucket_for_upload.as_ref() {
+                // Check if this is a file path
+                if Path::new(bucket_path).exists() {
+                    // Read bucket name from file
+                    let mut bucket_name = String::new();
+                    File::open(bucket_path)
+                        .map_err(|e| Box::<dyn std::error::Error>::from(
+                            format!("Failed to open B2 bucket name file: {}", e)
+                        ))?
+                        .read_to_string(&mut bucket_name)
+                        .map_err(|e| Box::<dyn std::error::Error>::from(
+                            format!("Failed to read B2 bucket name file: {}", e)
+                        ))?;
+                    
+                    // Trim whitespace and newlines
+                    bucket_name.trim().to_string()
+                } else {
+                    // Use value directly
+                    bucket_path.clone()
+                }
+            } else {
+                return Err(Box::<dyn std::error::Error>::from("B2 bucket name is required"));
+            };
             
             let config = B2Config {
                 key_id: account_id,
@@ -112,8 +191,30 @@ impl B2Client {
         if let (Some(key_id), Some(application_key)) = 
             (&args.b2_key_id, &args.b2_application_key) {
             
-            let bucket_name = args.b2_bucket_for_upload.as_ref()
-                .ok_or_else(|| Box::<dyn std::error::Error>::from("B2 bucket name is required"))?;
+            // Get bucket name from file if it's a filepath
+            let bucket_name = if let Some(bucket_path) = args.b2_bucket_for_upload.as_ref() {
+                // Check if this is a file path
+                if Path::new(bucket_path).exists() {
+                    // Read bucket name from file
+                    let mut bucket_name = String::new();
+                    File::open(bucket_path)
+                        .map_err(|e| Box::<dyn std::error::Error>::from(
+                            format!("Failed to open B2 bucket name file: {}", e)
+                        ))?
+                        .read_to_string(&mut bucket_name)
+                        .map_err(|e| Box::<dyn std::error::Error>::from(
+                            format!("Failed to read B2 bucket name file: {}", e)
+                        ))?;
+                    
+                    // Trim whitespace and newlines
+                    bucket_name.trim().to_string()
+                } else {
+                    // Use value directly
+                    bucket_path.clone()
+                }
+            } else {
+                return Err(Box::<dyn std::error::Error>::from("B2 bucket name is required"));
+            };
             
             let config = B2Config {
                 key_id: key_id.clone(),

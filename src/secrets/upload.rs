@@ -131,9 +131,9 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
                 ))
             })?;
 
-        // Get hash value
-        let hash = entry["hash"].as_str().ok_or_else(|| {
-            Box::<dyn std::error::Error>::from(format!("Missing hash field in entry: {}", entry))
+        // Get hash value - try both hash and md5 fields for compatibility
+        let hash = entry["hash"].as_str().or_else(|| entry["md5"].as_str()).ok_or_else(|| {
+            Box::<dyn std::error::Error>::from(format!("Missing hash/md5 field in entry: {}", entry))
         })?;
 
         // Get hash algorithm
@@ -144,13 +144,9 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             Box::<dyn std::error::Error>::from(format!("Missing ins_ts field in entry: {}", entry))
         })?;
 
-        // Get hostname - legacy or new
-        let hostname = entry["hostname"].as_str().ok_or_else(|| {
-            Box::<dyn std::error::Error>::from(format!(
-                "Missing hostname field in entry: {}",
-                entry
-            ))
-        })?;
+        // Get hostname - legacy or new, default to current hostname if missing
+        let our_hostname = get_hostname()?;
+        let hostname = entry["hostname"].as_str().unwrap_or(&our_hostname);
 
         // Get encoding - defaults to utf8 for backward compatibility
         let encoding = entry["encoding"].as_str().unwrap_or("utf8");
