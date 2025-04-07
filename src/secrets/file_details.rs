@@ -1,6 +1,6 @@
 use crate::secrets::error::Result;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, TimeZone, Utc, NaiveDateTime, ParseError};
 use std::fs::{File, metadata};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::Path;
@@ -232,12 +232,46 @@ pub fn display_file_details(details: &FileDetails) {
         println!("Storage destination: {}", cloud_type);
     }
 
-    // Display cloud information if available
+    // Display cloud information if available, with nicely formatted dates
     if let Some(created) = &details.cloud_created {
-        println!("Cloud created: {}", created);
+        match parse_and_format_cloud_date(created) {
+            Ok(formatted) => println!("Cloud created: {}", formatted),
+            Err(_) => println!("Cloud created: {}", created),
+        }
     }
 
     if let Some(updated) = &details.cloud_updated {
-        println!("Cloud last updated: {}", updated);
+        match parse_and_format_cloud_date(updated) {
+            Ok(formatted) => println!("Cloud last updated: {}", formatted),
+            Err(_) => println!("Cloud last updated: {}", updated),
+        }
     }
+}
+
+/// Parse a cloud date string and format it to a more user-friendly format
+/// Expected input format: RFC3339/ISO8601 (e.g., "2025-01-01T00:00:00Z")
+/// Output format: "MM/DD/YY hh:MMa" (12-hour format with am/pm)
+fn parse_and_format_cloud_date(date_str: &str) -> std::result::Result<String, ParseError> {
+    // Try parsing with RFC3339 format first
+    let datetime = match DateTime::parse_from_rfc3339(date_str) {
+        Ok(dt) => dt.with_timezone(&Local),
+        Err(_) => {
+            // If that fails, try other common formats
+            if let Ok(dt) = NaiveDateTime::parse_from_str(date_str, "%Y-%m-%dT%H:%M:%S") {
+                // Convert naive to UTC and then to local
+                Utc.from_utc_datetime(&dt).with_timezone(&Local)
+            } else if let Ok(dt) = NaiveDateTime::parse_from_str(date_str, "%Y-%m-%d %H:%M:%S") {
+                Utc.from_utc_datetime(&dt).with_timezone(&Local)
+            } else {
+                // Try one more format without returning error yet
+                match DateTime::parse_from_str(date_str, "%a, %d %b %Y %H:%M:%S %z") {
+                    Ok(dt) => dt.with_timezone(&Local),
+                    Err(e) => return Err(e), // Give up and return the error
+                }
+            }
+        }
+    };
+    
+    // Format the datetime in the desired 12-hour format with am/pm
+    Ok(datetime.format("%m/%d/%y %I:%M%p").to_string())
 }

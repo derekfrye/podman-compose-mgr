@@ -7,20 +7,26 @@ use podman_compose_mgr::walk_dirs::walk_dirs_with_helpers;
 
 use clap::Parser;
 use podman_compose_mgr::Args;
-use regex::Regex;
 use serde::Deserialize;
 
 #[test]
 fn test1() -> Result<(), Box<dyn std::error::Error>> {
     // Set up the test directory structure
     let contents = fs::read_to_string(".vscode/launch.json")?;
-    let re = Regex::new(r"^\s+//").unwrap();
-
-    // Filter out the lines matching the regex
+    
+    // Filter out lines that are comments and also lines with trailing comments
     let filtered: String = contents
         .lines()
-        .filter(|line| !re.is_match(line))
-        .collect::<Vec<&str>>()
+        .filter(|line| !line.trim().starts_with("//"))
+        .map(|line| {
+            // Remove trailing comments from lines
+            if let Some(pos) = line.find("//") {
+                line[..pos].trim_end().to_string()
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<String>>()
         .join("\n");
 
     let filtered = filtered.replace("${env:HOME}/docker", "tests/test1");

@@ -4,6 +4,9 @@ use crate::secrets::b2_storage::B2UploadResult;
 use crate::secrets::r2_storage::R2UploadResult;
 use crate::secrets::file_details::FileDetails;
 use mockall::automock;
+
+// Define a type alias for the file existence check result
+pub type FileExistenceCheckResult = Option<(bool, String, String)>;
 use std::path::Path;
 
 /// Interface for command-related functions to facilitate testing
@@ -149,7 +152,7 @@ pub trait B2StorageClient {
     fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<B2UploadResult, Box<dyn std::error::Error>>;
     
     /// Checks if a file exists in B2 storage
-    fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<Option<(bool, String, String)>, Box<dyn std::error::Error>>;
+    fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<FileExistenceCheckResult, Box<dyn std::error::Error>>;
 }
 
 /// Default implementation that uses the actual B2 client
@@ -249,7 +252,7 @@ pub trait R2StorageClient {
     fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<R2UploadResult, Box<dyn std::error::Error>>;
     
     /// Checks if a file exists in R2 storage
-    fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<Option<(bool, String, String)>, Box<dyn std::error::Error>>;
+    fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<FileExistenceCheckResult, Box<dyn std::error::Error>>;
 }
 
 /// Default implementation that uses the actual R2 client

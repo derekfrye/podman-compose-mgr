@@ -269,12 +269,12 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             }
             
             // Check if the file already exists in R2 storage
-            let r2_file_exists = r2_client.check_file_exists_with_details(&hash, cloud_upload_bucket.clone()).ok().flatten();
+            let r2_file_exists = r2_client.check_file_exists_with_details(hash, cloud_upload_bucket.clone()).ok().flatten();
             
-            // If file exists, print a warning
+            // If file exists, print a concise warning
             let (file_exists, cloud_created, cloud_updated) = if let Some((exists, created, updated)) = r2_file_exists {
                 if exists {
-                    println!("WARNING: File already exists in R2 storage with the same hash!");
+                    println!("Warning: File already exists in r2.");
                     (true, Some(created), Some(updated))
                 } else {
                     (false, None, None)
@@ -359,12 +359,12 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             }
             
             // Check if the file already exists in B2 storage
-            let b2_file_exists = b2_client.check_file_exists_with_details(&hash, cloud_upload_bucket.clone()).ok().flatten();
+            let b2_file_exists = b2_client.check_file_exists_with_details(hash, cloud_upload_bucket.clone()).ok().flatten();
             
-            // If file exists, print a warning
+            // If file exists, print a concise warning
             let (file_exists, cloud_created, cloud_updated) = if let Some((exists, created, updated)) = b2_file_exists {
                 if exists {
-                    println!("WARNING: File already exists in B2 storage with the same hash!");
+                    println!("Warning: File already exists in b2.");
                     (true, Some(created), Some(updated))
                 } else {
                     (false, None, None)
