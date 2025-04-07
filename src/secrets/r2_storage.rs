@@ -47,22 +47,30 @@ impl R2Client {
     
     /// Create a new R2 client from the Args struct
     pub fn from_args(args: &Args) -> Result<Self> {
-        // Get Cloudflare Account ID - prioritize file-based if provided
-        let account_id = if let Some(account_id_filepath) = &args.r2_account_id_filepath {
-            read_value_from_file(account_id_filepath)?
-        } else if let Some(account_id) = &args.r2_account_id {
-            account_id.clone()
-        } else {
-            return Err(Box::<dyn std::error::Error>::from("R2 account ID is required"));
-        };
+        // Prioritize unified S3 parameters
+        if let (Some(account_id_filepath), Some(secret_key_filepath)) = 
+            (&args.s3_account_id_filepath, &args.s3_secret_key_filepath) {
             
-        // Prioritize file-based credentials (new approach)
-        if let (Some(access_key_id_filepath), Some(access_key_filepath)) = 
-            (&args.r2_access_key_id_filepath, &args.r2_access_key_filepath) {
+            // Read account ID (Cloudflare account ID) and Access Key ID from the same file
+            let account_id = read_value_from_file(account_id_filepath)?;
             
-            // Read access keys from files
-            let access_key_id = read_value_from_file(access_key_id_filepath)?;
-            let access_key = read_value_from_file(access_key_filepath)?;
+            // The s3_account_id_filepath for R2 contains both the Cloudflare account ID
+            // and the access key ID in the same file (first line is account ID)
+            // Read file again to get access key ID (second line)
+            let account_id_content = std::fs::read_to_string(account_id_filepath)
+                .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to read account ID file: {}", e)))?;
+            
+            // Split by lines and get the access key ID (second line if it exists)
+            let lines: Vec<&str> = account_id_content.lines().collect();
+            let access_key_id = if lines.len() > 1 {
+                lines[1].trim().to_string()
+            } else {
+                // If there's only one line, use that as both account ID and access key ID
+                account_id.clone()
+            };
+            
+            // Read secret key from file
+            let access_key = read_value_from_file(secret_key_filepath)?;
             
             // R2 bucket is now required to be in the input JSON
             // Use a placeholder here that will be replaced during upload
@@ -82,31 +90,17 @@ impl R2Client {
             return Ok(client);
         }
         
-        // Fall back to direct parameters (legacy approach)
-        if let (Some(access_key_id), Some(access_key)) = 
-            (&args.r2_access_key_id, &args.r2_access_key) {
-            
-            // R2 bucket is now required to be in the input JSON
-            // Use a placeholder here that will be replaced during upload
-            let bucket_name = "placeholder_bucket_will_be_provided_from_json".to_string();
-            
-            let config = R2Config {
-                key_id: access_key_id.clone(),
-                application_key: access_key.clone(),
-                bucket: bucket_name,
-                account_id,
-            };
-            
-            // Create a client and then update the verbose flag
-            let mut client = Self::new(config)?;
-            // Set verbose flag based on args
-            client.client.verbose = args.verbose > 0;
-            return Ok(client);
+        // Fall back to legacy direct parameter (only handle the one we kept)
+        if args.r2_access_key_id.is_some() {
+            // We still need an account ID for R2, but don't have a way to get it
+            return Err(Box::<dyn std::error::Error>::from(
+                "Legacy R2 parameters are no longer fully supported. Please use s3_account_id_filepath and s3_secret_key_filepath."
+            ));
         }
         
         // If neither approach worked, return an error
         Err(Box::<dyn std::error::Error>::from(
-            "R2 credentials are required (either via files or direct parameters)"
+            "S3-compatible credentials are required for R2 storage"
         ))
     }
     

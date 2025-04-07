@@ -37,9 +37,8 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         secrets_tenant_id: Some("test-tenant-id".to_string()),
         secrets_vault_name: Some("test-vault".to_string()),
         verbose: 1,
-        r2_account_id: Some("test-cloudflare-account-id".to_string()),
-        r2_access_key_id: Some("test-r2-access-key-id".to_string()),
-        r2_access_key: Some("test-r2-access-key".to_string()),
+        s3_account_id_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/a")),
+        s3_secret_key_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/b")),
         ..Default::default()
     };
 

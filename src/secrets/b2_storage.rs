@@ -35,13 +35,13 @@ impl B2Client {
     
     /// Create a new B2 client from the Args struct
     pub fn from_args(args: &Args) -> Result<Self> {
-        // Prioritize file-based credentials (new approach)
-        if let (Some(account_id_filepath), Some(account_key_filepath)) = 
-            (&args.b2_account_id_filepath, &args.b2_account_key_filepath) {
+        // Prioritize unified S3 parameters
+        if let (Some(account_id_filepath), Some(secret_key_filepath)) = 
+            (&args.s3_account_id_filepath, &args.s3_secret_key_filepath) {
             
             // Read account ID and key from files
             let account_id = read_value_from_file(account_id_filepath)?;
-            let account_key = read_value_from_file(account_key_filepath)?;
+            let account_key = read_value_from_file(secret_key_filepath)?;
             
             // B2 bucket is now required to be in the input JSON
             // Use a placeholder here that will be replaced during upload
@@ -60,7 +60,7 @@ impl B2Client {
             return Ok(client);
         }
         
-        // Fall back to direct parameters (legacy approach)
+        // Fall back to legacy direct parameters
         if let (Some(key_id), Some(application_key)) = 
             (&args.b2_key_id, &args.b2_application_key) {
             
@@ -83,7 +83,7 @@ impl B2Client {
         
         // If neither approach worked, return an error
         Err(Box::<dyn std::error::Error>::from(
-            "Either B2 account ID and key files or direct credentials are required"
+            "Either S3-compatible credentials or legacy B2 credentials are required"
         ))
     }
     

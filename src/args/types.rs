@@ -57,51 +57,27 @@ pub struct Args {
     #[arg(long, value_parser = check_readable_file)]
     pub secrets_init_filepath: Option<PathBuf>,
 
-    // B2 credentials and configuration
-    /// Backblaze B2 key ID
+    // S3-compatible storage parameters (B2/R2)
+    /// Path to file containing S3-compatible account ID/key ID (for B2/R2)
     #[arg(long)]
+    pub s3_account_id_filepath: Option<PathBuf>,
+    
+    /// Path to file containing S3-compatible access key/secret (for B2/R2)
+    #[arg(long)]
+    pub s3_secret_key_filepath: Option<PathBuf>,
+    
+    // Legacy parameters maintained for backwards compatibility
+    /// Backblaze B2 key ID
+    #[arg(long, hide = true)]
     pub b2_key_id: Option<String>,
 
     /// Backblaze B2 application key
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub b2_application_key: Option<String>,
-
-    /// Backblaze B2 bucket name
-    #[arg(long)]
-    pub b2_bucket_name: Option<String>,
-
-    /// Path to file containing Backblaze B2 account ID
-    #[arg(long)]
-    pub b2_account_id_filepath: Option<PathBuf>,
-    
-    /// Path to file containing Backblaze B2 account key
-    #[arg(long)]
-    pub b2_account_key_filepath: Option<PathBuf>,
-    
-    // Cloudflare R2 Storage
-    /// Cloudflare account ID for R2 storage
-    #[arg(long)]
-    pub r2_account_id: Option<String>,
-    
-    /// Path to file containing Cloudflare account ID
-    #[arg(long)]
-    pub r2_account_id_filepath: Option<PathBuf>,
     
     /// Cloudflare R2 Access Key ID
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub r2_access_key_id: Option<String>,
-    
-    /// Cloudflare R2 Secret Access Key
-    #[arg(long)]
-    pub r2_access_key: Option<String>,
-    
-    /// Path to file containing Cloudflare R2 Access Key ID
-    #[arg(long)]
-    pub r2_access_key_id_filepath: Option<PathBuf>,
-    
-    /// Path to file containing Cloudflare R2 Secret Access Key
-    #[arg(long)]
-    pub r2_access_key_filepath: Option<PathBuf>,
     
 }
 
@@ -121,17 +97,11 @@ impl Default for Args {
             output_json: None,
             input_json: None,
             secrets_init_filepath: None,
+            s3_account_id_filepath: None,
+            s3_secret_key_filepath: None,
             b2_key_id: None,
             b2_application_key: None,
-            b2_bucket_name: None,
-            b2_account_id_filepath: None,
-            b2_account_key_filepath: None,
-            r2_account_id: None,
-            r2_account_id_filepath: None,
             r2_access_key_id: None,
-            r2_access_key: None,
-            r2_access_key_id_filepath: None,
-            r2_access_key_filepath: None,
         }
     }
 }
@@ -314,59 +284,32 @@ impl Args {
                 // Check if cloud credentials are needed for any entries in the input JSON
                 let (need_b2_credentials, need_r2_credentials) = self.needs_cloud_credentials_for_upload()?;
                 
-                if need_b2_credentials {
-                    // Check if B2 account ID filepath is provided
-                    if self.b2_account_id_filepath.is_none() {
-                        return Err("b2_account_id_filepath is required for upload mode when input json contains B2 entries".to_string());
+                // Handle both B2 and R2 credentials with shared parameters
+                if need_b2_credentials || need_r2_credentials {
+                    // Check if s3_account_id_filepath is provided
+                    if self.s3_account_id_filepath.is_none() {
+                        return Err("s3_account_id_filepath is required for upload mode when input json contains B2 or R2 entries".to_string());
                     }
                     
-                    // Check if B2 account key filepath is provided
-                    if self.b2_account_key_filepath.is_none() {
-                        return Err("b2_account_key_filepath is required for upload mode when input json contains B2 entries".to_string());
+                    // Check if s3_secret_key_filepath is provided
+                    if self.s3_secret_key_filepath.is_none() {
+                        return Err("s3_secret_key_filepath is required for upload mode when input json contains B2 or R2 entries".to_string());
                     }
                     
-                    
-                    // Validate B2 account ID filepath
-                    if let Some(filepath) = &self.b2_account_id_filepath {
+                    // Validate s3_account_id_filepath
+                    if let Some(filepath) = &self.s3_account_id_filepath {
                         check_readable_path(filepath)?;
                     }
                     
-                    // Validate B2 account key filepath
-                    if let Some(filepath) = &self.b2_account_key_filepath {
-                        check_readable_path(filepath)?;
-                    }
-                }
-                
-                if need_r2_credentials {
-                    // Check if R2 account ID is provided directly or via file
-                    if self.r2_account_id.is_none() && self.r2_account_id_filepath.is_none() {
-                        return Err("r2_account_id or r2_account_id_filepath is required for upload mode when input json contains R2 entries".to_string());
-                    }
-                    
-                    // Check if R2 access key ID filepath is provided
-                    if self.r2_access_key_id_filepath.is_none() {
-                        return Err("r2_access_key_id_filepath is required for upload mode when input json contains R2 entries".to_string());
-                    }
-                    
-                    // Check if R2 access key filepath is provided
-                    if self.r2_access_key_filepath.is_none() {
-                        return Err("r2_access_key_filepath is required for upload mode when input json contains R2 entries".to_string());
-                    }
-                    
-                    
-                    // Validate R2 account ID filepath if provided
-                    if let Some(filepath) = &self.r2_account_id_filepath {
+                    // Validate s3_secret_key_filepath
+                    if let Some(filepath) = &self.s3_secret_key_filepath {
                         check_readable_path(filepath)?;
                     }
                     
-                    // Validate R2 access key ID filepath
-                    if let Some(filepath) = &self.r2_access_key_id_filepath {
-                        check_readable_path(filepath)?;
-                    }
-                    
-                    // Validate R2 access key filepath
-                    if let Some(filepath) = &self.r2_access_key_filepath {
-                        check_readable_path(filepath)?;
+                    // For R2, we also need to check if account ID is provided directly
+                    // when using legacy parameters
+                    if need_r2_credentials && self.s3_account_id_filepath.is_none() && self.r2_access_key_id.is_none() {
+                        return Err("s3_account_id_filepath is required for upload mode with R2 entries when not using legacy parameters".to_string());
                     }
                 }
             }

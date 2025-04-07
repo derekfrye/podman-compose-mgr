@@ -42,9 +42,8 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         secrets_tenant_id: Some("test-tenant-id".to_string()),
         secrets_vault_name: Some("test-vault".to_string()),
         verbose: 1,
-        b2_key_id: Some("test-b2-key-id".to_string()),
-        b2_application_key: Some("test-b2-application-key".to_string()),
-        b2_bucket_name: Some("test-b2-bucket".to_string()),
+        s3_account_id_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/a")),
+        s3_secret_key_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/b")),
         ..Default::default()
     };
 
