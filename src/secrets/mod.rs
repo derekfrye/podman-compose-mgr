@@ -4,6 +4,7 @@ pub mod error;
 pub mod file_details;
 pub mod initialize;
 pub mod models;
+pub mod r2_storage;
 pub mod upload;
 pub mod upload_utils;
 pub mod user_prompt;

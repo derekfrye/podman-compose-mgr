@@ -2,6 +2,7 @@ use crate::args::Args;
 use crate::interfaces::{
     AzureKeyVaultClient, B2StorageClient, DefaultB2StorageClient,
     DefaultReadInteractiveInputHelper, ReadInteractiveInputHelper,
+    R2StorageClient, DefaultR2StorageClient,
 };
 use crate::secrets::azure::get_keyvault_client;
 use crate::secrets::error::Result;
@@ -61,10 +62,27 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
     let kv_client = get_keyvault_client(client_id, client_secret_path, tenant_id, key_vault_name)?;
     
     // Create B2 client using the default implementation
-    let b2_client = DefaultB2StorageClient::from_args(args)?;
+    let b2_client = DefaultB2StorageClient::from_args(args).unwrap_or_else(|_| {
+        // It's ok if B2 client creation fails - we'll only use it if needed
+        println!("Note: B2 client initialization failed, but will continue unless B2 storage is needed");
+        DefaultB2StorageClient::new_dummy()
+    });
+    
+    // Create R2 client using the default implementation
+    let r2_client = DefaultR2StorageClient::from_args(args).unwrap_or_else(|_| {
+        // It's ok if R2 client creation fails - we'll only use it if needed
+        println!("Note: R2 client initialization failed, but will continue unless R2 storage is needed");
+        DefaultR2StorageClient::new_dummy()
+    });
 
     // Call the function that allows injection of the clients
-    process_with_injected_dependencies_and_clients(args, read_val_helper, kv_client, Box::new(b2_client))
+    process_with_injected_dependencies_and_clients(
+        args, 
+        read_val_helper, 
+        kv_client, 
+        Box::new(b2_client),
+        Box::new(r2_client)
+    )
 }
 
 /// Process the upload operation with full dependency injection for testing (legacy version)
@@ -77,19 +95,35 @@ pub fn process_with_injected_dependencies_and_client<R: ReadInteractiveInputHelp
     kv_client: Box<dyn AzureKeyVaultClient>,
 ) -> Result<()> {
     // Create B2 client using the default implementation
-    let b2_client = DefaultB2StorageClient::from_args(args)?;
+    let b2_client = DefaultB2StorageClient::from_args(args).unwrap_or_else(|_| {
+        println!("Note: B2 client initialization failed, but will continue unless B2 storage is needed");
+        DefaultB2StorageClient::new_dummy()
+    });
+    
+    // Create R2 client using the default implementation
+    let r2_client = DefaultR2StorageClient::from_args(args).unwrap_or_else(|_| {
+        println!("Note: R2 client initialization failed, but will continue unless R2 storage is needed");
+        DefaultR2StorageClient::new_dummy()
+    });
     
     // Forward to the new method
-    process_with_injected_dependencies_and_clients(args, read_val_helper, kv_client, Box::new(b2_client))
+    process_with_injected_dependencies_and_clients(
+        args, 
+        read_val_helper, 
+        kv_client, 
+        Box::new(b2_client),
+        Box::new(r2_client)
+    )
 }
 
 /// Process the upload operation with full dependency injection for testing
-/// This version allows injecting both Azure KeyVault and B2 Storage clients for testing
+/// This version allows injecting Azure KeyVault, B2 Storage and R2 Storage clients for testing
 pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHelper>(
     args: &Args,
     read_val_helper: &R,
     kv_client: Box<dyn AzureKeyVaultClient>,
     b2_client: Box<dyn B2StorageClient>,
+    r2_client: Box<dyn R2StorageClient>,
 ) -> Result<()> {
     // Get required parameters from args
     let input_filepath = args
@@ -145,8 +179,17 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         })?;
 
         // Get hostname - legacy or new, default to current hostname if missing
-        let our_hostname = get_hostname()?;
-        let hostname = entry["hostname"].as_str().unwrap_or(&our_hostname);
+        let hostname = match entry["hostname"].as_str() {
+            Some(h) => h,
+            None => {
+                // Create a host string and store it so we can return a reference
+                let host_str = get_hostname().unwrap_or_else(|_| "unknown_host".to_string());
+                // We need to leak this string to make it live long enough
+                // This is a small memory leak but acceptable for this case
+                // since it only happens when hostname is missing in JSON
+                Box::leak(Box::new(host_str))
+            }
+        };
 
         // Get encoding - defaults to utf8 for backward compatibility
         let encoding = entry["encoding"].as_str().unwrap_or("utf8");
@@ -185,8 +228,80 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         let cloud_upload_bucket = entry["cloud_upload_bucket"].as_str().map(String::from);
         let too_large_for_keyvault = encoded_size > 24000;
 
-        // Handle different storage backends based on file size
-        let output_entry = if too_large_for_keyvault || destination_cloud == "b2" {
+        // Handle different storage backends based on file size and destination_cloud
+        let output_entry = if destination_cloud == "r2" {
+            if args.verbose {
+                println!("Uploading file {} to Cloudflare R2 storage", file_path);
+            }
+            
+            // Create a FileDetails struct for the file
+            let file_details = FileDetails {
+                file_path: file_path.to_string(),
+                file_size,
+                encoded_size,
+                last_modified: String::new(), // Not needed for upload
+                secret_name: secret_name.clone(),
+                encoding: encoding.to_string(),
+                cloud_created: None,
+                cloud_updated: None,
+                cloud_type: Some("r2".to_string()),
+                hash: hash.to_string(),
+                hash_algo: hash_algo.to_string(),
+                cloud_upload_bucket: cloud_upload_bucket.clone(), // Use the bucket from JSON
+            };
+            
+            // Prompt the user for confirmation
+            let upload_confirmed = prompt_for_upload_with_helper(
+                file_path,
+                &secret_name,
+                read_val_helper,
+                false, // Don't check R2 existence yet
+                None,
+                None,
+                Some("r2"),
+            )?;
+            
+            if !upload_confirmed {
+                if args.verbose {
+                    println!("Skipping upload of {}", file_path);
+                }
+                continue;
+            }
+            
+            // Upload to R2
+            let r2_result = match r2_client.upload_file_with_details(&file_details) {
+                Ok(result) => result,
+                Err(e) => {
+                    eprintln!("Failed to upload to R2: {}", e);
+                    continue;
+                }
+            };
+            
+            if args.verbose {
+                println!("Successfully uploaded to Cloudflare R2 storage");
+            }
+            
+            // Create output entry with updated fields for R2
+            json!({
+                "file_nm": file_path,
+                "hash": hash,
+                "hash_algo": hash_algo,
+                "ins_ts": ins_ts,
+                "cloud_id": r2_result.id,
+                "cloud_cr_ts": "",  // R2 doesn't provide created time separately
+                "cloud_upd_ts": "", // Use current time if needed
+                "hostname": hostname,
+                "encoding": encoding,
+                "file_size": file_size,
+                "encoded_size": encoded_size,
+                "destination_cloud": "r2",
+                "secret_name": secret_name,
+                "cloud_upload_bucket": cloud_upload_bucket.unwrap_or_else(|| "".to_string()),
+                "r2_hash": r2_result.hash,
+                "r2_bucket_id": r2_result.bucket_id,
+                "r2_name": r2_result.name
+            })
+        } else if too_large_for_keyvault || destination_cloud == "b2" {
             if args.verbose {
                 println!(
                     "File {} is too large for Azure KeyVault ({}). Uploading to Backblaze B2 instead.",

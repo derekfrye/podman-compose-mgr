@@ -1,6 +1,7 @@
 use crate::read_interactive_input::{GrammarFragment, ReadValResult};
 use crate::secrets::models::SetSecretResponse;
 use crate::secrets::b2_storage::B2UploadResult;
+use crate::secrets::r2_storage::R2UploadResult;
 use crate::secrets::file_details::FileDetails;
 use mockall::automock;
 use std::path::Path;
@@ -158,6 +159,24 @@ impl DefaultB2StorageClient {
     pub fn new(client: crate::secrets::b2_storage::B2Client) -> Self {
         Self { client }
     }
+    
+    /// Create a dummy client for when B2 credentials aren't available
+    /// but we want to continue without failing
+    pub fn new_dummy() -> Self {
+        // This will intentionally fail if used, but allows the program to continue
+        // if B2 storage isn't actually needed
+        let dummy_config = crate::secrets::b2_storage::B2Config {
+            key_id: "dummy".to_string(),
+            application_key: "dummy".to_string(),
+            bucket: "dummy".to_string(),
+        };
+        
+        // Create a dummy client - this is expected to fail if actually used
+        let client = crate::secrets::b2_storage::B2Client::new(dummy_config)
+            .expect("Failed to create dummy B2 client");
+            
+        Self { client }
+    }
 }
 
 impl B2StorageClient for DefaultB2StorageClient {
@@ -167,6 +186,58 @@ impl B2StorageClient for DefaultB2StorageClient {
     }
     
     fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<B2UploadResult, Box<dyn std::error::Error>> {
+        self.client.upload_file_with_details(file_details)
+    }
+}
+
+/// Interface for R2 storage operations to facilitate testing
+#[automock]
+pub trait R2StorageClient {
+    /// Creates a client from Args
+    fn from_args(args: &crate::args::Args) -> Result<Self, Box<dyn std::error::Error>> where Self: Sized;
+    
+    /// Uploads a file to R2 storage
+    fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<R2UploadResult, Box<dyn std::error::Error>>;
+}
+
+/// Default implementation that uses the actual R2 client
+pub struct DefaultR2StorageClient {
+    // The real R2Client 
+    client: crate::secrets::r2_storage::R2Client,
+}
+
+impl DefaultR2StorageClient {
+    pub fn new(client: crate::secrets::r2_storage::R2Client) -> Self {
+        Self { client }
+    }
+    
+    /// Create a dummy client for when R2 credentials aren't available
+    /// but we want to continue without failing
+    pub fn new_dummy() -> Self {
+        // This will intentionally fail if used, but allows the program to continue
+        // if R2 storage isn't actually needed
+        let dummy_config = crate::secrets::r2_storage::R2Config {
+            key_id: "dummy".to_string(),
+            application_key: "dummy".to_string(),
+            bucket: "dummy".to_string(),
+            account_id: "dummy".to_string(),
+        };
+        
+        // Create a dummy client - this is expected to fail if actually used
+        let client = crate::secrets::r2_storage::R2Client::new(dummy_config)
+            .expect("Failed to create dummy R2 client");
+            
+        Self { client }
+    }
+}
+
+impl R2StorageClient for DefaultR2StorageClient {
+    fn from_args(args: &crate::args::Args) -> Result<Self, Box<dyn std::error::Error>> {
+        let client = crate::secrets::r2_storage::R2Client::from_args(args)?;
+        Ok(Self::new(client))
+    }
+    
+    fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<R2UploadResult, Box<dyn std::error::Error>> {
         self.client.upload_file_with_details(file_details)
     }
 }

@@ -81,6 +81,31 @@ pub struct Args {
     /// Path to file containing Backblaze B2 account key
     #[arg(long)]
     pub b2_account_key_filepath: Option<PathBuf>,
+    
+    // Cloudflare R2 Storage
+    /// Cloudflare account ID for R2 storage
+    #[arg(long)]
+    pub r2_account_id: Option<String>,
+    
+    /// Cloudflare R2 Access Key ID
+    #[arg(long)]
+    pub r2_access_key_id: Option<String>,
+    
+    /// Cloudflare R2 Secret Access Key
+    #[arg(long)]
+    pub r2_access_key: Option<String>,
+    
+    /// Path to file containing Cloudflare R2 Access Key ID
+    #[arg(long)]
+    pub r2_access_key_id_filepath: Option<PathBuf>,
+    
+    /// Path to file containing Cloudflare R2 Secret Access Key
+    #[arg(long)]
+    pub r2_access_key_filepath: Option<PathBuf>,
+    
+    /// Cloudflare R2 bucket name to use for uploads
+    #[arg(long)]
+    pub r2_bucket_for_upload: Option<String>,
 }
 
 impl Args {
@@ -120,16 +145,15 @@ impl Args {
         self.validate()
     }
 
-    /// Check if B2 credentials are needed based on entries in the input JSON
+    /// Check if cloud storage credentials are needed based on entries in the input JSON
     /// 
-    /// Returns true if there are any entries in the input JSON that:
-    /// 1. Have destination_cloud = "b2"
-    /// 2. Have hostname = current hostname
-    fn needs_b2_credentials_for_upload(&self) -> Result<bool, String> {
+    /// Returns a tuple of booleans (need_b2, need_r2) indicating if credentials
+    /// are needed for each cloud storage type.
+    fn needs_cloud_credentials_for_upload(&self) -> Result<(bool, bool), String> {
         // Get the input JSON path
         let input_json_path = match &self.input_json {
             Some(path) => path,
-            None => return Ok(false), // No input JSON, no B2 credentials needed
+            None => return Ok((false, false)), // No input JSON, no cloud credentials needed
         };
         
         // Get current hostname for comparison
@@ -155,7 +179,11 @@ impl Args {
             Err(e) => return Err(format!("Failed to parse input JSON: {}", e)),
         };
         
-        // Check if any entry is for B2 storage and matches the current hostname
+        // Variables to track if we need credentials for each cloud provider
+        let mut need_b2 = false;
+        let mut need_r2 = false;
+        
+        // Check if any entry is for cloud storage and matches the current hostname
         for entry in entries {
             // Get hostname
             let hostname = match entry.get("hostname").and_then(|v| v.as_str()) {
@@ -169,15 +197,26 @@ impl Args {
                 None => continue, // Skip entries without destination_cloud
             };
             
-            // If this entry is for B2 storage and matches the current hostname,
-            // we need B2 credentials
-            if destination_cloud == "b2" && hostname == current_hostname {
-                return Ok(true);
+            // Skip if the hostname doesn't match current host
+            if hostname != current_hostname {
+                continue;
+            }
+            
+            // Check the destination cloud type
+            match destination_cloud {
+                "b2" => need_b2 = true,
+                "r2" => need_r2 = true,
+                _ => {} // Other cloud types (including azure_kv) don't need special handling here
+            }
+            
+            // If we already need both types of credentials, we can exit early
+            if need_b2 && need_r2 {
+                break;
             }
         }
         
-        // No B2 entries found for the current hostname
-        Ok(false)
+        // Return which cloud credentials are needed
+        Ok((need_b2, need_r2))
     }
 
     /// Validate the secrets based on the mode, without modifying the Args
@@ -247,8 +286,8 @@ impl Args {
             if let Some(input_json) = &self.input_json {
                 check_valid_json_path(input_json)?;
                 
-                // Check if B2 credentials are needed for any entries in the input JSON
-                let need_b2_credentials = self.needs_b2_credentials_for_upload()?;
+                // Check if cloud credentials are needed for any entries in the input JSON
+                let (need_b2_credentials, need_r2_credentials) = self.needs_cloud_credentials_for_upload()?;
                 
                 if need_b2_credentials {
                     // Check if B2 account ID filepath is provided
@@ -273,6 +312,38 @@ impl Args {
                     
                     // Validate B2 account key filepath
                     if let Some(filepath) = &self.b2_account_key_filepath {
+                        check_readable_path(filepath)?;
+                    }
+                }
+                
+                if need_r2_credentials {
+                    // Check if R2 account ID is provided
+                    if self.r2_account_id.is_none() {
+                        return Err("r2_account_id is required for upload mode when input json contains R2 entries".to_string());
+                    }
+                    
+                    // Check if R2 access key ID filepath is provided
+                    if self.r2_access_key_id_filepath.is_none() {
+                        return Err("r2_access_key_id_filepath is required for upload mode when input json contains R2 entries".to_string());
+                    }
+                    
+                    // Check if R2 access key filepath is provided
+                    if self.r2_access_key_filepath.is_none() {
+                        return Err("r2_access_key_filepath is required for upload mode when input json contains R2 entries".to_string());
+                    }
+                    
+                    // Check if R2 bucket for upload is provided
+                    if self.r2_bucket_for_upload.is_none() {
+                        return Err("r2_bucket_for_upload is required for upload mode when input json contains R2 entries".to_string());
+                    }
+                    
+                    // Validate R2 access key ID filepath
+                    if let Some(filepath) = &self.r2_access_key_id_filepath {
+                        check_readable_path(filepath)?;
+                    }
+                    
+                    // Validate R2 access key filepath
+                    if let Some(filepath) = &self.r2_access_key_filepath {
                         check_readable_path(filepath)?;
                     }
                 }

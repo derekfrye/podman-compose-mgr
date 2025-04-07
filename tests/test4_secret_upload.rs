@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use mockall::Sequence;
 use mockall::predicate::*;
 use podman_compose_mgr::args::{Args, Mode};
-use podman_compose_mgr::interfaces::{MockAzureKeyVaultClient, MockB2StorageClient, MockReadInteractiveInputHelper};
+use podman_compose_mgr::interfaces::{MockAzureKeyVaultClient, MockB2StorageClient, MockR2StorageClient, MockReadInteractiveInputHelper};
 use podman_compose_mgr::read_interactive_input::ReadValResult;
 use podman_compose_mgr::secrets::file_details::{FileDetails, format_file_size, get_file_details};
 use podman_compose_mgr::secrets::models::SetSecretResponse;
@@ -54,6 +54,12 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         b2_bucket_for_upload: Some("test-upload-bucket".to_string()),
         b2_account_id_filepath: None,
         b2_account_key_filepath: None,
+        r2_account_id: None,
+        r2_access_key_id: None,
+        r2_access_key: None,
+        r2_access_key_id_filepath: None,
+        r2_access_key_filepath: None,
+        r2_bucket_for_upload: None,
     };
 
     // List of file paths in our test that will be processed
@@ -172,11 +178,14 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // We don't expect it to be called for Azure KV uploads
         
         // Run the process function with our mock helpers - using the actual production code
+        let r2_client = MockR2StorageClient::new();
+        
         let result = upload::process_with_injected_dependencies_and_clients(
             &args,
             &read_val_helper,
             Box::new(azure_client),
             Box::new(b2_client),
+            Box::new(r2_client),
         );
 
         // Check that the test succeeded - all files should be uploaded
@@ -269,11 +278,14 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // We don't expect it to be called for Azure KV uploads
         
         // Run the process function with our mock helpers - using the actual production code
+        let r2_client = MockR2StorageClient::new();
+        
         let result = upload::process_with_injected_dependencies_and_clients(
             &args,
             &read_val_helper,
             Box::new(azure_client),
             Box::new(b2_client),
+            Box::new(r2_client),
         );
 
         // Check that the test succeeded - no files should be uploaded
@@ -491,11 +503,14 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // We don't expect it to be called for Azure KV uploads
         
         // Run the process function with our mock helpers
+        let r2_client = MockR2StorageClient::new();
+        
         let result = upload::process_with_injected_dependencies_and_clients(
             &args,
             &read_val_helper,
             Box::new(azure_client),
             Box::new(b2_client),
+            Box::new(r2_client),
         );
 
         // Check that the test succeeded
