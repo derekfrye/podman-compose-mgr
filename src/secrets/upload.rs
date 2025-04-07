@@ -277,7 +277,7 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
             let (file_exists, cloud_created, cloud_updated) =
                 if let Some((exists, created, updated)) = r2_file_exists {
                     if exists {
-                        println!("Warning: File already exists in r2.");
+                        println!("Warning: File already exists in R2 storage.");
 
                         // Also get file metadata to check size
                         if let Ok(Some(metadata)) = r2_client.get_file_metadata(hash) {

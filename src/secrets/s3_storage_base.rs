@@ -251,9 +251,50 @@ impl S3StorageClient {
                 result.insert("content_type".to_string(), content_type.to_string());
             }
 
-            // Content length is an Option<i64>
+            // For debugging, log the whole response if verbose >= 2
+            if self.verbose >= 2 {
+                println!("dbg: R2/S3 Head Object response: {:?}", resp);
+            }
+
+            // Try multiple approaches to get content length
+            // 1. Standard content_length method
+            let mut got_content_length = false;
             if let Some(content_length) = resp.content_length() {
                 result.insert("content_length".to_string(), content_length.to_string());
+                got_content_length = true;
+                
+                // Log content length when verbose is enabled
+                if self.verbose >= 2 {
+                    println!("dbg: Received content_length from R2/S3: {}", content_length);
+                }
+            } 
+            
+            // 2. Try to get size from user metadata - try several possible metadata field names
+            if !got_content_length {
+                if let Some(metadata) = resp.metadata() {
+                    // Try different metadata keys that might contain the size
+                    for size_key in ["size", "content-length", "file-size", "filesize"] {
+                        if let Some(size) = metadata.get(size_key) {
+                            result.insert("content_length".to_string(), size.to_string());
+                            got_content_length = true;
+                            
+                            if self.verbose >= 2 {
+                                println!("dbg: Received size from R2/S3 metadata field '{}': {}", size_key, size);
+                            }
+                            break;
+                        }
+                    }
+                    
+                    // If verbose, log all metadata for debugging
+                    if self.verbose >= 2 && !got_content_length {
+                        println!("dbg: Available metadata keys: {:?}", metadata.keys().collect::<Vec<_>>());
+                    }
+                }
+            }
+            
+            // Log if we couldn't get content length
+            if !got_content_length && self.verbose >= 1 {
+                println!("info: No content_length or size received from R2/S3 in metadata response");
             }
 
             if let Some(etag) = resp.e_tag() {
@@ -535,7 +576,9 @@ impl S3StorageClient {
         metadata.insert("hash".to_string(), file_details.hash.clone());
         metadata.insert("hash-algo".to_string(), file_details.hash_algo.clone());
         metadata.insert("encoding".to_string(), file_details.encoding.clone());
-        metadata.insert("size".to_string(), file_details.file_size.to_string());
+        metadata.insert("size".to_string(), file_details.file_size.to_string()); 
+        // Add both for compatibility with different storage providers
+        metadata.insert("content-length".to_string(), file_details.file_size.to_string());
 
         // Check if we need to use a real bucket name from the JSON for upload
         let using_placeholder_bucket =

@@ -56,6 +56,14 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
 
     // Test with R2 upload path
     {
+        println!("===== Testing R2 upload with file existence checks and size comparison =====");
+        println!("Files 'a' and 'b' should show as already existing in R2 storage.");
+        println!("File 'a' will show as LARGER in R2 than local file.");
+        println!("File 'b' will show as SMALLER in R2 than local file.");
+        println!("Files 'c' and 'd d' should not exist in R2 storage.");
+        println!("For all files, we'll simulate pressing 'd' to see details first, then 'Y' to upload");
+        println!("=====================================================================");
+        
         // Create mock clients
         let azure_client = MockAzureKeyVaultClient::new();
         let b2_client = MockB2StorageClient::new();
@@ -66,18 +74,28 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         // Track which files we're processing
         let file_index = std::cell::Cell::new(0);
 
-        // Set up the mock to return "Y" for all four files
+        // Set up the mock to return "d" first (to show details) and then "Y" (to approve upload)
+        // Each file will need two inputs, so we'll need 8 calls total
         read_val_helper
             .expect_read_val_from_cmd_line_and_proceed()
-            .times(4)
+            .times(8)
             .returning(move |_, _| {
-                // Get the current file being processed and increment counter
+                // Get the current file being processed
                 let current_index = file_index.get();
+                
+                // Every even call (0, 2, 4, 6) should return "d" to show details
+                // Every odd call (1, 3, 5, 7) should return "Y" to approve upload
+                let response = if current_index % 2 == 0 {
+                    "d" // For even indices: show details
+                } else {
+                    "Y" // For odd indices: approve upload
+                };
+                
+                // Increment counter for next call
                 file_index.set(current_index + 1);
 
-                // Return "Y" to approve all uploads
                 ReadValResult {
-                    user_entered_val: Some("Y".to_string()),
+                    user_entered_val: Some(response.to_string()),
                 }
             });
 
@@ -102,8 +120,16 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
             .collect();
 
         // Set up expectations for check_file_exists_with_details for each file
-        for file_path in test_files.iter() {
+        for (i, file_path) in test_files.iter().enumerate() {
             let hash = calculate_hash(file_path).unwrap();
+            
+            // Files 'a' and 'b' (indices 0 and 1) should show as already existing
+            // Files 'c' and 'd d' (indices 2 and 3) should show as not existing
+            let file_exists = i < 2; // true for the first two files (a, b)
+            
+            let created_time = if file_exists { "2024-01-01T00:00:00Z".to_string() } else { "".to_string() };
+            let updated_time = if file_exists { "2024-02-01T00:00:00Z".to_string() } else { "".to_string() };
+            
             r2_client
                 .expect_check_file_exists_with_details()
                 .with(
@@ -111,7 +137,37 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
                     testing::eq(Some("test-r2-upload-bucket".to_string())),
                 )
                 .times(1)
-                .returning(|_, _| Ok(Some((false, "".to_string(), "".to_string()))));
+                .returning(move |_, _| Ok(Some((file_exists, created_time.clone(), updated_time.clone()))));
+            
+            // For files 'a' and 'b', also set up get_file_metadata to return size information
+            if file_exists {
+                // For file 'a', mock a size that's larger than the actual file
+                // For file 'b', mock a size that's smaller than the actual file
+                let actual_size = std::fs::metadata(file_path).unwrap().len();
+                let mock_size = if i == 0 {
+                    // Make file 'a' have a LARGER size in R2 than locally (3 bytes vs 2 bytes)
+                    actual_size + 1
+                } else {
+                    // Make file 'b' have a SMALLER size in R2 than locally (2 bytes vs 3 bytes)
+                    if actual_size > 1 {
+                        actual_size - 1
+                    } else {
+                        // Just in case actual_size is 1 or 0, avoid underflow
+                        1
+                    }
+                };
+                
+                // Set up metadata expectation
+                r2_client
+                    .expect_get_file_metadata()
+                    .with(testing::eq(hash.clone()))
+                    .times(1)
+                    .returning(move |_| {
+                        let mut metadata = std::collections::HashMap::new();
+                        metadata.insert("content_length".to_string(), mock_size.to_string());
+                        Ok(Some(metadata))
+                    });
+            }
         }
 
         // Set up expectations for upload_file_with_details for each file
@@ -214,7 +270,7 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "hostname": hostname::get()?.to_string_lossy().to_string(),
             "encoding": "utf8",
             "file_size": fs::metadata("tests/test3_and_test4/a")?.len(),
-            "encoded_size": 2000, // Size doesn't matter for R2, just the destination_cloud
+            "encoded_size": fs::metadata("tests/test3_and_test4/a")?.len(), // Use actual file size
             "destination_cloud": "r2",
             // "secret_name": format!("file-{}", a_hash),
             "cloud_upload_bucket": "test-r2-upload-bucket"
@@ -227,7 +283,7 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "hostname": hostname::get()?.to_string_lossy().to_string(),
             "encoding": "utf8",
             "file_size": fs::metadata("tests/test3_and_test4/b")?.len(),
-            "encoded_size": 2000,
+            "encoded_size": fs::metadata("tests/test3_and_test4/b")?.len(), // Use actual file size
             "destination_cloud": "r2",
             // "secret_name": format!("file-{}", b_hash),
             "cloud_upload_bucket": "test-r2-upload-bucket"
@@ -240,7 +296,7 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "hostname": hostname::get()?.to_string_lossy().to_string(),
             "encoding": "utf8",
             "file_size": fs::metadata("tests/test3_and_test4/c")?.len(),
-            "encoded_size": 2000,
+            "encoded_size": fs::metadata("tests/test3_and_test4/c")?.len(), // Use actual file size
             "destination_cloud": "r2",
             // "secret_name": format!("file-{}", c_hash),
             "cloud_upload_bucket": "test-r2-upload-bucket"
@@ -253,7 +309,7 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             "hostname": hostname::get()?.to_string_lossy().to_string(),
             "encoding": "utf8",
             "file_size": fs::metadata("tests/test3_and_test4/d d")?.len(),
-            "encoded_size": 2000,
+            "encoded_size": fs::metadata("tests/test3_and_test4/d d")?.len(), // Use actual file size
             "destination_cloud": "r2",
             // "secret_name": format!("file-{}", d_hash),
             "cloud_upload_bucket": "test-r2-upload-bucket"
