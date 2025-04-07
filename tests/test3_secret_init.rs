@@ -124,23 +124,46 @@ fn test_initialize_process() {
         }
     }
 
-    // Run the second process right away
-    // We don't need to wait since the test is checking for updates, not timestamp changes
+    // Store first run timestamps to compare with second run
+    let mut first_run_timestamps = std::collections::HashMap::new();
     
-    // Test update functionality - run the process again with the same files
-    let result = secrets::initialize::process(&args);
-    assert!(
-        result.is_ok(),
-        "Failed to process secrets (update): {:?}",
-        result.err()
-    );
-
-    // Read and parse the output file again
+    // Read and parse the output file after first run
     let mut output_content = String::new();
     let mut file = File::open(&temp_path).unwrap();
     file.read_to_string(&mut output_content).unwrap();
     
-    println!("Output file content: {}", output_content);
+    let first_run_json: Vec<Value> = serde_json::from_str(&output_content).unwrap();
+    
+    // Store the timestamps from the first run
+    for entry in &first_run_json {
+        let filenm = entry["file_nm"].as_str().unwrap().to_string();
+        let ins_ts = entry["ins_ts"].as_str().unwrap().to_string();
+        first_run_timestamps.insert(filenm, ins_ts);
+    }
+    
+    // Wait a small amount of time to ensure timestamps will be different
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    
+    // Run the process again with an input file including one new file
+    let args_run2 = args::Args {
+        mode: Mode::SecretInitialize,
+        secrets_init_filepath: Some(PathBuf::from("tests/test3_and_test4/test_input_run2.json")),
+        verbose: 1,
+        output_json: Some(temp_path.clone()),
+        ..Default::default()
+    };
+    
+    let result = secrets::initialize::process(&args_run2);
+    assert!(
+        result.is_ok(),
+        "Failed to process secrets (run 2): {:?}",
+        result.err()
+    );
+
+    // Read and parse the output file after second run
+    let mut output_content = String::new();
+    let mut file = File::open(&temp_path).unwrap();
+    file.read_to_string(&mut output_content).unwrap();
 
     let output_json: Vec<Value> = match serde_json::from_str(&output_content) {
         Ok(json) => json,
@@ -151,8 +174,8 @@ fn test_initialize_process() {
         }
     };
 
-    // With the new update behavior, we should still have 5 entries, not 10
-    assert_eq!(output_json.len(), 5, "Expected 5 entries after update");
+    // With the new file, we should now have 6 entries (5 updated and 1 new)
+    assert_eq!(output_json.len(), 6, "Expected 6 entries after second run (5 updated + 1 new)");
 
     // Create a map of entries by filename for easier reference
     let mut entries_by_filename = std::collections::HashMap::new();
@@ -170,14 +193,24 @@ fn test_initialize_process() {
         
         // The ins_ts date should be today
         assert_eq!(entry_date, today, "Expected entry to have today's date");
+        
+        // For existing files (a through e e), verify timestamps were updated
+        if filenm != "tests/test3_and_test4/f" && first_run_timestamps.contains_key(&filenm) {
+            let first_run_ts = first_run_timestamps.get(&filenm).unwrap();
+            let second_run_ts = ins_ts;
+            
+            assert_ne!(first_run_ts, second_run_ts, 
+                "Timestamp for {} should have been updated but wasn't", filenm);
+        }
     }
 
-    // Verify we saw all expected files
+    // Verify we saw all expected files from the second run
     assert!(file_seen.contains("tests/test3_and_test4/a"), "Missing file 'a'");
     assert!(file_seen.contains("tests/test3_and_test4/b"), "Missing file 'b'");
     assert!(file_seen.contains("tests/test3_and_test4/c"), "Missing file 'c'");
     assert!(file_seen.contains("tests/test3_and_test4/d d"), "Missing file 'd d'");
     assert!(file_seen.contains("tests/test3_and_test4/e e"), "Missing file 'e e'");
+    assert!(file_seen.contains("tests/test3_and_test4/f"), "Missing new file 'f'");
     
     // Verify fields for each file
     // Verify 'a' file
@@ -207,6 +240,16 @@ fn test_initialize_process() {
     let e_entry = &entries_by_filename["tests/test3_and_test4/e e"];
     assert_eq!(e_entry["hash_algo"].as_str().unwrap(), "sha1", "Hash algorithm should be SHA-1");
     assert_eq!(e_entry["encoding"].as_str().unwrap(), "base64", "File 'e e' should be base64 encoded");
+    
+    // Verify 'f' file (the new file added in the second run)
+    let f_entry = &entries_by_filename["tests/test3_and_test4/f"];
+    assert_eq!(f_entry["hash_algo"].as_str().unwrap(), "sha1", "Hash algorithm should be SHA-1");
+    assert_eq!(f_entry["encoding"].as_str().unwrap(), "utf8", "File 'f' should be utf8 encoded");
+    assert_eq!(f_entry["file_size"].as_u64().unwrap(), 2, "File 'f' should be 2 bytes");
+    
+    // Verify the new 'f' file has no timestamp in first_run_timestamps
+    assert!(!first_run_timestamps.contains_key("tests/test3_and_test4/f"), 
+        "File 'f' should not have a timestamp from the first run");
     
     // Verify each file has the expected cloud destination based on size
     for (_filename, entry) in &entries_by_filename {

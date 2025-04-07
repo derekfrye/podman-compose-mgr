@@ -107,7 +107,7 @@ pub fn process(args: &Args) -> Result<()> {
         new_entries.push(entry);
     }
 
-    // Create or read existing entries
+    // Initialize the output entries vector and counters
     let mut all_entries = Vec::new();
     let mut updated_entries_count = 0;
     let mut new_entries_count = 0;
@@ -125,8 +125,11 @@ pub fn process(args: &Args) -> Result<()> {
             // Create a lookup map for existing entries (key = file_nm + hostname)
             let mut updated_indices = std::collections::HashSet::new();
             
-            // Process each new entry
-            for new_entry in new_entries.iter() {
+            // Create a set to track which new entries have been processed
+            let mut processed_new_entries = std::collections::HashSet::new();
+            
+            // Go through each new entry
+            for (new_idx, new_entry) in new_entries.iter().enumerate() {
                 // Get file_nm and hostname from the new entry
                 if let (Some(file_nm), Some(hostname)) = (
                     new_entry.get("file_nm").and_then(|v| v.as_str()),
@@ -148,6 +151,7 @@ pub fn process(args: &Args) -> Result<()> {
                             if existing_key == lookup_key {
                                 found_match = true;
                                 updated_indices.insert(idx);
+                                processed_new_entries.insert(new_idx);
                                 
                                 // Update fields from new entry to existing entry
                                 if let (Some(new_obj), Some(existing_obj)) = (
@@ -165,21 +169,26 @@ pub fn process(args: &Args) -> Result<()> {
                         }
                     }
                     
-                    // If no match found, this is a truly new entry
+                    // No need to add new entries here - we'll do it in one pass below
                     if !found_match {
-                        all_entries.push(new_entry.clone());
-                        new_entries_count += 1;
+                        // Mark this entry as not processed
+                        // (meaning it needs to be added as a new entry)
                     }
-                } else {
-                    // Missing required fields, add as a new entry
+                }
+            }
+            
+            // Start with all existing entries in the output
+            for entry in existing_entries {
+                all_entries.push(entry);
+            }
+            
+            // Add all new entries that weren't updates to existing ones
+            for (idx, new_entry) in new_entries.iter().enumerate() {
+                if !processed_new_entries.contains(&idx) {
                     all_entries.push(new_entry.clone());
                     new_entries_count += 1;
                 }
             }
-            
-            // Add all existing entries (both updated and non-updated)
-            // The updates were already applied in place when we processed new entries
-            all_entries = existing_entries;
         } else {
             // No existing content, all entries are new
             all_entries.extend(new_entries.clone());
