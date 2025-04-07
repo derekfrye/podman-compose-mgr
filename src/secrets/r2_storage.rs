@@ -31,6 +31,7 @@ pub struct R2UploadResult {
 pub struct R2Client {
     bucket_name: String,
     client: Client,
+    runtime: tokio::runtime::Runtime,
 }
 
 impl R2Client {
@@ -39,7 +40,7 @@ impl R2Client {
         // Cloudflare R2 S3-compatible endpoint
         let endpoint = format!("https://{}.r2.cloudflarestorage.com", config.account_id);
         
-        // Create runtime for async operation
+        // Create runtime for async operations - will be reused for all operations
         let runtime = tokio::runtime::Runtime::new()
             .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
         
@@ -70,9 +71,10 @@ impl R2Client {
         let r2_client = Self {
             bucket_name: config.bucket.clone(),
             client,
+            runtime,
         };
         
-        // Ensure bucket exists
+        // Ensure bucket exists - using our runtime
         r2_client.ensure_bucket_exists(&config.bucket)?;
         
         Ok(r2_client)
@@ -80,10 +82,8 @@ impl R2Client {
     
     /// Ensure bucket exists, create it if it doesn't
     fn ensure_bucket_exists(&self, bucket_name: &str) -> Result<()> {
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
-            
-        runtime.block_on(async {
+        // Use the client's runtime instead of creating a new one    
+        self.runtime.block_on(async {
             // Check if bucket exists
             let bucket_exists = self.client.head_bucket()
                 .bucket(bucket_name)
@@ -132,9 +132,26 @@ impl R2Client {
     
     /// Create a new R2 client from the Args struct
     pub fn from_args(args: &Args) -> Result<Self> {
-        // Check for R2 specific arguments
-        let account_id = args.r2_account_id.as_ref()
-            .ok_or_else(|| Box::<dyn std::error::Error>::from("R2 account ID is required"))?;
+        // Get Cloudflare Account ID - prioritize file-based if provided
+        let account_id = if let Some(account_id_filepath) = &args.r2_account_id_filepath {
+            // Read account ID from file
+            let mut account_id = String::new();
+            File::open(account_id_filepath)
+                .map_err(|e| Box::<dyn std::error::Error>::from(
+                    format!("Failed to open R2 account ID file: {}", e)
+                ))?
+                .read_to_string(&mut account_id)
+                .map_err(|e| Box::<dyn std::error::Error>::from(
+                    format!("Failed to read R2 account ID file: {}", e)
+                ))?;
+            
+            // Trim whitespace and newlines
+            account_id.trim().to_string()
+        } else if let Some(account_id) = &args.r2_account_id {
+            account_id.clone()
+        } else {
+            return Err(Box::<dyn std::error::Error>::from("R2 account ID is required"));
+        };
             
         // Prioritize file-based credentials (new approach)
         if let (Some(access_key_id_filepath), Some(access_key_filepath)) = 
@@ -248,11 +265,8 @@ impl R2Client {
     
     /// Check if a file exists in R2 storage
     pub fn file_exists(&self, file_key: &str) -> Result<bool> {
-        // We need to use tokio runtime for this
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
-        
-        let result = runtime.block_on(async {
+        // Use the client's runtime instead of creating a new one
+        let result = self.runtime.block_on(async {
             let resp = self.client.head_object()
                 .bucket(&self.bucket_name)
                 .key(file_key)
@@ -273,11 +287,8 @@ impl R2Client {
             return Ok(None);
         }
         
-        // We need to use tokio runtime for this
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
-        
-        let metadata = runtime.block_on(async {
+        // Use the client's runtime instead of creating a new one
+        let metadata = self.runtime.block_on(async {
             let resp = self.client.head_object()
                 .bucket(&self.bucket_name)
                 .key(file_key)
@@ -327,11 +338,8 @@ impl R2Client {
             ));
         }
         
-        // We need to use tokio runtime for this
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
-        
-        let result = runtime.block_on(async {
+        // Use the client's runtime instead of creating a new one
+        let result = self.runtime.block_on(async {
             // Create ByteStream directly from file path - no loading into memory
             let body = ByteStream::from_path(Path::new(local_path)).await
                 .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create ByteStream from path: {}", e)))?;
@@ -411,11 +419,8 @@ impl R2Client {
     
     /// Download a file from R2 storage
     pub fn download_file(&self, object_key: &str) -> Result<Vec<u8>> {
-        // We need to use tokio runtime for this
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
-        
-        let content = runtime.block_on(async {
+        // Use the client's runtime instead of creating a new one
+        let content = self.runtime.block_on(async {
             let resp = self.client.get_object()
                 .bucket(&self.bucket_name)
                 .key(object_key)

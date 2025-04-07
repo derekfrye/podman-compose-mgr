@@ -49,6 +49,7 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         b2_account_id_filepath: None,
         b2_account_key_filepath: None,
         r2_account_id: Some("test-cloudflare-account-id".to_string()),
+        r2_account_id_filepath: None,
         r2_access_key_id: Some("test-r2-access-key-id".to_string()),
         r2_access_key: Some("test-r2-access-key".to_string()),
         r2_access_key_id_filepath: None,

@@ -49,6 +49,7 @@ fn test_b2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         b2_account_id_filepath: None,
         b2_account_key_filepath: None,
         r2_account_id: None,
+        r2_account_id_filepath: None,
         r2_access_key_id: None,
         r2_access_key: None,
         r2_access_key_id_filepath: None,

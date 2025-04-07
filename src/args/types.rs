@@ -87,6 +87,10 @@ pub struct Args {
     #[arg(long)]
     pub r2_account_id: Option<String>,
     
+    /// Path to file containing Cloudflare account ID
+    #[arg(long)]
+    pub r2_account_id_filepath: Option<PathBuf>,
+    
     /// Cloudflare R2 Access Key ID
     #[arg(long)]
     pub r2_access_key_id: Option<String>,
@@ -317,9 +321,9 @@ impl Args {
                 }
                 
                 if need_r2_credentials {
-                    // Check if R2 account ID is provided
-                    if self.r2_account_id.is_none() {
-                        return Err("r2_account_id is required for upload mode when input json contains R2 entries".to_string());
+                    // Check if R2 account ID is provided directly or via file
+                    if self.r2_account_id.is_none() && self.r2_account_id_filepath.is_none() {
+                        return Err("r2_account_id or r2_account_id_filepath is required for upload mode when input json contains R2 entries".to_string());
                     }
                     
                     // Check if R2 access key ID filepath is provided
@@ -335,6 +339,11 @@ impl Args {
                     // Check if R2 bucket for upload is provided
                     if self.r2_bucket_for_upload.is_none() {
                         return Err("r2_bucket_for_upload is required for upload mode when input json contains R2 entries".to_string());
+                    }
+                    
+                    // Validate R2 account ID filepath if provided
+                    if let Some(filepath) = &self.r2_account_id_filepath {
+                        check_readable_path(filepath)?;
                     }
                     
                     // Validate R2 access key ID filepath

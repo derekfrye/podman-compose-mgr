@@ -55,6 +55,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         b2_account_id_filepath: None,
         b2_account_key_filepath: None,
         r2_account_id: None,
+        r2_account_id_filepath: None,
         r2_access_key_id: None,
         r2_access_key: None,
         r2_access_key_id_filepath: None,

@@ -22,6 +22,7 @@ pub struct B2Config {
 pub struct B2Client {
     bucket_name: String,
     client: Client,
+    runtime: tokio::runtime::Runtime,
 }
 
 impl B2Client {
@@ -30,7 +31,7 @@ impl B2Client {
         // Backblaze B2 S3-compatible endpoint
         let endpoint = "https://s3.us-west-004.backblazeb2.com";
         
-        // Create runtime for async operation
+        // Create runtime for async operations - will be reused for all operations
         let runtime = tokio::runtime::Runtime::new()
             .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
         
@@ -61,6 +62,7 @@ impl B2Client {
         let b2_client = Self {
             bucket_name: config.bucket.clone(),
             client,
+            runtime,
         };
         
         // Ensure bucket exists
@@ -71,10 +73,8 @@ impl B2Client {
     
     /// Ensure bucket exists, create it if it doesn't
     fn ensure_bucket_exists(&self, bucket_name: &str) -> Result<()> {
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
-            
-        runtime.block_on(async {
+        // Use the client's runtime instead of creating a new one    
+        self.runtime.block_on(async {
             // Check if bucket exists
             let bucket_exists = self.client.head_bucket()
                 .bucket(bucket_name)
@@ -233,11 +233,8 @@ impl B2Client {
     
     /// Check if a file exists in B2 storage
     pub fn file_exists(&self, file_key: &str) -> Result<bool> {
-        // We need to use tokio runtime for this
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
-        
-        let result = runtime.block_on(async {
+        // Use the client's runtime instead of creating a new one
+        let result = self.runtime.block_on(async {
             let resp = self.client.head_object()
                 .bucket(&self.bucket_name)
                 .key(file_key)
@@ -258,11 +255,8 @@ impl B2Client {
             return Ok(None);
         }
         
-        // We need to use tokio runtime for this
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
-        
-        let metadata = runtime.block_on(async {
+        // Use the client's runtime instead of creating a new one
+        let metadata = self.runtime.block_on(async {
             let resp = self.client.head_object()
                 .bucket(&self.bucket_name)
                 .key(file_key)
@@ -312,11 +306,8 @@ impl B2Client {
             ));
         }
         
-        // We need to use tokio runtime for this
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
-        
-        let result = runtime.block_on(async {
+        // Use the client's runtime instead of creating a new one
+        let result = self.runtime.block_on(async {
             // Create ByteStream directly from file path - no loading into memory
             let body = ByteStream::from_path(Path::new(local_path)).await
                 .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create ByteStream from path: {}", e)))?;
@@ -396,11 +387,8 @@ impl B2Client {
     
     /// Download a file from B2 storage
     pub fn download_file(&self, object_key: &str) -> Result<Vec<u8>> {
-        // We need to use tokio runtime for this
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to create runtime: {}", e)))?;
-        
-        let content = runtime.block_on(async {
+        // Use the client's runtime instead of creating a new one
+        let content = self.runtime.block_on(async {
             let resp = self.client.get_object()
                 .bucket(&self.bucket_name)
                 .key(object_key)

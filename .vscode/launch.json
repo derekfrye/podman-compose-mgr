@@ -64,6 +64,12 @@
         "${workspaceFolder}/tests/test2_personal_testing_data/b2_key.txt",
         "--b2-bucket-for-upload",
         "${workspaceFolder}/tests/test2_personal_testing_data/bucket_name.txt",
+        "--r2-access-key-id-filepath",
+        "${workspaceFolder}/tests/test2_personal_testing_data/r2_key_id.txt",
+        "--r2-access-key-filepath",
+        "${workspaceFolder}/tests/test2_personal_testing_data/r2_access_key.txt",
+        "--r2-bucket-for-upload",
+        "${workspaceFolder}/tests/test2_personal_testing_data/bucket_name.txt"
       ],
       "cwd": "${workspaceFolder}"
     },
