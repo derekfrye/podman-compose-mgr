@@ -14,3 +14,4 @@ pub use read_interactive_input::unroll_grammar_into_string;
 pub use utils::cmd_utils;
 pub use utils::error_utils;
 pub use utils::json_utils;
+pub use utils::log_utils;

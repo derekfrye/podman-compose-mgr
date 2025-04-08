@@ -10,6 +10,7 @@ pub mod ui;
 use crate::args::Args;
 use crate::secrets::error::Result;
 use crate::secrets::models::JsonOutput;
+use crate::utils::log_utils::Logger;
 
 // Re-export main functions
 pub use self::init::prepare_validation;
@@ -24,9 +25,9 @@ pub use self::process::process_retrieve_entry;
 /// - JSON parsing fails
 /// - Required arguments are missing
 /// - KeyVault client creation fails
-pub fn validate(args: &Args) -> Result<()> {
+pub fn validate(args: &Args, logger: &Logger) -> Result<()> {
     // This function now delegates to validation_retrieve, which implements the new behavior
-    validation_retrieve(args)
+    validation_retrieve(args, logger)
 }
 
 /// Retrieves and compares secrets from cloud storage
@@ -44,7 +45,7 @@ pub fn validate(args: &Args) -> Result<()> {
 /// - Required arguments are missing
 /// - KeyVault or storage client creation fails
 /// - File operations fail
-pub fn validation_retrieve(args: &Args) -> Result<()> {
+pub fn validation_retrieve(args: &Args, logger: &Logger) -> Result<()> {
     // Get client for Azure KeyVault (we still need this for entries using KeyVault)
     let (azure_client, json_values) = prepare_validation(args)?;
 
@@ -61,17 +62,15 @@ pub fn validation_retrieve(args: &Args) -> Result<()> {
     for entry in json_values {
         // Skip entries that don't match the current hostname
         if hostname != entry["hostname"].as_str().unwrap_or("") {
-            if args.verbose > 0 {
-                println!(
-                    "info: Skipping entry {} for hostname: {}",
-                    entry["filenm"], entry["hostname"]
-                );
-            }
+            logger.info(&format!(
+                "Skipping entry {} for hostname: {}",
+                entry["filenm"], entry["hostname"]
+            ));
             continue;
         }
 
         // Process this entry
-        match process_retrieve_entry(&entry, azure_client.as_ref(), &r2_client, args) {
+        match process_retrieve_entry(&entry, azure_client.as_ref(), &r2_client, args, logger) {
             Ok(Some(output)) => json_outputs.push(output),
             Ok(None) => {} // No output to add (skipped or error)
             Err(e) => eprintln!("Error processing entry: {}", e),

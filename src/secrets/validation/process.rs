@@ -7,6 +7,7 @@ use crate::secrets::utils::{extract_validation_fields, get_current_timestamp, ge
 use crate::secrets::validation::cloud_storage::{download_from_cloud, DownloadParams};
 use crate::secrets::validation::file_ops::compare_files;
 use crate::secrets::validation::ui::prompt_for_diff;
+use crate::utils::log_utils::Logger;
 use serde_json::Value;
 use std::path::Path;
 use tempfile::NamedTempFile;
@@ -24,15 +25,14 @@ pub fn process_retrieve_entry(
     azure_client: &dyn AzureKeyVaultClient,
     r2_client: &R2Client,
     args: &Args,
+    logger: &Logger,
 ) -> Result<Option<JsonOutput>> {
     // Extract required fields
     let (cloud_id, file_path, secret_name, encoding, storage_type) =
         extract_validation_fields(entry)?;
 
     // Check if file exists in cloud storage
-    if args.verbose > 0 {
-        println!("info: Processing {}", file_path);
-    }
+    logger.info(&format!("Processing {}", file_path));
 
     // Create a temporary file to download the content
     let temp_file = NamedTempFile::new().map_err(|e| {

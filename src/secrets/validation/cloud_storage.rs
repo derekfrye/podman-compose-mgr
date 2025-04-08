@@ -55,12 +55,10 @@ fn download_from_azure(
                 ))
             })?;
 
-            if args.verbose > 0 {
-                println!(
-                    "info: Downloaded secret from Azure KeyVault to {}",
-                    temp_path
-                );
-            }
+            crate::utils::log_utils::info(
+                &format!("Downloaded secret from Azure KeyVault to {}", temp_path),
+                args.verbose
+            );
             Ok(true)
         }
         Err(e) => {
@@ -128,9 +126,9 @@ fn download_from_s3_storage(
     }
 
     // Log the bucket change and object key if verbose
-    if args.verbose > 0 {
-        println!("info: Using bucket '{}' for R2/B2 download", bucket);
-        println!("info: Using object key '{}' for R2/B2 download", object_keys[0]);
+    if args.verbose >= 2 {
+        println!("dbg: Using bucket '{}' for R2/B2 download", bucket);
+        println!("dbg: Using object key '{}' for R2/B2 download", object_keys[0]);
     }
 
     // Create a new client with the correct credentials but updated bucket
@@ -167,9 +165,9 @@ fn download_from_s3_storage(
     for potential_key in &object_keys {
         tried_keys.push(potential_key.clone());
 
-        if args.verbose >= 1 {
+        if args.verbose >= 2 {
             println!(
-                "info: Attempting to download with object key: {}",
+                "dbg: Attempting to download with object key: {}",
                 potential_key
             );
         }
@@ -184,13 +182,13 @@ fn download_from_s3_storage(
                     ))
                 })?;
 
-                if args.verbose > 0 {
+                if args.verbose >= 2 {
                     println!(
-                        "info: Successfully downloaded file from s3 storage to {}",
+                        "dbg: Successfully downloaded file from s3 storage to {}",
                         temp_path
                     );
-                    println!("info: Downloaded content size: {} bytes", content.len());
-                    println!("info: Used object key: {}", potential_key);
+                    println!("dbg: Downloaded content size: {} bytes", content.len());
+                    println!("dbg: Used object key: {}", potential_key);
                 }
                 return Ok(true);
             }
@@ -224,7 +222,7 @@ fn download_from_s3_storage(
             }
 
             // Provide hints for possible causes
-            if args.verbose >= 1 {
+            if args.verbose >= 2 {
                 eprintln!("Possible causes:");
                 eprintln!("1. The file was never uploaded to this bucket");
                 eprintln!("2. The object key format is different than the ones we tried");

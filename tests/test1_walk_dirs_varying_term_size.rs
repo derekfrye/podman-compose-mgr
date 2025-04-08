@@ -3,6 +3,7 @@ use std::fs::{self};
 use podman_compose_mgr::interfaces::MockCommandHelper;
 use podman_compose_mgr::interfaces::MockReadInteractiveInputHelper;
 use podman_compose_mgr::read_interactive_input::ReadValResult;
+use podman_compose_mgr::utils::log_utils::Logger;
 use podman_compose_mgr::walk_dirs::walk_dirs_with_helpers;
 
 use clap::Parser;
@@ -85,8 +86,11 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
         })
         .times(3);
 
+    // Create logger
+    let logger = Logger::new(args.verbose);
+    
     // Call the function with our test helpers
-    walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper)?;
+    walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper, &logger)?;
 
     // SECOND TEST: Width 40
     // Create a new mock with width 40
@@ -132,8 +136,11 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
         })
         .times(3);
 
+    // Create logger
+    let logger = Logger::new(args.verbose);
+    
     // Call the function with our test helpers
-    walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper)?;
+    walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper, &logger)?;
 
     // The test is successful if we made it here
     Ok(())
