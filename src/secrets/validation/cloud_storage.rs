@@ -119,16 +119,16 @@ fn download_from_s3_storage(
 
     // Log all the object keys we'll try
     if args.verbose >= 2 {
-        println!("dbg: Will try the following object keys in order:");
+        crate::utils::log_utils::debug("Will try the following object keys in order:", args.verbose);
         for (i, key) in object_keys.iter().enumerate() {
-            println!("dbg:   {}: {}", i + 1, key);
+            crate::utils::log_utils::debug(&format!("  {}: {}", i + 1, key), args.verbose);
         }
     }
 
     // Log the bucket change and object key if verbose
     if args.verbose >= 2 {
-        println!("dbg: Using bucket '{}' for R2/B2 download", bucket);
-        println!("dbg: Using object key '{}' for R2/B2 download", object_keys[0]);
+        crate::utils::log_utils::debug(&format!("Using bucket '{}' for R2/B2 download", bucket), args.verbose);
+        crate::utils::log_utils::debug(&format!("Using object key '{}' for R2/B2 download", object_keys[0]), args.verbose);
     }
 
     // Create a new client with the correct credentials but updated bucket
@@ -148,14 +148,14 @@ fn download_from_s3_storage(
     // For higher verbosity, dump more details about the connection
     if args.verbose >= 2 {
         // Dump all entry fields for debugging
-        println!("dbg: ----- R2 Connection Details -----");
-        println!("dbg: Entry JSON: {:?}", entry);
-        println!("dbg: S3 Endpoint: {:?}", args.s3_endpoint_filepath);
-        println!("dbg: S3 Account ID: {:?}", args.s3_account_id_filepath);
-        println!("dbg: S3 Secret Key: {:?}", args.s3_secret_key_filepath);
-        println!("dbg: Bucket: {}", bucket);
-        println!("dbg: Object Key: {}", object_keys[0]);
-        println!("dbg: ----------------------------");
+        crate::utils::log_utils::debug("----- R2 Connection Details -----", args.verbose);
+        crate::utils::log_utils::debug(&format!("Entry JSON: {:?}", entry), args.verbose);
+        crate::utils::log_utils::debug(&format!("S3 Endpoint: {:?}", args.s3_endpoint_filepath), args.verbose);
+        crate::utils::log_utils::debug(&format!("S3 Account ID: {:?}", args.s3_account_id_filepath), args.verbose);
+        crate::utils::log_utils::debug(&format!("S3 Secret Key: {:?}", args.s3_secret_key_filepath), args.verbose);
+        crate::utils::log_utils::debug(&format!("Bucket: {}", bucket), args.verbose);
+        crate::utils::log_utils::debug(&format!("Object Key: {}", object_keys[0]), args.verbose);
+        crate::utils::log_utils::debug("----------------------------", args.verbose);
     }
 
     // Try each object key in order until one works
@@ -166,9 +166,9 @@ fn download_from_s3_storage(
         tried_keys.push(potential_key.clone());
 
         if args.verbose >= 2 {
-            println!(
-                "dbg: Attempting to download with object key: {}",
-                potential_key
+            crate::utils::log_utils::debug(
+                &format!("Attempting to download with object key: {}", potential_key),
+                args.verbose
             );
         }
 
@@ -183,12 +183,18 @@ fn download_from_s3_storage(
                 })?;
 
                 if args.verbose >= 2 {
-                    println!(
-                        "dbg: Successfully downloaded file from s3 storage to {}",
-                        temp_path
+                    crate::utils::log_utils::debug(
+                        &format!("Successfully downloaded file from s3 storage to {}", temp_path),
+                        args.verbose
                     );
-                    println!("dbg: Downloaded content size: {} bytes", content.len());
-                    println!("dbg: Used object key: {}", potential_key);
+                    crate::utils::log_utils::debug(
+                        &format!("Downloaded content size: {} bytes", content.len()),
+                        args.verbose
+                    );
+                    crate::utils::log_utils::debug(
+                        &format!("Used object key: {}", potential_key),
+                        args.verbose
+                    );
                 }
                 return Ok(true);
             }
@@ -197,9 +203,9 @@ fn download_from_s3_storage(
                 last_error = Some(format!("{}", e));
 
                 if args.verbose >= 2 {
-                    println!(
-                        "dbg: Failed to download with key '{}': {}",
-                        potential_key, e
+                    crate::utils::log_utils::debug(
+                        &format!("Failed to download with key '{}': {}", potential_key, e),
+                        args.verbose
                     );
                 }
             }
