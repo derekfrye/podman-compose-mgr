@@ -1,13 +1,5 @@
 pub mod args;
-#[allow(clippy::module_inception)]
-pub mod image_build {
-    pub mod buildfile;
-    pub mod rebuild;
-}
-pub mod helpers {
-    pub mod cmd_helper_fns;
-    pub mod podman_helper_fns;
-}
+pub mod image_build;
 pub mod interfaces;
 pub mod read_interactive_input;
 

@@ -1,10 +1,11 @@
 use crate::utils::cmd_utils as cmd;
+use crate::utils::podman_utils;
 use crate::image_build::buildfile_error::BuildfileError;
 use crate::image_build::buildfile_types::{BuildChoice, WhatWereBuilding};
 
 /// Build an image from a dockerfile
 pub fn build_dockerfile_image(build_config: &WhatWereBuilding) -> Result<(), BuildfileError> {
-    let _ = cmd::pull_base_image(build_config.file.filepath.as_ref().unwrap());
+    let _ = podman_utils::pull_base_image(build_config.file.filepath.as_ref().unwrap());
     
     let dockerfile_path = build_config
         .file
