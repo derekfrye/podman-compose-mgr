@@ -154,9 +154,14 @@ impl R2Client {
     pub fn save_to_file(&self, object_key: &str, local_path: &str) -> Result<()> {
         self.client.save_to_file(object_key, local_path)
     }
-    
+
     /// Set the bucket name
     pub fn set_bucket_name(&mut self, bucket: String) {
         self.client.set_bucket_name(bucket);
+    }
+
+    /// List objects with a given prefix - delegated to S3 client
+    pub fn list_objects_with_prefix(&self, prefix: &str) -> Result<Vec<String>> {
+        self.client.list_objects_with_prefix(prefix)
     }
 }

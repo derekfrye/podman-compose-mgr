@@ -4,6 +4,7 @@ use aws_config::retry::RetryConfig;
 use aws_credential_types::Credentials;
 use aws_sdk_s3::Client;
 use aws_sdk_s3::config::Region;
+use aws_sdk_s3::error::ProvideErrorMetadata;
 use aws_sdk_s3::primitives::ByteStream;
 use std::collections::HashMap;
 use std::fs::File;
@@ -81,6 +82,25 @@ impl S3StorageClient {
         })?;
 
         // Use the tokio runtime to build the AWS config
+        // If verbose, log connection details
+        if verbose >= 2 {
+            println!("dbg: Creating S3-compatible client with these parameters:");
+            println!("dbg: Endpoint: {}", endpoint);
+            println!("dbg: Region: {:?}", region);
+            println!(
+                "dbg: Provider type: {}",
+                match config.provider {
+                    S3Provider::BackblazeB2 => "Backblaze B2",
+                    S3Provider::CloudflareR2 => "Cloudflare R2",
+                }
+            );
+            println!(
+                "dbg: Key ID: {}****",
+                &config.key_id[..4.min(config.key_id.len())]
+            );
+            println!("dbg: Is real client: {}", is_real_client);
+        }
+
         let aws_config = runtime.block_on(async {
             // Create credentials from the key ID and application key
             let credentials = Credentials::new(
@@ -94,14 +114,16 @@ impl S3StorageClient {
                 },
             );
 
-            // Build the S3 configuration
-            aws_sdk_s3::Config::builder()
+            // Build the S3 configuration with more verbose logging
+            let builder = aws_sdk_s3::Config::builder()
                 .region(region)
                 .endpoint_url(endpoint)
                 .credentials_provider(credentials)
                 .retry_config(RetryConfig::standard().with_max_attempts(3))
-                .behavior_version(aws_sdk_s3::config::BehaviorVersion::latest())
-                .build()
+                .behavior_version(aws_sdk_s3::config::BehaviorVersion::latest());
+
+            // Build the final config
+            builder.build()
         });
 
         // Create client
@@ -134,48 +156,51 @@ impl S3StorageClient {
         // Use the client's runtime instead of creating a new one
         self.runtime.block_on(async {
             // Check if bucket exists
-            let bucket_exists = self.client.head_bucket()
+            let bucket_exists = self
+                .client
+                .head_bucket()
                 .bucket(bucket_name)
                 .send()
                 .await
                 .is_ok();
-                
+
             // Create bucket if it doesn't exist
             if !bucket_exists {
                 println!("Bucket '{}' doesn't exist, creating it...", bucket_name);
-                
+
                 // Create bucket without location constraint (works for both B2 and R2)
-                let result = self.client.create_bucket()
-                    .bucket(bucket_name)
-                    .send()
-                    .await;
-                    
+                let result = self.client.create_bucket().bucket(bucket_name).send().await;
+
                 match result {
                     Ok(_) => println!("Successfully created bucket '{}'", bucket_name),
                     Err(e) => {
                         // If error is because bucket already exists, that's fine
                         let err_str = format!("{}", e);
                         println!("Bucket creation error details: {}", err_str);
-                        
-                        if err_str.contains("BucketAlreadyExists") || 
-                           err_str.contains("BucketAlreadyOwnedByYou") || 
-                           err_str.contains("already exists") {
+
+                        if err_str.contains("BucketAlreadyExists")
+                            || err_str.contains("BucketAlreadyOwnedByYou")
+                            || err_str.contains("already exists")
+                        {
                             println!("Bucket '{}' already exists, proceeding...", bucket_name);
                             return Ok(());
                         }
-                        
+
                         // For S3 providers, we'll assume the bucket already exists in production and continue
                         // This is because some accounts may not have bucket creation permissions
                         // but still have upload permissions to existing buckets
-                        eprintln!("warn: Failed to create bucket '{}', but will attempt to use it anyway", bucket_name);
-                        
+                        eprintln!(
+                            "warn: Failed to create bucket '{}', but will attempt to use it anyway",
+                            bucket_name
+                        );
+
                         // Instead of failing, we'll try to continue
                         // If the bucket truly doesn't exist, operations will fail later naturally
                         return Ok(());
                     }
                 }
             }
-            
+
             Ok(())
         })
     }
@@ -262,13 +287,16 @@ impl S3StorageClient {
             if let Some(content_length) = resp.content_length() {
                 result.insert("content_length".to_string(), content_length.to_string());
                 got_content_length = true;
-                
+
                 // Log content length when verbose is enabled
                 if self.verbose >= 2 {
-                    println!("dbg: Received content_length from R2/S3: {}", content_length);
+                    println!(
+                        "dbg: Received content_length from R2/S3: {}",
+                        content_length
+                    );
                 }
-            } 
-            
+            }
+
             // 2. Try to get size from user metadata - try several possible metadata field names
             if !got_content_length {
                 if let Some(metadata) = resp.metadata() {
@@ -277,24 +305,32 @@ impl S3StorageClient {
                         if let Some(size) = metadata.get(size_key) {
                             result.insert("content_length".to_string(), size.to_string());
                             got_content_length = true;
-                            
+
                             if self.verbose >= 2 {
-                                println!("dbg: Received size from R2/S3 metadata field '{}': {}", size_key, size);
+                                println!(
+                                    "dbg: Received size from R2/S3 metadata field '{}': {}",
+                                    size_key, size
+                                );
                             }
                             break;
                         }
                     }
-                    
+
                     // If verbose, log all metadata for debugging
                     if self.verbose >= 2 && !got_content_length {
-                        println!("dbg: Available metadata keys: {:?}", metadata.keys().collect::<Vec<_>>());
+                        println!(
+                            "dbg: Available metadata keys: {:?}",
+                            metadata.keys().collect::<Vec<_>>()
+                        );
                     }
                 }
             }
-            
+
             // Log if we couldn't get content length
             if !got_content_length && self.verbose >= 1 {
-                println!("info: No content_length or size received from R2/S3 in metadata response");
+                println!(
+                    "info: No content_length or size received from R2/S3 in metadata response"
+                );
             }
 
             if let Some(etag) = resp.e_tag() {
@@ -576,9 +612,12 @@ impl S3StorageClient {
         metadata.insert("hash".to_string(), file_details.hash.clone());
         metadata.insert("hash-algo".to_string(), file_details.hash_algo.clone());
         metadata.insert("encoding".to_string(), file_details.encoding.clone());
-        metadata.insert("size".to_string(), file_details.file_size.to_string()); 
+        metadata.insert("size".to_string(), file_details.file_size.to_string());
         // Add both for compatibility with different storage providers
-        metadata.insert("content-length".to_string(), file_details.file_size.to_string());
+        metadata.insert(
+            "content-length".to_string(),
+            file_details.file_size.to_string(),
+        );
 
         // Check if we need to use a real bucket name from the JSON for upload
         let using_placeholder_bucket =
@@ -701,26 +740,66 @@ impl S3StorageClient {
 
         // Use the client's runtime instead of creating a new one
         let content = self.runtime.block_on(async {
-            let resp = self
+            // If verbose, log details about the request
+            if self.verbose >= 2 {
+                println!("dbg: S3 download request details:");
+                println!("dbg: Bucket: {}", self.bucket_name);
+                println!("dbg: Object key: {}", object_key);
+            }
+
+            // Create the request - easier to debug when we split it out
+            let request = self
                 .client
                 .get_object()
                 .bucket(&self.bucket_name)
-                .key(object_key)
-                .send()
-                .await
-                .map_err(|e| {
-                    Box::<dyn std::error::Error>::from(format!(
-                        "Failed to download from storage: {}",
-                        e
-                    ))
-                })?;
+                .key(object_key);
+
+            // If verbose, log the full request
+            if self.verbose >= 2 {
+                println!("dbg: S3 request: {:?}", request);
+            }
+
+            // Send the request
+            let resp = request.send().await.map_err(|e| {
+                // Enhanced error information
+                if self.verbose >= 2 {
+                    println!("dbg: S3 download error details:");
+                    println!("dbg: Error: {:?}", e);
+                    println!("dbg: Error SDK source: {}", e.code().unwrap_or("unknown"));
+                    println!("dbg: Message: {}", e);
+                    println!("dbg: Raw: {:?}", e);
+                }
+
+                Box::<dyn std::error::Error>::from(format!(
+                    "Failed to download from storage: {}",
+                    e
+                ))
+            })?;
+
+            // If verbose, log response details
+            if self.verbose >= 2 {
+                println!("dbg: S3 download response received successfully");
+                println!("dbg: Content length: {:?}", resp.content_length());
+                println!("dbg: E-Tag: {:?}", resp.e_tag());
+            }
 
             // Get content as bytes
             let bytes = resp.body.collect().await.map_err(|e| {
                 Box::<dyn std::error::Error>::from(format!("Failed to read response body: {}", e))
             })?;
 
-            Ok::<Vec<u8>, Box<dyn std::error::Error>>(bytes.to_vec())
+            // Convert to Vec<u8> once
+            let content_bytes = bytes.to_vec();
+
+            // If verbose, log successful download
+            if self.verbose >= 1 {
+                println!(
+                    "info: Successfully downloaded {} bytes from S3",
+                    content_bytes.len()
+                );
+            }
+
+            Ok::<Vec<u8>, Box<dyn std::error::Error>>(content_bytes)
         })?;
 
         Ok(content)
@@ -758,10 +837,87 @@ impl S3StorageClient {
     pub fn provider_type(&self) -> &S3Provider {
         &self.provider_type
     }
-    
+
     /// Set the bucket name
     pub fn set_bucket_name(&mut self, bucket: String) {
         self.bucket_name = bucket;
+    }
+
+    /// List objects with a given prefix
+    pub fn list_objects_with_prefix(&self, prefix: &str) -> Result<Vec<String>> {
+        // For non-real clients, return a mock response
+        if !self.is_real_client {
+            if self.verbose >= 1 {
+                println!(
+                    "info: Using mock S3-compatible storage client - would have listed objects with prefix {}",
+                    prefix
+                );
+            }
+            // Return some mock object keys
+            return Ok(vec![
+                format!("{}{}", prefix, "mock_file1.txt"),
+                format!("{}{}", prefix, "mock_file2.txt"),
+            ]);
+        }
+
+        // Use the client's runtime instead of creating a new one
+        let objects = self.runtime.block_on(async {
+            let mut result = Vec::new();
+
+            // Log the request details if verbose
+            if self.verbose >= 2 {
+                println!(
+                    "dbg: Listing objects with prefix '{}' in bucket '{}'",
+                    prefix, self.bucket_name
+                );
+            }
+
+            // Create the list objects request
+            let list_request = self
+                .client
+                .list_objects_v2()
+                .bucket(&self.bucket_name)
+                .prefix(prefix)
+                .max_keys(100); // Limit to 100 objects
+
+            // Send the request
+            match list_request.send().await {
+                Ok(response) => {
+                    // Extract the object keys from the response
+                    if let Some(contents) = response.contents {
+                        for object in contents {
+                            if let Some(key) = object.key {
+                                result.push(key.to_string());
+                            }
+                        }
+                    }
+
+                    // Log how many objects we found
+                    if self.verbose >= 2 {
+                        println!(
+                            "dbg: Found {} objects with prefix '{}'",
+                            result.len(),
+                            prefix
+                        );
+                    }
+
+                    Ok::<Vec<String>, Box<dyn std::error::Error>>(result)
+                }
+                Err(e) => {
+                    // Enhanced error information
+                    if self.verbose >= 2 {
+                        println!("dbg: Error listing objects with prefix '{}': {}", prefix, e);
+                    }
+
+                    Err(Box::<dyn std::error::Error>::from(format!(
+                        "Failed to list objects with prefix '{}': {}",
+                        prefix, e
+                    )))
+                }
+            }
+        })?;
+
+        Ok(objects)
     }
 }
 

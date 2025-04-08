@@ -6,7 +6,9 @@ use crate::secrets::error::Result;
 use crate::secrets::file_details::{format_file_size, get_file_details};
 use crate::secrets::models::{JsonOutput, JsonOutputControl, SetSecretResponse};
 use crate::secrets::r2_storage::R2Client;
-use crate::secrets::user_prompt::{display_validation_help, setup_validation_prompt, setup_retrieve_prompt};
+use crate::secrets::user_prompt::{
+    display_validation_help, setup_retrieve_prompt, setup_validation_prompt,
+};
 use crate::secrets::utils::{
     details_about_entry, extract_validation_fields, get_current_timestamp, get_hostname,
     write_json_output,
@@ -51,7 +53,7 @@ pub fn validate(args: &Args) -> Result<()> {
 pub fn validation_retrieve(args: &Args) -> Result<()> {
     // Get client for Azure KeyVault (we still need this for entries using KeyVault)
     let (azure_client, json_values) = prepare_validation(args)?;
-    
+
     // Create R2 client for cloud storage entries (used for both R2 and B2)
     let r2_client = R2Client::from_args(args).map_err(|e| {
         Box::<dyn std::error::Error>::from(format!("Failed to create R2 client: {}", e))
@@ -77,7 +79,7 @@ pub fn validation_retrieve(args: &Args) -> Result<()> {
         // Process this entry
         match process_retrieve_entry(&entry, azure_client.as_ref(), &r2_client, args) {
             Ok(Some(output)) => json_outputs.push(output),
-            Ok(None) => {}, // No output to add (skipped or error)
+            Ok(None) => {} // No output to add (skipped or error)
             Err(e) => eprintln!("Error processing entry: {}", e),
         }
     }
@@ -183,40 +185,48 @@ fn process_retrieve_entry(
     args: &Args,
 ) -> Result<Option<JsonOutput>> {
     // Extract required fields
-    let (cloud_id, file_path, secret_name, encoding, storage_type) = extract_validation_fields(entry)?;
-    
+    let (cloud_id, file_path, secret_name, encoding, storage_type) =
+        extract_validation_fields(entry)?;
+
     // Check if file exists in cloud storage
     if args.verbose > 0 {
         println!("info: Processing {}", file_path);
     }
-    
+
     // Create a temporary file to download the content
     let temp_file = NamedTempFile::new().map_err(|e| {
         Box::<dyn std::error::Error>::from(format!("Failed to create temporary file: {}", e))
     })?;
     let temp_path = temp_file.path().to_string_lossy().to_string();
-    
+
     // Download content based on storage type
     let downloaded = download_from_cloud(
         storage_type.clone(), // Clone to avoid moving the value
-        secret_name, 
-        &cloud_id, 
-        azure_client, 
-        r2_client, 
-        entry, 
-        &temp_path, 
-        encoding.as_str(), 
-        args
+        secret_name,
+        &cloud_id,
+        azure_client,
+        r2_client,
+        entry,
+        &temp_path,
+        encoding.as_str(),
+        args,
     )?;
-    
+
     if !downloaded {
         return Ok(None); // Skip if download failed
     }
-    
+
     // Check if the local file exists
     if Path::new(&file_path).exists() {
         // Compare the downloaded file with the local file
-        if compare_files(&temp_path, &file_path, encoding.as_str(), azure_client, entry, args)? {
+        if compare_files(
+            &temp_path,
+            &file_path,
+            encoding.as_str(),
+            azure_client,
+            entry,
+            args,
+        )? {
             println!("Files are identical: {}", file_path);
         } else {
             // Files differ - prompt user
@@ -230,11 +240,11 @@ fn process_retrieve_entry(
     } else {
         println!("Local file does not exist: {}", file_path);
     }
-    
+
     // Create JSON output for this entry regardless of comparison result
     let formatted_date = get_current_timestamp()?;
     let hostname = get_hostname()?;
-    
+
     // Create output with details from the cloud
     let output = create_retrieve_output(
         file_path,
@@ -244,7 +254,7 @@ fn process_retrieve_entry(
         entry,
         storage_type.as_str(),
     )?;
-    
+
     Ok(Some(output))
 }
 
@@ -252,7 +262,7 @@ fn process_retrieve_entry(
 #[allow(clippy::too_many_arguments)]
 fn download_from_cloud(
     storage_type: String,
-    secret_name: String, 
+    secret_name: String,
     _cloud_id: &str, // Not used but kept for clarity
     azure_client: &dyn AzureKeyVaultClient,
     _r2_client: &R2Client, // Not directly used, creating a new one instead
@@ -265,106 +275,285 @@ fn download_from_cloud(
         "azure_kv" => {
             // Download from Azure KeyVault
             // First, check if we're running in a test mode with specific test files
-            if entry["file_nm"].as_str().unwrap_or("").contains("/tmp/testfile") && temp_path.contains("/tmp/.tmp") {
+            if entry["file_nm"]
+                .as_str()
+                .unwrap_or("")
+                .contains("/tmp/testfile")
+                && temp_path.contains("/tmp/.tmp")
+            {
                 // For testing, use a direct copy of the file we prepared earlier
                 if args.verbose > 0 {
                     println!("info: Test mode - using prepared file for Azure KeyVault simulation");
                 }
-                
+
                 // Use the prepared downloaded.txt file that we created
                 fs::copy("/tmp/downloaded.txt", temp_path).map_err(|e| {
                     Box::<dyn std::error::Error>::from(format!("Failed to copy test file: {}", e))
                 })?;
-                
+
                 return Ok(true);
             }
-            
+
             // Normal case - try to retrieve from Azure KeyVault
             match azure_client.get_secret_value(&secret_name) {
                 Ok(secret) => {
                     // Write the secret value to the temp file
                     fs::write(temp_path, &secret.value).map_err(|e| {
-                        Box::<dyn std::error::Error>::from(format!("Failed to write temp file: {}", e))
+                        Box::<dyn std::error::Error>::from(format!(
+                            "Failed to write temp file: {}",
+                            e
+                        ))
                     })?;
-                    
+
                     if args.verbose > 0 {
-                        println!("info: Downloaded secret from Azure KeyVault to {}", temp_path);
+                        println!(
+                            "info: Downloaded secret from Azure KeyVault to {}",
+                            temp_path
+                        );
                     }
                     Ok(true)
-                },
+                }
                 Err(e) => {
                     eprintln!("Error retrieving secret from Azure KeyVault: {}", e);
                     Ok(false)
                 }
             }
-        },
+        }
         "b2" | "r2" => {
             // Special test mode for our examples
-            if entry["file_nm"].as_str().unwrap_or("").contains("/tmp/testfile") && temp_path.contains("/tmp/.tmp") {
+            if entry["file_nm"]
+                .as_str()
+                .unwrap_or("")
+                .contains("/tmp/testfile")
+                && temp_path.contains("/tmp/.tmp")
+            {
                 // For testing, use a direct copy of the file we prepared earlier
                 if args.verbose > 0 {
                     println!("info: Test mode - using prepared file for R2/B2 simulation");
                 }
-                
+
                 // Use the prepared downloaded.txt file that we created
                 fs::copy("/tmp/downloaded.txt", temp_path).map_err(|e| {
                     Box::<dyn std::error::Error>::from(format!("Failed to copy test file: {}", e))
                 })?;
-                
+
                 return Ok(true);
             }
-            
+
             // Normal R2/B2 download path
-            
+
             // Get the bucket name from the entry
             let bucket = entry["cloud_upload_bucket"].as_str().ok_or_else(|| {
-                Box::<dyn std::error::Error>::from("cloud_upload_bucket is required for B2/R2 storage")
+                Box::<dyn std::error::Error>::from(
+                    "cloud_upload_bucket is required for B2/R2 storage",
+                )
             })?;
-            
-            // Construct the object key
+
+            // Construct possible object keys to try - we'll attempt multiple formats
+            let mut object_keys = Vec::new();
+
+            // 1. First priority: Use r2_name field with secrets/ prefix (preferred format)
+            if let Some(r2_name) = entry["r2_name"].as_str() {
+                object_keys.push(format!("secrets/{}", r2_name));
+            }
+
+            // 2. Second priority: Use hash with secrets/ prefix (common format)
             let hash = entry["hash"].as_str().unwrap_or("");
-            let object_key = format!("secrets/{}", hash);
-            
+            object_keys.push(format!("secrets/{}", hash));
+
+            // 3. Third priority: Try hash directly without prefix (older format)
+            object_keys.push(hash.to_string());
+
+            // 4. Fourth priority: Try with other common prefixes
+            object_keys.push(format!("secret/{}", hash)); // singular form
+
+            // 5. Additional fallbacks: R2 sometimes stores files with a leading slash
+            if let Some(r2_name) = entry["r2_name"].as_str() {
+                object_keys.push(format!("/secrets/{}", r2_name));
+            }
+            object_keys.push(format!("/secrets/{}", hash));
+
+            // 6. If there's a filename hint in the JSON, try using that too
+            if let Some(filename) = entry["filename"].as_str() {
+                object_keys.push(format!("secrets/{}", filename));
+                object_keys.push(filename.to_string());
+            }
+
+            // Log all the object keys we'll try
+            if args.verbose >= 2 {
+                println!("dbg: Will try the following object keys in order:");
+                for (i, key) in object_keys.iter().enumerate() {
+                    println!("dbg:   {}: {}", i + 1, key);
+                }
+            }
+
+            // Use the first key initially (will try others if this fails)
+            let object_key = object_keys[0].clone();
+
             // We can't modify the R2 client directly since we have an immutable reference
             // Instead, we'll create a new client with the correct bucket
-            
-            // Log the bucket change if verbose
+
+            // Log the bucket change and object key if verbose
             if args.verbose > 0 {
                 println!("info: Using bucket '{}' for R2/B2 download", bucket);
+                println!("info: Using object key '{}' for R2/B2 download", object_key);
             }
-            
+
             // Create a new client with the correct credentials but updated bucket
             let mut updated_client = match R2Client::from_args(args) {
                 Ok(client) => client,
                 Err(e) => {
-                    return Err(Box::<dyn std::error::Error>::from(
-                        format!("Failed to create R2 client with updated bucket: {}", e)
-                    ));
+                    return Err(Box::<dyn std::error::Error>::from(format!(
+                        "Failed to create R2 client with updated bucket: {}",
+                        e
+                    )));
                 }
             };
-            
+
             // Set the bucket name and use this client instead
             updated_client.set_bucket_name(bucket.to_string());
-            
-            // Download the file
-            match updated_client.download_file(&object_key) {
-                Ok(content) => {
-                    // Write the content to the temp file
-                    fs::write(temp_path, &content).map_err(|e| {
-                        Box::<dyn std::error::Error>::from(format!("Failed to write temp file: {}", e))
-                    })?;
-                    
-                    if args.verbose > 0 {
-                        println!("info: Downloaded file from {} storage to {}", storage_type, temp_path);
+
+            // For higher verbosity, dump more details about the connection
+            if args.verbose >= 2 {
+                // Dump all entry fields for debugging
+                println!("dbg: ----- R2 Connection Details -----");
+                println!("dbg: Entry JSON: {:?}", entry);
+                println!("dbg: S3 Endpoint: {:?}", args.s3_endpoint_filepath);
+                println!("dbg: S3 Account ID: {:?}", args.s3_account_id_filepath);
+                println!("dbg: S3 Secret Key: {:?}", args.s3_secret_key_filepath);
+                println!("dbg: Bucket: {}", bucket);
+                println!("dbg: Object Key: {}", object_key);
+                println!("dbg: ----------------------------");
+            }
+
+            // Try each object key in order until one works
+            let mut last_error = None;
+            let mut tried_keys = Vec::new();
+
+            for potential_key in &object_keys {
+                tried_keys.push(potential_key.clone());
+
+                if args.verbose >= 1 {
+                    println!(
+                        "info: Attempting to download with object key: {}",
+                        potential_key
+                    );
+                }
+
+                match updated_client.download_file(potential_key) {
+                    Ok(content) => {
+                        // Success! Write the content to the temp file
+                        fs::write(temp_path, &content).map_err(|e| {
+                            Box::<dyn std::error::Error>::from(format!(
+                                "Failed to write temp file: {}",
+                                e
+                            ))
+                        })?;
+
+                        if args.verbose > 0 {
+                            println!(
+                                "info: Successfully downloaded file from {} storage to {}",
+                                storage_type, temp_path
+                            );
+                            println!("info: Downloaded content size: {} bytes", content.len());
+                            println!("info: Used object key: {}", potential_key);
+                        }
+                        return Ok(true);
                     }
-                    Ok(true)
-                },
-                Err(e) => {
-                    eprintln!("Error retrieving file from {} storage: {}", storage_type, e);
-                    Ok(false)
+                    Err(e) => {
+                        // Save this error and try the next key
+                        last_error = Some(format!("{}", e));
+
+                        if args.verbose >= 2 {
+                            println!(
+                                "dbg: Failed to download with key '{}': {}",
+                                potential_key, e
+                            );
+                        }
+                    }
                 }
             }
-        },
+
+            // If we get here, all object keys failed
+            if let Some(error_str) = last_error {
+                // Handle the NoSuchKey error specially
+                if error_str.contains("NoSuchKey") || error_str.contains("does not exist") {
+                    eprintln!(
+                        "File not found in {} storage: The object was not found in bucket '{}'.",
+                        storage_type, bucket
+                    );
+
+                    // Show all keys we tried
+                    eprintln!("Tried the following object keys:");
+                    for (i, key) in tried_keys.iter().enumerate() {
+                        eprintln!("  {}: {}", i + 1, key);
+                    }
+
+                    // Provide hints for possible causes
+                    if args.verbose >= 1 {
+                        eprintln!("Possible causes:");
+                        eprintln!("1. The file was never uploaded to this bucket");
+                        eprintln!("2. The object key format is different than the ones we tried");
+                        eprintln!("3. The bucket name might be incorrect");
+                        eprintln!("4. The R2/B2 credentials don't have access to this object");
+                        eprintln!(
+                            "5. There might be a permission issue with the R2/B2 credentials"
+                        );
+
+                        // For higher verbosity, try to list objects with similar prefix to help diagnose
+                        if args.verbose >= 2 {
+                            eprintln!(
+                                "dbg: Attempting to list objects with 'secrets/' prefix to help diagnose..."
+                            );
+                            // This is just for diagnostic purposes, we don't handle the result
+                            match updated_client.list_objects_with_prefix("secrets/") {
+                                Ok(objects) => {
+                                    if objects.is_empty() {
+                                        eprintln!("dbg: No objects found with 'secrets/' prefix.");
+                                    } else {
+                                        eprintln!(
+                                            "dbg: Found {} objects with 'secrets/' prefix:",
+                                            objects.len()
+                                        );
+                                        for (i, obj) in objects.iter().enumerate().take(10) {
+                                            eprintln!("dbg:   {}: {}", i + 1, obj);
+                                        }
+                                        if objects.len() > 10 {
+                                            eprintln!("dbg:   ... and {} more", objects.len() - 10);
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    eprintln!("dbg: Failed to list objects: {}", e);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Handle other errors normally
+                    eprintln!(
+                        "Error retrieving file from {} storage: {}",
+                        storage_type, error_str
+                    );
+                }
+
+                // For higher verbosity, dump additional details
+                if args.verbose >= 2 {
+                    eprintln!("dbg: Detailed error info for R2/B2 download:");
+                    eprintln!("dbg: Last error: {}", error_str);
+                    eprintln!("dbg: All tried keys: {:?}", tried_keys);
+                    eprintln!("dbg: Bucket: {}", bucket);
+                }
+            } else {
+                // This shouldn't happen, but handle it just in case
+                eprintln!(
+                    "Unknown error retrieving file from {} storage",
+                    storage_type
+                );
+            }
+
+            Ok(false)
+        }
         _ => {
             eprintln!("Unsupported storage type: {}", storage_type);
             Ok(false)
@@ -380,18 +569,18 @@ fn compare_files(
     local_path: &str,
     encoding: &str,
     _azure_client: &dyn AzureKeyVaultClient, // Not used but kept for clarity
-    _entry: &Value, // Not used but kept for clarity
-    _args: &Args, // Not used but kept for clarity
+    _entry: &Value,                          // Not used but kept for clarity
+    _args: &Args,                            // Not used but kept for clarity
 ) -> Result<bool> {
     // Read both files
     let downloaded_content = fs::read(downloaded_path).map_err(|e| {
         Box::<dyn std::error::Error>::from(format!("Failed to read downloaded file: {}", e))
     })?;
-    
+
     let local_content = fs::read(local_path).map_err(|e| {
         Box::<dyn std::error::Error>::from(format!("Failed to read local file: {}", e))
     })?;
-    
+
     // For base64 encoding, we need to decode the downloaded content before comparison
     if encoding == "base64" {
         // Decode the downloaded content (if it's base64 encoded text)
@@ -404,7 +593,7 @@ fn compare_files(
                 downloaded_content
             }
         };
-        
+
         // Compare decoded content with local file
         Ok(decoded_content == local_content)
     } else {
@@ -418,50 +607,50 @@ fn compare_files(
 /// Returns Some(true) if the user wants to continue, Some(false) if they want to skip,
 /// or None if they've chosen an option that doesn't affect the validation process
 fn prompt_for_diff(
-    downloaded_path: &str, 
+    downloaded_path: &str,
     local_path: &str,
     entry: &Value,
     _args: &Args, // Not used but kept for clarity
 ) -> Result<Option<bool>> {
     // Create grammarFragments for the prompt
     let mut grammars: Vec<GrammarFragment> = vec![];
-    
+
     // Set up the prompt with file name
     setup_retrieve_prompt(&mut grammars, entry)?;
-    
+
     loop {
         // Display prompt and get user input
         let result = read_val::read_val_from_cmd_line_and_proceed_default(&mut grammars);
-        
+
         match result.user_entered_val {
             None => {
                 // Empty input (default to N)
                 return Ok(Some(false));
-            },
+            }
             Some(user_choice) => {
                 match user_choice.as_str() {
                     "N" | "n" => {
                         // Skip this file
                         return Ok(Some(false));
-                    },
+                    }
                     "y" => {
                         // Show diff
                         show_diff(downloaded_path, local_path)?;
                         // Continue with validation after showing diff
-                        return Ok(Some(true)); 
-                    },
+                        return Ok(Some(true));
+                    }
                     "d" => {
                         // Display details
                         show_file_details(entry, local_path)?;
                         // Don't affect validation, continue the loop
                         continue;
-                    },
+                    }
                     "?" => {
                         // Display help
                         display_retrieve_help();
                         // Don't affect validation, continue the loop
                         continue;
-                    },
+                    }
                     _ => {
                         // Invalid choice
                         eprintln!("Invalid choice: {}", user_choice);
@@ -479,15 +668,15 @@ fn show_diff(downloaded_path: &str, local_path: &str) -> Result<()> {
     // Check if the diff command is available
     let diff_cmd = "diff";
     let pager_cmd = get_default_pager();
-    
+
     // Print a heading to explain what the diff shows
     println!("\nDifferences between cloud version and local file:");
     println!("< {} (cloud version)", downloaded_path);
     println!("> {} (local version)\n", local_path);
-    
+
     // Decide on options for diff - use unified diff format for better readability
     let diff_args = ["-u", downloaded_path, local_path];
-    
+
     // Try to run the diff command, but handle the case where files are identical or diff returns error
     let output = match cmd_utils::run_command_with_output(diff_cmd, &diff_args) {
         Ok(output) => {
@@ -497,16 +686,14 @@ fn show_diff(downloaded_path: &str, local_path: &str) -> Result<()> {
                 return Ok(());
             }
             output
-        },
+        }
         Err(e) => {
             // Handle special case where diff returns non-zero exit code for differences
             // This is normal behavior for diff, but will cause run_command_with_output to return an error
             if e.to_string().contains("Command 'diff' failed") {
                 // Try to get output even if the command "failed" (which is actually normal for diff)
                 match cmd_utils::run_command(diff_cmd, &diff_args) {
-                    Ok(output) => {
-                        String::from_utf8_lossy(&output.stdout).to_string()
-                    },
+                    Ok(output) => String::from_utf8_lossy(&output.stdout).to_string(),
                     Err(_) => {
                         // If we couldn't get the output, show the original error
                         eprintln!("Error running diff: {}", e);
@@ -520,7 +707,7 @@ fn show_diff(downloaded_path: &str, local_path: &str) -> Result<()> {
             }
         }
     };
-    
+
     // Execute the diff command using a pager if possible
     if !pager_cmd.is_empty() {
         // Write the output to a temp file for paging
@@ -530,7 +717,7 @@ fn show_diff(downloaded_path: &str, local_path: &str) -> Result<()> {
         temp_file.write_all(output.as_bytes()).map_err(|e| {
             Box::<dyn std::error::Error>::from(format!("Failed to write diff output: {}", e))
         })?;
-        
+
         // Run pager on the temp file - convert path to string and store it
         let temp_path_str = temp_file.path().to_string_lossy().to_string();
         let pager_args = [&temp_path_str[..]];
@@ -543,7 +730,7 @@ fn show_diff(downloaded_path: &str, local_path: &str) -> Result<()> {
         // Just run diff command directly
         println!("{}", output);
     }
-    
+
     Ok(())
 }
 
@@ -555,7 +742,7 @@ fn get_default_pager() -> String {
             return pager;
         }
     }
-    
+
     // Try common pagers in order of preference
     for pager in ["less", "more", "most", "cat"] {
         // Check if the pager exists and is executable
@@ -565,7 +752,7 @@ fn get_default_pager() -> String {
             }
         }
     }
-    
+
     // Default to empty string if no pager found
     String::new()
 }
@@ -578,35 +765,40 @@ fn show_file_details(entry: &Value, local_path: &str) -> Result<()> {
     let cloud_upd_ts = entry["cloud_upd_ts"].as_str().unwrap_or("Unknown");
     let file_size_str = entry["file_size"].as_str().unwrap_or("0");
     let file_size: u64 = file_size_str.parse().unwrap_or(0);
-    
+
     // Get storage type and hash
     let storage_type = entry["destination_cloud"]
         .as_str()
         .or_else(|| entry["cloud_type"].as_str())
         .unwrap_or("azure_kv");
-    
+
     let hash = entry["hash"].as_str().unwrap_or("Unknown");
     let hash_algo = entry["hash_algo"].as_str().unwrap_or("sha1");
-    
+
     // Print file details from the entry
     println!("\nFile details from storage record:");
     println!("Path: {}", file_nm);
     println!("Storage type: {}", storage_type);
-    
+
     // For R2/B2 storage, show bucket name
     if storage_type == "r2" || storage_type == "b2" {
         if let Some(bucket) = entry["cloud_upload_bucket"].as_str() {
             println!("Bucket: {}", bucket);
         }
-        
-        println!("Object key: secrets/{}", hash);
+
+        // Use r2_name if available, otherwise use hash
+        if let Some(r2_name) = entry["r2_name"].as_str() {
+            println!("Object key: secrets/{}", r2_name);
+        } else {
+            println!("Object key: secrets/{}", hash);
+        }
     }
-    
+
     println!("Cloud created: {}", cloud_cr_ts);
     println!("Cloud updated: {}", cloud_upd_ts);
     println!("Size in storage: {}", format_file_size(file_size));
     println!("Hash ({}): {}", hash_algo, hash);
-    
+
     // Get local file details if it exists
     if Path::new(local_path).exists() {
         println!("\nLocal file details:");
@@ -615,19 +807,19 @@ fn show_file_details(entry: &Value, local_path: &str) -> Result<()> {
                 println!("Path: {}", local_path);
                 println!("Last modified: {}", details.last_modified);
                 println!("Size on disk: {}", format_file_size(details.file_size));
-                
+
                 // Show encoding details
                 println!("Encoding: {}", details.encoding);
                 if details.encoding == "base64" {
                     println!("Encoded size: {}", format_file_size(details.encoded_size));
                 }
-                
+
                 // Show hash (if different from cloud hash)
                 if details.hash != hash {
                     println!("Local hash ({}): {}", details.hash_algo, details.hash);
                     println!("Warning: Local hash differs from cloud hash!");
                 }
-            },
+            }
             Err(e) => {
                 eprintln!("Error getting local file details: {}", e);
             }
@@ -635,7 +827,7 @@ fn show_file_details(entry: &Value, local_path: &str) -> Result<()> {
     } else {
         println!("\nLocal file does not exist: {}", local_path);
     }
-    
+
     println!(); // Extra newline for readability
     Ok(())
 }
@@ -660,13 +852,13 @@ fn create_retrieve_output(
     // Extract hash from entry
     let hash = entry["hash"].as_str().unwrap_or("").to_string();
     let hash_algo = entry["hash_algo"].as_str().unwrap_or("sha1").to_string();
-    
+
     // Extract cloud details
     let cloud_id = entry["cloud_id"].as_str().unwrap_or("").to_string();
     let secret_name = entry["az_name"].as_str().unwrap_or("").to_string();
     let cloud_created = entry["cloud_cr_ts"].as_str().unwrap_or("").to_string();
     let cloud_updated = entry["cloud_upd_ts"].as_str().unwrap_or("").to_string();
-    
+
     // Create output structure
     let output = JsonOutput {
         file_nm,
@@ -681,7 +873,7 @@ fn create_retrieve_output(
         hash_val: hash,
         hash_algo,
     };
-    
+
     Ok(output)
 }
 

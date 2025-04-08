@@ -61,9 +61,11 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         println!("File 'a' will show as LARGER in R2 than local file.");
         println!("File 'b' will show as SMALLER in R2 than local file.");
         println!("Files 'c' and 'd d' should not exist in R2 storage.");
-        println!("For all files, we'll simulate pressing 'd' to see details first, then 'Y' to upload");
+        println!(
+            "For all files, we'll simulate pressing 'd' to see details first, then 'Y' to upload"
+        );
         println!("=====================================================================");
-        
+
         // Create mock clients
         let azure_client = MockAzureKeyVaultClient::new();
         let b2_client = MockB2StorageClient::new();
@@ -82,7 +84,7 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
             .returning(move |_, _| {
                 // Get the current file being processed
                 let current_index = file_index.get();
-                
+
                 // Every even call (0, 2, 4, 6) should return "d" to show details
                 // Every odd call (1, 3, 5, 7) should return "Y" to approve upload
                 let response = if current_index % 2 == 0 {
@@ -90,7 +92,7 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
                 } else {
                     "Y" // For odd indices: approve upload
                 };
-                
+
                 // Increment counter for next call
                 file_index.set(current_index + 1);
 
@@ -122,14 +124,22 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         // Set up expectations for check_file_exists_with_details for each file
         for (i, file_path) in test_files.iter().enumerate() {
             let hash = calculate_hash(file_path).unwrap();
-            
+
             // Files 'a' and 'b' (indices 0 and 1) should show as already existing
             // Files 'c' and 'd d' (indices 2 and 3) should show as not existing
             let file_exists = i < 2; // true for the first two files (a, b)
-            
-            let created_time = if file_exists { "2024-01-01T00:00:00Z".to_string() } else { "".to_string() };
-            let updated_time = if file_exists { "2024-02-01T00:00:00Z".to_string() } else { "".to_string() };
-            
+
+            let created_time = if file_exists {
+                "2024-01-01T00:00:00Z".to_string()
+            } else {
+                "".to_string()
+            };
+            let updated_time = if file_exists {
+                "2024-02-01T00:00:00Z".to_string()
+            } else {
+                "".to_string()
+            };
+
             r2_client
                 .expect_check_file_exists_with_details()
                 .with(
@@ -137,8 +147,14 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
                     testing::eq(Some("test-r2-upload-bucket".to_string())),
                 )
                 .times(1)
-                .returning(move |_, _| Ok(Some((file_exists, created_time.clone(), updated_time.clone()))));
-            
+                .returning(move |_, _| {
+                    Ok(Some((
+                        file_exists,
+                        created_time.clone(),
+                        updated_time.clone(),
+                    )))
+                });
+
             // For files 'a' and 'b', also set up get_file_metadata to return size information
             if file_exists {
                 // For file 'a', mock a size that's larger than the actual file
@@ -156,7 +172,7 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
                         1
                     }
                 };
-                
+
                 // Set up metadata expectation
                 r2_client
                     .expect_get_file_metadata()

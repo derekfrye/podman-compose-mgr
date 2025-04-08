@@ -33,7 +33,10 @@ pub fn extract_validation_fields(
         .or_else(|| entry["hash"].as_str()) // Use hash as a fallback
         .or_else(|| {
             // If we have a file_nm, generate a secret name from it
-            if let Some(file) = entry["file_nm"].as_str().or_else(|| entry["filenm"].as_str()) {
+            if let Some(file) = entry["file_nm"]
+                .as_str()
+                .or_else(|| entry["filenm"].as_str())
+            {
                 Some(&file[file.rfind('/').map_or(0, |i| i + 1)..])
             } else {
                 None
