@@ -7,13 +7,13 @@ use podman_compose_mgr::interfaces::{
     MockAzureKeyVaultClient, MockB2StorageClient, MockR2StorageClient,
     MockReadInteractiveInputHelper,
 };
-use podman_compose_mgr::utils::log_utils::Logger;
 use podman_compose_mgr::read_interactive_input::ReadValResult;
 use podman_compose_mgr::secrets::file_details::{FileDetails, format_file_size, get_file_details};
 use podman_compose_mgr::secrets::models::SetSecretResponse;
 use podman_compose_mgr::secrets::upload;
 use podman_compose_mgr::secrets::upload_utils::test_utils;
 use podman_compose_mgr::secrets::utils::calculate_hash;
+use podman_compose_mgr::utils::log_utils::Logger;
 use serde_json::json;
 use std::sync::{Arc, Mutex};
 use tempfile::NamedTempFile;
@@ -172,7 +172,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
 
         // Create logger
         let logger = Logger::new(args.verbose);
-        
+
         let result = upload::process_with_injected_dependencies_and_clients(
             &args,
             &read_val_helper,
@@ -275,7 +275,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
 
         // Create logger
         let logger = Logger::new(args.verbose);
-        
+
         let result = upload::process_with_injected_dependencies_and_clients(
             &args,
             &read_val_helper,
@@ -501,7 +501,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
 
         // Create logger
         let logger = Logger::new(args.verbose);
-        
+
         let result = upload::process_with_injected_dependencies_and_clients(
             &args,
             &read_val_helper,

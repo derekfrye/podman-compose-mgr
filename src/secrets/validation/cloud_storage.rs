@@ -2,7 +2,9 @@ use crate::args::Args;
 use crate::interfaces::AzureKeyVaultClient;
 use crate::secrets::error::Result;
 use crate::secrets::r2_storage::R2Client;
-use crate::testing::validation_helpers::{maybe_use_test_file_for_azure, maybe_use_test_file_for_storage};
+use crate::testing::validation_helpers::{
+    maybe_use_test_file_for_azure, maybe_use_test_file_for_storage,
+};
 use serde_json::Value;
 use std::fs;
 
@@ -10,20 +12,31 @@ use std::fs;
 pub struct DownloadParams<'a> {
     pub storage_type: String,
     pub secret_name: String,
-    pub cloud_id: &'a str,          // Not used but kept for clarity
+    pub cloud_id: &'a str, // Not used but kept for clarity
     pub azure_client: &'a dyn AzureKeyVaultClient,
-    pub r2_client: &'a R2Client,    // Not directly used, creating a new one instead
+    pub r2_client: &'a R2Client, // Not directly used, creating a new one instead
     pub entry: &'a Value,
     pub temp_path: &'a str,
-    pub encoding: &'a str,          // Not used but kept for clarity
+    pub encoding: &'a str, // Not used but kept for clarity
     pub args: &'a Args,
 }
 
 /// Download content from the appropriate cloud storage
 pub fn download_from_cloud(params: DownloadParams) -> Result<bool> {
     match params.storage_type.as_str() {
-        "azure_kv" => download_from_azure(params.entry, params.secret_name.clone(), params.azure_client, params.temp_path, params.args),
-        "b2" | "r2" => download_from_s3_storage(params.entry, params.r2_client, params.temp_path, params.args),
+        "azure_kv" => download_from_azure(
+            params.entry,
+            params.secret_name.clone(),
+            params.azure_client,
+            params.temp_path,
+            params.args,
+        ),
+        "b2" | "r2" => download_from_s3_storage(
+            params.entry,
+            params.r2_client,
+            params.temp_path,
+            params.args,
+        ),
         _ => {
             eprintln!("Unsupported storage type: {}", params.storage_type);
             Ok(false)
@@ -49,15 +62,12 @@ fn download_from_azure(
         Ok(secret) => {
             // Write the secret value to the temp file
             fs::write(temp_path, &secret.value).map_err(|e| {
-                Box::<dyn std::error::Error>::from(format!(
-                    "Failed to write temp file: {}",
-                    e
-                ))
+                Box::<dyn std::error::Error>::from(format!("Failed to write temp file: {}", e))
             })?;
 
             crate::utils::log_utils::info(
                 &format!("Downloaded secret from Azure KeyVault to {}", temp_path),
-                args.verbose
+                args.verbose,
             );
             Ok(true)
         }
@@ -82,9 +92,7 @@ fn download_from_s3_storage(
 
     // Get the bucket name from the entry
     let bucket = entry["cloud_upload_bucket"].as_str().ok_or_else(|| {
-        Box::<dyn std::error::Error>::from(
-            "cloud_upload_bucket is required for B2/R2 storage",
-        )
+        Box::<dyn std::error::Error>::from("cloud_upload_bucket is required for B2/R2 storage")
     })?;
 
     // Construct possible object keys to try - we'll attempt multiple formats
@@ -119,7 +127,10 @@ fn download_from_s3_storage(
 
     // Log all the object keys we'll try
     if args.verbose >= 2 {
-        crate::utils::log_utils::debug("Will try the following object keys in order:", args.verbose);
+        crate::utils::log_utils::debug(
+            "Will try the following object keys in order:",
+            args.verbose,
+        );
         for (i, key) in object_keys.iter().enumerate() {
             crate::utils::log_utils::debug(&format!("  {}: {}", i + 1, key), args.verbose);
         }
@@ -127,8 +138,14 @@ fn download_from_s3_storage(
 
     // Log the bucket change and object key if verbose
     if args.verbose >= 2 {
-        crate::utils::log_utils::debug(&format!("Using bucket '{}' for R2/B2 download", bucket), args.verbose);
-        crate::utils::log_utils::debug(&format!("Using object key '{}' for R2/B2 download", object_keys[0]), args.verbose);
+        crate::utils::log_utils::debug(
+            &format!("Using bucket '{}' for R2/B2 download", bucket),
+            args.verbose,
+        );
+        crate::utils::log_utils::debug(
+            &format!("Using object key '{}' for R2/B2 download", object_keys[0]),
+            args.verbose,
+        );
     }
 
     // Create a new client with the correct credentials but updated bucket
@@ -150,9 +167,18 @@ fn download_from_s3_storage(
         // Dump all entry fields for debugging
         crate::utils::log_utils::debug("----- R2 Connection Details -----", args.verbose);
         crate::utils::log_utils::debug(&format!("Entry JSON: {:?}", entry), args.verbose);
-        crate::utils::log_utils::debug(&format!("S3 Endpoint: {:?}", args.s3_endpoint_filepath), args.verbose);
-        crate::utils::log_utils::debug(&format!("S3 Account ID: {:?}", args.s3_account_id_filepath), args.verbose);
-        crate::utils::log_utils::debug(&format!("S3 Secret Key: {:?}", args.s3_secret_key_filepath), args.verbose);
+        crate::utils::log_utils::debug(
+            &format!("S3 Endpoint: {:?}", args.s3_endpoint_filepath),
+            args.verbose,
+        );
+        crate::utils::log_utils::debug(
+            &format!("S3 Account ID: {:?}", args.s3_account_id_filepath),
+            args.verbose,
+        );
+        crate::utils::log_utils::debug(
+            &format!("S3 Secret Key: {:?}", args.s3_secret_key_filepath),
+            args.verbose,
+        );
         crate::utils::log_utils::debug(&format!("Bucket: {}", bucket), args.verbose);
         crate::utils::log_utils::debug(&format!("Object Key: {}", object_keys[0]), args.verbose);
         crate::utils::log_utils::debug("----------------------------", args.verbose);
@@ -168,7 +194,7 @@ fn download_from_s3_storage(
         if args.verbose >= 2 {
             crate::utils::log_utils::debug(
                 &format!("Attempting to download with object key: {}", potential_key),
-                args.verbose
+                args.verbose,
             );
         }
 
@@ -176,24 +202,24 @@ fn download_from_s3_storage(
             Ok(content) => {
                 // Success! Write the content to the temp file
                 fs::write(temp_path, &content).map_err(|e| {
-                    Box::<dyn std::error::Error>::from(format!(
-                        "Failed to write temp file: {}",
-                        e
-                    ))
+                    Box::<dyn std::error::Error>::from(format!("Failed to write temp file: {}", e))
                 })?;
 
                 if args.verbose >= 2 {
                     crate::utils::log_utils::debug(
-                        &format!("Successfully downloaded file from s3 storage to {}", temp_path),
-                        args.verbose
+                        &format!(
+                            "Successfully downloaded file from s3 storage to {}",
+                            temp_path
+                        ),
+                        args.verbose,
                     );
                     crate::utils::log_utils::debug(
                         &format!("Downloaded content size: {} bytes", content.len()),
-                        args.verbose
+                        args.verbose,
                     );
                     crate::utils::log_utils::debug(
                         &format!("Used object key: {}", potential_key),
-                        args.verbose
+                        args.verbose,
                     );
                 }
                 return Ok(true);
@@ -205,7 +231,7 @@ fn download_from_s3_storage(
                 if args.verbose >= 2 {
                     crate::utils::log_utils::debug(
                         &format!("Failed to download with key '{}': {}", potential_key, e),
-                        args.verbose
+                        args.verbose,
                     );
                 }
             }
@@ -234,9 +260,7 @@ fn download_from_s3_storage(
                 eprintln!("2. The object key format is different than the ones we tried");
                 eprintln!("3. The bucket name might be incorrect");
                 eprintln!("4. The R2/B2 credentials don't have access to this object");
-                eprintln!(
-                    "5. There might be a permission issue with the R2/B2 credentials"
-                );
+                eprintln!("5. There might be a permission issue with the R2/B2 credentials");
 
                 // For higher verbosity, try to list objects with similar prefix to help diagnose
                 if args.verbose >= 2 {
@@ -269,10 +293,7 @@ fn download_from_s3_storage(
             }
         } else {
             // Handle other errors normally
-            eprintln!(
-                "Error retrieving file from s3 storage: {}",
-                error_str
-            );
+            eprintln!("Error retrieving file from s3 storage: {}", error_str);
         }
 
         // For higher verbosity, dump additional details

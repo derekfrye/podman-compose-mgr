@@ -10,11 +10,11 @@ use crate::secrets::file_details::{FileDetails, check_encoding_and_size};
 use crate::secrets::utils::get_hostname;
 use crate::secrets::{user_prompt, user_prompt::prompt_for_upload_with_helper};
 
+use crate::utils::log_utils::Logger;
 use serde_json::{Value, json};
 use std::fs::{self, File, OpenOptions};
 use std::io::Read;
 use std::path::Path;
-use crate::utils::log_utils::Logger;
 
 /// Process the upload operation to cloud storage using default implementations
 pub fn process(args: &Args, logger: &Logger) -> Result<()> {

@@ -52,7 +52,10 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
 
     // Compile exclude patterns
     if !args.exclude_path_patterns.is_empty() {
-        logger.info(&format!("Excluding paths: {:?}", args.exclude_path_patterns));
+        logger.info(&format!(
+            "Excluding paths: {:?}",
+            args.exclude_path_patterns
+        ));
 
         for pattern in &args.exclude_path_patterns {
             let regex = Regex::new(pattern)?;
@@ -62,7 +65,10 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
 
     // Compile include patterns
     if !args.include_path_patterns.is_empty() {
-        logger.info(&format!("Including paths: {:?}", args.include_path_patterns));
+        logger.info(&format!(
+            "Including paths: {:?}",
+            args.include_path_patterns
+        ));
 
         for pattern in &args.include_path_patterns {
             let regex = Regex::new(pattern)?;
@@ -108,12 +114,10 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
                     .iter()
                     .all(|pattern| !pattern.is_match(entry_path_str))
             {
-                logger.info(
-                    &format!(
-                        "Skipping path as it doesn't match any include pattern: {}",
-                        entry_path_str
-                    )
-                );
+                logger.info(&format!(
+                    "Skipping path as it doesn't match any include pattern: {}",
+                    entry_path_str
+                ));
                 continue;
             }
 
