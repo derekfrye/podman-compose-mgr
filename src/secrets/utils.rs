@@ -26,10 +26,20 @@ pub fn extract_validation_fields(
         .ok_or_else(|| Box::<dyn std::error::Error>::from("file_nm missing in input json"))?
         .to_string();
 
+    // For secret name, try multiple fields and generate one if not found
     let secret_name = entry["secret_name"]
         .as_str()
         .or_else(|| entry["az_name"].as_str())
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("secret_name missing in input json"))?
+        .or_else(|| entry["hash"].as_str()) // Use hash as a fallback
+        .or_else(|| {
+            // If we have a file_nm, generate a secret name from it
+            if let Some(file) = entry["file_nm"].as_str().or_else(|| entry["filenm"].as_str()) {
+                Some(&file[file.rfind('/').map_or(0, |i| i + 1)..])
+            } else {
+                None
+            }
+        })
+        .unwrap_or("unknown") // Last resort fallback
         .to_string();
 
     // Get encoding, defaulting to "utf8" for backward compatibility

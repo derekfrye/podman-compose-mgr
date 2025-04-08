@@ -758,6 +758,11 @@ impl S3StorageClient {
     pub fn provider_type(&self) -> &S3Provider {
         &self.provider_type
     }
+    
+    /// Set the bucket name
+    pub fn set_bucket_name(&mut self, bucket: String) {
+        self.bucket_name = bucket;
+    }
 }
 
 /// Helper function to read a value from a file

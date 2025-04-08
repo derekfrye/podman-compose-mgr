@@ -180,6 +180,71 @@ pub fn display_upload_help() {
     println!("? = Display this help.");
 }
 
+/// Setup the prompt for retrieving and comparing secrets
+pub fn setup_retrieve_prompt(grammars: &mut Vec<GrammarFragment>, entry: &Value) -> Result<()> {
+    // Add "Files differ" text
+    let static_prompt_grammar = GrammarFragment {
+        original_val_for_prompt: Some("Files differ".to_string()),
+        shortened_val_for_prompt: None,
+        pos: 0,
+        prefix: None,
+        suffix: Some(" ".to_string()),
+        grammar_type: GrammarType::Verbiage,
+        can_shorten: false,
+        display_at_all: true,
+    };
+    grammars.push(static_prompt_grammar);
+
+    // Extract and add file name
+    let file_name = json_utils::extract_string_field(entry, "file_nm")?;
+    let file_nm_grammar = GrammarFragment {
+        original_val_for_prompt: Some(file_name.to_string()),
+        shortened_val_for_prompt: None,
+        pos: 1,
+        prefix: None,
+        suffix: Some("! ".to_string()),
+        grammar_type: GrammarType::FileName,
+        can_shorten: true,
+        display_at_all: true,
+    };
+    grammars.push(file_nm_grammar);
+
+    // Add "View diff" text
+    let diff_prompt_grammar = GrammarFragment {
+        original_val_for_prompt: Some("View diff?".to_string()),
+        shortened_val_for_prompt: None,
+        pos: 2,
+        prefix: None,
+        suffix: Some(" ".to_string()),
+        grammar_type: GrammarType::Verbiage,
+        can_shorten: false,
+        display_at_all: true,
+    };
+    grammars.push(diff_prompt_grammar);
+
+    // Add choices
+    let choices = ["N", "y", "d", "?"];
+    for i in 0..choices.len() {
+        let mut choice_separator = Some("/".to_string());
+        if i == choices.len() - 1 {
+            choice_separator = Some(": ".to_string());
+        }
+        let choice_grammar = GrammarFragment {
+            original_val_for_prompt: Some(choices[i].to_string()),
+            shortened_val_for_prompt: None,
+            pos: (i + 3) as u8, // Start after file name and prompt text
+            prefix: None,
+            suffix: choice_separator,
+            grammar_type: GrammarType::UserChoice,
+            can_shorten: false,
+            display_at_all: true,
+        };
+        grammars.push(choice_grammar);
+    }
+
+    Ok(())
+}
+
 /// Upload prompt configuration
 pub struct UploadPromptConfig<'a> {
     /// Path to the file being uploaded

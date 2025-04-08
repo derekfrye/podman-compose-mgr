@@ -154,4 +154,9 @@ impl R2Client {
     pub fn save_to_file(&self, object_key: &str, local_path: &str) -> Result<()> {
         self.client.save_to_file(object_key, local_path)
     }
+    
+    /// Set the bucket name
+    pub fn set_bucket_name(&mut self, bucket: String) {
+        self.client.set_bucket_name(bucket);
+    }
 }
