@@ -172,7 +172,11 @@ impl S3StorageClient {
                 let result = self.client.create_bucket().bucket(bucket_name).send().await;
 
                 match result {
-                    Ok(_) => println!("Successfully created bucket '{}'", bucket_name),
+                    Ok(_) => {
+                        if self.verbose >= 1 {
+                            println!("info: Successfully created bucket '{}'", bucket_name);
+                        }
+                    },
                     Err(e) => {
                         // If error is because bucket already exists, that's fine
                         let err_str = format!("{}", e);
@@ -182,7 +186,9 @@ impl S3StorageClient {
                             || err_str.contains("BucketAlreadyOwnedByYou")
                             || err_str.contains("already exists")
                         {
-                            println!("Bucket '{}' already exists, proceeding...", bucket_name);
+                            if self.verbose >= 1 {
+                                println!("info: Bucket '{}' already exists, proceeding...", bucket_name);
+                            }
                             return Ok(());
                         }
 

@@ -390,7 +390,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                 // Get the actual terminal width using the command helper
                 // (Use None to get the actual terminal width)
                 let actual_width =
-                    podman_compose_mgr::helpers::cmd_helper_fns::get_terminal_display_width(None);
+                    podman_compose_mgr::utils::podman_utils::get_terminal_display_width(None);
 
                 let _ = podman_compose_mgr::read_interactive_input::do_prompt_formatting(
                     &mut grammars_copy,
