@@ -15,14 +15,14 @@ fn main() -> io::Result<()> {
         eprintln!("Error: {}", e);
         std::process::exit(1);
     }
-    
+
     // Create logger instance
     let logger = Logger::new(args.verbose);
 
     // If double verbose, print the command line in a copy-paste friendly format
     // Get the program name
-    let exe_path = std::env::current_exe()
-        .unwrap_or_else(|_| std::path::PathBuf::from("podman-compose-mgr"));
+    let exe_path =
+        std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("podman-compose-mgr"));
     let exe_name = exe_path
         .file_name()
         .unwrap_or_else(|| std::ffi::OsStr::new("podman-compose-mgr"));
@@ -96,7 +96,11 @@ fn main() -> io::Result<()> {
         println!();
     } else {
         // Fallback if the conversion fails
-        logger.debug(&format!("Command: {} {:?}", exe_name.to_string_lossy(), args));
+        logger.debug(&format!(
+            "Command: {} {:?}",
+            exe_name.to_string_lossy(),
+            args
+        ));
         println!();
     }
 

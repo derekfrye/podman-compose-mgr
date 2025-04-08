@@ -84,7 +84,10 @@ impl S3StorageClient {
         // Use the tokio runtime to build the AWS config
         // If verbose, log connection details
         if verbose >= 2 {
-            crate::utils::log_utils::debug("Creating S3-compatible client with these parameters:", verbose as u8);
+            crate::utils::log_utils::debug(
+                "Creating S3-compatible client with these parameters:",
+                verbose as u8,
+            );
             crate::utils::log_utils::debug(&format!("Endpoint: {}", endpoint), verbose as u8);
             crate::utils::log_utils::debug(&format!("Region: {:?}", region), verbose as u8);
             crate::utils::log_utils::debug(
@@ -95,16 +98,19 @@ impl S3StorageClient {
                         S3Provider::CloudflareR2 => "Cloudflare R2",
                     }
                 ),
-                verbose as u8
+                verbose as u8,
             );
             crate::utils::log_utils::debug(
                 &format!(
                     "Key ID: {}****",
                     &config.key_id[..4.min(config.key_id.len())]
                 ),
-                verbose as u8
+                verbose as u8,
             );
-            crate::utils::log_utils::debug(&format!("Is real client: {}", is_real_client), verbose as u8);
+            crate::utils::log_utils::debug(
+                &format!("Is real client: {}", is_real_client),
+                verbose as u8,
+            );
         }
 
         let aws_config = runtime.block_on(async {
@@ -182,10 +188,10 @@ impl S3StorageClient {
                         if self.verbose >= 2 {
                             crate::utils::log_utils::debug(
                                 &format!("Successfully created bucket '{}'", bucket_name),
-                                self.verbose as u8
+                                self.verbose as u8,
                             );
                         }
-                    },
+                    }
                     Err(e) => {
                         // If error is because bucket already exists, that's fine
                         let err_str = format!("{}", e);
@@ -197,8 +203,11 @@ impl S3StorageClient {
                         {
                             if self.verbose >= 2 {
                                 crate::utils::log_utils::debug(
-                                    &format!("Bucket '{}' already exists, proceeding...", bucket_name),
-                                    self.verbose as u8
+                                    &format!(
+                                        "Bucket '{}' already exists, proceeding...",
+                                        bucket_name
+                                    ),
+                                    self.verbose as u8,
                                 );
                             }
                             return Ok(());
@@ -228,8 +237,11 @@ impl S3StorageClient {
         // For non-real clients, return false to indicate file doesn't exist
         if !self.is_real_client {
             crate::utils::log_utils::debug(
-                &format!("Using mock S3-compatible storage client - would have checked if {} exists", file_key),
-                self.verbose as u8
+                &format!(
+                    "Using mock S3-compatible storage client - would have checked if {} exists",
+                    file_key
+                ),
+                self.verbose as u8,
             );
             return Ok(false);
         }
@@ -255,8 +267,11 @@ impl S3StorageClient {
         // For non-real clients, return None to indicate file doesn't exist
         if !self.is_real_client {
             crate::utils::log_utils::debug(
-                &format!("Using mock S3-compatible storage client - would have retrieved metadata for {}", file_key),
-                self.verbose as u8
+                &format!(
+                    "Using mock S3-compatible storage client - would have retrieved metadata for {}",
+                    file_key
+                ),
+                self.verbose as u8,
             );
             return Ok(None);
         }
@@ -293,7 +308,7 @@ impl S3StorageClient {
             // For debugging, log the whole response if verbose >= 2
             crate::utils::log_utils::debug(
                 &format!("R2/S3 Head Object response: {:?}", resp),
-                self.verbose as u8
+                self.verbose as u8,
             );
 
             // Try multiple approaches to get content length
@@ -306,7 +321,7 @@ impl S3StorageClient {
                 // Log content length when verbose is enabled
                 crate::utils::log_utils::debug(
                     &format!("Received content_length from R2/S3: {}", content_length),
-                    self.verbose as u8
+                    self.verbose as u8,
                 );
             }
 
@@ -320,8 +335,11 @@ impl S3StorageClient {
                             got_content_length = true;
 
                             crate::utils::log_utils::debug(
-                                &format!("Received size from R2/S3 metadata field '{}': {}", size_key, size),
-                                self.verbose as u8
+                                &format!(
+                                    "Received size from R2/S3 metadata field '{}': {}",
+                                    size_key, size
+                                ),
+                                self.verbose as u8,
                             );
                             break;
                         }
@@ -330,8 +348,11 @@ impl S3StorageClient {
                     // If verbose, log all metadata for debugging
                     if !got_content_length {
                         crate::utils::log_utils::debug(
-                            &format!("Available metadata keys: {:?}", metadata.keys().collect::<Vec<_>>()),
-                            self.verbose as u8
+                            &format!(
+                                "Available metadata keys: {:?}",
+                                metadata.keys().collect::<Vec<_>>()
+                            ),
+                            self.verbose as u8,
                         );
                     }
                 }
@@ -341,7 +362,7 @@ impl S3StorageClient {
             if !got_content_length {
                 crate::utils::log_utils::debug(
                     "No content_length or size received from R2/S3 in metadata response",
-                    self.verbose as u8
+                    self.verbose as u8,
                 );
             }
 
@@ -384,8 +405,11 @@ impl S3StorageClient {
         // For non-real clients, return mock data
         if !self.is_real_client {
             crate::utils::log_utils::debug(
-                &format!("Using mock S3-compatible storage client - would have checked if file with hash {} exists", hash),
-                self.verbose as u8
+                &format!(
+                    "Using mock S3-compatible storage client - would have checked if file with hash {} exists",
+                    hash
+                ),
+                self.verbose as u8,
             );
             // Return mock data for testing: (exists, created_time, updated_time)
             return Ok(Some((
@@ -404,7 +428,7 @@ impl S3StorageClient {
                 // We can't check for existence if the bucket name is a placeholder
                 crate::utils::log_utils::debug(
                     "Can't check if file exists because bucket name is a placeholder. Please provide bucket name in JSON.",
-                    self.verbose as u8
+                    self.verbose as u8,
                 );
                 return Ok(None);
             }
@@ -412,8 +436,11 @@ impl S3StorageClient {
         };
 
         crate::utils::log_utils::debug(
-            &format!("Checking if object '{}' exists in bucket '{}'", object_key, bucket_to_use),
-            self.verbose as u8
+            &format!(
+                "Checking if object '{}' exists in bucket '{}'",
+                object_key, bucket_to_use
+            ),
+            self.verbose as u8,
         );
 
         // Use the client's runtime to check if the object exists
@@ -430,7 +457,7 @@ impl S3StorageClient {
                 if resp.is_err() {
                     crate::utils::log_utils::debug(
                         &format!("Object does not exist or error occurred: {:?}", resp.err()),
-                        self.verbose as u8
+                        self.verbose as u8,
                     );
                     return Ok::<Option<(bool, String, String)>, Box<dyn std::error::Error>>(Some(
                         (false, "".to_string(), "".to_string()),
@@ -449,7 +476,7 @@ impl S3StorageClient {
 
                 crate::utils::log_utils::debug(
                     &format!("Object exists with last modified time: {}", last_modified),
-                    self.verbose as u8
+                    self.verbose as u8,
                 );
 
                 // For S3 compatible services, we don't have created time, so use last_modified
@@ -472,8 +499,11 @@ impl S3StorageClient {
             let hash = format!("mock-hash-{}", local_path);
 
             crate::utils::log_utils::debug(
-                &format!("Using mock S3-compatible storage client - would have uploaded {} to {}", local_path, object_key),
-                self.verbose as u8
+                &format!(
+                    "Using mock S3-compatible storage client - would have uploaded {} to {}",
+                    local_path, object_key
+                ),
+                self.verbose as u8,
             );
 
             return Ok(S3UploadResult {
@@ -581,8 +611,11 @@ impl S3StorageClient {
             };
 
             crate::utils::log_utils::debug(
-                &format!("Using mock S3-compatible storage client - would have uploaded {} using hash {}", file_details.file_path, file_details.hash),
-                self.verbose as u8
+                &format!(
+                    "Using mock S3-compatible storage client - would have uploaded {} using hash {}",
+                    file_details.file_path, file_details.hash
+                ),
+                self.verbose as u8,
             );
 
             return Ok(S3UploadResult {
@@ -652,8 +685,11 @@ impl S3StorageClient {
         // If we're using a placeholder bucket, we need to ensure the real bucket exists before upload
         if using_placeholder_bucket {
             crate::utils::log_utils::debug(
-                &format!("Using real bucket name '{}' from JSON for upload", upload_bucket),
-                self.verbose as u8
+                &format!(
+                    "Using real bucket name '{}' from JSON for upload",
+                    upload_bucket
+                ),
+                self.verbose as u8,
             );
             // Ensure the real bucket exists
             self.ensure_bucket_exists(&upload_bucket)?;
@@ -726,8 +762,11 @@ impl S3StorageClient {
         // For non-real clients, return a mock response
         if !self.is_real_client {
             crate::utils::log_utils::debug(
-                &format!("Using mock S3-compatible storage client - would have downloaded {}", object_key),
-                self.verbose as u8
+                &format!(
+                    "Using mock S3-compatible storage client - would have downloaded {}",
+                    object_key
+                ),
+                self.verbose as u8,
             );
             // Return a small mock content
             return Ok(b"mock content for testing".to_vec());
@@ -801,8 +840,11 @@ impl S3StorageClient {
         // For non-real clients, create a mock file
         if !self.is_real_client {
             crate::utils::log_utils::debug(
-                &format!("Using mock S3-compatible storage client - would have downloaded {} to {}", object_key, local_path),
-                self.verbose as u8
+                &format!(
+                    "Using mock S3-compatible storage client - would have downloaded {} to {}",
+                    object_key, local_path
+                ),
+                self.verbose as u8,
             );
             // Create a parent directory if it doesn't exist
             if let Some(parent) = Path::new(local_path).parent() {
@@ -837,8 +879,11 @@ impl S3StorageClient {
         // For non-real clients, return a mock response
         if !self.is_real_client {
             crate::utils::log_utils::debug(
-                &format!("Using mock S3-compatible storage client - would have listed objects with prefix {}", prefix),
-                self.verbose as u8
+                &format!(
+                    "Using mock S3-compatible storage client - would have listed objects with prefix {}",
+                    prefix
+                ),
+                self.verbose as u8,
             );
             // Return some mock object keys
             return Ok(vec![
@@ -853,8 +898,11 @@ impl S3StorageClient {
 
             // Log the request details if verbose
             crate::utils::log_utils::debug(
-                &format!("Listing objects with prefix '{}' in bucket '{}'", prefix, self.bucket_name),
-                self.verbose as u8
+                &format!(
+                    "Listing objects with prefix '{}' in bucket '{}'",
+                    prefix, self.bucket_name
+                ),
+                self.verbose as u8,
             );
 
             // Create the list objects request
@@ -880,7 +928,7 @@ impl S3StorageClient {
                     // Log how many objects we found
                     crate::utils::log_utils::debug(
                         &format!("Found {} objects with prefix '{}'", result.len(), prefix),
-                        self.verbose as u8
+                        self.verbose as u8,
                     );
 
                     Ok::<Vec<String>, Box<dyn std::error::Error>>(result)
@@ -889,7 +937,7 @@ impl S3StorageClient {
                     // Enhanced error information
                     crate::utils::log_utils::debug(
                         &format!("Error listing objects with prefix '{}': {}", prefix, e),
-                        self.verbose as u8
+                        self.verbose as u8,
                     );
 
                     Err(Box::<dyn std::error::Error>::from(format!(

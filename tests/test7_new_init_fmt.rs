@@ -107,7 +107,7 @@ fn test_cloud_section_parsing() {
 
     // Create logger
     let logger = Logger::new(args.verbose);
-    
+
     // Run the initialize process
     let result = secrets::initialize::process(&args, &logger);
     assert!(

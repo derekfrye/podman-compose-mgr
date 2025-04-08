@@ -263,7 +263,7 @@ fn convert_str_to_date(date_str: &str) -> Result<DateTime<Local>> {
 ///
 /// # Arguments
 /// * `dockerfile` - Path to the Dockerfile
-/// 
+///
 /// # Errors
 /// Returns an error if:
 /// - Failed to open or read the Dockerfile
@@ -312,7 +312,7 @@ pub fn pull_base_image(dockerfile: &Path) -> std::result::Result<(), Box<dyn std
 ///
 /// # Arguments
 /// * `file` - Path to check
-/// 
+///
 /// # Returns
 /// true if the file exists, is a file (not a directory), and can be read
 pub fn file_exists_and_readable(file: &Path) -> bool {
@@ -326,7 +326,7 @@ pub fn file_exists_and_readable(file: &Path) -> bool {
 ///
 /// # Arguments
 /// * `specify_size` - Optional size to force
-/// 
+///
 /// # Returns
 /// The terminal width in columns, or 80 if it can't be determined
 pub fn get_terminal_display_width(specify_size: Option<usize>) -> usize {

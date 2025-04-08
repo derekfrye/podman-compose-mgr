@@ -27,7 +27,7 @@ fn test_initialize_process() {
 
     // Create logger
     let logger = Logger::new(args.verbose);
-    
+
     // Run the initialize process
     let result = secrets::initialize::process(&args, &logger);
     assert!(
@@ -164,7 +164,7 @@ fn test_initialize_process() {
 
     // Create logger for second run
     let logger_run2 = Logger::new(args_run2.verbose);
-    
+
     let result = secrets::initialize::process(&args_run2, &logger_run2);
     assert!(
         result.is_ok(),

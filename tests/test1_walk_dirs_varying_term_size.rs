@@ -88,7 +88,7 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create logger
     let logger = Logger::new(args.verbose);
-    
+
     // Call the function with our test helpers
     walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper, &logger)?;
 
@@ -138,7 +138,7 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create logger
     let logger = Logger::new(args.verbose);
-    
+
     // Call the function with our test helpers
     walk_dirs_with_helpers(&args, &cmd_helper, &read_val_helper, &logger)?;
 

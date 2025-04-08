@@ -48,7 +48,7 @@ impl Logger {
     pub fn debug(&self, msg: &str) {
         self.log(msg, LogLevel::Debug);
     }
-    
+
     /// Get current verbosity level
     pub fn verbosity(&self) -> u8 {
         self.verbosity

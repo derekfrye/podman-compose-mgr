@@ -4,7 +4,7 @@ use crate::secrets::error::Result;
 use crate::secrets::models::JsonOutput;
 use crate::secrets::r2_storage::R2Client;
 use crate::secrets::utils::{extract_validation_fields, get_current_timestamp, get_hostname};
-use crate::secrets::validation::cloud_storage::{download_from_cloud, DownloadParams};
+use crate::secrets::validation::cloud_storage::{DownloadParams, download_from_cloud};
 use crate::secrets::validation::file_ops::compare_files;
 use crate::secrets::validation::ui::prompt_for_diff;
 use crate::utils::log_utils::Logger;
