@@ -1,22 +1,25 @@
-use crate::image_build::buildfile_types::{BuildChoice, BuildFile};
 use crate::read_interactive_input::{GrammarFragment, GrammarType};
+use crate::image_build::buildfile_types::{BuildFile, BuildChoice};
 use walkdir::DirEntry;
 
 /// Setup prompts for buildfile selection
 pub fn setup_prompts(files: &[BuildFile]) -> (Vec<GrammarFragment>, Vec<&str>, bool) {
     let mut prompt_grammars: Vec<GrammarFragment> = vec![];
     let mut user_choices: Vec<&str> = vec![];
-
+    
     let buildfile = &files[0];
-    let are_there_multiple_files = files.iter().filter(|x| x.filepath.is_some()).count() > 1;
-
+    let are_there_multiple_files = files
+        .iter()
+        .filter(|x| x.filepath.is_some())
+        .count() > 1;
+    
     if are_there_multiple_files {
         let grm1 = GrammarFragment {
             original_val_for_prompt: Some("Prefer Dockerfile or Makefile?".to_string()),
             ..Default::default()
         };
         prompt_grammars.push(grm1);
-
+        
         user_choices = vec!["D", "M", "d", "?"];
         prompt_grammars.extend(make_choice_grammar(
             &user_choices,
@@ -27,22 +30,14 @@ pub fn setup_prompts(files: &[BuildFile]) -> (Vec<GrammarFragment>, Vec<&str>, b
         user_choices = vec!["1", "2", "d", "?"];
         prompt_grammars.extend(make_choice_grammar(&user_choices, t.len() as u8));
     }
-
+    
     (prompt_grammars, user_choices, are_there_multiple_files)
 }
 
 /// Display information about available buildfiles
-pub fn handle_display_info(
-    files: &[BuildFile],
-    buildfile: &BuildFile,
-    user_choices: &[&str],
-    are_there_multiple_files: bool,
-) {
+pub fn handle_display_info(files: &[BuildFile], buildfile: &BuildFile, user_choices: &[&str], are_there_multiple_files: bool) {
     // Show Dockerfile and Makefile paths
-    for f in files
-        .iter()
-        .filter(|f| f.filetype == BuildChoice::Dockerfile)
-    {
+    for f in files.iter().filter(|f| f.filetype == BuildChoice::Dockerfile) {
         let dockerfile = &f.filepath.as_ref().unwrap().to_str().unwrap();
         println!("Dockerfile: {}", dockerfile);
     }
@@ -50,9 +45,9 @@ pub fn handle_display_info(
         let makefile = &f.filepath.as_ref().unwrap().to_str().unwrap();
         println!("Makefile: {}", makefile);
     }
-
+    
     println!("Choices:");
-
+    
     if are_there_multiple_files
         && !user_choices.is_empty()
         && user_choices.iter().any(|f| *f == "D")
@@ -73,7 +68,7 @@ pub fn handle_display_info(
             };
             println!("1 = Set build working dir to:\n\t{}", location1);
         }
-
+        
         let location2 = buildfile.parent_dir.display();
         println!("2 = Set build working dir to:\n\t{}", location2);
     }
@@ -82,11 +77,7 @@ pub fn handle_display_info(
 }
 
 /// Handle file type choice
-pub fn handle_file_type_choice<'a>(
-    files: &[BuildFile],
-    choice: &str,
-    buildfile: &BuildFile,
-) -> Option<(BuildFile, Vec<GrammarFragment>, Vec<&'a str>)> {
+pub fn handle_file_type_choice<'a>(files: &[BuildFile], choice: &str, buildfile: &BuildFile) -> Option<(BuildFile, Vec<GrammarFragment>, Vec<&'a str>)> {
     if files.len() > 1 {
         // Find the file matching the chosen type
         let chosen_file = files
@@ -100,11 +91,11 @@ pub fn handle_file_type_choice<'a>(
             })
             .unwrap()
             .clone();
-
+            
         // Setup prompts for working directory choice
         let prompt_grammars = make_build_prompt_grammar(buildfile);
         let user_choices = vec!["1", "2", "d", "?"];
-
+        
         Some((chosen_file, prompt_grammars, user_choices))
     } else {
         eprintln!(

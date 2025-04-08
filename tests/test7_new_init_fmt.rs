@@ -1,7 +1,6 @@
 use podman_compose_mgr::{
     args::{self, Mode, initialization},
     secrets,
-    utils::log_utils::Logger,
 };
 use serde_json::Value;
 use std::fs::File;
@@ -105,11 +104,8 @@ fn test_cloud_section_parsing() {
         ..Default::default()
     };
 
-    // Create logger
-    let logger = Logger::new(args.verbose);
-
     // Run the initialize process
-    let result = secrets::initialize::process(&args, &logger);
+    let result = secrets::initialize::process(&args);
     assert!(
         result.is_ok(),
         "Failed to process secrets: {:?}",

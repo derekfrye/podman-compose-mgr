@@ -13,7 +13,6 @@ use podman_compose_mgr::secrets::models::SetSecretResponse;
 use podman_compose_mgr::secrets::upload;
 use podman_compose_mgr::secrets::upload_utils::test_utils;
 use podman_compose_mgr::secrets::utils::calculate_hash;
-use podman_compose_mgr::utils::log_utils::Logger;
 use serde_json::json;
 use std::sync::{Arc, Mutex};
 use tempfile::NamedTempFile;
@@ -170,16 +169,12 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // Run the process function with our mock helpers - using the actual production code
         let r2_client = MockR2StorageClient::new();
 
-        // Create logger
-        let logger = Logger::new(args.verbose);
-
         let result = upload::process_with_injected_dependencies_and_clients(
             &args,
             &read_val_helper,
             Box::new(azure_client),
             Box::new(b2_client),
             Box::new(r2_client),
-            &logger,
         );
 
         // Check that the test succeeded - all files should be uploaded
@@ -273,16 +268,12 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // Run the process function with our mock helpers - using the actual production code
         let r2_client = MockR2StorageClient::new();
 
-        // Create logger
-        let logger = Logger::new(args.verbose);
-
         let result = upload::process_with_injected_dependencies_and_clients(
             &args,
             &read_val_helper,
             Box::new(azure_client),
             Box::new(b2_client),
             Box::new(r2_client),
-            &logger,
         );
 
         // Check that the test succeeded - no files should be uploaded
@@ -399,7 +390,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                 // Get the actual terminal width using the command helper
                 // (Use None to get the actual terminal width)
                 let actual_width =
-                    podman_compose_mgr::utils::podman_utils::get_terminal_display_width(None);
+                    podman_compose_mgr::helpers::cmd_helper_fns::get_terminal_display_width(None);
 
                 let _ = podman_compose_mgr::read_interactive_input::do_prompt_formatting(
                     &mut grammars_copy,
@@ -499,16 +490,12 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // Run the process function with our mock helpers
         let r2_client = MockR2StorageClient::new();
 
-        // Create logger
-        let logger = Logger::new(args.verbose);
-
         let result = upload::process_with_injected_dependencies_and_clients(
             &args,
             &read_val_helper,
             Box::new(azure_client),
             Box::new(b2_client),
             Box::new(r2_client),
-            &logger,
         );
 
         // Check that the test succeeded

@@ -47,15 +47,15 @@ impl CommandHelper for DefaultCommandHelper {
     }
 
     fn pull_base_image(&self, dockerfile: &Path) -> Result<(), Box<dyn std::error::Error>> {
-        crate::utils::podman_utils::pull_base_image(dockerfile)
+        crate::helpers::cmd_helper_fns::pull_base_image(dockerfile)
     }
 
     fn get_terminal_display_width(&self, specify_size: Option<usize>) -> usize {
-        crate::utils::podman_utils::get_terminal_display_width(specify_size)
+        crate::helpers::cmd_helper_fns::get_terminal_display_width(specify_size)
     }
 
     fn file_exists_and_readable(&self, file: &std::path::Path) -> bool {
-        crate::utils::podman_utils::file_exists_and_readable(file)
+        crate::helpers::cmd_helper_fns::file_exists_and_readable(file)
     }
 }
 

@@ -15,7 +15,7 @@ pub fn format_time_ago(dt: DateTime<Local>) -> String {
     let hours = duration.num_hours();
     let minutes = duration.num_minutes();
     let seconds = duration.num_seconds();
-
+    
     if days > 0 {
         format!("{} days ago", days)
     } else if hours > 0 {

@@ -10,24 +10,22 @@ use crate::secrets::file_details::{FileDetails, check_encoding_and_size};
 use crate::secrets::utils::get_hostname;
 use crate::secrets::{user_prompt, user_prompt::prompt_for_upload_with_helper};
 
-use crate::utils::log_utils::Logger;
 use serde_json::{Value, json};
 use std::fs::{self, File, OpenOptions};
 use std::io::Read;
 use std::path::Path;
 
 /// Process the upload operation to cloud storage using default implementations
-pub fn process(args: &Args, logger: &Logger) -> Result<()> {
+pub fn process(args: &Args) -> Result<()> {
     // Use default read helper
     let read_val_helper = DefaultReadInteractiveInputHelper;
-    process_with_injected_dependencies(args, &read_val_helper, logger)
+    process_with_injected_dependencies(args, &read_val_helper)
 }
 
 /// Process the upload operation with dependency injection for testing
 pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
     args: &Args,
     read_val_helper: &R,
-    logger: &Logger,
 ) -> Result<()> {
     // Validate that required params exist
     let input_json_path = args
@@ -136,7 +134,6 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
         kv_client,
         Box::new(b2_client),
         Box::new(r2_client),
-        logger,
     )
 }
 
@@ -148,7 +145,6 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
     kv_client: Box<dyn AzureKeyVaultClient>,
     b2_client: Box<dyn B2StorageClient>,
     r2_client: Box<dyn R2StorageClient>,
-    logger: &Logger,
 ) -> Result<()> {
     // Get required parameters from args
     let input_filepath = args
@@ -161,7 +157,9 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Output JSON path is required"))?;
 
     // Test connection to storage
-    logger.info("Testing connection to cloud storage services...");
+    if args.verbose > 0 {
+        println!("info: Testing connection to cloud storage services...");
+    }
 
     // Read input JSON file
     let mut file = File::open(input_filepath)?;

@@ -47,10 +47,7 @@ fn compile_patterns(
     
     if !patterns.is_empty() {
         if verbose {
-            crate::utils::log_utils::info(
-                &format!("{} paths: {:?}", pattern_type, patterns),
-                verbose as u8
-            );
+            println!("{} paths: {:?}", pattern_type, patterns);
         }
         
         for pattern in patterns {
@@ -81,10 +78,7 @@ fn should_include_path(
         && include_patterns.iter().all(|pattern| !pattern.is_match(path)) 
     {
         if verbose {
-            crate::utils::log_utils::info(
-                &format!("Skipping path as it doesn't match any include pattern: {}", path),
-                verbose as u8
-            );
+            println!("Skipping path as it doesn't match any include pattern: {}", path);
         }
         return false;
     }
@@ -112,7 +106,7 @@ fn process_compose_file<C: CommandHelper, R: ReadValHelper>(
             match restartsvcs::restart_services(args) {
                 Ok(_) => {
                     if args.verbose {
-                        crate::utils::log_utils::info("Services restarted successfully", args.verbose);
+                        println!("Services restarted successfully");
                     }
                 },
                 Err(e) => {
@@ -137,10 +131,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadValHelper>(
     let include_patterns = compile_patterns(&args.include_path_patterns, args.verbose, "Including")?;
 
     if args.verbose {
-        crate::utils::log_utils::info(
-            &format!("Rebuild images in path: {}", args.path.display()),
-            args.verbose
-        );
+        println!("Rebuild images in path: {}", args.path.display());
     }
 
     // Create rebuild manager

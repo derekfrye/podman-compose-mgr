@@ -10,7 +10,6 @@ use podman_compose_mgr::read_interactive_input::ReadValResult;
 use podman_compose_mgr::secrets::r2_storage::R2UploadResult;
 use podman_compose_mgr::secrets::upload;
 use podman_compose_mgr::secrets::utils::calculate_hash;
-use podman_compose_mgr::utils::log_utils::Logger;
 use serde_json::json;
 use tempfile::NamedTempFile;
 
@@ -140,9 +139,6 @@ fn test_b2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
                 });
         }
 
-        // Create logger
-        let logger = Logger::new(args.verbose);
-
         // Run the process function with our mock clients
         let result = upload::process_with_injected_dependencies_and_clients(
             &args,
@@ -150,7 +146,6 @@ fn test_b2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
             Box::new(azure_client),
             Box::new(b2_client),
             Box::new(r2_client),
-            &logger,
         );
 
         // Check that the test succeeded

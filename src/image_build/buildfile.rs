@@ -354,7 +354,7 @@ fn find_buildfile(
 fn build_image_from_spec(build_config: WhatWereBuilding) -> Result<(), BuildfileError> {
     match build_config.file.filetype {
         BuildChoice::Dockerfile => {
-            let _ = crate::utils::podman_utils::pull_base_image(
+            let _ = crate::helpers::cmd_helper_fns::pull_base_image(
                 build_config.file.filepath.as_ref().unwrap(),
             );
 

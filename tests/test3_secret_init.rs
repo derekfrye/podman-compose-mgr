@@ -2,7 +2,6 @@ use chrono::Local;
 use podman_compose_mgr::{
     args::{self, Mode},
     secrets,
-    utils::log_utils::Logger,
 };
 use serde_json::Value;
 use std::fs::File;
@@ -25,11 +24,8 @@ fn test_initialize_process() {
         ..Default::default()
     };
 
-    // Create logger
-    let logger = Logger::new(args.verbose);
-
     // Run the initialize process
-    let result = secrets::initialize::process(&args, &logger);
+    let result = secrets::initialize::process(&args);
     assert!(
         result.is_ok(),
         "Failed to process secrets: {:?}",
@@ -162,10 +158,7 @@ fn test_initialize_process() {
         ..Default::default()
     };
 
-    // Create logger for second run
-    let logger_run2 = Logger::new(args_run2.verbose);
-
-    let result = secrets::initialize::process(&args_run2, &logger_run2);
+    let result = secrets::initialize::process(&args_run2);
     assert!(
         result.is_ok(),
         "Failed to process secrets (run 2): {:?}",
