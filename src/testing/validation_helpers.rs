@@ -18,9 +18,7 @@ pub fn maybe_use_test_file_for_azure(
         && temp_path.contains("/tmp/.tmp")
     {
         // For testing, use a direct copy of the file we prepared earlier
-        if args.verbose > 0 {
-            println!("info: Test mode - using prepared file for Azure KeyVault simulation");
-        }
+        crate::utils::log_utils::info("Test mode - using prepared file for Azure KeyVault simulation", args.verbose);
 
         // Use the prepared downloaded.txt file that we created
         fs::copy("/tmp/downloaded.txt", temp_path).map_err(|e| {
@@ -48,9 +46,7 @@ pub fn maybe_use_test_file_for_storage(
         && temp_path.contains("/tmp/.tmp")
     {
         // For testing, use a direct copy of the file we prepared earlier
-        if args.verbose > 0 {
-            println!("info: Test mode - using prepared file for R2/B2 simulation");
-        }
+        crate::utils::log_utils::info("Test mode - using prepared file for R2/B2 simulation", args.verbose);
 
         // Use the prepared downloaded.txt file that we created
         fs::copy("/tmp/downloaded.txt", temp_path).map_err(|e| {

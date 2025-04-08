@@ -13,20 +13,21 @@ pub mod validation;
 
 use crate::Args;
 use crate::secrets::error::Result;
+use crate::utils::log_utils::Logger;
 
 /// Process secrets mode
 ///
 /// Handles the different secret-related modes.
-pub fn process_secrets_mode(args: &Args) -> Result<()> {
+pub fn process_secrets_mode(args: &Args, logger: &Logger) -> Result<()> {
     match args.mode {
         crate::args::Mode::SecretRetrieve => {
-            validation::validate(args)?;
+            validation::validate(args, logger)?;
         }
         crate::args::Mode::SecretInitialize => {
-            initialize::process(args)?;
+            initialize::process(args, logger)?;
         }
         crate::args::Mode::SecretUpload => {
-            upload::process(args)?;
+            upload::process(args, logger)?;
         }
         _ => {
             return Err(Box::<dyn std::error::Error>::from(

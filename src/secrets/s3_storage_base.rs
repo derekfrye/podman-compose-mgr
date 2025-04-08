@@ -84,21 +84,27 @@ impl S3StorageClient {
         // Use the tokio runtime to build the AWS config
         // If verbose, log connection details
         if verbose >= 2 {
-            println!("dbg: Creating S3-compatible client with these parameters:");
-            println!("dbg: Endpoint: {}", endpoint);
-            println!("dbg: Region: {:?}", region);
-            println!(
-                "dbg: Provider type: {}",
-                match config.provider {
-                    S3Provider::BackblazeB2 => "Backblaze B2",
-                    S3Provider::CloudflareR2 => "Cloudflare R2",
-                }
+            crate::utils::log_utils::debug("Creating S3-compatible client with these parameters:", verbose as u8);
+            crate::utils::log_utils::debug(&format!("Endpoint: {}", endpoint), verbose as u8);
+            crate::utils::log_utils::debug(&format!("Region: {:?}", region), verbose as u8);
+            crate::utils::log_utils::debug(
+                &format!(
+                    "Provider type: {}",
+                    match config.provider {
+                        S3Provider::BackblazeB2 => "Backblaze B2",
+                        S3Provider::CloudflareR2 => "Cloudflare R2",
+                    }
+                ),
+                verbose as u8
             );
-            println!(
-                "dbg: Key ID: {}****",
-                &config.key_id[..4.min(config.key_id.len())]
+            crate::utils::log_utils::debug(
+                &format!(
+                    "Key ID: {}****",
+                    &config.key_id[..4.min(config.key_id.len())]
+                ),
+                verbose as u8
             );
-            println!("dbg: Is real client: {}", is_real_client);
+            crate::utils::log_utils::debug(&format!("Is real client: {}", is_real_client), verbose as u8);
         }
 
         let aws_config = runtime.block_on(async {
@@ -173,8 +179,11 @@ impl S3StorageClient {
 
                 match result {
                     Ok(_) => {
-                        if self.verbose >= 1 {
-                            println!("info: Successfully created bucket '{}'", bucket_name);
+                        if self.verbose >= 2 {
+                            crate::utils::log_utils::debug(
+                                &format!("Successfully created bucket '{}'", bucket_name),
+                                self.verbose as u8
+                            );
                         }
                     },
                     Err(e) => {
@@ -186,8 +195,11 @@ impl S3StorageClient {
                             || err_str.contains("BucketAlreadyOwnedByYou")
                             || err_str.contains("already exists")
                         {
-                            if self.verbose >= 1 {
-                                println!("info: Bucket '{}' already exists, proceeding...", bucket_name);
+                            if self.verbose >= 2 {
+                                crate::utils::log_utils::debug(
+                                    &format!("Bucket '{}' already exists, proceeding...", bucket_name),
+                                    self.verbose as u8
+                                );
                             }
                             return Ok(());
                         }
@@ -215,9 +227,9 @@ impl S3StorageClient {
     pub fn file_exists(&self, file_key: &str) -> Result<bool> {
         // For non-real clients, return false to indicate file doesn't exist
         if !self.is_real_client {
-            if self.verbose >= 1 {
+            if self.verbose >= 2 {
                 println!(
-                    "info: Using mock S3-compatible storage client - would have checked if {} exists",
+                    "dbg: Using mock S3-compatible storage client - would have checked if {} exists",
                     file_key
                 );
             }
@@ -244,9 +256,9 @@ impl S3StorageClient {
     pub fn get_file_metadata(&self, file_key: &str) -> Result<Option<HashMap<String, String>>> {
         // For non-real clients, return None to indicate file doesn't exist
         if !self.is_real_client {
-            if self.verbose >= 1 {
+            if self.verbose >= 2 {
                 println!(
-                    "info: Using mock S3-compatible storage client - would have retrieved metadata for {}",
+                    "dbg: Using mock S3-compatible storage client - would have retrieved metadata for {}",
                     file_key
                 );
             }
@@ -333,9 +345,9 @@ impl S3StorageClient {
             }
 
             // Log if we couldn't get content length
-            if !got_content_length && self.verbose >= 1 {
+            if !got_content_length && self.verbose >= 2 {
                 println!(
-                    "info: No content_length or size received from R2/S3 in metadata response"
+                    "dbg: No content_length or size received from R2/S3 in metadata response"
                 );
             }
 
@@ -377,9 +389,9 @@ impl S3StorageClient {
 
         // For non-real clients, return mock data
         if !self.is_real_client {
-            if self.verbose >= 1 {
+            if self.verbose >= 2 {
                 println!(
-                    "info: Using mock S3-compatible storage client - would have checked if file with hash {} exists",
+                    "dbg: Using mock S3-compatible storage client - would have checked if file with hash {} exists",
                     hash
                 );
             }
@@ -398,9 +410,9 @@ impl S3StorageClient {
             // Check if we need to use a placeholder bucket
             if self.bucket_name == "placeholder_bucket_will_be_provided_from_json" {
                 // We can't check for existence if the bucket name is a placeholder
-                if self.verbose >= 1 {
+                if self.verbose >= 2 {
                     println!(
-                        "info: Can't check if file exists because bucket name is a placeholder. Please provide bucket name in JSON."
+                        "dbg: Can't check if file exists because bucket name is a placeholder. Please provide bucket name in JSON."
                     );
                 }
                 return Ok(None);
@@ -474,9 +486,9 @@ impl S3StorageClient {
             // Generate a hash from the local_path for consistency in tests
             let hash = format!("mock-hash-{}", local_path);
 
-            if self.verbose >= 1 {
+            if self.verbose >= 2 {
                 println!(
-                    "info: Using mock S3-compatible storage client - would have uploaded {} to {}",
+                    "dbg: Using mock S3-compatible storage client - would have uploaded {} to {}",
                     local_path, object_key
                 );
             }
@@ -585,9 +597,9 @@ impl S3StorageClient {
                 file_details.hash.clone()
             };
 
-            if self.verbose >= 1 {
+            if self.verbose >= 2 {
                 println!(
-                    "info: Using mock S3-compatible storage client - would have uploaded {} using hash {}",
+                    "dbg: Using mock S3-compatible storage client - would have uploaded {} using hash {}",
                     file_details.file_path, file_details.hash
                 );
             }
@@ -658,9 +670,9 @@ impl S3StorageClient {
 
         // If we're using a placeholder bucket, we need to ensure the real bucket exists before upload
         if using_placeholder_bucket {
-            if self.verbose >= 1 {
+            if self.verbose >= 2 {
                 println!(
-                    "info: Using real bucket name '{}' from JSON for upload",
+                    "dbg: Using real bucket name '{}' from JSON for upload",
                     upload_bucket
                 );
             }
@@ -734,9 +746,9 @@ impl S3StorageClient {
     pub fn download_file(&self, object_key: &str) -> Result<Vec<u8>> {
         // For non-real clients, return a mock response
         if !self.is_real_client {
-            if self.verbose >= 1 {
+            if self.verbose >= 2 {
                 println!(
-                    "info: Using mock S3-compatible storage client - would have downloaded {}",
+                    "dbg: Using mock S3-compatible storage client - would have downloaded {}",
                     object_key
                 );
             }
@@ -798,9 +810,9 @@ impl S3StorageClient {
             let content_bytes = bytes.to_vec();
 
             // If verbose, log successful download
-            if self.verbose >= 1 {
+            if self.verbose >= 2 {
                 println!(
-                    "info: Successfully downloaded {} bytes from S3",
+                    "dbg: Successfully downloaded {} bytes from S3",
                     content_bytes.len()
                 );
             }
@@ -815,9 +827,9 @@ impl S3StorageClient {
     pub fn save_to_file(&self, object_key: &str, local_path: &str) -> Result<()> {
         // For non-real clients, create a mock file
         if !self.is_real_client {
-            if self.verbose >= 1 {
+            if self.verbose >= 2 {
                 println!(
-                    "info: Using mock S3-compatible storage client - would have downloaded {} to {}",
+                    "dbg: Using mock S3-compatible storage client - would have downloaded {} to {}",
                     object_key, local_path
                 );
             }
@@ -853,9 +865,9 @@ impl S3StorageClient {
     pub fn list_objects_with_prefix(&self, prefix: &str) -> Result<Vec<String>> {
         // For non-real clients, return a mock response
         if !self.is_real_client {
-            if self.verbose >= 1 {
+            if self.verbose >= 2 {
                 println!(
-                    "info: Using mock S3-compatible storage client - would have listed objects with prefix {}",
+                    "dbg: Using mock S3-compatible storage client - would have listed objects with prefix {}",
                     prefix
                 );
             }

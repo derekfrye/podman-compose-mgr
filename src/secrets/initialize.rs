@@ -12,12 +12,13 @@ use crate::secrets::file_details::check_encoding_and_size;
 use crate::Args;
 use crate::secrets::error::Result;
 use crate::utils::cmd_utils;
+use crate::utils::log_utils::Logger;
 
 /// Process the initialization of secrets
 ///
 /// Reads the secrets from the input file, creates JSON entries for each file,
 /// and writes the results to the output_json file specified in the arguments.
-pub fn process(args: &Args) -> Result<()> {
+pub fn process(args: &Args, _logger: &Logger) -> Result<()> {
     // Get the required file paths from args
     let init_filepath = args.secrets_init_filepath.as_ref().unwrap();
     let output_filepath = args.output_json.as_ref().unwrap();
