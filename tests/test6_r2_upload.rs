@@ -9,15 +9,26 @@ use podman_compose_mgr::interfaces::{
 use podman_compose_mgr::read_interactive_input::ReadValResult;
 use podman_compose_mgr::secrets::r2_storage::R2UploadResult;
 use podman_compose_mgr::secrets::upload;
-use podman_compose_mgr::secrets::utils::calculate_hash;
+use podman_compose_mgr::secrets::json_utils;
 use podman_compose_mgr::utils::log_utils::Logger;
-use serde_json::json;
 use tempfile::NamedTempFile;
 
 #[test]
 fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Create a temporary input JSON file with entries for our test files
-    let input_json = create_test_input_json()?;
+    // 1. Create test input JSON file with R2 destination using our helper function
+    let test_files = vec![
+        "tests/test3_and_test4/a".to_string(),
+        "tests/test3_and_test4/b".to_string(),
+        "tests/test3_and_test4/c".to_string(),
+        "tests/test3_and_test4/d d".to_string(),
+    ];
+    
+    // Create test JSON file using the production code's helper function
+    let (input_json, hashes) = json_utils::create_r2_test_json(
+        &test_files,
+        "test-r2-upload-bucket"
+    )?;
+    
     let input_path = input_json.path().to_path_buf();
 
     // 2. Create a temporary output JSON file
@@ -47,13 +58,7 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
-    // List of file paths in our test that will be processed
-    let test_files = vec![
-        "tests/test3_and_test4/a".to_string(),
-        "tests/test3_and_test4/b".to_string(),
-        "tests/test3_and_test4/c".to_string(),
-        "tests/test3_and_test4/d d".to_string(),
-    ];
+    // We already defined test_files above, but we need to keep a reference here
 
     // Test with R2 upload path
     {
@@ -106,10 +111,11 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         let mut r2_client = MockR2StorageClient::new();
 
         // Create expected R2UploadResults for each file
+        // We can use the hashes from our JSON creation to ensure consistency
         let expected_results: Vec<(String, R2UploadResult)> = test_files
             .iter()
-            .map(|file_path| {
-                let hash = calculate_hash(file_path).unwrap();
+            .zip(hashes.iter())
+            .map(|(file_path, hash)| {
                 let r2_result = R2UploadResult {
                     hash: format!("test-etag-{}", hash),
                     id: format!("test-id-{}", hash),
@@ -123,8 +129,7 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
             .collect();
 
         // Set up expectations for check_file_exists_with_details for each file
-        for (i, file_path) in test_files.iter().enumerate() {
-            let hash = calculate_hash(file_path).unwrap();
+        for (i, (file_path, hash)) in test_files.iter().zip(hashes.iter()).enumerate() {
 
             // Files 'a' and 'b' (indices 0 and 1) should show as already existing
             // Files 'c' and 'd d' (indices 2 and 3) should show as not existing
@@ -232,7 +237,7 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         // Verify each entry has the correct R2-specific fields
         for (i, entry) in output_entries.iter().enumerate() {
             let file_path = &test_files[i];
-            let hash = calculate_hash(file_path)?;
+            let hash = &hashes[i];
 
             // R2-specific fields
             assert_eq!(entry["destination_cloud"].as_str().unwrap(), "r2");
@@ -268,77 +273,4 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
     drop(client_secret_file);
 
     Ok(())
-}
-
-/// Create a test input JSON file with R2 destination_cloud
-fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>> {
-    // Create a temporary file
-    let temp_file = NamedTempFile::new()?;
-
-    // Create test data with calculated hashes
-    let a_hash = calculate_hash("tests/test3_and_test4/a")?;
-    let b_hash = calculate_hash("tests/test3_and_test4/b")?;
-    let c_hash = calculate_hash("tests/test3_and_test4/c")?;
-    let d_hash = calculate_hash("tests/test3_and_test4/d d")?;
-
-    // Create JSON content with R2 destination
-    let json_content = json!([
-        {
-            "file_nm": "tests/test3_and_test4/a",
-            "hash": a_hash,
-            "hash_algo": "sha1",
-            "ins_ts": "2023-01-01T00:00:00Z",
-            "hostname": hostname::get()?.to_string_lossy().to_string(),
-            "encoding": "utf8",
-            "file_size": fs::metadata("tests/test3_and_test4/a")?.len(),
-            "encoded_size": fs::metadata("tests/test3_and_test4/a")?.len(), // Use actual file size
-            "destination_cloud": "r2",
-            // "secret_name": format!("file-{}", a_hash),
-            "cloud_upload_bucket": "test-r2-upload-bucket"
-        },
-        {
-            "file_nm": "tests/test3_and_test4/b",
-            "hash": b_hash,
-            "hash_algo": "sha1",
-            "ins_ts": "2023-01-01T00:00:00Z",
-            "hostname": hostname::get()?.to_string_lossy().to_string(),
-            "encoding": "utf8",
-            "file_size": fs::metadata("tests/test3_and_test4/b")?.len(),
-            "encoded_size": fs::metadata("tests/test3_and_test4/b")?.len(), // Use actual file size
-            "destination_cloud": "r2",
-            // "secret_name": format!("file-{}", b_hash),
-            "cloud_upload_bucket": "test-r2-upload-bucket"
-        },
-        {
-            "file_nm": "tests/test3_and_test4/c",
-            "hash": c_hash,
-            "hash_algo": "sha1",
-            "ins_ts": "2023-01-01T00:00:00Z",
-            "hostname": hostname::get()?.to_string_lossy().to_string(),
-            "encoding": "utf8",
-            "file_size": fs::metadata("tests/test3_and_test4/c")?.len(),
-            "encoded_size": fs::metadata("tests/test3_and_test4/c")?.len(), // Use actual file size
-            "destination_cloud": "r2",
-            // "secret_name": format!("file-{}", c_hash),
-            "cloud_upload_bucket": "test-r2-upload-bucket"
-        },
-        {
-            "file_nm": "tests/test3_and_test4/d d",
-            "hash": d_hash,
-            "hash_algo": "sha1",
-            "ins_ts": "2023-01-01T00:00:00Z",
-            "hostname": hostname::get()?.to_string_lossy().to_string(),
-            "encoding": "utf8",
-            "file_size": fs::metadata("tests/test3_and_test4/d d")?.len(),
-            "encoded_size": fs::metadata("tests/test3_and_test4/d d")?.len(), // Use actual file size
-            "destination_cloud": "r2",
-            // "secret_name": format!("file-{}", d_hash),
-            "cloud_upload_bucket": "test-r2-upload-bucket"
-        }
-    ]);
-
-    // Write to the temporary file
-    std::fs::write(temp_file.path(), json_content.to_string())?;
-
-    Ok(temp_file)
 }
