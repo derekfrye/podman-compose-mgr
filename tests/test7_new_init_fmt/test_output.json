@@ -54,5 +54,10 @@
         "filenm": "tests/test3_and_test4/b",
         "destination_cloud": "r2",
         "cloud_upload_bucket": "diff-bucket"
+    },
+    {
+        "filenm": "tests/test3_and_test4/e e",
+        "destination_cloud": "r2",
+        "cloud_upload_bucket": "diff-bucket"
     }
 ]

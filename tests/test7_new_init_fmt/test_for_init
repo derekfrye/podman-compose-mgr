@@ -23,3 +23,4 @@ tests/test2_personal_testing_data/b2_account.txt
 # bucket diff-bucket #
 tests/test3_and_test4/a
 tests/test3_and_test4/b
+tests/test3_and_test4/e e
