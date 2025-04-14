@@ -1,8 +1,8 @@
 use crate::secrets::error::Result;
 use crate::secrets::s3::models::S3StorageClient;
-use std::path::Path;
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 
 impl S3StorageClient {
     /// Ensure bucket exists, create it if it doesn't

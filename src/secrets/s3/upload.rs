@@ -109,9 +109,13 @@ impl S3StorageClient {
     /// Upload a file with details from FileDetails struct
     pub fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<S3UploadResult> {
         // Check if cloud_upload_bucket is provided for B2/R2 storage
-        if (matches!(self.provider_type, crate::secrets::s3::models::S3Provider::BackblazeB2)
-            || matches!(self.provider_type, crate::secrets::s3::models::S3Provider::CloudflareR2))
-            && file_details.cloud_upload_bucket.is_none()
+        if (matches!(
+            self.provider_type,
+            crate::secrets::s3::models::S3Provider::BackblazeB2
+        ) || matches!(
+            self.provider_type,
+            crate::secrets::s3::models::S3Provider::CloudflareR2
+        )) && file_details.cloud_upload_bucket.is_none()
         {
             return Err(Box::<dyn std::error::Error>::from(
                 "cloud_upload_bucket is required in JSON for B2/R2 storage",

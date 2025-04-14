@@ -200,13 +200,28 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         // Handle different storage backends based on file size and destination_cloud
         let output_entry = if entry.destination_cloud == "r2" {
             // Handle R2 storage upload
-            upload_handlers::handle_r2_upload(&entry, r2_client.as_ref(), read_val_helper, args.verbose.into())?
+            upload_handlers::handle_r2_upload(
+                &entry,
+                r2_client.as_ref(),
+                read_val_helper,
+                args.verbose.into(),
+            )?
         } else if entry.is_too_large_for_keyvault() || entry.destination_cloud == "b2" {
             // Handle B2 storage upload (redirected to R2)
-            upload_handlers::handle_b2_upload(&entry, b2_client.as_ref(), read_val_helper, args.verbose.into())?
+            upload_handlers::handle_b2_upload(
+                &entry,
+                b2_client.as_ref(),
+                read_val_helper,
+                args.verbose.into(),
+            )?
         } else {
             // Handle Azure KeyVault upload
-            upload_handlers::handle_azure_upload(&entry, kv_client.as_ref(), read_val_helper, args.verbose.into())?
+            upload_handlers::handle_azure_upload(
+                &entry,
+                kv_client.as_ref(),
+                read_val_helper,
+                args.verbose.into(),
+            )?
         };
 
         // Add to processed entries if upload was successful

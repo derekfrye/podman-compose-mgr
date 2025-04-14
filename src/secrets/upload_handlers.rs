@@ -1,4 +1,6 @@
-use crate::interfaces::{AzureKeyVaultClient, B2StorageClient, R2StorageClient, ReadInteractiveInputHelper};
+use crate::interfaces::{
+    AzureKeyVaultClient, B2StorageClient, R2StorageClient, ReadInteractiveInputHelper,
+};
 use crate::secrets::error::Result;
 use crate::secrets::file_details::check_encoding_and_size;
 use crate::secrets::models::UploadEntry;
@@ -220,7 +222,10 @@ pub fn handle_azure_upload<R: ReadInteractiveInputHelper>(
 
             // Check again if it exists
             if !Path::new(&file_to_use).exists() {
-                eprintln!("Failed to create base64 file for {}, skipping", entry.file_nm);
+                eprintln!(
+                    "Failed to create base64 file for {}, skipping",
+                    entry.file_nm
+                );
                 return Ok(None);
             }
         } else {
@@ -253,12 +258,14 @@ pub fn handle_azure_upload<R: ReadInteractiveInputHelper>(
     let content = fs::read_to_string(&file_to_use)?;
 
     // Upload to Key Vault using hash as the key
-    let response = kv_client.set_secret_value(&entry.hash, &content).map_err(|e| {
-        Box::<dyn std::error::Error>::from(format!(
-            "Failed to upload secret {}: {}",
-            entry.hash, e
-        ))
-    })?;
+    let response = kv_client
+        .set_secret_value(&entry.hash, &content)
+        .map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!(
+                "Failed to upload secret {}: {}",
+                entry.hash, e
+            ))
+        })?;
 
     if verbose > 0 {
         println!("info: Successfully uploaded to Azure Key Vault storage");

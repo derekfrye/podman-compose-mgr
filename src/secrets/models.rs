@@ -2,7 +2,7 @@ use crate::secrets::file_details::FileDetails;
 use crate::secrets::r2_storage::R2UploadResult;
 use crate::secrets::utils::get_hostname;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use time::OffsetDateTime;
 
 pub struct SetSecretResponse {
@@ -21,7 +21,7 @@ pub struct UploadEntry {
     pub hash: String,
     pub ins_ts: String,
     pub hostname: String,
-    
+
     // Optional fields with defaults
     #[serde(default = "default_hash_algo")]
     pub hash_algo: String,
@@ -55,7 +55,7 @@ impl UploadEntry {
     pub fn new(file_path: &str, hash: &str) -> Self {
         let hostname = get_hostname().unwrap_or_else(|_| "unknown_host".to_string());
         let now = chrono::Utc::now().to_rfc3339();
-        
+
         UploadEntry {
             file_nm: file_path.to_string(),
             hash: hash.to_string(),
@@ -70,7 +70,7 @@ impl UploadEntry {
             cloud_prefix: None,
         }
     }
-    
+
     /// Create an UploadEntry for R2 storage
     pub fn new_for_r2(file_path: &str, hash: &str, bucket: &str) -> Self {
         let mut entry = Self::new(file_path, hash);
@@ -78,14 +78,14 @@ impl UploadEntry {
         entry.cloud_upload_bucket = Some(bucket.to_string());
         entry
     }
-    
+
     /// Set file size information
     pub fn with_size_info(mut self, file_size: u64, encoded_size: Option<u64>) -> Self {
         self.file_size = file_size;
         self.encoded_size = encoded_size.unwrap_or(file_size);
         self
     }
-    
+
     /// Convert to FileDetails struct
     pub fn to_file_details(&self) -> FileDetails {
         FileDetails {
@@ -103,12 +103,12 @@ impl UploadEntry {
             cloud_prefix: self.cloud_prefix.clone(),
         }
     }
-    
+
     /// Check if this entry is too large for Azure KeyVault
     pub fn is_too_large_for_keyvault(&self) -> bool {
         self.encoded_size > 24000
     }
-    
+
     /// Create output JSON entry for R2 storage
     pub fn create_r2_output_entry(&self, r2_result: &R2UploadResult) -> Value {
         json!({

@@ -7,9 +7,9 @@ use podman_compose_mgr::interfaces::{
     MockReadInteractiveInputHelper,
 };
 use podman_compose_mgr::read_interactive_input::ReadValResult;
+use podman_compose_mgr::secrets::json_utils;
 use podman_compose_mgr::secrets::r2_storage::R2UploadResult;
 use podman_compose_mgr::secrets::upload;
-use podman_compose_mgr::secrets::json_utils;
 use podman_compose_mgr::utils::log_utils::Logger;
 use tempfile::NamedTempFile;
 
@@ -22,13 +22,11 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         "tests/test3_and_test4/c".to_string(),
         "tests/test3_and_test4/d d".to_string(),
     ];
-    
+
     // Create test JSON file using the production code's helper function
-    let (input_json, hashes) = json_utils::create_r2_test_json(
-        &test_files,
-        "test-r2-upload-bucket"
-    )?;
-    
+    let (input_json, hashes) =
+        json_utils::create_r2_test_json(&test_files, "test-r2-upload-bucket")?;
+
     let input_path = input_json.path().to_path_buf();
 
     // 2. Create a temporary output JSON file
@@ -130,7 +128,6 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
 
         // Set up expectations for check_file_exists_with_details for each file
         for (i, (file_path, hash)) in test_files.iter().zip(hashes.iter()).enumerate() {
-
             // Files 'a' and 'b' (indices 0 and 1) should show as already existing
             // Files 'c' and 'd d' (indices 2 and 3) should show as not existing
             let file_exists = i < 2; // true for the first two files (a, b)
