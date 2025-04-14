@@ -164,6 +164,24 @@ pub fn calculate_hash(filepath: &str) -> Result<String> {
     Ok(hex::encode(result))
 }
 
+/// Calculate SHA-1 hash of the file contents
+///
+/// This is useful for verifying file integrity after operations like encoding/decoding
+pub fn calculate_content_hash(filepath: &str) -> Result<String> {
+    // Read the file content
+    let content = fs::read(filepath).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to read file for hashing: {}", e))
+    })?;
+
+    // Create a hasher and update it with the file content
+    let mut hasher = Sha1::new();
+    hasher.update(&content);
+
+    // Finalize and return the hex-encoded hash
+    let result = hasher.finalize();
+    Ok(hex::encode(result))
+}
+
 /// Writes JSON output to a file
 ///
 /// # Errors

@@ -1,2 +1,2 @@
 [alias]
-t = "test -- --test-threads=4"
+t = "test -j 2 -- --test-threads=2"

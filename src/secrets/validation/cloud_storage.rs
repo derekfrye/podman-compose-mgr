@@ -2,9 +2,9 @@ use crate::args::Args;
 use crate::interfaces::AzureKeyVaultClient;
 use crate::secrets::error::Result;
 use crate::secrets::r2_storage::R2Client;
-use crate::testing::validation_helpers::{
-    maybe_use_test_file_for_azure, maybe_use_test_file_for_storage,
-};
+// use crate::testing::validation_helpers::{
+//     maybe_use_test_file_for_azure, maybe_use_test_file_for_storage,
+// };
 use serde_json::Value;
 use std::fs;
 
@@ -46,16 +46,16 @@ pub fn download_from_cloud(params: DownloadParams) -> Result<bool> {
 
 /// Download content from Azure KeyVault
 fn download_from_azure(
-    entry: &Value,
+    _entry: &Value,
     secret_name: String,
     azure_client: &dyn AzureKeyVaultClient,
     temp_path: &str,
     args: &Args,
 ) -> Result<bool> {
     // First, check if we're running in a test mode with specific test files
-    if let Ok(Some(())) = maybe_use_test_file_for_azure(entry, temp_path, args) {
-        return Ok(true);
-    }
+    // if let Ok(Some(())) = maybe_use_test_file_for_azure(entry, temp_path, args) {
+    //     return Ok(true);
+    // }
 
     // Normal case - try to retrieve from Azure KeyVault
     match azure_client.get_secret_value(&secret_name) {
@@ -86,9 +86,9 @@ fn download_from_s3_storage(
     args: &Args,
 ) -> Result<bool> {
     // Special test mode for our examples
-    if let Ok(Some(())) = maybe_use_test_file_for_storage(entry, temp_path, args) {
-        return Ok(true);
-    }
+    // if let Ok(Some(())) = maybe_use_test_file_for_storage(entry, temp_path, args) {
+    //     return Ok(true);
+    // }
 
     // Get the bucket name from the entry
     let bucket = entry["cloud_upload_bucket"].as_str().ok_or_else(|| {
