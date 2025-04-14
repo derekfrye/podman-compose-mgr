@@ -152,30 +152,53 @@ pub fn get_hostname() -> Result<String> {
         .map_err(|_| Box::<dyn std::error::Error>::from("Hostname contains non-UTF8 characters"))
 }
 
+/// Calculate SHA-1 hash from bytes
+///
+/// This is the core function that both calculate_hash and calculate_content_hash use
+fn calculate_hash_from_bytes(bytes: &[u8]) -> String {
+    let mut hasher = Sha1::new();
+    hasher.update(bytes);
+    let result = hasher.finalize();
+    hex::encode(result)
+}
+
 /// Calculate SHA-1 hash of the filepath (not the file contents)
 /// This ensures consistent locations for files even when their content changes
 pub fn calculate_hash(filepath: &str) -> Result<String> {
-    // Create a hasher and update it with the filepath bytes
-    let mut hasher = Sha1::new();
-    hasher.update(filepath.as_bytes());
-
-    // Finalize and return the hex-encoded hash
-    let result = hasher.finalize();
-    Ok(hex::encode(result))
+    // Hash just the filepath bytes
+    Ok(calculate_hash_from_bytes(filepath.as_bytes()))
 }
 
 /// Calculate SHA-1 hash of the file contents
 ///
 /// This is useful for verifying file integrity after operations like encoding/decoding
 pub fn calculate_content_hash(filepath: &str) -> Result<String> {
-    // Read the file content
-    let content = fs::read(filepath).map_err(|e| {
-        Box::<dyn std::error::Error>::from(format!("Failed to read file for hashing: {}", e))
+    use std::io::{BufReader, Read};
+
+    // Open the file
+    let file = fs::File::open(filepath).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to open file for hashing: {}", e))
     })?;
 
-    // Create a hasher and update it with the file content
+    // Create a buffered reader
+    let mut reader = BufReader::new(file);
     let mut hasher = Sha1::new();
-    hasher.update(&content);
+    let mut buffer = [0; 8192]; // 8KB buffer for efficient reading
+
+    // Process the file in chunks
+    loop {
+        let bytes_read = reader.read(&mut buffer).map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!("Failed to read file for hashing: {}", e))
+        })?;
+
+        if bytes_read == 0 {
+            // End of file
+            break;
+        }
+
+        // Update the hasher with the chunk
+        hasher.update(&buffer[..bytes_read]);
+    }
 
     // Finalize and return the hex-encoded hash
     let result = hasher.finalize();

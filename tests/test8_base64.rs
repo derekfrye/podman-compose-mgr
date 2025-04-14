@@ -66,6 +66,11 @@ fn test_base64_decode_and_hash_match() {
         calculate_hash("tests/test3_and_test4/e e").expect("Failed to hash original file path");
     let temp_path_hash = calculate_hash(temp_path).expect("Failed to hash temp file path");
 
+    assert_ne!(
+        original_path_hash, temp_path_hash,
+        "Original and temp file path hashes should not match"
+    );
+
     println!("Original file path hash: {}", original_path_hash);
     println!("Temp file path hash: {}", temp_path_hash);
     println!("Content hash (same for both): {}", original_content_hash);

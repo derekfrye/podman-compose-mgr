@@ -11,23 +11,59 @@ use tempfile::NamedTempFile;
 ///
 /// Returns a NamedTempFile with the decoded content written to it
 pub fn decode_base64_to_tempfile(base64_content: &[u8]) -> Result<NamedTempFile> {
-    // Convert content to string
-    let content_str = String::from_utf8_lossy(base64_content).to_string();
-
-    // Decode the base64 content
-    let decoded_content = base64::decode(&content_str).map_err(|e| {
-        Box::<dyn std::error::Error>::from(format!("Error decoding base64 content: {}", e))
-    })?;
+    use std::io::{BufRead, BufReader};
 
     // Create a temporary file
     let mut temp_file = NamedTempFile::new().map_err(|e| {
         Box::<dyn std::error::Error>::from(format!("Failed to create temporary file: {}", e))
     })?;
 
-    // Write the decoded content to the temp file
-    temp_file.write_all(&decoded_content).map_err(|e| {
-        Box::<dyn std::error::Error>::from(format!("Failed to write to temporary file: {}", e))
-    })?;
+    // Process in chunks for memory efficiency
+    let reader = BufReader::new(base64_content);
+    let mut base64_buffer = String::with_capacity(8192);
+
+    // Process the file in chunks, handling line breaks in base64 content
+    for line in reader.split(b'\n') {
+        let line = line.map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!("Error reading base64 line: {}", e))
+        })?;
+
+        // Skip empty lines
+        if line.is_empty() {
+            continue;
+        }
+
+        // Add line to buffer (converting from utf8)
+        let line_str = String::from_utf8_lossy(&line).to_string();
+        base64_buffer.push_str(&line_str);
+
+        // When buffer gets large enough, decode and write
+        if base64_buffer.len() >= 8192 {
+            let decoded = base64::decode(&base64_buffer).map_err(|e| {
+                Box::<dyn std::error::Error>::from(format!("Error decoding base64 content: {}", e))
+            })?;
+
+            temp_file.write_all(&decoded).map_err(|e| {
+                Box::<dyn std::error::Error>::from(format!(
+                    "Failed to write to temporary file: {}",
+                    e
+                ))
+            })?;
+
+            base64_buffer.clear();
+        }
+    }
+
+    // Decode and write any remaining data
+    if !base64_buffer.is_empty() {
+        let decoded = base64::decode(&base64_buffer).map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!("Error decoding base64 content: {}", e))
+        })?;
+
+        temp_file.write_all(&decoded).map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!("Failed to write to temporary file: {}", e))
+        })?;
+    }
 
     Ok(temp_file)
 }
