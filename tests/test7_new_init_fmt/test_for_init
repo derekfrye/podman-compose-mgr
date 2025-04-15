@@ -6,6 +6,9 @@ tests/test2_personal_testing_data/tenant_id.txt
 tests/test2_personal_testing_data/client_id.txt
 tests/test2_personal_testing_data/secret.txt
 
+# a file that'll have to be base64
+tests/test3_and_test4/e e
+
 #  r2 #
 # bucket secrets-bucket #
 # r2 creds
@@ -21,6 +24,7 @@ tests/test2_personal_testing_data/b2_account.txt
 
 # general files, should still be r2
 # bucket diff-bucket #
+# none should end up as base64
 tests/test3_and_test4/a
 tests/test3_and_test4/b
 tests/test3_and_test4/e e

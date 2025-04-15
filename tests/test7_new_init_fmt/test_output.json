@@ -16,6 +16,10 @@
         "destination_cloud": "azure_kv"
     },
     {
+        "filenm": "tests/test3_and_test4/e e",
+        "destination_cloud": "azure_kv"
+    },
+    {
         "filenm": "tests/test2_personal_testing_data/r2_endpoint.txt",
         "destination_cloud": "r2",
         "cloud_upload_bucket": "secrets-bucket"

@@ -31,27 +31,40 @@ pub fn process(args: &Args, _logger: &Logger) -> Result<()> {
     // Parse the JSON - it's either a map or an array of objects with filenm key
     let files_array: Vec<serde_json::Value> = serde_json::from_str(&contents).unwrap_or_default();
 
-    let files: Vec<String> = if contents.trim().starts_with('{') {
+    // Instead of just collecting filenames, we'll create a mapping of each file to its entry
+    // This way we can handle multiple entries for the same file with different cloud providers
+    let file_entries: Vec<serde_json::Value> = if contents.trim().starts_with('{') {
         // Handle map format
         let files_map: HashMap<String, String> = serde_json::from_str(&contents)?;
-        files_map.values().cloned().collect()
-    } else {
-        // Handle array format with objects that have filenm field
-        files_array
-            .iter()
-            .filter_map(|obj| obj.get("filenm").and_then(|v| v.as_str()).map(String::from))
+        // Convert each entry to a JSON object with filenm field
+        files_map
+            .values()
+            .map(|filename| {
+                json!({
+                    "filenm": filename
+                })
+            })
             .collect()
+    } else {
+        // If it's already an array format, just use it directly
+        files_array.clone()
     };
 
     // Get the hostname
     let hostname = hostname()?;
 
-    // Create new entries for each file
+    // Create new entries for each file entry in the input
     let mut new_entries = Vec::new();
 
-    for file_nm in files {
+    for entry_json in &file_entries {
+        // Get the filename from the entry
+        let file_nm = match entry_json.get("filenm").and_then(|v| v.as_str()) {
+            Some(name) => name,
+            None => continue, // Skip entries without a filename
+        };
+
         // Check if file exists
-        if !Path::new(&file_nm).exists() {
+        if !Path::new(file_nm).exists() {
             return Err(Box::<dyn std::error::Error>::from(format!(
                 "File {} does not exist",
                 file_nm
@@ -59,32 +72,27 @@ pub fn process(args: &Args, _logger: &Logger) -> Result<()> {
         }
 
         // Calculate SHA-1 hash
-        let hash = calculate_hash(&file_nm)?;
+        let hash = calculate_hash(file_nm)?;
 
         // Get current timestamp
         let now: DateTime<Local> = Local::now();
         let ins_ts = now.to_rfc3339();
 
         // Check encoding and get file sizes (creates base64 encoded file if needed)
-        let (encoding, file_size, encoded_size) = check_encoding_and_size(&file_nm)?;
+        let (encoding, file_size, encoded_size) = check_encoding_and_size(file_nm)?;
 
-        // Determine if there's a cloud provider in the input file
-        let cloud_from_input = files_array
-            .iter()
-            .find(|obj| obj.get("filenm").and_then(|v| v.as_str()) == Some(&file_nm))
-            .and_then(|obj| obj.get("destination_cloud"))
-            .and_then(|v| v.as_str());
-
-        // If cloud provider is specified in input, use it; otherwise fall back to size-based logic
-        let destination_cloud = if let Some(cloud) = cloud_from_input {
-            cloud
-        } else if encoded_size > 24000 {
-            "r2"
-        } else {
-            "azure_kv"
+        // Get cloud provider from the entry, or use default logic
+        let destination_cloud = match entry_json.get("destination_cloud").and_then(|v| v.as_str()) {
+            Some(cloud) => cloud,
+            None => {
+                // Fall back to size-based logic if not specified
+                if encoded_size > 24000 {
+                    "r2"
+                } else {
+                    "azure_kv"
+                }
+            }
         };
-
-        // We now use hash directly instead of creating a secret name
 
         // Log verbose message for base64 encoding
         if encoding == "base64" && args.verbose > 0 {
@@ -94,12 +102,10 @@ pub fn process(args: &Args, _logger: &Logger) -> Result<()> {
             );
         }
 
-        // Look for cloud_upload_bucket in the input file
+        // Get cloud_upload_bucket from the entry if it's r2 or b2
         let cloud_upload_bucket = if destination_cloud == "r2" || destination_cloud == "b2" {
-            files_array
-                .iter()
-                .find(|obj| obj.get("filenm").and_then(|v| v.as_str()) == Some(&file_nm))
-                .and_then(|obj| obj.get("cloud_upload_bucket"))
+            entry_json
+                .get("cloud_upload_bucket")
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string()
@@ -109,7 +115,7 @@ pub fn process(args: &Args, _logger: &Logger) -> Result<()> {
         };
 
         // Create JSON entry
-        let entry = json!({
+        let output_entry = json!({
             "file_nm": file_nm,
             "hash": hash,
             "hash_algo": "sha1",
@@ -125,7 +131,7 @@ pub fn process(args: &Args, _logger: &Logger) -> Result<()> {
             "cloud_upload_bucket": cloud_upload_bucket
         });
 
-        new_entries.push(entry);
+        new_entries.push(output_entry);
     }
 
     // Initialize the output entries vector and counters
@@ -152,25 +158,29 @@ pub fn process(args: &Args, _logger: &Logger) -> Result<()> {
 
             // Go through each new entry
             for (new_idx, new_entry) in new_entries.iter().enumerate() {
-                // Get file_nm and hostname from the new entry
-                if let (Some(file_nm), Some(hostname)) = (
+                // Get file_nm, hostname, and cloud provider from the new entry
+                if let (Some(file_nm), Some(hostname), Some(cloud)) = (
                     new_entry.get("file_nm").and_then(|v| v.as_str()),
                     new_entry.get("hostname").and_then(|v| v.as_str()),
+                    new_entry.get("destination_cloud").and_then(|v| v.as_str()),
                 ) {
-                    let lookup_key = format!("{}-{}", file_nm, hostname);
+                    // Include cloud provider in the key to ensure same file with different providers gets separate entries
+                    let lookup_key = format!("{}-{}-{}", file_nm, hostname, cloud);
 
                     // Look for a matching entry in existing entries
                     let mut found_match = false;
 
                     for (idx, existing_entry) in existing_entries.iter_mut().enumerate() {
-                        if let (Some(existing_file_nm), Some(existing_hostname)) = (
+                        if let (Some(existing_file_nm), Some(existing_hostname), Some(existing_cloud)) = (
                             existing_entry.get("file_nm").and_then(|v| v.as_str()),
                             existing_entry.get("hostname").and_then(|v| v.as_str()),
+                            existing_entry.get("destination_cloud").and_then(|v| v.as_str()),
                         ) {
                             let existing_key =
-                                format!("{}-{}", existing_file_nm, existing_hostname);
+                                format!("{}-{}-{}", existing_file_nm, existing_hostname, existing_cloud);
 
                             // If match found, update the existing entry
+                            // The existing_key already includes the destination_cloud now
                             if existing_key == lookup_key {
                                 found_match = true;
                                 updated_indices.insert(idx);
