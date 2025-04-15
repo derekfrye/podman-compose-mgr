@@ -26,7 +26,6 @@
 ## Memory Considerations
 - Tests are limited to 2 parallel executions to prevent OOM issues
 - Mock clients are used for cloud storage when credentials aren't needed 
-- If memory issues occur during testing, use `--test-threads=1` flag
 - Be cautious with large file operations, especially in CI environments
 
 ## Verbosity Levels

@@ -9,12 +9,11 @@ use podman_compose_mgr::interfaces::{
 };
 use podman_compose_mgr::read_interactive_input::ReadValResult;
 use podman_compose_mgr::secrets::file_details::{FileDetails, format_file_size, get_file_details};
-use podman_compose_mgr::secrets::models::SetSecretResponse;
+use podman_compose_mgr::secrets::models::{SetSecretResponse, UploadEntry};
 use podman_compose_mgr::secrets::upload;
 use podman_compose_mgr::secrets::upload_utils::test_utils;
 use podman_compose_mgr::secrets::utils::calculate_hash;
 use podman_compose_mgr::utils::log_utils::Logger;
-use serde_json::json;
 use std::sync::{Arc, Mutex};
 use tempfile::NamedTempFile;
 use time::OffsetDateTime;
@@ -567,71 +566,56 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
     Ok(())
 }
 
-/// Create a test input JSON file with the test files
+/// Create a test input JSON file using production UploadEntry struct and create_azure_output_entry method
 fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>> {
     // Create a temporary file
     let temp_file = NamedTempFile::new()?;
-
-    // Create test data with calculated hashes
-    let a_hash = calculate_hash("tests/test3_and_test4/a")?;
-    let b_hash = calculate_hash("tests/test3_and_test4/b")?;
-    let c_hash = calculate_hash("tests/test3_and_test4/c")?;
-    let d_hash = calculate_hash("tests/test3_and_test4/d d")?;
-
-    // Create JSON content with updated field names and hash values
-    let json_content = json!([
-        {
-            "file_nm": "tests/test3_and_test4/a",
-            "hash": a_hash,
-            "hash_algo": "sha1",
-            "ins_ts": "2023-01-01T00:00:00Z",
-            "hostname": hostname::get()?.to_string_lossy().to_string(),
-            "encoding": "utf8",
-            "file_size": fs::metadata("tests/test3_and_test4/a")?.len(),
-            "encoded_size": fs::metadata("tests/test3_and_test4/a")?.len(),
-            "destination_cloud": "azure_kv",
-            "secret_name": format!("file-{}", a_hash)
-        },
-        {
-            "file_nm": "tests/test3_and_test4/b",
-            "hash": b_hash,
-            "hash_algo": "sha1",
-            "ins_ts": "2023-01-01T00:00:00Z",
-            "hostname": hostname::get()?.to_string_lossy().to_string(),
-            "encoding": "utf8",
-            "file_size": fs::metadata("tests/test3_and_test4/b")?.len(),
-            "encoded_size": fs::metadata("tests/test3_and_test4/b")?.len(),
-            "destination_cloud": "azure_kv",
-            "secret_name": format!("file-{}", b_hash)
-        },
-        {
-            "file_nm": "tests/test3_and_test4/c",
-            "hash": c_hash,
-            "hash_algo": "sha1",
-            "ins_ts": "2023-01-01T00:00:00Z",
-            "hostname": hostname::get()?.to_string_lossy().to_string(),
-            "encoding": "utf8",
-            "file_size": fs::metadata("tests/test3_and_test4/c")?.len(),
-            "encoded_size": fs::metadata("tests/test3_and_test4/c")?.len(),
-            "destination_cloud": "azure_kv",
-            "secret_name": format!("file-{}", c_hash)
-        },
-        {
-            "file_nm": "tests/test3_and_test4/d d",
-            "hash": d_hash,
-            "hash_algo": "sha1",
-            "ins_ts": "2023-01-01T00:00:00Z",
-            "hostname": hostname::get()?.to_string_lossy().to_string(),
-            "encoding": "utf8",
-            "file_size": fs::metadata("tests/test3_and_test4/d d")?.len(),
-            "encoded_size": fs::metadata("tests/test3_and_test4/d d")?.len(),
-            "destination_cloud": "azure_kv",
-            "secret_name": format!("file-{}", d_hash)
-        }
-    ]);
-
-    // Write to the temporary file
-    std::fs::write(temp_file.path(), json_content.to_string())?;
-
+    
+    // Test file paths
+    let test_files = vec![
+        "tests/test3_and_test4/a",
+        "tests/test3_and_test4/b",
+        "tests/test3_and_test4/c",
+        "tests/test3_and_test4/d d",
+    ];
+    
+    // Create entries using production UploadEntry
+    let mut entries = Vec::new();
+    let now = OffsetDateTime::now_utc();
+    
+    for file_path in test_files {
+        // Calculate hash using production function
+        let hash = calculate_hash(file_path)?;
+        
+        // Get file size
+        let file_size = fs::metadata(file_path)?.len();
+        
+        // Create UploadEntry using production constructor
+        let mut entry = UploadEntry::new(file_path, &hash);
+        
+        // Set file size using production method
+        entry = entry.with_size_info(file_size, Some(file_size));
+        
+        // Set destination to Azure KV
+        entry.destination_cloud = "azure_kv".to_string();
+        
+        // Create mock SetSecretResponse that would come from Azure KeyVault
+        let mock_response = SetSecretResponse {
+            created: now,
+            updated: now,
+            name: entry.hash.clone(),
+            id: format!("https://test-vault.vault.azure.net/secrets/{}", entry.hash),
+            value: "mock-secret-value".to_string(),
+        };
+        
+        // Use the actual production method to create the entry
+        let entry_json = entry.create_azure_output_entry(&mock_response);
+        
+        entries.push(entry_json);
+    }
+    
+    // Write JSON to the temporary file
+    std::fs::write(temp_file.path(), serde_json::to_string_pretty(&entries)?)?;
+    
     Ok(temp_file)
 }

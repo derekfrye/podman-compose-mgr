@@ -1,2 +1,3 @@
 [alias]
 t = "test -j 3 -- --test-threads=3"
+test = "test -j 3 -- --test-threads=3"
