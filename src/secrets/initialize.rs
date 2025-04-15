@@ -97,8 +97,8 @@ pub fn process(args: &Args, _logger: &Logger) -> Result<()> {
         // For Azure KV, we need base64 encoding for binary files
         // For R2/B2, we can upload binary files directly
         let (final_encoding, final_file_size, final_encoded_size) =
-            if destination_cloud == "azure_kv" && !Path::new(file_nm).exists() {
-                // We need encoding for Azure KV binary files
+            if destination_cloud == "azure_kv" {
+                // We need proper encoding for Azure KV files
                 check_encoding_and_size(file_nm)?
             } else {
                 // For R2/B2, just use utf8 encoding and original file size

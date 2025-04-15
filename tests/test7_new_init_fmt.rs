@@ -12,7 +12,7 @@ use tempfile::NamedTempFile;
 fn test_cloud_section_parsing() {
     // Test the new cloud section parsing functionality in initialization.rs
     let input_file = "tests/test7_new_init_fmt/test_for_init";
-    let expected_output_file = "tests/test7_new_init_fmt/test_output.json";
+    let expected_output_file = "tests/test7_new_init_fmt/test_init_json_format.json";
 
     // First, process the input file using check_init_filepath to generate JSON
     let result = initialization::check_init_filepath(input_file);

@@ -5,8 +5,9 @@ use std::fs::{self, File};
 use std::io::Read;
 use time::OffsetDateTime;
 
-// const OUTPUT_PATH: &str = "tests/test9/output.json";
+// Path to input and output files
 const INPUT_JSON_PATH: &str = "tests/test7_new_init_fmt/test_output.json";
+const OUTPUT_PATH: &str = "tests/test9/generated_output.json";
 
 #[test]
 fn test_create_output_entries() {
@@ -61,7 +62,7 @@ fn test_create_output_entries() {
         upload_entry.file_size = file_size;
         upload_entry.encoded_size = file_size;
         upload_entry.destination_cloud = cloud_type.to_string();
-        
+
         // Special handling for "e e" file - if it's going to Azure, we need to use base64 encoding
         if file_path.ends_with("e e") && cloud_type == "azure_kv" {
             upload_entry.encoding = "base64".to_string();
@@ -93,12 +94,17 @@ fn test_create_output_entries() {
     }
 
     // Write current output to a file in the test9 directory
-    let output_path = "tests/test9/generated_output.json";
     let json_string =
         serde_json::to_string_pretty(&all_outputs).expect("Failed to serialize output to JSON");
-    
-    std::fs::write(output_path, json_string)
-        .expect("Failed to write to output file");
+
+    std::fs::write(OUTPUT_PATH, json_string).expect("Failed to write to output file");
+
+    // Read output file to validate structure
+    let output_content =
+        fs::read_to_string(OUTPUT_PATH).expect("Failed to read generated output file");
+
+    let all_outputs: Vec<Value> =
+        serde_json::from_str(&output_content).expect("Failed to parse generated output JSON");
 
     // Store outputs for each cloud type in separate collections
     let r2_outputs: Vec<Value> = all_outputs
@@ -119,9 +125,9 @@ fn test_create_output_entries() {
         .cloned()
         .collect();
 
-    // Read reference file for R2 entries
+    // Read reference file for validation
     let mut reference_content = String::new();
-    File::open("tests/test9/output.json")
+    File::open("tests/test9/reference_output.json")
         .expect("Failed to open reference file")
         .read_to_string(&mut reference_content)
         .expect("Failed to read reference file");
@@ -130,15 +136,22 @@ fn test_create_output_entries() {
     let reference_json: Vec<Value> =
         serde_json::from_str(&reference_content).expect("Failed to parse reference JSON");
 
-    // Make sure we have the same number of R2 entries
+    // Filter reference JSON for each cloud type
+    let r2_reference: Vec<Value> = reference_json
+        .iter()
+        .filter(|e| e["destination_cloud"].as_str().unwrap_or("") == "r2")
+        .cloned()
+        .collect();
+
+    // Number of entries should match
     assert_eq!(
         r2_outputs.len(),
-        reference_json.len(),
+        r2_reference.len(),
         "Number of R2 entries mismatch"
     );
 
     // Compare each R2 entry with the reference
-    for (i, (current, reference)) in r2_outputs.iter().zip(reference_json.iter()).enumerate() {
+    for (i, (current, reference)) in r2_outputs.iter().zip(r2_reference.iter()).enumerate() {
         assert_eq!(
             current["file_nm"], reference["file_nm"],
             "file_nm mismatch at entry {}",

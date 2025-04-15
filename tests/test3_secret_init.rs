@@ -126,8 +126,11 @@ fn test_initialize_process() {
                 assert_eq!(encoding, "utf8", "File 'd d' should be utf8 encoded");
             }
             "tests/test3_and_test4/e e" => {
-                // We don't check the hash value
-                assert_eq!(encoding, "base64", "File 'e e' should be base64 encoded");
+                if destination_cloud == "b2" || destination_cloud == "r2" {
+                    assert_eq!(encoding, "utf8", "File 'e e' should be utf8 encoded");
+                } else {
+                    assert_eq!(encoding, "base64", "File 'e e' should be base64 encoded");
+                }
             }
             _ => panic!("Unexpected file: {}", filenm),
         }
