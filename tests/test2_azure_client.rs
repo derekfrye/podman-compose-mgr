@@ -5,20 +5,16 @@ use podman_compose_mgr::secrets::validation::prepare_validation;
 use std::fs;
 use std::path::PathBuf;
 
-/// Integration test for Azure KeyVault connection using azure_identity v0.21
+/// Integration test for Azure Key Vault connection using azure_identity v0.21
 ///
 /// This test demonstrates how to test the Azure KeyVault integration without
-/// relying on environment variables or RestartSvcs mode. It verifies that
+/// relying on environment variables. It verifies that
 /// using v0.21 of the Azure SDK works correctly.
 ///
-/// It's marked as #[ignore] since it requires real credentials
 ///
 /// To run this test with real credentials:
 /// cargo test --test test2 -- --ignored
 ///
-/// Note: This test validates that the azure_identity v0.21 integration is
-/// working correctly, fixing the "No credential sources were available to
-/// be used for authentication" error that occurred with v0.22.
 #[test]
 fn test_azure_integration() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Create a simple test environment
