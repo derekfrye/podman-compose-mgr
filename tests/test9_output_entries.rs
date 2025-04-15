@@ -88,14 +88,13 @@ fn test_create_output_entries() {
         all_outputs.push(output);
     }
 
-    // Write current output to temp file for debugging
-    let mut temp_file = NamedTempFile::new().expect("Failed to create temporary file");
-
+    // Write current output to a file in the test9 directory
+    let output_path = "tests/test9/generated_output.json";
     let json_string =
         serde_json::to_string_pretty(&all_outputs).expect("Failed to serialize output to JSON");
-    temp_file
-        .write_all(json_string.as_bytes())
-        .expect("Failed to write to temporary file");
+    
+    std::fs::write(output_path, json_string)
+        .expect("Failed to write to output file");
 
     // Store outputs for each cloud type in separate collections
     let r2_outputs: Vec<Value> = all_outputs
