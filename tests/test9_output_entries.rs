@@ -54,7 +54,7 @@ fn test_create_output_entries() {
 
         // Create an UploadEntry using the proper constructor and then customize it
         let mut upload_entry = UploadEntry::new(file_path, "test_file_hash");
-        
+
         // Update fields with test values to ensure consistency
         upload_entry.hash_algo = "sha256".to_string();
         upload_entry.ins_ts = "2024-01-01T00:00:00Z".to_string();
@@ -62,7 +62,7 @@ fn test_create_output_entries() {
         upload_entry.file_size = file_size;
         upload_entry.encoded_size = file_size;
         upload_entry.destination_cloud = cloud_type.to_string();
-        
+
         // Set the bucket if it exists in the input
         if let Some(bucket) = entry["cloud_upload_bucket"].as_str() {
             upload_entry.cloud_upload_bucket = Some(bucket.to_string());
@@ -74,12 +74,12 @@ fn test_create_output_entries() {
             "b2" => {
                 // Start with R2 output (since they're similar) and modify for B2
                 let mut output = upload_entry.create_r2_output_entry(&r2_result);
-                
+
                 // Replace R2-specific fields with B2 equivalents
                 output["r2_hash"] = Value::String("test_b2_hash_value".to_string());
                 output["r2_name"] = Value::String("test_b2_name".to_string());
                 output["destination_cloud"] = Value::String("b2".to_string());
-                
+
                 output
             }
             _ => upload_entry.create_azure_output_entry(&azure_result),
@@ -103,13 +103,13 @@ fn test_create_output_entries() {
         .filter(|e| e["destination_cloud"].as_str().unwrap_or("") == "r2")
         .cloned()
         .collect();
-    
+
     let azure_outputs: Vec<Value> = all_outputs
         .iter()
         .filter(|e| e["destination_cloud"].as_str().unwrap_or("") == "azure_kv")
         .cloned()
         .collect();
-    
+
     let b2_outputs: Vec<Value> = all_outputs
         .iter()
         .filter(|e| e["destination_cloud"].as_str().unwrap_or("") == "b2")
@@ -210,25 +210,60 @@ fn test_create_output_entries() {
 
     // Verify Azure entries contain expected fields
     for (i, entry) in azure_outputs.iter().enumerate() {
-        assert!(entry.get("cloud_id").is_some(), "Azure entry {} missing cloud_id", i);
-        assert!(entry.get("cloud_cr_ts").is_some(), "Azure entry {} missing cloud_cr_ts", i);
-        assert!(entry.get("cloud_upd_ts").is_some(), "Azure entry {} missing cloud_upd_ts", i);
-        assert_eq!(entry["destination_cloud"].as_str().unwrap_or(""), "azure_kv", 
-            "Azure entry {} has incorrect destination_cloud", i);
+        assert!(
+            entry.get("cloud_id").is_some(),
+            "Azure entry {} missing cloud_id",
+            i
+        );
+        assert!(
+            entry.get("cloud_cr_ts").is_some(),
+            "Azure entry {} missing cloud_cr_ts",
+            i
+        );
+        assert!(
+            entry.get("cloud_upd_ts").is_some(),
+            "Azure entry {} missing cloud_upd_ts",
+            i
+        );
+        assert_eq!(
+            entry["destination_cloud"].as_str().unwrap_or(""),
+            "azure_kv",
+            "Azure entry {} has incorrect destination_cloud",
+            i
+        );
     }
 
     // Verify B2 entries contain expected fields (which are similar to R2 but with different naming)
     for (i, entry) in b2_outputs.iter().enumerate() {
-        assert!(entry.get("r2_hash").is_some(), "B2 entry {} missing r2_hash (hash)", i);
-        assert!(entry.get("r2_bucket_id").is_some(), "B2 entry {} missing r2_bucket_id (bucket)", i);
-        assert!(entry.get("r2_name").is_some(), "B2 entry {} missing r2_name (name)", i);
-        assert_eq!(entry["destination_cloud"].as_str().unwrap_or(""), "b2", 
-            "B2 entry {} has incorrect destination_cloud", i);
+        assert!(
+            entry.get("r2_hash").is_some(),
+            "B2 entry {} missing r2_hash (hash)",
+            i
+        );
+        assert!(
+            entry.get("r2_bucket_id").is_some(),
+            "B2 entry {} missing r2_bucket_id (bucket)",
+            i
+        );
+        assert!(
+            entry.get("r2_name").is_some(),
+            "B2 entry {} missing r2_name (name)",
+            i
+        );
+        assert_eq!(
+            entry["destination_cloud"].as_str().unwrap_or(""),
+            "b2",
+            "B2 entry {} has incorrect destination_cloud",
+            i
+        );
     }
 
     println!("All cloud entry types validated:");
     println!("  - {} R2 entries match reference", r2_outputs.len());
-    println!("  - {} Azure KeyVault entries validated", azure_outputs.len());
+    println!(
+        "  - {} Azure KeyVault entries validated",
+        azure_outputs.len()
+    );
     println!("  - {} B2 Storage entries validated", b2_outputs.len());
     println!(
         "Generated {} total entries across all cloud types",

@@ -49,6 +49,11 @@ impl Logger {
         self.log(msg, LogLevel::Debug);
     }
 
+    /// Log a warning message (always displayed, uses stderr)
+    pub fn warn(&self, msg: &str) {
+        eprintln!("warn: {}", msg);
+    }
+
     /// Get current verbosity level
     pub fn verbosity(&self) -> u8 {
         self.verbosity
@@ -101,4 +106,13 @@ pub fn debug(msg: &str, verbosity: u8) {
 /// * `msg` - The message to log
 pub fn always(msg: &str) {
     log(msg, 0, LogLevel::Normal)
+}
+
+/// Log a warning message to stderr, regardless of verbosity level
+///
+/// # Arguments
+///
+/// * `msg` - The message to log
+pub fn warn(msg: &str) {
+    eprintln!("warn: {}", msg);
 }

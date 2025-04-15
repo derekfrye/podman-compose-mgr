@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::Path;
 
@@ -79,14 +79,14 @@ pub fn process(args: &Args, _logger: &Logger) -> Result<()> {
         let ins_ts = now.to_rfc3339();
 
         // Check encoding and get file sizes (creates base64 encoded file if needed)
-        let (encoding, file_size, encoded_size) = check_encoding_and_size(file_nm)?;
+        let (_encoding, _file_size, encoded_size) = check_encoding_and_size(file_nm)?;
 
         // Get cloud provider from the entry, or use default logic
         let destination_cloud = match entry_json.get("destination_cloud").and_then(|v| v.as_str()) {
             Some(cloud) => cloud,
             None => {
                 // Fall back to size-based logic if not specified
-                if encoded_size > 24000 {
+                if encoded_size > 20000 {
                     "r2"
                 } else {
                     "azure_kv"
@@ -94,10 +94,22 @@ pub fn process(args: &Args, _logger: &Logger) -> Result<()> {
             }
         };
 
+        // For Azure KV, we need base64 encoding for binary files
+        // For R2/B2, we can upload binary files directly
+        let (final_encoding, final_file_size, final_encoded_size) =
+            if destination_cloud == "azure_kv" && !Path::new(file_nm).exists() {
+                // We need encoding for Azure KV binary files
+                check_encoding_and_size(file_nm)?
+            } else {
+                // For R2/B2, just use utf8 encoding and original file size
+                let file_size = fs::metadata(file_nm)?.len();
+                ("utf8".to_string(), file_size, file_size)
+            };
+
         // Log verbose message for base64 encoding
-        if encoding == "base64" && args.verbose > 0 {
+        if final_encoding == "base64" && args.verbose > 0 {
             println!(
-                "info: File {} contains non-UTF-8 data. Created base64 version ({}.base64). Will use base64 encoding when uploaded.",
+                "info: File {} contains non-UTF-8 data. Created base64 version ({}.base64). Will use base64 encoding when uploaded to Azure Key Vault.",
                 file_nm, file_nm
             );
         }
@@ -124,9 +136,9 @@ pub fn process(args: &Args, _logger: &Logger) -> Result<()> {
             "cloud_cr_ts": "",
             "cloud_upd_ts": "",
             "hostname": hostname,
-            "encoding": encoding,
-            "file_size": file_size,
-            "encoded_size": encoded_size,
+            "encoding": final_encoding,
+            "file_size": final_file_size,
+            "encoded_size": final_encoded_size,
             "destination_cloud": destination_cloud,
             "cloud_upload_bucket": cloud_upload_bucket
         });

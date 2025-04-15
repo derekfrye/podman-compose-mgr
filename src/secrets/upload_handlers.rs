@@ -9,19 +9,19 @@ use serde_json::Value;
 use std::fs;
 use std::path::Path;
 
+use crate::utils::log_utils::Logger;
+
 /// Handle R2 storage upload
 pub fn handle_r2_upload<R: ReadInteractiveInputHelper>(
     entry: &UploadEntry,
     r2_client: &dyn R2StorageClient,
     read_val_helper: &R,
-    verbose: i32,
+    logger: &Logger,
 ) -> Result<Option<Value>> {
-    if verbose > 0 {
-        println!(
-            "info: Uploading file {} to Cloudflare R2 storage",
-            entry.file_nm
-        );
-    }
+    logger.info(&format!(
+        "Uploading file {} to Cloudflare R2 storage",
+        entry.file_nm
+    ));
 
     // Convert to file details
     let file_details = entry.to_file_details();
@@ -71,9 +71,7 @@ pub fn handle_r2_upload<R: ReadInteractiveInputHelper>(
     let upload_confirmed = prompt_for_upload_with_helper(&upload_config, read_val_helper)?;
 
     if !upload_confirmed {
-        if verbose > 0 {
-            println!("info: Skipping upload of {}", entry.file_nm);
-        }
+        logger.info(&format!("Skipping upload of {}", entry.file_nm));
         return Ok(None);
     }
 
@@ -81,14 +79,12 @@ pub fn handle_r2_upload<R: ReadInteractiveInputHelper>(
     let r2_result = match r2_client.upload_file_with_details(&file_details) {
         Ok(result) => result,
         Err(e) => {
-            eprintln!("warn: Failed to upload to R2: {}", e);
+            logger.warn(&format!("Failed to upload to R2: {}", e));
             return Ok(None);
         }
     };
 
-    if verbose > 0 {
-        println!("info: Successfully uploaded to Cloudflare R2 storage");
-    }
+    logger.info("Successfully uploaded to Cloudflare R2 storage");
 
     // Create output entry with updated fields for R2
     Ok(Some(entry.create_r2_output_entry(&r2_result)))
@@ -99,14 +95,12 @@ pub fn handle_b2_upload<R: ReadInteractiveInputHelper>(
     entry: &UploadEntry,
     b2_client: &dyn B2StorageClient,
     read_val_helper: &R,
-    verbose: i32,
+    logger: &Logger,
 ) -> Result<Option<Value>> {
-    if verbose > 0 {
-        println!(
-            "info: File {} is too large for Azure KeyVault ({}). Uploading to Backblaze B2 instead.",
-            entry.file_nm, entry.encoded_size
-        );
-    }
+    logger.info(&format!(
+        "File {} is too large for Azure KeyVault ({}). Uploading to Backblaze B2 instead.",
+        entry.file_nm, entry.encoded_size
+    ));
 
     // Convert to file details
     let file_details = entry.to_file_details();
@@ -156,9 +150,7 @@ pub fn handle_b2_upload<R: ReadInteractiveInputHelper>(
     let upload_confirmed = prompt_for_upload_with_helper(&upload_config, read_val_helper)?;
 
     if !upload_confirmed {
-        if verbose > 0 {
-            println!("info: Skipping upload of {}", entry.file_nm);
-        }
+        logger.info(&format!("Skipping upload of {}", entry.file_nm));
         return Ok(None);
     }
 
@@ -166,14 +158,12 @@ pub fn handle_b2_upload<R: ReadInteractiveInputHelper>(
     let r2_result = match b2_client.upload_file_with_details(&file_details) {
         Ok(result) => result,
         Err(e) => {
-            eprintln!("warn: Failed to upload to R2 storage: {}", e);
+            logger.warn(&format!("Failed to upload to R2 storage: {}", e));
             return Ok(None);
         }
     };
 
-    if verbose > 0 {
-        println!("info: Successfully uploaded to R2 storage");
-    }
+    logger.info("Successfully uploaded to R2 storage");
 
     // Create output entry with updated fields for R2 (redirected from B2)
     Ok(Some(entry.create_r2_output_entry(&r2_result)))
@@ -184,13 +174,16 @@ pub fn handle_azure_upload<R: ReadInteractiveInputHelper>(
     entry: &UploadEntry,
     kv_client: &dyn AzureKeyVaultClient,
     read_val_helper: &R,
-    verbose: i32,
+    logger: &Logger,
 ) -> Result<Option<Value>> {
     // Check if the secret already exists in Azure KeyVault
     let (secret_exists, existing_created, existing_updated) =
         match kv_client.get_secret_value(&entry.hash) {
             Ok(secret) => {
-                println!("Secret {} already exists in Azure Key Vault", entry.hash);
+                logger.info(&format!(
+                    "Secret {} already exists in Azure Key Vault",
+                    entry.hash
+                ));
                 (
                     true,
                     Some(secret.created.to_string()),
@@ -211,25 +204,24 @@ pub fn handle_azure_upload<R: ReadInteractiveInputHelper>(
     if !Path::new(&file_to_use).exists() {
         // If base64 file doesn't exist, try to create it now
         if entry.encoding == "base64" {
-            if verbose > 0 {
-                println!(
-                    "info: Base64 file {} doesn't exist, creating now",
-                    file_to_use
-                );
-            }
+            logger.info(&format!(
+                "Base64 file {} doesn't exist, creating now",
+                file_to_use
+            ));
+
             // This will create the base64 file if it doesn't exist
             let _ = check_encoding_and_size(&entry.file_nm)?;
 
             // Check again if it exists
             if !Path::new(&file_to_use).exists() {
-                eprintln!(
+                logger.warn(&format!(
                     "Failed to create base64 file for {}, skipping",
                     entry.file_nm
-                );
+                ));
                 return Ok(None);
             }
         } else {
-            eprintln!("File {} does not exist, skipping", file_to_use);
+            logger.warn(&format!("File {} does not exist, skipping", file_to_use));
             return Ok(None);
         }
     }
@@ -247,9 +239,7 @@ pub fn handle_azure_upload<R: ReadInteractiveInputHelper>(
     let upload_confirmed = prompt_for_upload_with_helper(&upload_config, read_val_helper)?;
 
     if !upload_confirmed {
-        if verbose > 0 {
-            println!("info: Skipping upload of {}", entry.file_nm);
-        }
+        logger.info(&format!("Skipping upload of {}", entry.file_nm));
         return Ok(None);
     }
 
@@ -261,15 +251,14 @@ pub fn handle_azure_upload<R: ReadInteractiveInputHelper>(
     let response = kv_client
         .set_secret_value(&entry.hash, &content)
         .map_err(|e| {
+            logger.warn(&format!("Failed to upload secret {}: {}", entry.hash, e));
             Box::<dyn std::error::Error>::from(format!(
                 "Failed to upload secret {}: {}",
                 entry.hash, e
             ))
         })?;
 
-    if verbose > 0 {
-        println!("info: Successfully uploaded to Azure Key Vault storage");
-    }
+    logger.info("Successfully uploaded to Azure Key Vault storage");
 
     // Create output entry with updated fields for Azure
     Ok(Some(entry.create_azure_output_entry(&response)))
