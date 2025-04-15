@@ -171,13 +171,21 @@ pub fn process(args: &Args, _logger: &Logger) -> Result<()> {
                     let mut found_match = false;
 
                     for (idx, existing_entry) in existing_entries.iter_mut().enumerate() {
-                        if let (Some(existing_file_nm), Some(existing_hostname), Some(existing_cloud)) = (
+                        if let (
+                            Some(existing_file_nm),
+                            Some(existing_hostname),
+                            Some(existing_cloud),
+                        ) = (
                             existing_entry.get("file_nm").and_then(|v| v.as_str()),
                             existing_entry.get("hostname").and_then(|v| v.as_str()),
-                            existing_entry.get("destination_cloud").and_then(|v| v.as_str()),
+                            existing_entry
+                                .get("destination_cloud")
+                                .and_then(|v| v.as_str()),
                         ) {
-                            let existing_key =
-                                format!("{}-{}-{}", existing_file_nm, existing_hostname, existing_cloud);
+                            let existing_key = format!(
+                                "{}-{}-{}",
+                                existing_file_nm, existing_hostname, existing_cloud
+                            );
 
                             // If match found, update the existing entry
                             // The existing_key already includes the destination_cloud now

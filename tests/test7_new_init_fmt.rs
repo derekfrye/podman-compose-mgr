@@ -50,17 +50,27 @@ fn test_cloud_section_parsing() {
         .collect();
 
     // Create a list of expected entries for verification
-    let mut expected_entries_list: Vec<(&String, &serde_json::Value)> = expected_entries.iter().collect();
-    let mut processed_entries_list: Vec<(&String, &serde_json::Value)> = processed_entries.iter().collect();
-    
+    let mut expected_entries_list: Vec<(&String, &serde_json::Value)> =
+        expected_entries.iter().collect();
+    let mut processed_entries_list: Vec<(&String, &serde_json::Value)> =
+        processed_entries.iter().collect();
+
     // Sort both lists to ensure consistent comparison order
     expected_entries_list.sort_by_key(|(filename, entry)| {
-        format!("{}_{}", filename, entry["destination_cloud"].as_str().unwrap())
+        format!(
+            "{}_{}",
+            filename,
+            entry["destination_cloud"].as_str().unwrap()
+        )
     });
     processed_entries_list.sort_by_key(|(filename, entry)| {
-        format!("{}_{}", filename, entry["destination_cloud"].as_str().unwrap())
+        format!(
+            "{}_{}",
+            filename,
+            entry["destination_cloud"].as_str().unwrap()
+        )
     });
-    
+
     // Ensure we have the same number of entries
     assert_eq!(
         expected_entries_list.len(),
@@ -69,23 +79,23 @@ fn test_cloud_section_parsing() {
         expected_entries_list.len(),
         processed_entries_list.len()
     );
-    
+
     // Create a mapping of filename + cloud provider to entries for more accurate matching
     let mut expected_combined_entries = std::collections::HashMap::new();
     let mut processed_combined_entries = std::collections::HashMap::new();
-    
+
     for (filename, entry) in &expected_entries_list {
         let cloud = entry["destination_cloud"].as_str().unwrap();
         let key = format!("{}_{}", filename, cloud);
         expected_combined_entries.insert(key, entry);
     }
-    
+
     for (filename, entry) in &processed_entries_list {
         let cloud = entry["destination_cloud"].as_str().unwrap();
         let key = format!("{}_{}", filename, cloud);
         processed_combined_entries.insert(key, entry);
     }
-    
+
     // Verify that each entry in the expected output has a matching entry in the processed output
     for (key, expected_entry) in &expected_combined_entries {
         assert!(
@@ -93,23 +103,23 @@ fn test_cloud_section_parsing() {
             "Missing entry {} in processed output",
             key
         );
-        
+
         let filename = key.split('_').next().unwrap();
         let expected_cloud = expected_entry["destination_cloud"].as_str().unwrap();
         let processed_cloud = processed_combined_entries[key]["destination_cloud"]
             .as_str()
             .unwrap();
-            
+
         assert_eq!(
             processed_cloud, expected_cloud,
             "Mismatch for file {}: expected cloud {}, got {}",
             filename, expected_cloud, processed_cloud
         );
-        
+
         // Verify cloud_upload_bucket if present in expected entry
         if expected_entry.get("cloud_upload_bucket").is_some() {
             let expected_bucket = expected_entry["cloud_upload_bucket"].as_str().unwrap();
-            
+
             assert!(
                 processed_combined_entries[key]
                     .get("cloud_upload_bucket")
@@ -117,11 +127,11 @@ fn test_cloud_section_parsing() {
                 "Missing cloud_upload_bucket for entry {}",
                 key
             );
-            
+
             let processed_bucket = processed_combined_entries[key]["cloud_upload_bucket"]
                 .as_str()
                 .unwrap();
-                
+
             assert_eq!(
                 processed_bucket, expected_bucket,
                 "Mismatch for file {}: expected bucket {}, got {}",
@@ -177,10 +187,10 @@ fn test_cloud_section_parsing() {
     // Duplicate filename entries exist in the first part of the test due to
     // multiple cloud providers, but the initialize.rs process only keeps one entry per file
     // in its output.
-    
+
     // Create a hashmap to track if we've processed a given file path
     let mut processed_files = std::collections::HashSet::new();
-    
+
     // For each output entry, check that its cloud provider is one of the expected
     // cloud providers for that file
     for (filename, output_entry) in &output_entries {
@@ -188,15 +198,15 @@ fn test_cloud_section_parsing() {
         if processed_files.contains(filename) {
             continue;
         }
-        
+
         processed_files.insert(filename);
-        
+
         // Get the output cloud provider for this file
         let output_cloud = output_entry["destination_cloud"].as_str().unwrap();
-        
+
         // For files that had multiple cloud entries, we need to verify the cloud is one of the expected ones
         // For files with single cloud provider, we need to match exactly
-        
+
         // Count how many providers we expect for this file in the expected output
         let mut expected_providers: Vec<&str> = Vec::new();
         for (exp_filename, exp_entry) in &expected_entries {
@@ -204,7 +214,7 @@ fn test_cloud_section_parsing() {
                 expected_providers.push(exp_entry["destination_cloud"].as_str().unwrap());
             }
         }
-        
+
         // The test for "e e" is special - it can have either azure_kv or r2
         // In initialize.rs, when it encounters the same file twice, it just uses the first entry (azure_kv)
         if filename == "tests/test3_and_test4/e e" {
@@ -213,33 +223,37 @@ fn test_cloud_section_parsing() {
             assert!(
                 acceptable_providers.contains(&output_cloud),
                 "File {} has cloud provider {}, but expected one of {:?}",
-                filename, output_cloud, acceptable_providers
+                filename,
+                output_cloud,
+                acceptable_providers
             );
         } else {
             // For other files, must match one of the expected providers
             assert!(
                 expected_providers.contains(&output_cloud),
                 "File {} has cloud provider {}, but expected one of {:?}",
-                filename, output_cloud, expected_providers
+                filename,
+                output_cloud,
+                expected_providers
             );
         }
-        
+
         // If the output cloud is r2 or b2, check that the bucket is correct
         if output_cloud == "r2" || output_cloud == "b2" {
             // Find the matching expected entry with the same cloud provider
             let expected_entry = expected_entries
                 .iter()
                 .find(|(exp_filename, exp_entry)| {
-                    exp_filename.as_str() == filename.as_str() && 
-                    exp_entry["destination_cloud"].as_str().unwrap() == output_cloud
+                    exp_filename.as_str() == filename.as_str()
+                        && exp_entry["destination_cloud"].as_str().unwrap() == output_cloud
                 })
                 .map(|(_, entry)| entry);
-            
+
             if let Some(expected_entry) = expected_entry {
                 if expected_entry.get("cloud_upload_bucket").is_some() {
                     let expected_bucket = expected_entry["cloud_upload_bucket"].as_str().unwrap();
                     let output_bucket = output_entry["cloud_upload_bucket"].as_str().unwrap();
-                    
+
                     assert_eq!(
                         output_bucket, expected_bucket,
                         "Mismatch for file {}: expected bucket {}, got {}",
@@ -249,7 +263,7 @@ fn test_cloud_section_parsing() {
             }
         }
     }
-    
+
     // Make sure we have the expected number of output entries
     // Each unique filename should appear exactly once in the output
     let unique_filenames: std::collections::HashSet<&String> = expected_entries.keys().collect();

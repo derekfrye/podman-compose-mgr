@@ -570,7 +570,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
 fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>> {
     // Create a temporary file
     let temp_file = NamedTempFile::new()?;
-    
+
     // Test file paths
     let test_files = vec![
         "tests/test3_and_test4/a",
@@ -578,27 +578,27 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
         "tests/test3_and_test4/c",
         "tests/test3_and_test4/d d",
     ];
-    
+
     // Create entries using production UploadEntry
     let mut entries = Vec::new();
     let now = OffsetDateTime::now_utc();
-    
+
     for file_path in test_files {
         // Calculate hash using production function
         let hash = calculate_hash(file_path)?;
-        
+
         // Get file size
         let file_size = fs::metadata(file_path)?.len();
-        
+
         // Create UploadEntry using production constructor
         let mut entry = UploadEntry::new(file_path, &hash);
-        
+
         // Set file size using production method
         entry = entry.with_size_info(file_size, Some(file_size));
-        
+
         // Set destination to Azure KV
         entry.destination_cloud = "azure_kv".to_string();
-        
+
         // Create mock SetSecretResponse that would come from Azure KeyVault
         let mock_response = SetSecretResponse {
             created: now,
@@ -607,15 +607,15 @@ fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>>
             id: format!("https://test-vault.vault.azure.net/secrets/{}", entry.hash),
             value: "mock-secret-value".to_string(),
         };
-        
+
         // Use the actual production method to create the entry
         let entry_json = entry.create_azure_output_entry(&mock_response);
-        
+
         entries.push(entry_json);
     }
-    
+
     // Write JSON to the temporary file
     std::fs::write(temp_file.path(), serde_json::to_string_pretty(&entries)?)?;
-    
+
     Ok(temp_file)
 }
