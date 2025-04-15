@@ -2,8 +2,7 @@ use podman_compose_mgr::secrets::models::{SetSecretResponse, UploadEntry};
 use podman_compose_mgr::secrets::r2_storage::R2UploadResult;
 use serde_json::Value;
 use std::fs::{self, File};
-use std::io::{Read, Write};
-use tempfile::NamedTempFile;
+use std::io::Read;
 use time::OffsetDateTime;
 
 // const OUTPUT_PATH: &str = "tests/test9/output.json";
@@ -62,6 +61,11 @@ fn test_create_output_entries() {
         upload_entry.file_size = file_size;
         upload_entry.encoded_size = file_size;
         upload_entry.destination_cloud = cloud_type.to_string();
+        
+        // Special handling for "e e" file - if it's going to Azure, we need to use base64 encoding
+        if file_path.ends_with("e e") && cloud_type == "azure_kv" {
+            upload_entry.encoding = "base64".to_string();
+        }
 
         // Set the bucket if it exists in the input
         if let Some(bucket) = entry["cloud_upload_bucket"].as_str() {
