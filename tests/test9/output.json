@@ -1,0 +1,19 @@
+{
+  "file_nm": "tests/test2_personal_testing_data/r2_endpoint.txt",
+  "hash": "test_file_hash",
+  "hash_algo": "sha256",
+  "ins_ts": "2024-01-01T00:00:00Z",
+  "cloud_id": "test_cloud_id",
+  "cloud_cr_ts": "",
+  "cloud_upd_ts": "",
+  "hostname": "test-hostname",
+  "encoding": "utf8",
+  "file_size": 1024,
+  "encoded_size": 1024,
+  "destination_cloud": "r2",
+  "cloud_upload_bucket": "secrets-bucket",
+  "cloud_prefix": "",
+  "r2_hash": "test_r2_hash_value",
+  "r2_bucket_id": "test_bucket_id",
+  "r2_name": "test_r2_name"
+}
