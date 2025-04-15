@@ -6,6 +6,8 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 use tempfile::NamedTempFile;
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine as _; // For the decode method
 
 /// Decode base64 content to a NamedTempFile
 ///
@@ -39,7 +41,7 @@ pub fn decode_base64_to_tempfile(base64_content: &[u8]) -> Result<NamedTempFile>
 
         // When buffer gets large enough, decode and write
         if base64_buffer.len() >= 8192 {
-            let decoded = base64::decode(&base64_buffer).map_err(|e| {
+            let decoded = STANDARD.decode(&base64_buffer).map_err(|e| {
                 Box::<dyn std::error::Error>::from(format!("Error decoding base64 content: {}", e))
             })?;
 
@@ -56,7 +58,7 @@ pub fn decode_base64_to_tempfile(base64_content: &[u8]) -> Result<NamedTempFile>
 
     // Decode and write any remaining data
     if !base64_buffer.is_empty() {
-        let decoded = base64::decode(&base64_buffer).map_err(|e| {
+        let decoded = STANDARD.decode(&base64_buffer).map_err(|e| {
             Box::<dyn std::error::Error>::from(format!("Error decoding base64 content: {}", e))
         })?;
 
