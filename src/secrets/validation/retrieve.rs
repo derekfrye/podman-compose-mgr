@@ -20,7 +20,7 @@ use tempfile::NamedTempFile;
 /// 3. Prompts the user to view differences or details
 ///
 /// Returns the JSON output of the validation or None if the entry was skipped
-pub fn process_retrieve_entry(
+pub fn retrieve_process_an_entry(
     entry: &Value,
     azure_client: &dyn AzureKeyVaultClient,
     r2_client: &R2Client,

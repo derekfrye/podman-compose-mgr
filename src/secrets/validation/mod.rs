@@ -2,7 +2,7 @@ pub mod cloud_storage;
 pub mod file_ops;
 pub mod init;
 pub mod output;
-pub mod process;
+pub mod retrieve;
 pub mod ui;
 
 // test_helpers moved to crate::testing::validation_helpers
@@ -14,7 +14,7 @@ use crate::utils::log_utils::Logger;
 
 // Re-export main functions
 pub use self::init::prepare_validation;
-pub use self::process::process_retrieve_entry;
+pub use self::retrieve::retrieve_process_an_entry;
 
 /// Validates secrets stored in Azure KeyVault or cloud storage against local files
 ///
@@ -70,7 +70,7 @@ pub fn validation_retrieve(args: &Args, logger: &Logger) -> Result<()> {
         }
 
         // Process this entry
-        match process_retrieve_entry(&entry, azure_client.as_ref(), &r2_client, args, logger) {
+        match retrieve_process_an_entry(&entry, azure_client.as_ref(), &r2_client, args, logger) {
             Ok(Some(output)) => json_outputs.push(output),
             Ok(None) => {} // No output to add (skipped or error)
             Err(e) => eprintln!("Error processing entry: {}", e),
