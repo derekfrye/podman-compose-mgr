@@ -4,10 +4,10 @@ use thiserror::Error;
 pub enum BuildfileError {
     #[error("Regex error: {0}")]
     RegexError(#[from] regex::Error),
-
+    
     #[error("Path contains invalid UTF-8: {0}")]
     InvalidPath(String),
-
+    
     #[error("Rebuild error: {0}")]
     RebuildError(String),
 

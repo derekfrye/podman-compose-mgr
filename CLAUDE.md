@@ -6,13 +6,13 @@
 - Check: `cargo check`
 - Lint: `cargo clippy -- -D warnings`
 - Format: `cargo fmt`
-- Test all: `cargo t` (limited to 2 parallel tests to prevent OOM)
-- Test single: `cargo test --test test1` (Replace "test1" with specific test name)
-- Test with output: `cargo test -j3 -- --nocapture --test-threads=3`
-- Sequential tests: `cargo test -j3 -- --test-threads=3` (use if memory issues occur)
+- Test all: `cargo test` (limited to 2 parallel tests to prevent OOM)
+- Test single: `cargo test test1` (Replace "test1" with specific test name)
+- Test with output: `cargo test -- --nocapture`
+- Sequential tests: `cargo test -- --test-threads=1` (use if memory issues occur)
 
 ## Code Style Guidelines
-- Use Rust 2024 edition
+- Use Rust 2021 edition
 - Follow standard Rust naming conventions (snake_case for functions/variables, CamelCase for types)
 - Use meaningful error types and proper error handling with Result
 - Group imports by std lib, external crates, then internal modules
@@ -26,6 +26,7 @@
 ## Memory Considerations
 - Tests are limited to 2 parallel executions to prevent OOM issues
 - Mock clients are used for cloud storage when credentials aren't needed 
+- If memory issues occur during testing, use `--test-threads=1` flag
 - Be cautious with large file operations, especially in CI environments
 
 ## Verbosity Levels

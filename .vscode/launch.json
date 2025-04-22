@@ -33,44 +33,6 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Secret Retrieve",
-      "cargo": {
-        "args": ["build", "--bin=podman-compose-mgr", "--package=podman-compose-mgr"],
-        "filter": {
-          "name": "podman-compose-mgr",
-          "kind": "bin"
-        }
-      },
-      "args": [
-        "--mode",
-        "secret-retrieve",
-        "--verbose",
-        // "--verbose", // use if you want the full command and params printed to stdout
-        "--secrets-client-id",
-        "${workspaceFolder}/tests/test2_personal_testing_data/client_id.txt",
-        "--secrets-client-secret-path",
-        "${workspaceFolder}/tests/test2_personal_testing_data/secret.txt",
-        "--secrets-tenant-id",
-        // from azure portal -> entra id -> tenant. Not the same as subscription id
-        "${workspaceFolder}/tests/test2_personal_testing_data/tenant_id.txt",
-        "--secrets-vault-name",
-        "${workspaceFolder}/tests/test2_personal_testing_data/vault_name.txt",
-        "--output-json",
-        "${env:HOME}/docker/podman-compose-mgr/output-validate.json",
-        "--input-json",
-        "${env:HOME}/docker/podman-compose-mgr/output.json",
-        "--s3-endpoint-filepath",
-        "${workspaceFolder}/tests/test2_personal_testing_data/r2_endpoint.txt",
-        "--s3-secret-key-filepath",
-        "${workspaceFolder}/tests/test2_personal_testing_data/r2_secret.txt",
-        "--s3-account-id-filepath",
-        "${workspaceFolder}/tests/test2_personal_testing_data/r2_account_id.txt"
-      ],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
       "name": "Secret Upload",
       "cargo": {
         "args": ["build", "--bin=podman-compose-mgr", "--package=podman-compose-mgr"],
@@ -97,11 +59,15 @@
         "${env:HOME}/docker/podman-compose-mgr/output.json",
         "--input-json",
         "${env:HOME}/docker/podman-compose-mgr/input.json",
-        "--s3-endpoint-filepath",
-        "${workspaceFolder}/tests/test2_personal_testing_data/r2_endpoint.txt",
-        "--s3-secret-key-filepath",
-        "${workspaceFolder}/tests/test2_personal_testing_data/r2_secret.txt",
-        "--s3-account-id-filepath",
+        "--b2-account-id-filepath",
+        "${workspaceFolder}/tests/test2_personal_testing_data/b2_account.txt",
+        "--b2-account-key-filepath",
+        "${workspaceFolder}/tests/test2_personal_testing_data/b2_key.txt",
+        "--r2-access-key-id-filepath",
+        "${workspaceFolder}/tests/test2_personal_testing_data/r2_key_id.txt",
+        "--r2-access-key-filepath",
+        "${workspaceFolder}/tests/test2_personal_testing_data/r2_access_key.txt",
+        "--r2-account-id-filepath",
         "${workspaceFolder}/tests/test2_personal_testing_data/r2_account_id.txt"
       ],
       "cwd": "${workspaceFolder}"
@@ -120,7 +86,6 @@
       "args": [
         "--mode", 
         "secret-initialize",
-        "--verbose",
         "--verbose",
         "--secrets-init-filepath",
         "${env:HOME}/docker/podman-compose-mgr/secrets_for_input_json",

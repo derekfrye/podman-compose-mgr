@@ -1,5 +1,5 @@
 // Public modules
-pub mod initialization;
+mod initialization;
 mod types;
 mod validators;
 

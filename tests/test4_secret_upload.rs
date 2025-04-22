@@ -1,19 +1,17 @@
 use std::fs;
+use std::path::PathBuf;
 
 use mockall::Sequence;
 use mockall::predicate::*;
 use podman_compose_mgr::args::{Args, Mode};
-use podman_compose_mgr::interfaces::{
-    MockAzureKeyVaultClient, MockB2StorageClient, MockR2StorageClient,
-    MockReadInteractiveInputHelper,
-};
+use podman_compose_mgr::interfaces::{MockAzureKeyVaultClient, MockB2StorageClient, MockR2StorageClient, MockReadInteractiveInputHelper};
 use podman_compose_mgr::read_interactive_input::ReadValResult;
 use podman_compose_mgr::secrets::file_details::{FileDetails, format_file_size, get_file_details};
-use podman_compose_mgr::secrets::models::{SetSecretResponse, UploadEntry};
+use podman_compose_mgr::secrets::models::SetSecretResponse;
 use podman_compose_mgr::secrets::upload;
-use podman_compose_mgr::secrets::upload_utils::test_utils;
+use podman_compose_mgr::secrets::upload_utils::{create_secret_name, test_utils};
 use podman_compose_mgr::secrets::utils::calculate_hash;
-use podman_compose_mgr::utils::log_utils::Logger;
+use serde_json::json;
 use std::sync::{Arc, Mutex};
 use tempfile::NamedTempFile;
 use time::OffsetDateTime;
@@ -38,6 +36,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
     // Create Args for the process function
     let args = Args {
         mode: Mode::SecretUpload,
+        path: PathBuf::from("."),
         input_json: Some(input_path.clone()),
         output_json: Some(output_path.clone()),
         secrets_client_id: Some("test-client-id".to_string()),
@@ -45,10 +44,21 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         secrets_tenant_id: Some("test-tenant-id".to_string()),
         secrets_vault_name: Some("test-vault".to_string()),
         verbose: 1,
-        s3_account_id_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/a")),
-        s3_secret_key_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/b")),
-        s3_endpoint_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/c")),
-        ..Default::default()
+        exclude_path_patterns: vec![],
+        include_path_patterns: vec![],
+        build_args: vec![],
+        secrets_init_filepath: None,
+        b2_key_id: Some("test-b2-key-id".to_string()),
+        b2_application_key: Some("test-b2-application-key".to_string()),
+        b2_bucket_name: Some("test-b2-bucket".to_string()),
+        b2_account_id_filepath: None,
+        b2_account_key_filepath: None,
+        r2_account_id: None,
+        r2_account_id_filepath: None,
+        r2_access_key_id: None,
+        r2_access_key: None,
+        r2_access_key_id_filepath: None,
+        r2_access_key_filepath: None,
     };
 
     // List of file paths in our test that will be processed
@@ -85,7 +95,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         for file_path in &test_files {
             // Calculate the hash first, then create secret name from hash
             let hash = calculate_hash(file_path).unwrap();
-            let encoded_name = hash.clone();
+            let encoded_name = create_secret_name(&hash);
 
             // First expect a check if the secret exists - return an error
             let encoded_name_clone = encoded_name.clone();
@@ -165,20 +175,16 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // Create a mock B2 client since we need it for the test
         let b2_client = MockB2StorageClient::new();
         // We don't expect it to be called for Azure KV uploads
-
+        
         // Run the process function with our mock helpers - using the actual production code
         let r2_client = MockR2StorageClient::new();
-
-        // Create logger
-        let logger = Logger::new(args.verbose);
-
+        
         let result = upload::process_with_injected_dependencies_and_clients(
             &args,
             &read_val_helper,
             Box::new(azure_client),
             Box::new(b2_client),
             Box::new(r2_client),
-            &logger,
         );
 
         // Check that the test succeeded - all files should be uploaded
@@ -195,13 +201,14 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // Set up expectations: for each file, we only expect the get_secret_value
         // call since the user will decline the upload
         for file_path in &test_files {
-            // Calculate the hash
+            // Calculate the hash first, then create secret name from hash
             let hash = calculate_hash(file_path).unwrap();
+            let encoded_name = create_secret_name(&hash);
 
             // Expect a check if the secret exists
             azure_client
                 .expect_get_secret_value()
-                .with(eq(hash.clone()))
+                .with(eq(encoded_name.clone()))
                 .times(1)
                 .returning(|name| {
                     Err(Box::new(std::io::Error::new(
@@ -268,20 +275,16 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // Create a mock B2 client since we need it for the test
         let b2_client = MockB2StorageClient::new();
         // We don't expect it to be called for Azure KV uploads
-
+        
         // Run the process function with our mock helpers - using the actual production code
         let r2_client = MockR2StorageClient::new();
-
-        // Create logger
-        let logger = Logger::new(args.verbose);
-
+        
         let result = upload::process_with_injected_dependencies_and_clients(
             &args,
             &read_val_helper,
             Box::new(azure_client),
             Box::new(b2_client),
             Box::new(r2_client),
-            &logger,
         );
 
         // Check that the test succeeded - no files should be uploaded
@@ -301,17 +304,19 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         let expected_file_details: Vec<(String, FileDetails)> = test_files
             .iter()
             .map(|file_path| {
-                // Calculate the hash
+                // Calculate the encoded name
+                // Calculate the hash first, then create secret name from hash
                 let hash = calculate_hash(file_path).unwrap();
+                let encoded_name = create_secret_name(&hash);
 
                 // Create a hard-coded expected FileDetails with known values
                 // Note: We can't predict the exact last_modified time in the test,
-                // so we'll check that field separately
-                let mut details = get_file_details(file_path).unwrap();
+                // so we'll check that field separately, and size_kib is calculated inside get_file_details
+                let mut details = get_file_details(file_path, &encoded_name).unwrap();
                 details.last_modified = "WILL BE VALIDATED SEPARATELY".to_string(); // Will be checked differently
                 details.encoding = "utf8".to_string(); // Assume all test files are UTF-8 for testing purposes
 
-                (hash.clone(), details)
+                (encoded_name, details)
             })
             .collect();
 
@@ -398,7 +403,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                 // Get the actual terminal width using the command helper
                 // (Use None to get the actual terminal width)
                 let actual_width =
-                    podman_compose_mgr::utils::podman_utils::get_terminal_display_width(None);
+                    podman_compose_mgr::helpers::cmd_helper_fns::get_terminal_display_width(None);
 
                 let _ = podman_compose_mgr::read_interactive_input::do_prompt_formatting(
                     &mut grammars_copy,
@@ -454,11 +459,12 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     println!("User selects 'd' to see details for file {}", current_file);
 
                     // Get the encoded name
-                    // Calculate the hash
-                    let _hash = calculate_hash(current_file).unwrap();
+                    // Calculate the hash first, then create secret name from hash
+                    let hash = calculate_hash(current_file).unwrap();
+                    let encoded_name = create_secret_name(&hash);
 
                     // Get file details
-                    let details = get_file_details(current_file).unwrap();
+                    let details = get_file_details(current_file, &encoded_name).unwrap();
 
                     // Capture the details for later verification
                     captured_details_clone.lock().unwrap().push(details.clone());
@@ -467,7 +473,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     println!("File path: {}", details.file_path);
                     println!("Size: {}", format_file_size(details.file_size));
                     println!("Last modified: {}", details.last_modified);
-                    println!("Hash: {}", details.hash);
+                    println!("Secret name: {}", details.secret_name);
                     println!("Encoding: {}", details.encoding);
 
                     // Return "d" for details
@@ -494,20 +500,16 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
         // Create a mock B2 client since we need it for the test
         let b2_client = MockB2StorageClient::new();
         // We don't expect it to be called for Azure KV uploads
-
+        
         // Run the process function with our mock helpers
         let r2_client = MockR2StorageClient::new();
-
-        // Create logger
-        let logger = Logger::new(args.verbose);
-
+        
         let result = upload::process_with_injected_dependencies_and_clients(
             &args,
             &read_val_helper,
             Box::new(azure_client),
             Box::new(b2_client),
             Box::new(r2_client),
-            &logger,
         );
 
         // Check that the test succeeded
@@ -539,10 +541,10 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                 details.file_path, details.file_size, expected_details.file_size
             );
 
-            // Verify hash
+            // Verify secret name
             assert_eq!(
-                details.hash, expected_details.hash,
-                "Hash mismatch for file {}",
+                details.secret_name, expected_details.secret_name,
+                "Secret name mismatch for file {}",
                 details.file_path
             );
 
@@ -566,56 +568,71 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
     Ok(())
 }
 
-/// Create a test input JSON file using production UploadEntry struct and create_azure_output_entry method
+/// Create a test input JSON file with the test files
 fn create_test_input_json() -> Result<NamedTempFile, Box<dyn std::error::Error>> {
     // Create a temporary file
     let temp_file = NamedTempFile::new()?;
 
-    // Test file paths
-    let test_files = vec![
-        "tests/test3_and_test4/a",
-        "tests/test3_and_test4/b",
-        "tests/test3_and_test4/c",
-        "tests/test3_and_test4/d d",
-    ];
+    // Create test data with calculated hashes
+    let a_hash = calculate_hash("tests/test3_and_test4/a")?;
+    let b_hash = calculate_hash("tests/test3_and_test4/b")?;
+    let c_hash = calculate_hash("tests/test3_and_test4/c")?;
+    let d_hash = calculate_hash("tests/test3_and_test4/d d")?;
 
-    // Create entries using production UploadEntry
-    let mut entries = Vec::new();
-    let now = OffsetDateTime::now_utc();
+    // Create JSON content with updated field names and hash values
+    let json_content = json!([
+        {
+            "file_nm": "tests/test3_and_test4/a",
+            "hash": a_hash,
+            "hash_algo": "sha1",
+            "ins_ts": "2023-01-01T00:00:00Z",
+            "hostname": hostname::get()?.to_string_lossy().to_string(),
+            "encoding": "utf8",
+            "file_size": fs::metadata("tests/test3_and_test4/a")?.len(),
+            "encoded_size": fs::metadata("tests/test3_and_test4/a")?.len(),
+            "destination_cloud": "azure_kv",
+            "secret_name": format!("file-{}", a_hash)
+        },
+        {
+            "file_nm": "tests/test3_and_test4/b",
+            "hash": b_hash,
+            "hash_algo": "sha1",
+            "ins_ts": "2023-01-01T00:00:00Z",
+            "hostname": hostname::get()?.to_string_lossy().to_string(),
+            "encoding": "utf8",
+            "file_size": fs::metadata("tests/test3_and_test4/b")?.len(),
+            "encoded_size": fs::metadata("tests/test3_and_test4/b")?.len(),
+            "destination_cloud": "azure_kv",
+            "secret_name": format!("file-{}", b_hash)
+        },
+        {
+            "file_nm": "tests/test3_and_test4/c",
+            "hash": c_hash,
+            "hash_algo": "sha1",
+            "ins_ts": "2023-01-01T00:00:00Z",
+            "hostname": hostname::get()?.to_string_lossy().to_string(),
+            "encoding": "utf8",
+            "file_size": fs::metadata("tests/test3_and_test4/c")?.len(),
+            "encoded_size": fs::metadata("tests/test3_and_test4/c")?.len(),
+            "destination_cloud": "azure_kv",
+            "secret_name": format!("file-{}", c_hash)
+        },
+        {
+            "file_nm": "tests/test3_and_test4/d d",
+            "hash": d_hash,
+            "hash_algo": "sha1",
+            "ins_ts": "2023-01-01T00:00:00Z",
+            "hostname": hostname::get()?.to_string_lossy().to_string(),
+            "encoding": "utf8",
+            "file_size": fs::metadata("tests/test3_and_test4/d d")?.len(),
+            "encoded_size": fs::metadata("tests/test3_and_test4/d d")?.len(),
+            "destination_cloud": "azure_kv",
+            "secret_name": format!("file-{}", d_hash)
+        }
+    ]);
 
-    for file_path in test_files {
-        // Calculate hash using production function
-        let hash = calculate_hash(file_path)?;
-
-        // Get file size
-        let file_size = fs::metadata(file_path)?.len();
-
-        // Create UploadEntry using production constructor
-        let mut entry = UploadEntry::new(file_path, &hash);
-
-        // Set file size using production method
-        entry = entry.with_size_info(file_size, Some(file_size));
-
-        // Set destination to Azure KV
-        entry.destination_cloud = "azure_kv".to_string();
-
-        // Create mock SetSecretResponse that would come from Azure KeyVault
-        let mock_response = SetSecretResponse {
-            created: now,
-            updated: now,
-            name: entry.hash.clone(),
-            id: format!("https://test-vault.vault.azure.net/secrets/{}", entry.hash),
-            value: "mock-secret-value".to_string(),
-        };
-
-        // Use the actual production method to create the entry
-        let entry_json = entry.create_azure_output_entry(&mock_response);
-
-        entries.push(entry_json);
-    }
-
-    // Write JSON to the temporary file
-    std::fs::write(temp_file.path(), serde_json::to_string_pretty(&entries)?)?;
+    // Write to the temporary file
+    std::fs::write(temp_file.path(), json_content.to_string())?;
 
     Ok(temp_file)
 }

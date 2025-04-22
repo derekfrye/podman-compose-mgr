@@ -1,7 +1,6 @@
 use crate::secrets::error::Result;
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine as _; // For the encode method
-use chrono::{DateTime, Local, NaiveDateTime, ParseError, TimeZone, Utc};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+use chrono::{DateTime, Local, TimeZone, Utc, NaiveDateTime, ParseError};
 use std::fs::{File, metadata};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::Path;
@@ -13,6 +12,7 @@ pub struct FileDetails {
     pub file_size: u64,    // Original file size
     pub encoded_size: u64, // Size after encoding (if base64)
     pub last_modified: String,
+    pub secret_name: String,
     pub encoding: String, // "utf8" or "base64"
     pub cloud_created: Option<String>,
     pub cloud_updated: Option<String>,
@@ -20,7 +20,6 @@ pub struct FileDetails {
     pub hash: String,
     pub hash_algo: String,
     pub cloud_upload_bucket: Option<String>, // Bucket name for B2 storage
-    pub cloud_prefix: Option<String>,        // Storage prefix (folder path)
 }
 
 /// Check if file is UTF-8 encoded and return encoding info
@@ -106,7 +105,7 @@ pub fn check_encoding_and_size(filepath: &str) -> Result<(String, u64, u64)> {
                 break;
             }
 
-            let encoded = STANDARD.encode(&buffer[..bytes_read]);
+            let encoded = BASE64_STANDARD.encode(&buffer[..bytes_read]);
             writer.write_all(encoded.as_bytes()).map_err(|e| {
                 Box::<dyn std::error::Error>::from(format!("Failed to write to base64 file: {}", e))
             })?;
@@ -138,7 +137,7 @@ pub fn check_encoding_and_size(filepath: &str) -> Result<(String, u64, u64)> {
 }
 
 /// Get detailed information about the file
-pub fn get_file_details(file_path: &str) -> Result<FileDetails> {
+pub fn get_file_details(file_path: &str, secret_name: &str) -> Result<FileDetails> {
     // Get file metadata for size and last modified time
     let metadata = metadata(file_path).map_err(|e| {
         Box::<dyn std::error::Error>::from(format!("Failed to get metadata: {}", e))
@@ -171,6 +170,7 @@ pub fn get_file_details(file_path: &str) -> Result<FileDetails> {
         file_size,
         encoded_size,
         last_modified: formatted_time,
+        secret_name: secret_name.to_string(),
         encoding,
         cloud_created: None,
         cloud_updated: None,
@@ -178,7 +178,6 @@ pub fn get_file_details(file_path: &str) -> Result<FileDetails> {
         hash,
         hash_algo: "sha1".to_string(),
         cloud_upload_bucket: None, // Will be set during upload
-        cloud_prefix: None,        // Will be set during upload
     })
 }
 
@@ -222,6 +221,7 @@ pub fn display_file_details(details: &FileDetails) {
     }
 
     println!("Last modified: {}", details.last_modified);
+    println!("Secret name: {}", details.secret_name);
     println!("Hash: {} ({})", details.hash, details.hash_algo);
 
     // Display encoding information
@@ -271,7 +271,7 @@ fn parse_and_format_cloud_date(date_str: &str) -> std::result::Result<String, Pa
             }
         }
     };
-
+    
     // Format the datetime in the desired 12-hour format with am/pm
     Ok(datetime.format("%m/%d/%y %I:%M%p").to_string())
 }

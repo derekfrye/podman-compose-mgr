@@ -1,7 +1,8 @@
 use crate::read_interactive_input::{GrammarFragment, ReadValResult};
-use crate::secrets::file_details::FileDetails;
 use crate::secrets::models::SetSecretResponse;
+use crate::secrets::b2_storage::B2UploadResult;
 use crate::secrets::r2_storage::R2UploadResult;
+use crate::secrets::file_details::FileDetails;
 use mockall::automock;
 
 // Define a type alias for the file existence check result
@@ -47,15 +48,15 @@ impl CommandHelper for DefaultCommandHelper {
     }
 
     fn pull_base_image(&self, dockerfile: &Path) -> Result<(), Box<dyn std::error::Error>> {
-        crate::utils::podman_utils::pull_base_image(dockerfile)
+        crate::helpers::cmd_helper_fns::pull_base_image(dockerfile)
     }
 
     fn get_terminal_display_width(&self, specify_size: Option<usize>) -> usize {
-        crate::utils::podman_utils::get_terminal_display_width(specify_size)
+        crate::helpers::cmd_helper_fns::get_terminal_display_width(specify_size)
     }
 
     fn file_exists_and_readable(&self, file: &std::path::Path) -> bool {
-        crate::utils::podman_utils::file_exists_and_readable(file)
+        crate::helpers::cmd_helper_fns::file_exists_and_readable(file)
     }
 }
 
@@ -101,11 +102,15 @@ pub trait AzureKeyVaultClient {
 pub struct DefaultAzureKeyVaultClient {
     // The actual KeyvaultClient from the Azure SDK
     client: azure_security_keyvault::KeyvaultClient,
+    // Shared tokio runtime for all operations
+    runtime: tokio::runtime::Runtime,
 }
 
 impl DefaultAzureKeyVaultClient {
     pub fn new(client: azure_security_keyvault::KeyvaultClient) -> Self {
-        Self { client }
+        let runtime = tokio::runtime::Runtime::new()
+            .expect("Failed to create tokio runtime for Azure KeyVault client");
+        Self { client, runtime }
     }
 }
 
@@ -115,11 +120,8 @@ impl AzureKeyVaultClient for DefaultAzureKeyVaultClient {
         secret_name: &str,
         secret_value: &str,
     ) -> Result<SetSecretResponse, Box<dyn std::error::Error>> {
-        // Create a runtime for the async functions
-        let rt = tokio::runtime::Runtime::new()?;
-
-        // Call the actual implementation
-        rt.block_on(crate::secrets::azure::set_secret_value(
+        // Reuse the shared runtime
+        self.runtime.block_on(crate::secrets::azure::set_secret_value(
             secret_name,
             &self.client,
             secret_value,
@@ -130,89 +132,111 @@ impl AzureKeyVaultClient for DefaultAzureKeyVaultClient {
         &self,
         secret_name: &str,
     ) -> Result<SetSecretResponse, Box<dyn std::error::Error>> {
-        // Create a runtime for the async functions
-        let rt = tokio::runtime::Runtime::new()?;
-
-        // Call the actual implementation
-        rt.block_on(crate::secrets::azure::get_secret_value(
+        // Reuse the shared runtime
+        self.runtime.block_on(crate::secrets::azure::get_secret_value(
             secret_name,
             &self.client,
         ))
     }
 }
 
-/// Mock B2StorageClient with the same interface as R2StorageClient for backward compatibility in tests
+/// Interface for B2 storage operations to facilitate testing
 #[automock]
 pub trait B2StorageClient {
     /// Creates a client from Args
-    fn from_args(args: &crate::args::Args) -> Result<Self, Box<dyn std::error::Error>>
-    where
-        Self: Sized;
-
-    /// Uploads a file to B2 storage (now redirects to R2)
-    fn upload_file_with_details(
-        &self,
-        file_details: &FileDetails,
-    ) -> Result<R2UploadResult, Box<dyn std::error::Error>>;
-
-    /// Checks if a file exists (now redirects to R2)
-    fn check_file_exists_with_details(
-        &self,
-        hash: &str,
-        bucket_name: Option<String>,
-    ) -> Result<FileExistenceCheckResult, Box<dyn std::error::Error>>;
-
-    /// Get file metadata from B2 storage (now redirects to R2)
-    fn get_file_metadata(
-        &self,
-        file_key: &str,
-    ) -> Result<Option<std::collections::HashMap<String, String>>, Box<dyn std::error::Error>>;
+    fn from_args(args: &crate::args::Args) -> Result<Self, Box<dyn std::error::Error>> where Self: Sized;
+    
+    /// Uploads a file to B2 storage
+    fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<B2UploadResult, Box<dyn std::error::Error>>;
+    
+    /// Checks if a file exists in B2 storage
+    fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<FileExistenceCheckResult, Box<dyn std::error::Error>>;
 }
 
-/// B2 storage is being removed, this now just redirects to R2
+/// Default implementation that uses the actual B2 client
 pub struct DefaultB2StorageClient {
-    // Actually using R2 client under the hood
-    r2_client: DefaultR2StorageClient,
+    // The real B2Client 
+    client: crate::secrets::b2_storage::B2Client,
+    // Flag to track if this is a real client
+    is_real_client: bool,
 }
 
 impl DefaultB2StorageClient {
+    pub fn new(client: crate::secrets::b2_storage::B2Client) -> Self {
+        Self { 
+            client,
+            is_real_client: true 
+        }
+    }
+    
+    /// Create a mock client for when B2 credentials aren't available
+    /// but we want to continue without failing
     pub fn new_dummy() -> Self {
-        Self {
-            r2_client: DefaultR2StorageClient::new_dummy(),
+        // Load a mock config that won't actually be used for real operations
+        let mock_config = crate::secrets::b2_storage::B2Config {
+            key_id: "dummy".to_string(),
+            application_key: "dummy".to_string(),
+            bucket: "dummy".to_string(),
+        };
+        
+        // Create a mock client but mark it as non-real so we never try to use it for real operations
+        let client = match crate::secrets::b2_storage::B2Client::new(mock_config) {
+            Ok(client) => client,
+            Err(_) => {
+                // If creating a mock client failed, we'll create a fake client
+                // Since we mark it as non-real, it won't be used for real operations
+                // Just do the same thing again since the error doesn't matter
+                let mock_config = crate::secrets::b2_storage::B2Config {
+                    key_id: "dummy".to_string(),
+                    application_key: "dummy".to_string(),
+                    bucket: "dummy".to_string(),
+                };
+                crate::secrets::b2_storage::B2Client::new(mock_config)
+                    .expect("Failed to create mock B2 client even with error handling")
+            }
+        };
+        
+        Self { 
+            client, 
+            is_real_client: false 
         }
     }
 }
 
 impl B2StorageClient for DefaultB2StorageClient {
     fn from_args(args: &crate::args::Args) -> Result<Self, Box<dyn std::error::Error>> {
-        let r2_client = DefaultR2StorageClient::from_args(args)?;
-        Ok(Self { r2_client })
+        let client = crate::secrets::b2_storage::B2Client::from_args(args)?;
+        Ok(Self::new(client))
     }
-
-    fn upload_file_with_details(
-        &self,
-        file_details: &FileDetails,
-    ) -> Result<R2UploadResult, Box<dyn std::error::Error>> {
-        // Just redirect to R2 client
-        self.r2_client.upload_file_with_details(file_details)
+    
+    fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<B2UploadResult, Box<dyn std::error::Error>> {
+        // If this is not a real client, provide a mock response instead of attempting to use the real client
+        if !self.is_real_client {
+            // For a mock client, create a mock response with details from the file
+            // The verbose flag is handled by the underlying S3 client
+            return Ok(B2UploadResult {
+                hash: format!("mock-hash-{}", file_details.hash),
+                id: format!("mock-id-{}", file_details.hash),
+                bucket_id: "mock-bucket".to_string(),
+                name: format!("secrets/{}", file_details.hash),
+                created: "2025-01-01T00:00:00Z".to_string(),
+                updated: "2025-01-01T00:00:00Z".to_string(),
+            });
+        }
+        
+        // Otherwise, use the real client
+        self.client.upload_file_with_details(file_details)
     }
-
-    fn check_file_exists_with_details(
-        &self,
-        hash: &str,
-        bucket_name: Option<String>,
-    ) -> Result<Option<(bool, String, String)>, Box<dyn std::error::Error>> {
-        // Just redirect to R2 client
-        self.r2_client
-            .check_file_exists_with_details(hash, bucket_name)
-    }
-
-    fn get_file_metadata(
-        &self,
-        file_key: &str,
-    ) -> Result<Option<std::collections::HashMap<String, String>>, Box<dyn std::error::Error>> {
-        // Just redirect to R2 client
-        self.r2_client.get_file_metadata(file_key)
+    
+    fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<Option<(bool, String, String)>, Box<dyn std::error::Error>> {
+        // If this is not a real client, return mock data
+        if !self.is_real_client {
+            return Ok(Some((true, "2025-01-01T00:00:00Z".to_string(), "2025-01-01T00:00:00Z".to_string())));
+        }
+        
+        // Otherwise, use the real client
+        let bucket_ref = bucket_name.as_deref();
+        self.client.check_file_exists_with_details(hash, bucket_ref)
     }
 }
 
@@ -220,33 +244,18 @@ impl B2StorageClient for DefaultB2StorageClient {
 #[automock]
 pub trait R2StorageClient {
     /// Creates a client from Args
-    fn from_args(args: &crate::args::Args) -> Result<Self, Box<dyn std::error::Error>>
-    where
-        Self: Sized;
-
+    fn from_args(args: &crate::args::Args) -> Result<Self, Box<dyn std::error::Error>> where Self: Sized;
+    
     /// Uploads a file to R2 storage
-    fn upload_file_with_details(
-        &self,
-        file_details: &FileDetails,
-    ) -> Result<R2UploadResult, Box<dyn std::error::Error>>;
-
+    fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<R2UploadResult, Box<dyn std::error::Error>>;
+    
     /// Checks if a file exists in R2 storage
-    fn check_file_exists_with_details(
-        &self,
-        hash: &str,
-        bucket_name: Option<String>,
-    ) -> Result<FileExistenceCheckResult, Box<dyn std::error::Error>>;
-
-    /// Get file metadata from R2 storage
-    fn get_file_metadata(
-        &self,
-        file_key: &str,
-    ) -> Result<Option<std::collections::HashMap<String, String>>, Box<dyn std::error::Error>>;
+    fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<FileExistenceCheckResult, Box<dyn std::error::Error>>;
 }
 
 /// Default implementation that uses the actual R2 client
 pub struct DefaultR2StorageClient {
-    // The real R2Client
+    // The real R2Client 
     client: crate::secrets::r2_storage::R2Client,
     // Flag to track if this is a real client
     is_real_client: bool,
@@ -254,12 +263,12 @@ pub struct DefaultR2StorageClient {
 
 impl DefaultR2StorageClient {
     pub fn new(client: crate::secrets::r2_storage::R2Client) -> Self {
-        Self {
+        Self { 
             client,
-            is_real_client: true,
+            is_real_client: true
         }
     }
-
+    
     /// Create a mock client for when R2 credentials aren't available
     /// but we want to continue without failing
     pub fn new_dummy() -> Self {
@@ -270,7 +279,7 @@ impl DefaultR2StorageClient {
             bucket: "dummy".to_string(),
             account_id: "dummy".to_string(),
         };
-
+        
         // Create a mock client but mark it as non-real so we never try to use it for real operations
         let client = match crate::secrets::r2_storage::R2Client::new(mock_config) {
             Ok(client) => client,
@@ -288,10 +297,10 @@ impl DefaultR2StorageClient {
                     .expect("Failed to create mock R2 client even with error handling")
             }
         };
-
-        Self {
+        
+        Self { 
             client,
-            is_real_client: false,
+            is_real_client: false
         }
     }
 }
@@ -301,11 +310,8 @@ impl R2StorageClient for DefaultR2StorageClient {
         let client = crate::secrets::r2_storage::R2Client::from_args(args)?;
         Ok(Self::new(client))
     }
-
-    fn upload_file_with_details(
-        &self,
-        file_details: &FileDetails,
-    ) -> Result<R2UploadResult, Box<dyn std::error::Error>> {
+    
+    fn upload_file_with_details(&self, file_details: &FileDetails) -> Result<R2UploadResult, Box<dyn std::error::Error>> {
         // If this is not a real client, provide a mock response instead of attempting to use the real client
         if !self.is_real_client {
             // For a mock client, create a mock response with details from the file
@@ -319,51 +325,19 @@ impl R2StorageClient for DefaultR2StorageClient {
                 updated: "2025-01-01T00:00:00Z".to_string(),
             });
         }
-
+        
         // Otherwise, use the real client
         self.client.upload_file_with_details(file_details)
     }
-
-    fn check_file_exists_with_details(
-        &self,
-        hash: &str,
-        bucket_name: Option<String>,
-    ) -> Result<Option<(bool, String, String)>, Box<dyn std::error::Error>> {
+    
+    fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<String>) -> Result<Option<(bool, String, String)>, Box<dyn std::error::Error>> {
         // If this is not a real client, return mock data
         if !self.is_real_client {
-            return Ok(Some((
-                true,
-                "2025-01-01T00:00:00Z".to_string(),
-                "2025-01-01T00:00:00Z".to_string(),
-            )));
+            return Ok(Some((true, "2025-01-01T00:00:00Z".to_string(), "2025-01-01T00:00:00Z".to_string())));
         }
-
+        
         // Otherwise, use the real client
         let bucket_ref = bucket_name.as_deref();
         self.client.check_file_exists_with_details(hash, bucket_ref)
-    }
-
-    fn get_file_metadata(
-        &self,
-        file_key: &str,
-    ) -> Result<Option<std::collections::HashMap<String, String>>, Box<dyn std::error::Error>> {
-        // If this is not a real client, return mock data
-        if !self.is_real_client {
-            let mut metadata = std::collections::HashMap::new();
-            metadata.insert(
-                "content_type".to_string(),
-                "application/octet-stream".to_string(),
-            );
-            metadata.insert("content_length".to_string(), "1024".to_string()); // Mock 1KB file
-            metadata.insert("etag".to_string(), format!("\"mock-etag-{}\"", file_key));
-            metadata.insert(
-                "last_modified".to_string(),
-                "2025-01-01T00:00:00Z".to_string(),
-            );
-            return Ok(Some(metadata));
-        }
-
-        // Otherwise, use the real client
-        self.client.get_file_metadata(file_key)
     }
 }
