@@ -1,15 +1,15 @@
-use crate::read_val::{GrammarFragment, GrammarType};
+use crate::read_interactive_input::{GrammarFragment, GrammarType};
 use std::path::Path;
 use walkdir::DirEntry;
 
 /// Creates a grammar fragment for a specific prompt part
 pub fn create_grammar_fragment(
-    text: &str, 
-    pos: u8, 
-    suffix: Option<String>, 
-    grammar_type: GrammarType, 
-    can_shorten: bool, 
-    display_at_all: bool
+    text: &str,
+    pos: u8,
+    suffix: Option<String>,
+    grammar_type: GrammarType,
+    can_shorten: bool,
+    display_at_all: bool,
 ) -> GrammarFragment {
     GrammarFragment {
         original_val_for_prompt: Some(text.to_string()),
@@ -27,40 +27,40 @@ pub fn create_grammar_fragment(
 pub fn create_rebuild_grammars(
     custom_img_nm: &str,
     entry: &DirEntry,
-    container_name: &str
+    container_name: &str,
 ) -> Vec<GrammarFragment> {
     let mut grammars: Vec<GrammarFragment> = vec![];
-    
+
     // Add "Refresh" text
     grammars.push(create_grammar_fragment(
-        "Refresh", 
-        0, 
-        Some(" ".to_string()), 
-        GrammarType::Verbiage, 
-        false, 
-        true
+        "Refresh",
+        0,
+        Some(" ".to_string()),
+        GrammarType::Verbiage,
+        false,
+        true,
     ));
-    
+
     // Add image name
     grammars.push(create_grammar_fragment(
-        custom_img_nm, 
-        1, 
-        Some(" ".to_string()), 
-        GrammarType::Image, 
-        true, 
-        true
+        custom_img_nm,
+        1,
+        Some(" ".to_string()),
+        GrammarType::Image,
+        true,
+        true,
     ));
-    
+
     // Add "from" text
     grammars.push(create_grammar_fragment(
-        "from", 
-        2, 
-        Some(" ".to_string()), 
-        GrammarType::Verbiage, 
-        false, 
-        true
+        "from",
+        2,
+        Some(" ".to_string()),
+        GrammarType::Verbiage,
+        false,
+        true,
     ));
-    
+
     // Get Docker compose path
     let docker_compose_pth = entry
         .path()
@@ -68,27 +68,27 @@ pub fn create_rebuild_grammars(
         .unwrap_or_else(|| Path::new("/"))
         .display()
         .to_string();
-        
+
     // Add Docker compose path
     grammars.push(create_grammar_fragment(
-        &docker_compose_pth, 
-        3, 
-        Some("? ".to_string()), 
-        GrammarType::DockerComposePath, 
-        true, 
-        true
+        &docker_compose_pth,
+        3,
+        Some("? ".to_string()),
+        GrammarType::DockerComposePath,
+        true,
+        true,
     ));
-    
+
     // Add container name (hidden)
     grammars.push(create_grammar_fragment(
-        container_name, 
-        4, 
-        None, 
-        GrammarType::ContainerName, 
-        true, 
-        false
+        container_name,
+        4,
+        None,
+        GrammarType::ContainerName,
+        true,
+        false,
     ));
-    
+
     grammars
 }
 

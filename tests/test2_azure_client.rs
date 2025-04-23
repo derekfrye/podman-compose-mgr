@@ -5,20 +5,16 @@ use podman_compose_mgr::secrets::validation::prepare_validation;
 use std::fs;
 use std::path::PathBuf;
 
-/// Integration test for Azure KeyVault connection using azure_identity v0.21
+/// Integration test for Azure Key Vault connection using azure_identity v0.21
 ///
 /// This test demonstrates how to test the Azure KeyVault integration without
-/// relying on environment variables or RestartSvcs mode. It verifies that
+/// relying on environment variables. It verifies that
 /// using v0.21 of the Azure SDK works correctly.
 ///
-/// It's marked as #[ignore] since it requires real credentials
 ///
 /// To run this test with real credentials:
 /// cargo test --test test2 -- --ignored
 ///
-/// Note: This test validates that the azure_identity v0.21 integration is
-/// working correctly, fixing the "No credential sources were available to
-/// be used for authentication" error that occurred with v0.22.
 #[test]
 fn test_azure_integration() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Create a simple test environment
@@ -71,29 +67,14 @@ fn test_azure_integration() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args {
         path: PathBuf::from("~/docker"),
         mode: podman_compose_mgr::args::Mode::SecretRetrieve,
-
         verbose: 1,
-        exclude_path_patterns: vec![],
-        include_path_patterns: vec![],
-        build_args: vec![],
         secrets_client_id: Some("tests/personal_testing_data/client_id.txt".to_string()),
         secrets_client_secret_path: Some(PathBuf::from("tests/personal_testing_data/secret.txt")),
         secrets_tenant_id: Some("tests/personal_testing_data/tenant_id.txt".to_string()),
         secrets_vault_name: Some("tests/personal_testing_data/vault_name.txt".to_string()),
         output_json: Some(PathBuf::from("tests/personal_testing_data/outfile.json")),
         input_json: Some(PathBuf::from("tests/personal_testing_data/input.json")),
-        secrets_init_filepath: None,
-        b2_key_id: None,
-        b2_application_key: None,
-        b2_bucket_name: None,
-        b2_account_id_filepath: None,
-        b2_account_key_filepath: None,
-        r2_account_id: None,
-        r2_account_id_filepath: None,
-        r2_access_key_id: None,
-        r2_access_key: None,
-        r2_access_key_id_filepath: None,
-        r2_access_key_filepath: None,
+        ..Default::default()
     };
 
     // 4. Display test information

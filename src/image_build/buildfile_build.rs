@@ -1,11 +1,12 @@
-use crate::utils::cmd_utils as cmd;
 use crate::image_build::buildfile_error::BuildfileError;
 use crate::image_build::buildfile_types::{BuildChoice, WhatWereBuilding};
+use crate::utils::cmd_utils as cmd;
+use crate::utils::podman_utils;
 
 /// Build an image from a dockerfile
 pub fn build_dockerfile_image(build_config: &WhatWereBuilding) -> Result<(), BuildfileError> {
-    let _ = cmd::pull_base_image(build_config.file.filepath.as_ref().unwrap());
-    
+    let _ = podman_utils::pull_base_image(build_config.file.filepath.as_ref().unwrap());
+
     let dockerfile_path = build_config
         .file
         .filepath
@@ -13,7 +14,7 @@ pub fn build_dockerfile_image(build_config: &WhatWereBuilding) -> Result<(), Bui
         .unwrap()
         .to_str()
         .unwrap();
-        
+
     let mut podman_args = vec![
         "build",
         "-t",
@@ -21,15 +22,15 @@ pub fn build_dockerfile_image(build_config: &WhatWereBuilding) -> Result<(), Bui
         "-f",
         dockerfile_path,
     ];
-    
+
     // Add build args
     for arg in build_config.file.build_args.iter() {
         podman_args.push("--build-arg");
         podman_args.push(arg);
     }
-    
+
     podman_args.push(build_config.file.parent_dir.to_str().unwrap());
-    
+
     cmd::exec_cmd("podman", &podman_args[..]).map_err(BuildfileError::from)
 }
 
@@ -48,7 +49,7 @@ pub fn build_makefile_image(build_config: &WhatWereBuilding) -> Result<(), Build
     } else {
         build_config.file.parent_dir.to_str().unwrap()
     };
-    
+
     cmd::exec_cmd("make", &["-C", chg_dir, "clean"])?;
     Ok(cmd::exec_cmd("make", &["-C", chg_dir])?)
 }

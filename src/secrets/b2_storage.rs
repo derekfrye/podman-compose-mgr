@@ -28,20 +28,20 @@ impl B2Client {
         };
         
         // Create the base S3 client - default to non-verbose
-        let client = S3StorageClient::new(s3_config, false)?;
+        let client = S3StorageClient::new(s3_config, 0)?;
         
         Ok(Self { client })
     }
     
     /// Create a new B2 client from the Args struct
     pub fn from_args(args: &Args) -> Result<Self> {
-        // Prioritize file-based credentials (new approach)
-        if let (Some(account_id_filepath), Some(account_key_filepath)) = 
-            (&args.b2_account_id_filepath, &args.b2_account_key_filepath) {
+        // Use the unified S3 parameters
+        if let (Some(account_id_filepath), Some(secret_key_filepath)) = 
+            (&args.s3_account_id_filepath, &args.s3_secret_key_filepath) {
             
             // Read account ID and key from files
             let account_id = read_value_from_file(account_id_filepath)?;
-            let account_key = read_value_from_file(account_key_filepath)?;
+            let account_key = read_value_from_file(secret_key_filepath)?;
             
             // B2 bucket is now required to be in the input JSON
             // Use a placeholder here that will be replaced during upload
@@ -55,35 +55,14 @@ impl B2Client {
             
             // Create a client and then update the verbose flag
             let mut client = Self::new(config)?;
-            // Set verbose flag based on args
-            client.client.verbose = args.verbose > 0;
+            // Set verbose level based on args (convert u8 to u32)
+            client.client.verbose = args.verbose as u32;
             return Ok(client);
         }
         
-        // Fall back to direct parameters (legacy approach)
-        if let (Some(key_id), Some(application_key)) = 
-            (&args.b2_key_id, &args.b2_application_key) {
-            
-            // B2 bucket is now required to be in the input JSON
-            // Use a placeholder here that will be replaced during upload
-            let bucket_name = "placeholder_bucket_will_be_provided_from_json".to_string();
-            
-            let config = B2Config {
-                key_id: key_id.clone(),
-                application_key: application_key.clone(),
-                bucket: bucket_name,
-            };
-            
-            // Create a client and then update the verbose flag
-            let mut client = Self::new(config)?;
-            // Set verbose flag based on args
-            client.client.verbose = args.verbose > 0;
-            return Ok(client);
-        }
-        
-        // If neither approach worked, return an error
+        // If parameters are missing, return an error
         Err(Box::<dyn std::error::Error>::from(
-            "Either B2 account ID and key files or direct credentials are required"
+            "S3-compatible credentials are required for B2 storage"
         ))
     }
     
@@ -94,7 +73,7 @@ impl B2Client {
     
     /// Check if a file exists in B2 storage with detailed information
     pub fn check_file_exists_with_details(&self, hash: &str, bucket_name: Option<&str>) -> Result<Option<(bool, String, String)>> {
-        self.client.check_file_exists_with_details(hash, bucket_name)
+        self.client.check_file_exists_with_details(hash, bucket_name, None)
     }
     
     /// Get file metadata from B2 - delegated to S3 client

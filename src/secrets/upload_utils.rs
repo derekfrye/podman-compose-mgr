@@ -1,11 +1,4 @@
-/// Create a secret name from a file hash
-///
-/// This function creates a suitable name for either Azure Key Vault or B2 storage
-/// using the file's SHA-1 hash
-pub fn create_secret_name(hash: &str) -> String {
-    // Use a prefix for clarity and add the hash
-    format!("file-{}", hash)
-}
+// Function removed - now using hash directly
 
 /// Determines which storage backend to use based on file size and explicit destination
 pub fn determine_storage_backend(

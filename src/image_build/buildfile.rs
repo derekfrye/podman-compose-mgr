@@ -1,5 +1,5 @@
-use crate::utils::cmd_utils;
 use crate::read_interactive_input::{GrammarFragment, GrammarType};
+use crate::utils::cmd_utils;
 use std::path::PathBuf;
 use thiserror::Error;
 use walkdir::DirEntry;
@@ -354,7 +354,9 @@ fn find_buildfile(
 fn build_image_from_spec(build_config: WhatWereBuilding) -> Result<(), BuildfileError> {
     match build_config.file.filetype {
         BuildChoice::Dockerfile => {
-            let _ = crate::helpers::cmd_helper_fns::pull_base_image(build_config.file.filepath.as_ref().unwrap());
+            let _ = crate::utils::podman_utils::pull_base_image(
+                build_config.file.filepath.as_ref().unwrap(),
+            );
 
             let dockerfile_path = build_config
                 .file

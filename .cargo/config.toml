@@ -1,10 +1,2 @@
-[target.'cfg(target_os = "linux")']
-# Limit the number of parallel tests to 2
-rustflags = []
-
-[build]
-rustflags = []
-
-[test]
-# Run at most 2 tests in parallel to avoid OOM issues
-jobs = 2
+[alias]
+t = "test -j 3 -- --test-threads=3"

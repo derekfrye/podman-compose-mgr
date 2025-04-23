@@ -5,12 +5,14 @@ use hex;
 use serde_json::Value;
 use sha1::{Digest, Sha1};
 use std::fs;
-use std::io::{BufReader, Read, Write};
+use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 use time::OffsetDateTime;
 
 /// Extract required fields for validation
-pub fn extract_validation_fields(entry: &Value) -> Result<(String, String, String, String, String)> {
+pub fn extract_validation_fields(
+    entry: &Value,
+) -> Result<(String, String, String, String, String)> {
     // Support both old and new field names
     let cloud_id = entry["cloud_id"]
         .as_str()
@@ -24,15 +26,28 @@ pub fn extract_validation_fields(entry: &Value) -> Result<(String, String, Strin
         .ok_or_else(|| Box::<dyn std::error::Error>::from("file_nm missing in input json"))?
         .to_string();
 
+    // For secret name, try multiple fields and generate one if not found
     let secret_name = entry["secret_name"]
         .as_str()
         .or_else(|| entry["az_name"].as_str())
-        .ok_or_else(|| Box::<dyn std::error::Error>::from("secret_name missing in input json"))?
+        .or_else(|| entry["hash"].as_str()) // Use hash as a fallback
+        .or_else(|| {
+            // If we have a file_nm, generate a secret name from it
+            if let Some(file) = entry["file_nm"]
+                .as_str()
+                .or_else(|| entry["filenm"].as_str())
+            {
+                Some(&file[file.rfind('/').map_or(0, |i| i + 1)..])
+            } else {
+                None
+            }
+        })
+        .unwrap_or("unknown") // Last resort fallback
         .to_string();
 
     // Get encoding, defaulting to "utf8" for backward compatibility
     let encoding = entry["encoding"].as_str().unwrap_or("utf8").to_string();
-    
+
     // Get storage type (azure_kv or b2)
     let storage_type = entry["destination_cloud"]
         .as_str()
@@ -47,27 +62,27 @@ pub fn extract_validation_fields(entry: &Value) -> Result<(String, String, Strin
 pub fn details_about_entry(entry: &Value) -> Result<()> {
     // Support both old and new field names
     let file_nm = crate::utils::json_utils::extract_string_field_or(entry, "file_nm", "filenm")?;
-    
+
     // Get secret name (from either az_name or secret_name)
     let secret_name = entry["secret_name"]
         .as_str()
         .or_else(|| entry["az_name"].as_str())
         .unwrap_or("unknown");
-        
+
     // Get cloud timestamps
     let cloud_created = entry["cloud_cr_ts"]
         .as_str()
         .or_else(|| entry["az_create"].as_str())
         .unwrap_or("");
-        
+
     let cloud_updated = entry["cloud_upd_ts"]
         .as_str()
         .or_else(|| entry["az_updated"].as_str())
         .unwrap_or("");
-        
+
     // Get encoding with default value for backward compatibility
     let encoding = entry["encoding"].as_str().unwrap_or("utf8");
-    
+
     // Get storage type
     let storage_type = entry["destination_cloud"]
         .as_str()
@@ -78,7 +93,7 @@ pub fn details_about_entry(entry: &Value) -> Result<()> {
     println!("Secret Name: {}", secret_name);
     println!("Storage Type: {}", storage_type);
     println!("Encoding: {}", encoding);
-    
+
     // Show hash information if available
     if let Some(hash) = entry["hash"].as_str() {
         let hash_algo = entry["hash_algo"].as_str().unwrap_or("sha1");
@@ -137,28 +152,55 @@ pub fn get_hostname() -> Result<String> {
         .map_err(|_| Box::<dyn std::error::Error>::from("Hostname contains non-UTF8 characters"))
 }
 
-/// Calculate SHA-1 hash for a file using streaming to handle large files
+/// Calculate SHA-1 hash from bytes
+///
+/// This is the core function that both calculate_hash and calculate_content_hash use
+fn calculate_hash_from_bytes(bytes: &[u8]) -> String {
+    let mut hasher = Sha1::new();
+    hasher.update(bytes);
+    let result = hasher.finalize();
+    hex::encode(result)
+}
+
+/// Calculate SHA-1 hash of the filepath (not the file contents)
+/// This ensures consistent locations for files even when their content changes
 pub fn calculate_hash(filepath: &str) -> Result<String> {
+    // Hash just the filepath bytes
+    Ok(calculate_hash_from_bytes(filepath.as_bytes()))
+}
+
+/// Calculate SHA-1 hash of the file contents
+///
+/// This is useful for verifying file integrity after operations like encoding/decoding
+pub fn calculate_content_hash(filepath: &str) -> Result<String> {
+    use std::io::{BufReader, Read};
+
+    // Open the file
     let file = fs::File::open(filepath).map_err(|e| {
-        Box::<dyn std::error::Error>::from(format!("Failed to open file {}: {}", filepath, e))
+        Box::<dyn std::error::Error>::from(format!("Failed to open file for hashing: {}", e))
     })?;
 
+    // Create a buffered reader
     let mut reader = BufReader::new(file);
     let mut hasher = Sha1::new();
-    let mut buffer = [0; 8192]; // 8KB buffer
+    let mut buffer = [0; 8192]; // 8KB buffer for efficient reading
 
+    // Process the file in chunks
     loop {
         let bytes_read = reader.read(&mut buffer).map_err(|e| {
-            Box::<dyn std::error::Error>::from(format!("Failed to read file {}: {}", filepath, e))
+            Box::<dyn std::error::Error>::from(format!("Failed to read file for hashing: {}", e))
         })?;
 
         if bytes_read == 0 {
+            // End of file
             break;
         }
 
+        // Update the hasher with the chunk
         hasher.update(&buffer[..bytes_read]);
     }
 
+    // Finalize and return the hex-encoded hash
     let result = hasher.finalize();
     Ok(hex::encode(result))
 }

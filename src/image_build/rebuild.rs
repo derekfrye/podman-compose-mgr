@@ -1,8 +1,8 @@
 use crate::args::Args;
-use crate::helpers::podman_helper_fns;
 use crate::image_build::buildfile::start;
 use crate::interfaces::{CommandHelper, ReadInteractiveInputHelper};
 use crate::read_interactive_input::{GrammarFragment, GrammarType};
+use crate::utils::podman_utils;
 
 use chrono::{DateTime, Local};
 use serde_yaml::Value;
@@ -285,9 +285,8 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                             println!("Container name: {}", container_name);
                             println!("Compose file: {}", docker_compose_pth_fmtted);
                             // Display image creation time
-                            match podman_helper_fns::get_podman_image_upstream_create_time(
-                                custom_img_nm,
-                            ) {
+                            match podman_utils::get_podman_image_upstream_create_time(custom_img_nm)
+                            {
                                 Ok(created_time) => {
                                     println!("Created: {}", self.format_time_ago(created_time));
                                 }
@@ -297,7 +296,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                             }
 
                             // Display image pull time
-                            match podman_helper_fns::get_podman_ondisk_modify_time(custom_img_nm) {
+                            match podman_utils::get_podman_ondisk_modify_time(custom_img_nm) {
                                 Ok(pull_time) => {
                                     println!("Pulled: {}", self.format_time_ago(pull_time));
                                 }

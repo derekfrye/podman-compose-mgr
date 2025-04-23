@@ -11,6 +11,7 @@ use crate::{
         CommandHelper, DefaultCommandHelper, DefaultReadInteractiveInputHelper,
         ReadInteractiveInputHelper,
     },
+    utils::log_utils::Logger,
 };
 
 #[derive(Debug, Error)]
@@ -28,13 +29,13 @@ pub enum StartError {
 /// Main function that uses the default helper implementations
 ///
 /// This function handles errors internally and prints them rather than propagating them
-pub fn walk_dirs(args: &Args) {
+pub fn walk_dirs(args: &Args, logger: &Logger) {
     // Use default implementations
     let cmd_helper = DefaultCommandHelper;
     let read_val_helper = DefaultReadInteractiveInputHelper;
 
     // Call the injectable version with default implementations
-    if let Err(e) = walk_dirs_with_helpers(args, &cmd_helper, &read_val_helper) {
+    if let Err(e) = walk_dirs_with_helpers(args, &cmd_helper, &read_val_helper, logger) {
         eprintln!("Error processing directories: {}", e);
     }
 }
@@ -44,15 +45,17 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
     args: &Args,
     cmd_helper: &C,
     read_val_helper: &R,
+    logger: &Logger,
 ) -> Result<(), StartError> {
     let mut exclude_patterns = Vec::new();
     let mut include_patterns = Vec::new();
 
     // Compile exclude patterns
     if !args.exclude_path_patterns.is_empty() {
-        if args.verbose > 0 {
-            println!("info: Excluding paths: {:?}", args.exclude_path_patterns);
-        }
+        logger.info(&format!(
+            "Excluding paths: {:?}",
+            args.exclude_path_patterns
+        ));
 
         for pattern in &args.exclude_path_patterns {
             let regex = Regex::new(pattern)?;
@@ -62,9 +65,10 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
 
     // Compile include patterns
     if !args.include_path_patterns.is_empty() {
-        if args.verbose > 0 {
-            println!("info: Including paths: {:?}", args.include_path_patterns);
-        }
+        logger.info(&format!(
+            "Including paths: {:?}",
+            args.include_path_patterns
+        ));
 
         for pattern in &args.include_path_patterns {
             let regex = Regex::new(pattern)?;
@@ -72,9 +76,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
         }
     }
 
-    if args.verbose > 0 {
-        println!("info: Rebuild images in path: {}", args.path.display());
-    }
+    logger.info(&format!("Rebuild images in path: {}", args.path.display()));
 
     // Create rebuild manager
     let mut manager = Some(build::rebuild::RebuildManager::new(
@@ -112,12 +114,10 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
                     .iter()
                     .all(|pattern| !pattern.is_match(entry_path_str))
             {
-                if args.verbose > 0 {
-                    println!(
-                        "info: Skipping path as it doesn't match any include pattern: {}",
-                        entry_path_str
-                    );
-                }
+                logger.info(&format!(
+                    "Skipping path as it doesn't match any include pattern: {}",
+                    entry_path_str
+                ));
                 continue;
             }
 

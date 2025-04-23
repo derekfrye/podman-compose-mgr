@@ -1,0 +1,30 @@
+# azure #
+
+# azure key vault creds
+tests/test2_personal_testing_data/vault_name.txt
+tests/test2_personal_testing_data/tenant_id.txt
+tests/test2_personal_testing_data/client_id.txt
+tests/test2_personal_testing_data/secret.txt
+
+# a file that'll have to be base64
+tests/test3_and_test4/e e
+
+#  r2 #
+# bucket secrets-bucket #
+# r2 creds
+tests/test2_personal_testing_data/r2_endpoint.txt
+tests/test2_personal_testing_data/r2_account_id.txt
+tests/test2_personal_testing_data/r2_secret.txt
+tests/test2_personal_testing_data/bucket_name.txt
+
+# b2 creds
+# this should still be r2, it shouldn't trip a new cloud provider because it doesn't match the format
+tests/test2_personal_testing_data/b2_key.txt
+tests/test2_personal_testing_data/b2_account.txt
+
+# general files, should still be r2
+# bucket diff-bucket #
+# none should end up as base64
+tests/test3_and_test4/a
+tests/test3_and_test4/b
+tests/test3_and_test4/e e
