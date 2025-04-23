@@ -6,6 +6,7 @@ use crate::interfaces::{
 use crate::secrets::azure::get_keyvault_client;
 use crate::secrets::error::Result;
 use crate::secrets::json_utils;
+use crate::secrets::models::JsonOutput; // Add import for JsonOutput
 use crate::secrets::upload_handlers;
 use crate::secrets::utils::get_hostname;
 use crate::utils::log_utils::Logger;
@@ -220,8 +221,23 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         }
     }
 
-    // Save output JSON
-    json_utils::save_output_json(output_filepath, &processed_entries, args.verbose.into())?;
+    // Convert processed entries (Vec<Value>) to Vec<JsonOutput>
+    let final_output_entries: Vec<JsonOutput> = processed_entries
+        .into_iter()
+        .filter_map(|value| match serde_json::from_value(value) {
+            Ok(entry) => Some(entry),
+            Err(e) => {
+                logger.warn(&format!(
+                    "Failed to deserialize processed entry for final output: {}",
+                    e
+                ));
+                None // Skip entries that fail deserialization
+            }
+        })
+        .collect();
+
+    // Save output JSON using the function that handles temporary files
+    json_utils::write_json_output(final_output_entries, output_filepath, args)?;
 
     Ok(())
 }

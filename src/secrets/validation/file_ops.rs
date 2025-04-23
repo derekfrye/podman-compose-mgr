@@ -5,20 +5,31 @@ use serde_json::Value;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
-use tempfile::NamedTempFile;
+use tempfile::{Builder as TempFileBuilder, NamedTempFile};
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine as _; // For the decode method
 
 /// Decode base64 content to a NamedTempFile
 ///
 /// Returns a NamedTempFile with the decoded content written to it
-pub fn decode_base64_to_tempfile(base64_content: &[u8]) -> Result<NamedTempFile> {
+pub fn decode_base64_to_tempfile(
+    base64_content: &[u8],
+    args: &Args, // Add args parameter
+) -> Result<NamedTempFile> {
     use std::io::{BufRead, BufReader};
 
-    // Create a temporary file
-    let mut temp_file = NamedTempFile::new().map_err(|e| {
-        Box::<dyn std::error::Error>::from(format!("Failed to create temporary file: {}", e))
-    })?;
+    // Create a temporary file in the specified directory
+    let mut temp_file = TempFileBuilder::new()
+        .prefix("decode_")
+        .suffix(".tmp")
+        .tempfile_in(&args.temp_file_path) // Use the path from args
+        .map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!(
+                "Failed to create temporary file in {}: {}",
+                args.temp_file_path.display(),
+                e
+            ))
+        })?;
 
     // Process in chunks for memory efficiency
     let reader = BufReader::new(base64_content);
@@ -79,7 +90,7 @@ pub fn compare_files(
     encoding: &str,
     _azure_client: &dyn AzureKeyVaultClient, // Not used but kept for clarity
     _entry: &Value,                          // Not used but kept for clarity
-    _args: &Args,                            // Not used but kept for clarity
+    args: &Args,                             // Already takes args
 ) -> Result<bool> {
     // Read both files
     let downloaded_content = fs::read(downloaded_path).map_err(|e| {
@@ -92,8 +103,8 @@ pub fn compare_files(
 
     // For base64 encoding, we need to decode the downloaded content before comparison
     if encoding == "base64" {
-        // Decode the downloaded content
-        let temp_file = decode_base64_to_tempfile(&downloaded_content)?;
+        // Decode the downloaded content, passing args
+        let temp_file = decode_base64_to_tempfile(&downloaded_content, args)?;
 
         // Read the decoded content from the temp file
         let decoded_content = fs::read(temp_file.path()).map_err(|e| {

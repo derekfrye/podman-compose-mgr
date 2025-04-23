@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use super::initialization::check_init_filepath;
 use super::validators::{
     check_file_writable, check_file_writable_path, check_readable_dir, check_readable_file,
-    check_readable_path, check_valid_json_path,
+    check_readable_path, check_valid_json_path, check_writable_dir,
 };
 
 #[derive(Parser, Debug, serde::Serialize)]
@@ -69,10 +69,20 @@ pub struct Args {
     /// Path to file containing S3-compatible endpoint (for R2, the Cloudflare account ID)
     #[arg(long)]
     pub s3_endpoint_filepath: Option<PathBuf>,
+
+    /// Directory to use for temporary files
+    #[arg(long, default_value = "/tmp", value_parser = check_writable_dir)]
+    pub temp_file_path: PathBuf,
 }
 
 impl Default for Args {
     fn default() -> Self {
+        // Use check_writable_dir to ensure the default path is valid or created
+        // We need to handle the potential error here, perhaps by panicking
+        // if the default /tmp isn't usable, as it's a fundamental requirement.
+        let default_temp_path = check_writable_dir("/tmp")
+            .expect("Default temporary directory '/tmp' must be writable or creatable.");
+
         Self {
             path: PathBuf::from("."),
             mode: Mode::Rebuild,
@@ -90,6 +100,7 @@ impl Default for Args {
             s3_account_id_filepath: None,
             s3_secret_key_filepath: None,
             s3_endpoint_filepath: None,
+            temp_file_path: default_temp_path,
         }
     }
 }

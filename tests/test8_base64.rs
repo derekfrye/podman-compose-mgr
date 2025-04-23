@@ -1,3 +1,4 @@
+use podman_compose_mgr::args::Args;
 use podman_compose_mgr::secrets::file_details::check_encoding_and_size;
 use podman_compose_mgr::secrets::utils::{calculate_content_hash, calculate_hash};
 use podman_compose_mgr::secrets::validation::file_ops::decode_base64_to_tempfile;
@@ -38,6 +39,9 @@ fn test_file_encoding_detection() {
 
 #[test]
 fn test_base64_decode_and_hash_match() {
+    // Create default Args instance with standard temp_file_path
+    let args = Args::default();
+
     // Calculate content hash of original binary file
     let original_content_hash = calculate_content_hash("tests/test3_and_test4/e e")
         .expect("Failed to hash original file content");
@@ -46,9 +50,9 @@ fn test_base64_decode_and_hash_match() {
     let base64_content =
         fs::read("tests/test3_and_test4/e e.base64").expect("Failed to read base64 file");
 
-    // Decode to temporary file
+    // Decode to temporary file - passing args as second parameter
     let temp_file =
-        decode_base64_to_tempfile(&base64_content).expect("Failed to decode base64 content");
+        decode_base64_to_tempfile(&base64_content, &args).expect("Failed to decode base64 content");
 
     // Calculate content hash of the decoded file
     let temp_path = temp_file.path().to_str().unwrap();

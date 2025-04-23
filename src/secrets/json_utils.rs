@@ -1,11 +1,12 @@
 use crate::secrets::error::Result;
-use crate::secrets::models::UploadEntry;
+use crate::secrets::models::{JsonOutput, UploadEntry};
 use crate::secrets::utils::{calculate_hash, get_hostname};
+use crate::args::Args; // Add Args import
 use serde_json::{Value, from_str, to_string_pretty, to_value, to_writer_pretty};
 use std::fs::{self, File, OpenOptions};
-use std::io::Read;
+use std::io::{Read, BufWriter, Write}; // Added Write for flush()
 use std::path::Path;
-use tempfile::NamedTempFile;
+use tempfile::{Builder as TempFileBuilder, NamedTempFile}; // Add builder
 
 /// Read and parse the input JSON file
 pub fn read_input_json(input_filepath: &Path) -> Result<Vec<Value>> {
@@ -183,9 +184,13 @@ pub fn save_output_json(
 pub fn create_r2_test_json(
     file_paths: &[String],
     bucket: &str,
+    args: &Args, // Add args parameter
 ) -> Result<(NamedTempFile, Vec<String>)> {
-    // Create a temporary file
-    let temp_file = NamedTempFile::new()?;
+    // Create a temporary file in the specified directory
+    let temp_file = TempFileBuilder::new()
+        .prefix("r2_test_")
+        .suffix(".json")
+        .tempfile_in(&args.temp_file_path)?;
 
     // Create JSON entries for each test file
     let mut json_entries = Vec::new();
@@ -205,4 +210,100 @@ pub fn create_r2_test_json(
     std::fs::write(temp_file.path(), to_string_pretty(&json_entries)?)?;
 
     Ok((temp_file, hashes))
+}
+
+/// Writes the JSON output entries to a temporary file.
+///
+/// Returns the PathBuf of the temporary file.
+fn write_json_output_to_temp_file(
+    output_entries: &[JsonOutput],
+    args: &Args, // Add args parameter
+) -> Result<NamedTempFile> {
+    // Create a temporary file in the specified directory
+    let temp_file = TempFileBuilder::new()
+        .prefix("output_")
+        .suffix(".json")
+        .tempfile_in(&args.temp_file_path) // Use args path
+        .map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!(
+                "Failed to create temporary JSON file in {}: {}",
+                args.temp_file_path.display(),
+                e
+            ))
+        })?;
+
+    let file_handle = temp_file.reopen()?; // Reopen to get a File handle for BufWriter
+    let mut writer = BufWriter::new(file_handle);
+
+    // Serialize the output entries to the temporary file
+    serde_json::to_writer_pretty(&mut writer, output_entries).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to write JSON to temporary file: {}", e))
+    })?;
+
+    writer
+        .flush()
+        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to flush writer: {}", e)))?;
+
+    Ok(temp_file) // Return the NamedTempFile handle
+}
+
+/// Write the final JSON output, merging with existing if necessary.
+pub fn write_json_output(
+    output_entries: Vec<JsonOutput>,
+    output_path: &Path,
+    args: &Args, // Add args parameter
+) -> Result<()> {
+    // Check if the file already exists
+    let final_entries;
+
+    if output_path.exists() {
+        // Read existing content to merge
+        let mut file = File::open(output_path)?;
+        let mut content = String::new();
+        file.read_to_string(&mut content)?;
+
+        // Try to parse existing entries
+        if !content.trim().is_empty() {
+            let existing_entries: Vec<JsonOutput> = serde_json::from_str(&content)
+                .map_err(|e| {
+                    Box::<dyn std::error::Error>::from(format!("Failed to parse JSON: {}", e))
+                })?;
+
+            // Merge entries by file_nm, keeping the newer entry in case of duplicates
+            let mut entries_map = std::collections::HashMap::new();
+
+            // First add existing entries
+            for entry in existing_entries {
+                entries_map.insert(entry.file_nm.clone(), entry);
+            }
+
+            // Then add new entries, overwriting any duplicates
+            for entry in &output_entries {
+                entries_map.insert(entry.file_nm.clone(), entry.clone());
+            }
+
+            // Convert back to Vec
+            final_entries = entries_map.into_values().collect();
+        } else {
+            // Empty file, just use new entries
+            final_entries = output_entries.clone();
+        }
+    } else {
+        // No existing file, just use new entries
+        final_entries = output_entries;
+    }
+
+    // Write new/updated entries to a temporary file first
+    let temp_output_file = write_json_output_to_temp_file(&final_entries, args)?; // Pass args
+
+    // Atomically replace the original file with the temporary file
+    fs::rename(temp_output_file.path(), output_path).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!(
+            "Failed to replace output file '{}': {}",
+            output_path.display(),
+            e
+        ))
+    })?;
+
+    Ok(())
 }

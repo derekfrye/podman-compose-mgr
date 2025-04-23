@@ -1,7 +1,7 @@
 use crate::args::Args;
 use crate::secrets::error::Result;
 use crate::secrets::models::JsonOutput;
-use crate::secrets::utils::write_json_output;
+use crate::secrets::json_utils::write_json_output; // Changed import from utils to json_utils
 use std::fs;
 
 /// Write validation results to the output file
@@ -16,11 +16,11 @@ pub fn write_validation_results(args: &Args, json_outputs: &[JsonOutput]) -> Res
             })?;
         }
 
-        let output_str = output_path
-            .to_str()
-            .ok_or_else(|| Box::<dyn std::error::Error>::from("Invalid UTF-8 in output path"))?;
+        // Convert the slice to owned Vec for write_json_output
+        let outputs_vec = json_outputs.to_owned();
 
-        write_json_output(json_outputs, output_str)?;
+        // Call the correct write_json_output function, passing args
+        write_json_output(outputs_vec, output_path, args)?;
     } else {
         return Err(Box::<dyn std::error::Error>::from(
             "Output JSON path is required",

@@ -8,22 +8,30 @@ use serde_json::Value;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
-use tempfile::NamedTempFile;
+use tempfile::Builder as TempFileBuilder;
 
 #[test]
 fn test_initialize_process() {
-    // Create a temporary file for the output JSON
-    let temp_file = NamedTempFile::new().unwrap();
-    let temp_path = temp_file.path().to_path_buf();
-
     // Create Args with the necessary parameters
     let args = args::Args {
         mode: Mode::SecretInitialize,
         secrets_init_filepath: Some(PathBuf::from("tests/test3_and_test4/test_input.json")),
         verbose: 1,
-        output_json: Some(temp_path.clone()),
+        output_json: None, // Will set this after creating temp file
         ..Default::default()
     };
+
+    // Create a temporary file for the output JSON in the directory specified by args.temp_file_path
+    let temp_file = TempFileBuilder::new()
+        .prefix("test_init_")
+        .suffix(".json")
+        .tempfile_in(&args.temp_file_path)
+        .unwrap();
+    let temp_path = temp_file.path().to_path_buf();
+
+    // Update args with the temp file path
+    let mut args = args;
+    args.output_json = Some(temp_path.clone());
 
     // Create logger
     let logger = Logger::new(args.verbose);

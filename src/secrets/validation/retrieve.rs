@@ -10,7 +10,7 @@ use crate::secrets::validation::ui::prompt_for_diff;
 use crate::utils::log_utils::Logger;
 use serde_json::Value;
 use std::path::Path;
-use tempfile::NamedTempFile;
+use tempfile::Builder as TempFileBuilder;
 
 /// Process a single entry for secret retrieval and comparison
 ///
@@ -34,10 +34,18 @@ pub fn retrieve_process_an_entry(
     // Check if file exists in cloud storage
     logger.info(&format!("Processing {}", file_path));
 
-    // Create a temporary file to download the content
-    let temp_file = NamedTempFile::new().map_err(|e| {
-        Box::<dyn std::error::Error>::from(format!("Failed to create temporary file: {}", e))
-    })?;
+    // Create a temporary file to download the content in the specified directory
+    let temp_file = TempFileBuilder::new()
+        .prefix("retrieve_") // Optional: add a prefix
+        .suffix(".tmp")      // Optional: add a suffix
+        .tempfile_in(&args.temp_file_path) // Use the path from args
+        .map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!(
+                "Failed to create temporary file in {}: {}",
+                args.temp_file_path.display(),
+                e
+            ))
+        })?;
     let temp_path = temp_file.path().to_string_lossy().to_string();
 
     // Download content based on storage type
@@ -125,13 +133,24 @@ pub fn create_retrieve_output(
         md5: hash.clone(),
         ins_ts: formatted_date,
         az_id: cloud_id,
-        az_create: cloud_created,
-        az_updated: cloud_updated,
+        az_create: cloud_created.clone(),
+        az_updated: cloud_updated.clone(),
         az_name: secret_name,
         hostname,
         encoding,
         hash_val: hash,
         hash_algo,
+        destination_cloud: entry["destination_cloud"].as_str().unwrap_or("azure_kv").to_string(),
+        file_size: entry["file_size"].as_u64().unwrap_or(0),
+        encoded_size: entry["encoded_size"].as_u64().unwrap_or(0),
+        cloud_upload_bucket: entry["cloud_upload_bucket"].as_str().unwrap_or("").to_string(),
+        cloud_id: entry["cloud_id"].as_str().unwrap_or("").to_string(),
+        cloud_cr_ts: cloud_created,
+        cloud_upd_ts: cloud_updated,
+        cloud_prefix: entry["cloud_prefix"].as_str().unwrap_or("").to_string(),
+        r2_hash: entry["r2_hash"].as_str().unwrap_or("").to_string(),
+        r2_bucket_id: entry["r2_bucket_id"].as_str().unwrap_or("").to_string(),
+        r2_name: entry["r2_name"].as_str().unwrap_or("").to_string(),
     };
 
     Ok(output)

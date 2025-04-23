@@ -5,9 +5,12 @@ use crate::secrets::file_details::{format_file_size, get_file_details};
 use crate::secrets::user_prompt::setup_retrieve_prompt;
 use crate::utils::cmd_utils;
 use serde_json::Value;
+use std::fs;
 use std::io::Write;
 use std::path::Path;
-use tempfile::NamedTempFile;
+use tempfile::{Builder as TempFileBuilder, NamedTempFile};
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine; // Import the trait so we can use decode() method
 
 /// Prompt the user to see differences or details
 ///
@@ -17,7 +20,7 @@ pub fn prompt_for_diff(
     downloaded_path: &str,
     local_path: &str,
     entry: &Value,
-    _args: &Args, // Not used but kept for clarity
+    args: &Args,
 ) -> Result<Option<bool>> {
     // Create grammarFragments for the prompt
     let mut grammars: Vec<GrammarFragment> = vec![];
@@ -42,7 +45,8 @@ pub fn prompt_for_diff(
                     }
                     "y" => {
                         // Show diff
-                        show_diff(downloaded_path, local_path)?;
+                        println!("Showing differences...");
+                        view_diff(downloaded_path, local_path, args)?; // Pass args
                         // Continue with validation after showing diff
                         return Ok(Some(true));
                     }
@@ -70,19 +74,60 @@ pub fn prompt_for_diff(
     }
 }
 
-/// Show differences between downloaded and local file using diff and pager
-pub fn show_diff(downloaded_path: &str, local_path: &str) -> Result<()> {
+/// Show diff between two files using the 'diff' command
+fn view_diff(
+    file1_path: &str,
+    file2_path: &str,
+    args: &Args,
+) -> Result<()> {
+    let path1_to_diff;
+    let path2_to_diff;
+    let _temp1;
+    let _temp2;
+
+    // Handle potential base64 encoding for file1 (downloaded)
+    if file1_path.ends_with(".base64") {
+        let content = fs::read(file1_path)?;
+        let mut decoded_file = TempFileBuilder::new()
+            .prefix("diff1_")
+            .suffix(".tmp")
+            .tempfile_in(&args.temp_file_path)?;
+        let decoded_data = STANDARD.decode(&content)?;
+        decoded_file.write_all(&decoded_data)?;
+        path1_to_diff = decoded_file.path().to_string_lossy().to_string();
+        _temp1 = Some(decoded_file);
+    } else {
+        path1_to_diff = file1_path.to_string();
+        _temp1 = None;
+    }
+
+    // Handle potential base64 encoding for file2 (local)
+    if file2_path.ends_with(".base64") {
+        let content = fs::read(file2_path)?;
+        let mut decoded_file = TempFileBuilder::new()
+            .prefix("diff2_")
+            .suffix(".tmp")
+            .tempfile_in(&args.temp_file_path)?;
+        let decoded_data = STANDARD.decode(&content)?;
+        decoded_file.write_all(&decoded_data)?;
+        path2_to_diff = decoded_file.path().to_string_lossy().to_string();
+        _temp2 = Some(decoded_file);
+    } else {
+        path2_to_diff = file2_path.to_string();
+        _temp2 = None;
+    }
+
     // Check if the diff command is available
     let diff_cmd = "diff";
     let pager_cmd = get_default_pager();
 
     // Print a heading to explain what the diff shows
     println!("\nDifferences between cloud version and local file:");
-    println!("< {} (cloud version)", downloaded_path);
-    println!("> {} (local version)\n", local_path);
+    println!("< {} (cloud version)", file1_path);
+    println!("> {} (local version)\n", file2_path);
 
     // Decide on options for diff - use unified diff format for better readability
-    let diff_args = ["-u", downloaded_path, local_path];
+    let diff_args = ["-u", &path1_to_diff, &path2_to_diff];
 
     // Try to run the diff command, but handle the case where files are identical or diff returns error
     let output = match cmd_utils::run_command_with_output(diff_cmd, &diff_args) {

@@ -152,14 +152,19 @@ impl UploadEntry {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct JsonOutput {
     pub file_nm: String,
-    pub md5: String, // This is the file hash
+    #[serde(default)]
+    pub md5: String, // This is the file hash for backward compatibility
     pub ins_ts: String,
+    #[serde(default)]
     pub az_id: String,
+    #[serde(default)]
     pub az_create: String,
+    #[serde(default)]
     pub az_updated: String,
+    #[serde(default)]
     pub az_name: String,
     pub hostname: String,
     #[serde(default = "default_encoding")]
@@ -168,6 +173,30 @@ pub struct JsonOutput {
     pub hash_val: String, // Added for compatibility with B2 storage
     #[serde(default = "default_hash_algo")]
     pub hash_algo: String, // Added for compatibility with B2 storage
+    #[serde(default = "default_azure_kv_output")]
+    pub destination_cloud: String, // The cloud storage destination
+    #[serde(default)]
+    pub file_size: u64, // The original file size
+    #[serde(default)]
+    pub encoded_size: u64, // The size after encoding
+    #[serde(default)]
+    pub cloud_upload_bucket: String, // The bucket name for cloud storage
+    #[serde(default)]
+    pub cloud_id: String, // The cloud storage ID (shared field)
+    #[serde(default)]
+    pub cloud_cr_ts: String, // Cloud creation timestamp
+    #[serde(default)]
+    pub cloud_upd_ts: String, // Cloud update timestamp
+    #[serde(default)]
+    pub cloud_prefix: String, // Cloud storage prefix
+    
+    // R2-specific fields
+    #[serde(default)]
+    pub r2_hash: String, // R2 object hash/etag
+    #[serde(default)]
+    pub r2_bucket_id: String, // R2 bucket ID
+    #[serde(default)]
+    pub r2_name: String, // R2 object name
 }
 
 // Default encoding for backward compatibility with existing JSON files
@@ -180,6 +209,12 @@ fn default_encoding() -> String {
 #[allow(dead_code)]
 fn default_hash_algo_output() -> String {
     "sha1".to_string()
+}
+
+// Default destination_cloud for compatibility
+#[allow(dead_code)]
+fn default_azure_kv_output() -> String {
+    "azure_kv".to_string()
 }
 
 pub struct JsonOutputControl {
@@ -202,6 +237,17 @@ impl Default for JsonOutputControl {
                 encoding: "utf8".to_string(),
                 hash_val: String::new(),
                 hash_algo: "sha1".to_string(),
+                destination_cloud: "azure_kv".to_string(),
+                file_size: 0,
+                encoded_size: 0,
+                cloud_upload_bucket: String::new(),
+                cloud_id: String::new(),
+                cloud_cr_ts: String::new(),
+                cloud_upd_ts: String::new(),
+                cloud_prefix: String::new(),
+                r2_hash: String::new(),
+                r2_bucket_id: String::new(),
+                r2_name: String::new(),
             },
             validate_all: false,
         }
