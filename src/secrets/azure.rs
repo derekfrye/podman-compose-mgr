@@ -13,7 +13,7 @@ use reqwest::Client;
 use serde_json::{Value, json};
 use std::fs::{self, File};
 use std::io::{Read, Write};
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::runtime::Runtime;
@@ -240,10 +240,10 @@ pub async fn get_secret_value(
 /// - Unable to create the Azure credential
 /// - Unable to create the KeyVault client
 pub fn get_keyvault_client(
-    client_id: &str,
-    client_secret_path: &PathBuf,
-    tenant_id: &str,
-    key_vault_name: &str,
+    client_id_path: &Path,
+    client_secret_path: &Path,
+    tenant_id: &Path,
+    key_vault_name: &Path,
 ) -> Result<Box<dyn AzureKeyVaultClient>> {
     // Read client secret from file
     let mut secret = String::new();
@@ -258,23 +258,22 @@ pub fn get_keyvault_client(
     // Remove newlines from secret
     secret = secret.trim().to_string();
 
-    // Get actual values if they're file paths
-    let actual_client_id = if client_id.contains(std::path::MAIN_SEPARATOR) {
-        get_content_from_file(client_id)?
-    } else {
-        client_id.to_string()
+    // Read client ID from file
+    let actual_client_id = match client_id_path.to_str() {
+        Some(path) => get_content_from_file(path)?,
+        None => return Err(Box::<dyn std::error::Error>::from("Invalid client ID path"))
     };
 
-    let actual_tenant_id = if tenant_id.contains(std::path::MAIN_SEPARATOR) {
-        get_content_from_file(tenant_id)?
-    } else {
-        tenant_id.to_string()
+    // Read tenant ID from file
+    let actual_tenant_id = match tenant_id.to_str() {
+        Some(path) => get_content_from_file(path)?,
+        None => return Err(Box::<dyn std::error::Error>::from("Invalid tenant ID path"))
     };
 
-    let actual_key_vault_name = if key_vault_name.contains(std::path::MAIN_SEPARATOR) {
-        get_content_from_file(key_vault_name)?
-    } else {
-        key_vault_name.to_string()
+    // Read key vault name from file
+    let actual_key_vault_name = match key_vault_name.to_str() {
+        Some(path) => get_content_from_file(path)?,
+        None => return Err(Box::<dyn std::error::Error>::from("Invalid key vault name path"))
     };
 
     // Strip out any URL components from the key vault name to get just the vault name

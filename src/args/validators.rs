@@ -193,13 +193,24 @@ pub fn check_writable_dir(dir: &str) -> Result<PathBuf, String> {
 /// * `Result<PathBuf, String>` - The validated PathBuf or an error message
 pub fn check_file_writable(file_path: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file_path);
+    
+    // Resolve ~ if present
+    let expanded_path = if path.starts_with("~") {
+        if let Some(home) = home_dir() {
+            home.join(path.strip_prefix("~").unwrap_or(path.as_path()))
+        } else {
+            return Err("Home directory could not be determined.".to_string());
+        }
+    } else {
+        path
+    };
 
     // First check if the parent directory exists and is writable
-    if let Some(parent) = path.parent() {
+    if let Some(parent) = expanded_path.parent() {
         if !parent.exists() {
             return Err(format!(
                 "The parent directory of '{}' does not exist.",
-                file_path
+                expanded_path.display()
             ));
         }
 
@@ -216,10 +227,10 @@ pub fn check_file_writable(file_path: &str) -> Result<PathBuf, String> {
         .write(true)
         .create(true)
         .truncate(false) // Don't truncate an existing file
-        .open(&path)
+        .open(&expanded_path)
     {
-        Ok(_) => Ok(path),
-        Err(e) => Err(format!("The file '{}' is not writable: {}", file_path, e)),
+        Ok(_) => Ok(expanded_path),
+        Err(e) => Err(format!("The file '{}' is not writable: {}", expanded_path.display(), e)),
     }
 }
 

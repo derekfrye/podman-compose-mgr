@@ -76,7 +76,7 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
 
     // Create Azure Key Vault client if needed
     let kv_client = if need_azure_client {
-        let client_id = args.secrets_client_id.as_ref().ok_or_else(|| {
+        let client_id_path = args.secrets_client_id.as_ref().ok_or_else(|| {
             Box::<dyn std::error::Error>::from("Client ID is required for Azure uploads")
         })?;
         let client_secret_path = args.secrets_client_secret_path.as_ref().ok_or_else(|| {
@@ -90,7 +90,7 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
         })?;
 
         // Create KeyVault client
-        get_keyvault_client(client_id, client_secret_path, tenant_id, key_vault_name)?
+        get_keyvault_client(client_id_path, client_secret_path, tenant_id, key_vault_name)?
     } else {
         // Create dummy client if not needed
         println!("No Azure KeyVault uploads required for this host, using dummy client");

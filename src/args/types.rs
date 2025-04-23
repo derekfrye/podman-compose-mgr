@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use super::initialization::check_init_filepath;
 use super::validators::{
     check_file_writable, check_file_writable_path, check_readable_dir, check_readable_file,
-    check_readable_path, check_valid_json_path, check_writable_dir,
+    check_valid_json_path, check_writable_dir,
 };
 
 #[derive(Parser, Debug, serde::Serialize)]
@@ -38,17 +38,17 @@ pub struct Args {
     #[arg(short, long)]
     pub build_args: Vec<String>,
     /// Pass as guid or filepath
-    #[arg(long)]
-    pub secrets_client_id: Option<String>,
+    #[arg(long, value_parser = check_readable_file)]
+    pub secrets_client_id: Option<PathBuf>,
     /// Pass as filepath
-    #[arg(long)]
+    #[arg(long, value_parser = check_readable_file)]
     pub secrets_client_secret_path: Option<PathBuf>,
     /// Pass as guid or filepath
-    #[arg(long)]
-    pub secrets_tenant_id: Option<String>,
+    #[arg(long, value_parser = check_readable_file)]
+    pub secrets_tenant_id: Option<PathBuf>,
     /// Pass as guid or filepath
-    #[arg(long)]
-    pub secrets_vault_name: Option<String>,
+    #[arg(long, value_parser = check_readable_file)]
+    pub secrets_vault_name: Option<PathBuf>,
     #[arg(long, value_parser = check_file_writable)]
     pub output_json: Option<PathBuf>,
     #[arg(long, value_parser = check_readable_file)]
@@ -59,15 +59,15 @@ pub struct Args {
 
     // S3-compatible storage parameters (B2/R2)
     /// Path to file containing S3-compatible account ID/key ID (for B2/R2)
-    #[arg(long)]
+    #[arg(long, value_parser = check_readable_file)]
     pub s3_account_id_filepath: Option<PathBuf>,
 
     /// Path to file containing S3-compatible access key/secret (for B2/R2)
-    #[arg(long)]
+    #[arg(long, value_parser = check_readable_file)]
     pub s3_secret_key_filepath: Option<PathBuf>,
 
     /// Path to file containing S3-compatible endpoint (for R2, the Cloudflare account ID)
-    #[arg(long)]
+    #[arg(long, value_parser = check_readable_file)]
     pub s3_endpoint_filepath: Option<PathBuf>,
 
     /// Directory to use for temporary files
@@ -219,13 +219,9 @@ impl Args {
     /// Validate the secrets based on the mode, without modifying the Args
     pub fn validate(&self) -> Result<(), String> {
         if let Mode::SecretRetrieve = self.mode {
-            if let Some(client_id) = &self.secrets_client_id {
-                check_readable_file(client_id)?;
-            }
+            // Client ID is already validated by check_readable_file in the argument definition
 
-            if let Some(client_secret) = &self.secrets_client_secret_path {
-                check_readable_path(client_secret)?;
-            }
+            // Client secret path is already validated by the value_parser
 
             if let Some(output_json) = &self.output_json {
                 check_file_writable_path(output_json)?;
@@ -296,16 +292,6 @@ impl Args {
                         return Err("s3_secret_key_filepath is required for upload mode when input json contains B2 or R2 entries".to_string());
                     }
 
-                    // Validate s3_account_id_filepath
-                    if let Some(filepath) = &self.s3_account_id_filepath {
-                        check_readable_path(filepath)?;
-                    }
-
-                    // Validate s3_secret_key_filepath
-                    if let Some(filepath) = &self.s3_secret_key_filepath {
-                        check_readable_path(filepath)?;
-                    }
-
                     // For R2, we need to check if both access key ID and endpoint (account ID) are provided
                     if need_r2_credentials {
                         if self.s3_account_id_filepath.is_none() {
@@ -318,18 +304,14 @@ impl Args {
                                     .to_string(),
                             );
                         }
-
-                        // Validate s3_endpoint_filepath if provided
-                        if let Some(filepath) = &self.s3_endpoint_filepath {
-                            check_readable_path(filepath)?;
-                        }
+                        
+                        // All filepaths are already validated by the value_parser
+                    
                     }
                 }
             }
 
-            if let Some(client_secret) = &self.secrets_client_secret_path {
-                check_readable_path(client_secret)?;
-            }
+            // Client secret path is already validated by the value_parser
 
             if let Some(output_json) = &self.output_json {
                 check_file_writable_path(output_json)?;

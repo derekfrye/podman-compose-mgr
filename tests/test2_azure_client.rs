@@ -68,10 +68,10 @@ fn test_azure_integration() -> Result<(), Box<dyn std::error::Error>> {
         path: PathBuf::from("~/docker"),
         mode: podman_compose_mgr::args::Mode::SecretRetrieve,
         verbose: 1,
-        secrets_client_id: Some("tests/personal_testing_data/client_id.txt".to_string()),
+        secrets_client_id: Some(PathBuf::from("tests/personal_testing_data/client_id.txt")),
         secrets_client_secret_path: Some(PathBuf::from("tests/personal_testing_data/secret.txt")),
-        secrets_tenant_id: Some("tests/personal_testing_data/tenant_id.txt".to_string()),
-        secrets_vault_name: Some("tests/personal_testing_data/vault_name.txt".to_string()),
+        secrets_tenant_id: Some(PathBuf::from("tests/personal_testing_data/tenant_id.txt")),
+        secrets_vault_name: Some(PathBuf::from("tests/personal_testing_data/vault_name.txt")),
         output_json: Some(PathBuf::from("tests/personal_testing_data/outfile.json")),
         input_json: Some(PathBuf::from("tests/personal_testing_data/input.json")),
         ..Default::default()

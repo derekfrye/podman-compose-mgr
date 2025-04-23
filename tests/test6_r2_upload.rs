@@ -39,10 +39,10 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         mode: Mode::SecretUpload,
         input_json: None, // Will be set after creating the test JSON file
         output_json: Some(output_path.clone()),
-        secrets_client_id: Some("test-client-id".to_string()),
+        secrets_client_id: Some(std::path::PathBuf::from("tests/test3_and_test4/a")),
         secrets_client_secret_path: Some(client_secret_path),
-        secrets_tenant_id: Some("test-tenant-id".to_string()),
-        secrets_vault_name: Some("test-vault".to_string()),
+        secrets_tenant_id: Some(std::path::PathBuf::from("tests/test3_and_test4/b")),
+        secrets_vault_name: Some(std::path::PathBuf::from("tests/test3_and_test4/c")),
         verbose: 1,
         s3_account_id_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/a")),
         s3_secret_key_filepath: Some(std::path::PathBuf::from("tests/test3_and_test4/b")),
