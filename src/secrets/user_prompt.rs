@@ -182,9 +182,14 @@ pub fn display_upload_help() {
 
 /// Setup the prompt for retrieving and comparing secrets
 pub fn setup_retrieve_prompt(grammars: &mut Vec<GrammarFragment>, entry: &Value) -> Result<()> {
-    // Add "Files differ" text
+    // Check if the local file exists by checking the path from entry
+    let file_name = json_utils::extract_string_field(entry, "file_nm")?;
+    let file_exists = std::path::Path::new(&file_name).exists();
+    
+    // Add first text based on file existence
+    let status_text = if file_exists { "Files differ" } else { "File missing" };
     let static_prompt_grammar = GrammarFragment {
-        original_val_for_prompt: Some("Files differ".to_string()),
+        original_val_for_prompt: Some(status_text.to_string()),
         shortened_val_for_prompt: None,
         pos: 0,
         prefix: None,
@@ -195,8 +200,7 @@ pub fn setup_retrieve_prompt(grammars: &mut Vec<GrammarFragment>, entry: &Value)
     };
     grammars.push(static_prompt_grammar);
 
-    // Extract and add file name
-    let file_name = json_utils::extract_string_field(entry, "file_nm")?;
+    // Add file name
     let file_nm_grammar = GrammarFragment {
         original_val_for_prompt: Some(file_name.to_string()),
         shortened_val_for_prompt: None,
@@ -209,9 +213,10 @@ pub fn setup_retrieve_prompt(grammars: &mut Vec<GrammarFragment>, entry: &Value)
     };
     grammars.push(file_nm_grammar);
 
-    // Add "View diff" text
-    let diff_prompt_grammar = GrammarFragment {
-        original_val_for_prompt: Some("View diff?".to_string()),
+    // Add appropriate action text based on file existence
+    let action_text = if file_exists { "View diff?" } else { "Save locally?" };
+    let action_prompt_grammar = GrammarFragment {
+        original_val_for_prompt: Some(action_text.to_string()),
         shortened_val_for_prompt: None,
         pos: 2,
         prefix: None,
@@ -220,10 +225,15 @@ pub fn setup_retrieve_prompt(grammars: &mut Vec<GrammarFragment>, entry: &Value)
         can_shorten: false,
         display_at_all: true,
     };
-    grammars.push(diff_prompt_grammar);
+    grammars.push(action_prompt_grammar);
 
-    // Add choices
-    let choices = ["N", "y", "d", "?"];
+    // Add choices - if the file exists, default is "N"; if not, default is "Y"
+    let choices = if file_exists {
+        ["N", "y", "d", "?"]
+    } else {
+        ["Y", "n", "d", "?"]
+    };
+    
     for i in 0..choices.len() {
         let mut choice_separator = Some("/".to_string());
         if i == choices.len() - 1 {

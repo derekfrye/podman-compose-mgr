@@ -11,12 +11,13 @@ use std::path::Path;
 use tempfile::{Builder as TempFileBuilder, NamedTempFile};
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine; // Import the trait so we can use decode() method
+use std::fs::create_dir_all;
 
-/// Prompt the user to see differences or details
+/// Prompt the user to see differences or details, or save file if it doesn't exist locally
 ///
 /// Returns Some(true) if the user wants to continue, Some(false) if they want to skip,
 /// or None if they've chosen an option that doesn't affect the validation process
-pub fn prompt_for_diff(
+pub fn prompt_for_diff_or_save(
     downloaded_path: &str,
     local_path: &str,
     entry: &Value,
@@ -28,14 +29,24 @@ pub fn prompt_for_diff(
     // Set up the prompt with file name
     setup_retrieve_prompt(&mut grammars, entry)?;
 
+    // Check if the local file exists
+    let file_exists = std::path::Path::new(local_path).exists();
+
     loop {
         // Display prompt and get user input
         let result = read_val::read_val_from_cmd_line_and_proceed_default(&mut grammars);
 
         match result.user_entered_val {
             None => {
-                // Empty input (default to N)
-                return Ok(Some(false));
+                // Empty input (default to N for existing files, Y for missing files)
+                if file_exists {
+                    return Ok(Some(false)); // Skip
+                } else {
+                    // Save the file locally
+                    println!("Saving file locally to {}", local_path);
+                    save_file_locally(downloaded_path, local_path, entry)?;
+                    return Ok(Some(true));
+                }
             }
             Some(user_choice) => {
                 match user_choice.as_str() {
@@ -43,11 +54,17 @@ pub fn prompt_for_diff(
                         // Skip this file
                         return Ok(Some(false));
                     }
-                    "y" => {
-                        // Show diff
-                        println!("Showing differences...");
-                        view_diff(downloaded_path, local_path, args)?; // Pass args
-                        // Continue with validation after showing diff
+                    "Y" | "y" => {
+                        if file_exists {
+                            // Show diff for existing files
+                            println!("Showing differences...");
+                            view_diff(downloaded_path, local_path, args)?;
+                        } else {
+                            // Save the file for missing files
+                            println!("Saving file locally to {}", local_path);
+                            save_file_locally(downloaded_path, local_path, entry)?;
+                        }
+                        // Continue with validation after showing diff or saving
                         return Ok(Some(true));
                     }
                     "d" => {
@@ -57,8 +74,8 @@ pub fn prompt_for_diff(
                         continue;
                     }
                     "?" => {
-                        // Display help
-                        display_retrieve_help();
+                        // Display help with file_exists context
+                        display_retrieve_help(file_exists);
                         // Don't affect validation, continue the loop
                         continue;
                     }
@@ -284,10 +301,62 @@ pub fn show_file_details(entry: &Value, local_path: &str) -> Result<()> {
     Ok(())
 }
 
-/// Display help for the retrieve options
-pub fn display_retrieve_help() {
-    println!("N = Do nothing, skip this file. (default)");
-    println!("y = Show diff between the cloud version and local file.");
-    println!("d = Display detailed information about the file (creation dates, sizes, etc.)");
-    println!("? = Display this help.");
+/// Function to save a file from the downloaded temp path to the local path
+/// 
+/// This handles creating parent directories if needed and copies the file
+fn save_file_locally(source_path: &str, destination_path: &str, entry: &Value) -> Result<()> {
+    // Create parent directories if they don't exist
+    if let Some(parent) = Path::new(destination_path).parent() {
+        if !parent.exists() {
+            create_dir_all(parent).map_err(|e| {
+                Box::<dyn std::error::Error>::from(format!(
+                    "Failed to create directory '{}': {}",
+                    parent.display(),
+                    e
+                ))
+            })?;
+        }
+    }
+
+    // Handle potential base64 encoding
+    if entry["encoding"].as_str().unwrap_or("") == "base64" || source_path.ends_with(".base64") || destination_path.ends_with(".base64") {
+        // Read base64 content
+        let content = fs::read(source_path)?;
+        // If destination should be base64
+        if destination_path.ends_with(".base64") {
+            fs::copy(source_path, destination_path)?;
+        } else {
+            // Decode base64 content
+            let decoded_data = STANDARD.decode(&content)?;
+            // Write decoded content to destination
+            fs::write(destination_path, decoded_data)?;
+        }
+    } else {
+        // Simple file copy for non-base64 files
+        fs::copy(source_path, destination_path)?;
+    }
+
+    println!("Successfully saved file from cloud to: {}", destination_path);
+    Ok(())
+}
+
+/// Display help for the retrieve options based on whether
+/// we're looking at an existing file or a missing file
+/// 
+/// # Arguments
+/// 
+/// * `file_exists` - Boolean indicating if the file exists locally
+pub fn display_retrieve_help(file_exists: bool) {
+
+    if file_exists {
+        println!("N = Do nothing, skip this file. (default)");
+        println!("y = Show diff between the cloud version and local file.");
+        println!("d = Display detailed information about the file (creation dates, sizes, etc.)");
+        println!("? = Display this help.");
+    } else {
+        println!("Y = Save the file from cloud storage to the local path. (default)");
+        println!("n = Skip this file, don't save it locally.");
+        println!("d = Display detailed information about the file (creation dates, sizes, etc.)");
+        println!("? = Display this help.");
+    }
 }

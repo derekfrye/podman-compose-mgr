@@ -6,7 +6,7 @@ use crate::secrets::r2_storage::R2Client;
 use crate::secrets::utils::{extract_validation_fields, get_current_timestamp, get_hostname};
 use crate::secrets::validation::cloud_storage::{DownloadParams, download_from_cloud};
 use crate::secrets::validation::file_ops::compare_files;
-use crate::secrets::validation::ui::prompt_for_diff;
+use crate::secrets::validation::ui::prompt_for_diff_or_save;
 use crate::utils::log_utils::Logger;
 use serde_json::Value;
 use std::path::Path;
@@ -80,7 +80,7 @@ pub fn retrieve_process_an_entry(
             println!("Files are identical: {}", file_path);
         } else {
             // Files differ - prompt user
-            match prompt_for_diff(&temp_path, &file_path, entry, args)? {
+            match prompt_for_diff_or_save(&temp_path, &file_path, entry, args)? {
                 // No output needed for user's choice
                 None => return Ok(None),
                 // User asked to see diff, but we still return the validation result
@@ -88,7 +88,13 @@ pub fn retrieve_process_an_entry(
             }
         }
     } else {
-        println!("Local file does not exist: {}", file_path);
+        // File doesn't exist locally - prompt user to save it
+        match prompt_for_diff_or_save(&temp_path, &file_path, entry, args)? {
+            // No output needed for user's choice
+            None => return Ok(None),
+            // User may have saved the file - we still return the validation result
+            _ => {}
+        }
     }
 
     // Create JSON output for this entry regardless of comparison result
