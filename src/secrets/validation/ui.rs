@@ -4,14 +4,14 @@ use crate::secrets::error::Result;
 use crate::secrets::file_details::{format_file_size, get_file_details};
 use crate::secrets::user_prompt::setup_retrieve_prompt;
 use crate::utils::cmd_utils;
+use base64::Engine; // Import the trait so we can use decode() method
+use base64::engine::general_purpose::STANDARD;
 use serde_json::Value;
 use std::fs;
+use std::fs::create_dir_all;
 use std::io::Write;
 use std::path::Path;
 use tempfile::{Builder as TempFileBuilder, NamedTempFile};
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine; // Import the trait so we can use decode() method
-use std::fs::create_dir_all;
 
 /// Prompt the user to see differences or details, or save file if it doesn't exist locally
 ///
@@ -67,6 +67,19 @@ pub fn prompt_for_diff_or_save(
                         // Continue with validation after showing diff or saving
                         return Ok(Some(true));
                     }
+                    "s" => {
+                        if file_exists {
+                            // Save/overwrite the local file with the cloud version
+                            println!("Overwriting local file with cloud version: {}", local_path);
+                            save_file_locally(downloaded_path, local_path, entry)?;
+                        } else {
+                            // Same behavior as 'Y' for missing files
+                            println!("Saving file locally to {}", local_path);
+                            save_file_locally(downloaded_path, local_path, entry)?;
+                        }
+                        // Continue with validation after saving
+                        return Ok(Some(true));
+                    }
                     "d" => {
                         // Display details
                         show_file_details(entry, local_path)?;
@@ -92,11 +105,7 @@ pub fn prompt_for_diff_or_save(
 }
 
 /// Show diff between two files using the 'diff' command
-fn view_diff(
-    file1_path: &str,
-    file2_path: &str,
-    args: &Args,
-) -> Result<()> {
+fn view_diff(file1_path: &str, file2_path: &str, args: &Args) -> Result<()> {
     let path1_to_diff;
     let path2_to_diff;
     let _temp1;
@@ -302,7 +311,7 @@ pub fn show_file_details(entry: &Value, local_path: &str) -> Result<()> {
 }
 
 /// Function to save a file from the downloaded temp path to the local path
-/// 
+///
 /// This handles creating parent directories if needed and copies the file
 fn save_file_locally(source_path: &str, destination_path: &str, entry: &Value) -> Result<()> {
     // Create parent directories if they don't exist
@@ -319,7 +328,10 @@ fn save_file_locally(source_path: &str, destination_path: &str, entry: &Value) -
     }
 
     // Handle potential base64 encoding
-    if entry["encoding"].as_str().unwrap_or("") == "base64" || source_path.ends_with(".base64") || destination_path.ends_with(".base64") {
+    if entry["encoding"].as_str().unwrap_or("") == "base64"
+        || source_path.ends_with(".base64")
+        || destination_path.ends_with(".base64")
+    {
         // Read base64 content
         let content = fs::read(source_path)?;
         // If destination should be base64
@@ -336,21 +348,24 @@ fn save_file_locally(source_path: &str, destination_path: &str, entry: &Value) -
         fs::copy(source_path, destination_path)?;
     }
 
-    println!("Successfully saved file from cloud to: {}", destination_path);
+    println!(
+        "Successfully saved file from cloud to: {}",
+        destination_path
+    );
     Ok(())
 }
 
 /// Display help for the retrieve options based on whether
 /// we're looking at an existing file or a missing file
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `file_exists` - Boolean indicating if the file exists locally
 pub fn display_retrieve_help(file_exists: bool) {
-
     if file_exists {
         println!("N = Do nothing, skip this file. (default)");
         println!("y = Show diff between the cloud version and local file.");
+        println!("s = Save the cloud version, overwriting the local file.");
         println!("d = Display detailed information about the file (creation dates, sizes, etc.)");
         println!("? = Display this help.");
     } else {

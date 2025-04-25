@@ -185,9 +185,13 @@ pub fn setup_retrieve_prompt(grammars: &mut Vec<GrammarFragment>, entry: &Value)
     // Check if the local file exists by checking the path from entry
     let file_name = json_utils::extract_string_field(entry, "file_nm")?;
     let file_exists = std::path::Path::new(&file_name).exists();
-    
+
     // Add first text based on file existence
-    let status_text = if file_exists { "Files differ" } else { "File missing" };
+    let status_text = if file_exists {
+        "Files differ"
+    } else {
+        "File missing"
+    };
     let static_prompt_grammar = GrammarFragment {
         original_val_for_prompt: Some(status_text.to_string()),
         shortened_val_for_prompt: None,
@@ -214,7 +218,11 @@ pub fn setup_retrieve_prompt(grammars: &mut Vec<GrammarFragment>, entry: &Value)
     grammars.push(file_nm_grammar);
 
     // Add appropriate action text based on file existence
-    let action_text = if file_exists { "View diff?" } else { "Save locally?" };
+    let action_text = if file_exists {
+        "View diff?"
+    } else {
+        "Save locally?"
+    };
     let action_prompt_grammar = GrammarFragment {
         original_val_for_prompt: Some(action_text.to_string()),
         shortened_val_for_prompt: None,
@@ -228,12 +236,13 @@ pub fn setup_retrieve_prompt(grammars: &mut Vec<GrammarFragment>, entry: &Value)
     grammars.push(action_prompt_grammar);
 
     // Add choices - if the file exists, default is "N"; if not, default is "Y"
-    let choices = if file_exists {
-        ["N", "y", "d", "?"]
+    // We need to use Vec for dynamic sizing rather than arrays with different lengths
+    let choices: Vec<&str> = if file_exists {
+        vec!["N", "y", "s", "d", "?"]
     } else {
-        ["Y", "n", "d", "?"]
+        vec!["Y", "n", "d", "?"]
     };
-    
+
     for i in 0..choices.len() {
         let mut choice_separator = Some("/".to_string());
         if i == choices.len() - 1 {
