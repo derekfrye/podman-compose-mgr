@@ -296,14 +296,27 @@ pub fn write_json_output(
     // Write new/updated entries to a temporary file first
     let temp_output_file = write_json_output_to_temp_file(&final_entries, args)?; // Pass args
 
-    // Atomically replace the original file with the temporary file
-    fs::rename(temp_output_file.path(), output_path).map_err(|e| {
-        Box::<dyn std::error::Error>::from(format!(
-            "Failed to replace output file '{}': {}",
-            output_path.display(),
-            e
-        ))
-    })?;
+    // Try atomic rename first (which is faster)
+    if let Err(e) = fs::rename(temp_output_file.path(), output_path) {
+        // If rename fails with cross-device error, fall back to copy and remove
+        if e.kind() == std::io::ErrorKind::CrossesDevices {
+            // Copy the content first
+            let temp_content = fs::read(temp_output_file.path())?;
+            // Make sure parent directory exists
+            if let Some(parent) = output_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            // Write the content to destination
+            fs::write(output_path, temp_content)?;
+        } else {
+            // For other errors, return the error
+            return Err(Box::<dyn std::error::Error>::from(format!(
+                "Failed to replace output file '{}': {}",
+                output_path.display(),
+                e
+            )));
+        }
+    }
 
     Ok(())
 }

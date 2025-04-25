@@ -155,19 +155,21 @@ impl S3StorageClient {
             });
         }
 
-        // Determine which file to use - original or base64 encoded version
-        let file_to_use = if file_details.encoding == "base64" {
-            format!("{}.base64", file_details.file_path)
-        } else {
-            file_details.file_path.clone()
-        };
+        // For R2/B2, always use the original file directly (no base64 encoding)
+        // This is because:
+        // 1. R2/B2 can natively store binary files without encoding
+        // 2. Base64 encoding increases the file size by ~33%
+        // 3. It's more efficient to upload the raw file
+        let file_to_use = file_details.file_path.clone();
 
         // Create metadata for the file
         let mut metadata = HashMap::new();
         metadata.insert("original-path".to_string(), file_details.file_path.clone());
         metadata.insert("hash".to_string(), file_details.hash.clone());
         metadata.insert("hash-algo".to_string(), file_details.hash_algo.clone());
-        metadata.insert("encoding".to_string(), file_details.encoding.clone());
+        // Store original encoding in metadata for reference, but treat file as binary (no encoding needed for S3)
+        metadata.insert("encoding".to_string(), "binary".to_string()); 
+        metadata.insert("original-encoding".to_string(), file_details.encoding.clone());
         metadata.insert("size".to_string(), file_details.file_size.to_string());
         // Add both for compatibility with different storage providers
         metadata.insert(
