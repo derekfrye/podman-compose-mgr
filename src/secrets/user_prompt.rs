@@ -202,7 +202,7 @@ pub fn setup_retrieve_prompt(grammars: &mut Vec<GrammarFragment>, entry: &Value)
         shortened_val_for_prompt: None,
         pos: 1,
         prefix: None,
-        suffix: Some("! ".to_string()),
+        suffix: Some(". ".to_string()),
         grammar_type: GrammarType::FileName,
         can_shorten: true,
         display_at_all: true,
