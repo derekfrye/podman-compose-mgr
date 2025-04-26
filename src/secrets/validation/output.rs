@@ -20,8 +20,8 @@ pub fn write_validation_results(args: &Args, json_outputs: &[JsonOutput]) -> Res
         let outputs_vec = json_outputs.to_owned();
 
         // Call the correct write_json_output function, passing args
-        // Don't sort entries for validation results
-        write_json_output(outputs_vec, output_path, args, false)?;
+        // Sort entries for validation results, matching the behavior in upload mode
+        write_json_output(outputs_vec, output_path, args, true)?;
     } else {
         return Err(Box::<dyn std::error::Error>::from(
             "Output JSON path is required",
