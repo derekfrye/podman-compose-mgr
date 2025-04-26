@@ -238,7 +238,7 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
         // For this version of the test, we need to verify the entries were created,
         // but we don't enforce validation of all fields since we know the format conversion
         // is lossy during the serialization/deserialization process (some R2 fields get dropped)
-        
+
         // Just verify we have the expected number of entries and each one has the basic fields
         for (i, entry) in output_entries.iter().enumerate() {
             let file_path = &test_files[i];
@@ -249,18 +249,19 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
 
             // Common fields that must be present
             assert_eq!(entry["file_nm"].as_str().unwrap(), file_path);
-            
+
             // Check hash - might be in "hash" or "hash_val"
-            let entry_hash = entry.get("hash")
+            let entry_hash = entry
+                .get("hash")
                 .and_then(|v| v.as_str())
                 .or_else(|| entry.get("hash_val").and_then(|v| v.as_str()))
                 .unwrap_or("");
-            
+
             // Some entries might have a missing hash, so just check if it's not empty
             if !entry_hash.is_empty() {
                 assert_eq!(entry_hash, hash);
             }
-            
+
             // The destination_cloud should be preserved in the output
             assert_eq!(entry["destination_cloud"].as_str().unwrap_or(""), "r2");
         }

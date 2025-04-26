@@ -90,7 +90,12 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
         })?;
 
         // Create KeyVault client
-        get_keyvault_client(client_id_path, client_secret_path, tenant_id, key_vault_name)?
+        get_keyvault_client(
+            client_id_path,
+            client_secret_path,
+            tenant_id,
+            key_vault_name,
+        )?
     } else {
         // Create dummy client if not needed
         println!("No Azure KeyVault uploads required for this host, using dummy client");

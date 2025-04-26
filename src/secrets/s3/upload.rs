@@ -168,8 +168,11 @@ impl S3StorageClient {
         metadata.insert("hash".to_string(), file_details.hash.clone());
         metadata.insert("hash-algo".to_string(), file_details.hash_algo.clone());
         // Store original encoding in metadata for reference, but treat file as binary (no encoding needed for S3)
-        metadata.insert("encoding".to_string(), "binary".to_string()); 
-        metadata.insert("original-encoding".to_string(), file_details.encoding.clone());
+        metadata.insert("encoding".to_string(), "binary".to_string());
+        metadata.insert(
+            "original-encoding".to_string(),
+            file_details.encoding.clone(),
+        );
         metadata.insert("size".to_string(), file_details.file_size.to_string());
         // Add both for compatibility with different storage providers
         metadata.insert(

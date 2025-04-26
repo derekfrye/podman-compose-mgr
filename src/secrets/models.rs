@@ -189,7 +189,7 @@ pub struct JsonOutput {
     pub cloud_upd_ts: String, // Cloud update timestamp
     #[serde(default)]
     pub cloud_prefix: String, // Cloud storage prefix
-    
+
     // R2-specific fields
     #[serde(default)]
     pub r2_hash: String, // R2 object hash/etag

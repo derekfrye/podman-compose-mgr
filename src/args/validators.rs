@@ -193,7 +193,7 @@ pub fn check_writable_dir(dir: &str) -> Result<PathBuf, String> {
 /// * `Result<PathBuf, String>` - The validated PathBuf or an error message
 pub fn check_file_writable(file_path: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file_path);
-    
+
     // Resolve ~ if present
     let expanded_path = if path.starts_with("~") {
         if let Some(home) = home_dir() {
@@ -230,7 +230,11 @@ pub fn check_file_writable(file_path: &str) -> Result<PathBuf, String> {
         .open(&expanded_path)
     {
         Ok(_) => Ok(expanded_path),
-        Err(e) => Err(format!("The file '{}' is not writable: {}", expanded_path.display(), e)),
+        Err(e) => Err(format!(
+            "The file '{}' is not writable: {}",
+            expanded_path.display(),
+            e
+        )),
     }
 }
 

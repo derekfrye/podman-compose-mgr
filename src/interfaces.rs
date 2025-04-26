@@ -120,11 +120,12 @@ impl AzureKeyVaultClient for DefaultAzureKeyVaultClient {
         secret_value: &str,
     ) -> Result<SetSecretResponse, Box<dyn std::error::Error>> {
         // Reuse the shared runtime
-        self.runtime.block_on(crate::secrets::azure::set_secret_value(
-            secret_name,
-            &self.client,
-            secret_value,
-        ))
+        self.runtime
+            .block_on(crate::secrets::azure::set_secret_value(
+                secret_name,
+                &self.client,
+                secret_value,
+            ))
     }
 
     fn get_secret_value(
@@ -132,10 +133,11 @@ impl AzureKeyVaultClient for DefaultAzureKeyVaultClient {
         secret_name: &str,
     ) -> Result<SetSecretResponse, Box<dyn std::error::Error>> {
         // Reuse the shared runtime
-        self.runtime.block_on(crate::secrets::azure::get_secret_value(
-            secret_name,
-            &self.client,
-        ))
+        self.runtime
+            .block_on(crate::secrets::azure::get_secret_value(
+                secret_name,
+                &self.client,
+            ))
     }
 }
 

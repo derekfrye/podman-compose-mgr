@@ -47,7 +47,12 @@ pub fn prepare_validation(args: &Args) -> Result<(Box<dyn AzureKeyVaultClient>, 
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Key vault name is required"))?;
 
     // Get KeyVault client
-    let client = get_keyvault_client(client_id_path, client_secret, tenant_id_path, vault_name_path)?;
+    let client = get_keyvault_client(
+        client_id_path,
+        client_secret,
+        tenant_id_path,
+        vault_name_path,
+    )?;
 
     Ok((client, json_values))
 }
@@ -60,7 +65,8 @@ pub fn get_client_id(args: &Args) -> Result<String> {
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Client ID is required"))?;
 
     // Read content from file path
-    client_id_path.to_str()
+    client_id_path
+        .to_str()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Invalid client ID path"))
         .and_then(|path| get_content_from_file(path))
 }
@@ -73,7 +79,8 @@ pub fn get_tenant_id(args: &Args) -> Result<String> {
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Tenant ID is required"))?;
 
     // Read content from file path
-    tenant_id_path.to_str()
+    tenant_id_path
+        .to_str()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Invalid tenant ID path"))
         .and_then(|path| get_content_from_file(path))
 }
@@ -86,7 +93,8 @@ pub fn get_key_vault_name(args: &Args) -> Result<String> {
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Key vault name is required"))?;
 
     // Read content from file path
-    vault_name_path.to_str()
+    vault_name_path
+        .to_str()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Invalid vault name path"))
         .and_then(|path| get_content_from_file(path))
 }

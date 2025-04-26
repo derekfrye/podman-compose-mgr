@@ -304,9 +304,8 @@ impl Args {
                                     .to_string(),
                             );
                         }
-                        
+
                         // All filepaths are already validated by the value_parser
-                    
                     }
                 }
             }

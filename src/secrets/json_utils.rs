@@ -1,10 +1,10 @@
+use crate::args::Args; // Add Args import
 use crate::secrets::error::Result;
 use crate::secrets::models::{JsonOutput, UploadEntry};
 use crate::secrets::utils::{calculate_hash, get_hostname};
-use crate::args::Args; // Add Args import
 use serde_json::{Value, from_str, to_string_pretty, to_value, to_writer_pretty};
 use std::fs::{self, File, OpenOptions};
-use std::io::{Read, BufWriter, Write}; // Added Write for flush()
+use std::io::{BufWriter, Read, Write}; // Added Write for flush()
 use std::path::Path;
 use tempfile::{Builder as TempFileBuilder, NamedTempFile}; // Add builder
 
@@ -240,9 +240,9 @@ fn write_json_output_to_temp_file(
         Box::<dyn std::error::Error>::from(format!("Failed to write JSON to temporary file: {}", e))
     })?;
 
-    writer
-        .flush()
-        .map_err(|e| Box::<dyn std::error::Error>::from(format!("Failed to flush writer: {}", e)))?;
+    writer.flush().map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to flush writer: {}", e))
+    })?;
 
     Ok(temp_file) // Return the NamedTempFile handle
 }
@@ -264,8 +264,8 @@ pub fn write_json_output(
 
         // Try to parse existing entries
         if !content.trim().is_empty() {
-            let existing_entries: Vec<JsonOutput> = serde_json::from_str(&content)
-                .map_err(|e| {
+            let existing_entries: Vec<JsonOutput> =
+                serde_json::from_str(&content).map_err(|e| {
                     Box::<dyn std::error::Error>::from(format!("Failed to parse JSON: {}", e))
                 })?;
 

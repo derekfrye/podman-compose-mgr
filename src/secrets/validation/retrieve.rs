@@ -37,7 +37,7 @@ pub fn retrieve_process_an_entry(
     // Create a temporary file to download the content in the specified directory
     let temp_file = TempFileBuilder::new()
         .prefix("retrieve_") // Optional: add a prefix
-        .suffix(".tmp")      // Optional: add a suffix
+        .suffix(".tmp") // Optional: add a suffix
         .tempfile_in(&args.temp_file_path) // Use the path from args
         .map_err(|e| {
             Box::<dyn std::error::Error>::from(format!(
@@ -146,10 +146,16 @@ pub fn create_retrieve_output(
         encoding,
         hash_val: hash,
         hash_algo,
-        destination_cloud: entry["destination_cloud"].as_str().unwrap_or("azure_kv").to_string(),
+        destination_cloud: entry["destination_cloud"]
+            .as_str()
+            .unwrap_or("azure_kv")
+            .to_string(),
         file_size: entry["file_size"].as_u64().unwrap_or(0),
         encoded_size: entry["encoded_size"].as_u64().unwrap_or(0),
-        cloud_upload_bucket: entry["cloud_upload_bucket"].as_str().unwrap_or("").to_string(),
+        cloud_upload_bucket: entry["cloud_upload_bucket"]
+            .as_str()
+            .unwrap_or("")
+            .to_string(),
         cloud_id: entry["cloud_id"].as_str().unwrap_or("").to_string(),
         cloud_cr_ts: cloud_created,
         cloud_upd_ts: cloud_updated,

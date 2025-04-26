@@ -261,19 +261,23 @@ pub fn get_keyvault_client(
     // Read client ID from file
     let actual_client_id = match client_id_path.to_str() {
         Some(path) => get_content_from_file(path)?,
-        None => return Err(Box::<dyn std::error::Error>::from("Invalid client ID path"))
+        None => return Err(Box::<dyn std::error::Error>::from("Invalid client ID path")),
     };
 
     // Read tenant ID from file
     let actual_tenant_id = match tenant_id.to_str() {
         Some(path) => get_content_from_file(path)?,
-        None => return Err(Box::<dyn std::error::Error>::from("Invalid tenant ID path"))
+        None => return Err(Box::<dyn std::error::Error>::from("Invalid tenant ID path")),
     };
 
     // Read key vault name from file
     let actual_key_vault_name = match key_vault_name.to_str() {
         Some(path) => get_content_from_file(path)?,
-        None => return Err(Box::<dyn std::error::Error>::from("Invalid key vault name path"))
+        None => {
+            return Err(Box::<dyn std::error::Error>::from(
+                "Invalid key vault name path",
+            ));
+        }
     };
 
     // Strip out any URL components from the key vault name to get just the vault name

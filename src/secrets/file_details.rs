@@ -1,6 +1,6 @@
 use crate::secrets::error::Result;
-use base64::engine::general_purpose::STANDARD;
 use base64::Engine as _; // For the encode method
+use base64::engine::general_purpose::STANDARD;
 use chrono::{DateTime, Local, NaiveDateTime, ParseError, TimeZone, Utc};
 use std::fs::{File, metadata};
 use std::io::{BufReader, BufWriter, Read, Write};

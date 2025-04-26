@@ -1,13 +1,13 @@
 use crate::args::Args;
 use crate::interfaces::AzureKeyVaultClient;
 use crate::secrets::error::Result;
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD;
 use serde_json::Value;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
-use tempfile::{Builder as TempFileBuilder, NamedTempFile};
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine as _; // For the decode method
+use tempfile::{Builder as TempFileBuilder, NamedTempFile}; // For the decode method
 
 /// Decode base64 content to a NamedTempFile
 ///

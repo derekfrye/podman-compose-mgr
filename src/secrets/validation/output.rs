@@ -1,7 +1,7 @@
 use crate::args::Args;
 use crate::secrets::error::Result;
-use crate::secrets::models::JsonOutput;
 use crate::secrets::json_utils::write_json_output; // Changed import from utils to json_utils
+use crate::secrets::models::JsonOutput;
 use std::fs;
 
 /// Write validation results to the output file
