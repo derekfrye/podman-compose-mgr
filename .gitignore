@@ -8,3 +8,4 @@ tests/test7_new_init_fmt/test_for_init*
 !tests/test7_new_init_fmt/test_for_init
 "tests/test3_and_test4/e e.base64"
 tests/test9/generated_output.json
+.env
