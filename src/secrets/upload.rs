@@ -242,7 +242,8 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
         .collect();
 
     // Save output JSON using the function that handles temporary files
-    json_utils::write_json_output(final_output_entries, output_filepath, args)?;
+    // We're in SecretUpload mode here, so pass true for sort_entries
+    json_utils::write_json_output(final_output_entries, output_filepath, args, true)?;
 
     Ok(())
 }

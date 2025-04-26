@@ -230,10 +230,18 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
 
         // Check the output JSON file to verify the uploads were processed correctly
         let output_content = fs::read_to_string(output_path.clone())?;
-        let output_entries: Vec<serde_json::Value> = serde_json::from_str(&output_content)?;
+        let mut output_entries: Vec<serde_json::Value> = serde_json::from_str(&output_content)?;
 
         // Verify we have 4 entries
         assert_eq!(output_entries.len(), 4, "Expected 4 entries in output JSON");
+
+        // Sort output entries by file_nm to match original test_files order
+        // This is needed because our sorting in write_json_output might reorder them
+        output_entries.sort_by(|a, b| {
+            let a_path = a["file_nm"].as_str().unwrap_or("");
+            let b_path = b["file_nm"].as_str().unwrap_or("");
+            a_path.cmp(b_path)
+        });
 
         // For this version of the test, we need to verify the entries were created,
         // but we don't enforce validation of all fields since we know the format conversion

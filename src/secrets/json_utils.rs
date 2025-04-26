@@ -252,9 +252,10 @@ pub fn write_json_output(
     output_entries: Vec<JsonOutput>,
     output_path: &Path,
     args: &Args, // Add args parameter
+    sort_entries: bool, // Whether to sort entries (true for SecretUpload mode)
 ) -> Result<()> {
     // Check if the file already exists
-    let final_entries;
+    let mut final_entries;
 
     if output_path.exists() {
         // Read existing content to merge
@@ -291,6 +292,22 @@ pub fn write_json_output(
     } else {
         // No existing file, just use new entries
         final_entries = output_entries;
+    }
+    
+    // Sort the entries by hostname (ascending) and then by hash if requested
+    if sort_entries {
+        final_entries.sort_by(|a, b| {
+            // First sort by hostname (ascending)
+            let hostname_cmp = a.hostname.cmp(&b.hostname);
+            if hostname_cmp != std::cmp::Ordering::Equal {
+                return hostname_cmp;
+            }
+            
+            // If hostnames are equal, sort by hash
+            let a_hash = if !a.hash_val.is_empty() { &a.hash_val } else { &a.md5 };
+            let b_hash = if !b.hash_val.is_empty() { &b.hash_val } else { &b.md5 };
+            a_hash.cmp(b_hash)
+        });
     }
 
     // Write new/updated entries to a temporary file first
