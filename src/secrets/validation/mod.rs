@@ -62,7 +62,7 @@ pub fn validation_retrieve(args: &Args, logger: &Logger) -> Result<()> {
     for entry in json_values {
         // Skip entries that don't match the current hostname
         if hostname != entry["hostname"].as_str().unwrap_or("") {
-            logger.info(&format!(
+            logger.debug(&format!(
                 "Skipping entry {} for hostname: {}",
                 entry["filenm"], entry["hostname"]
             ));

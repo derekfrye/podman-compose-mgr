@@ -117,9 +117,7 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
         })
     } else {
         // Create dummy client if not needed
-        if args.verbose > 0 {
-            println!("info: No R2 uploads required for this host, using dummy client");
-        }
+        logger.info("No R2 uploads required for this host, using dummy client");
         DefaultR2StorageClient::new_dummy()
     };
 
@@ -177,12 +175,10 @@ pub fn process_with_injected_dependencies_and_clients<R: ReadInteractiveInputHel
 
         // Skip this entry if it's not for this host
         if entry.hostname != our_hostname {
-            if args.verbose > 0 {
-                println!(
-                    "info: Skipping file {} because it is not on the current host",
-                    entry.file_nm
-                );
-            }
+            logger.debug(&format!(
+                "Skipping file {} because it is not on the current host",
+                entry.file_nm
+            ));
             continue;
         }
 

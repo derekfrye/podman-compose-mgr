@@ -114,7 +114,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
                     .iter()
                     .all(|pattern| !pattern.is_match(entry_path_str))
             {
-                logger.info(&format!(
+                logger.debug(&format!(
                     "Skipping path as it doesn't match any include pattern: {}",
                     entry_path_str
                 ));

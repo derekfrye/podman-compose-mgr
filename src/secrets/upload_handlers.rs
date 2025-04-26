@@ -71,7 +71,7 @@ pub fn handle_r2_upload<R: ReadInteractiveInputHelper>(
     let upload_confirmed = prompt_for_upload_with_helper(&upload_config, read_val_helper)?;
 
     if !upload_confirmed {
-        logger.info(&format!("Skipping upload of {}", entry.file_nm));
+        logger.debug(&format!("Skipping upload of {}", entry.file_nm));
         return Ok(None);
     }
 
@@ -150,7 +150,7 @@ pub fn handle_b2_upload<R: ReadInteractiveInputHelper>(
     let upload_confirmed = prompt_for_upload_with_helper(&upload_config, read_val_helper)?;
 
     if !upload_confirmed {
-        logger.info(&format!("Skipping upload of {}", entry.file_nm));
+        logger.debug(&format!("Skipping upload of {}", entry.file_nm));
         return Ok(None);
     }
 
@@ -239,7 +239,7 @@ pub fn handle_azure_upload<R: ReadInteractiveInputHelper>(
     let upload_confirmed = prompt_for_upload_with_helper(&upload_config, read_val_helper)?;
 
     if !upload_confirmed {
-        logger.info(&format!("Skipping upload of {}", entry.file_nm));
+        logger.debug(&format!("Skipping upload of {}", entry.file_nm));
         return Ok(None);
     }
 
