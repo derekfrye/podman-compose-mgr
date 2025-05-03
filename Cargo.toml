@@ -5,6 +5,7 @@ edition = "2024"
 
 
 [dependencies]
+reedline = "0.11"
 walkdir = "2"
 regex = "1"
 clap = { version = "4", features = ["derive"] }
