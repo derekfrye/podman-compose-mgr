@@ -82,6 +82,7 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
             // Return a result with "N" as user input
             ReadValResult {
                 user_entered_val: Some("N".to_string()),
+                was_interrupted: false,
             }
         })
         .times(3);
@@ -132,6 +133,7 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
             // Return a result with "N" as user input
             ReadValResult {
                 user_entered_val: Some("N".to_string()),
+                was_interrupted: false,
             }
         })
         .times(3);

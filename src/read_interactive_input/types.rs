@@ -1,6 +1,10 @@
+use std::io::Write;
+use reedline::{DefaultPrompt, Reedline, Signal};
+
 /// Type for reading and processing user input
 pub struct ReadValResult {
     pub user_entered_val: Option<String>,
+    pub was_interrupted: bool,
 }
 
 /// For dependency injection in tests - PrintFunction type alias
@@ -55,12 +59,24 @@ pub struct DefaultStdinHelper;
 
 impl StdinHelper for DefaultStdinHelper {
     fn read_line(&self) -> String {
-        let mut input = String::new();
         // flush stdout so prompt for sure displays
         std::io::stdout().flush().unwrap();
-        // read a line of input from stdin
-        std::io::stdin().read_line(&mut input).unwrap();
-        input.trim().to_string()
+        
+        // Initialize reedline editor
+        let mut editor = Reedline::create();
+        
+        match editor.read_line(&DefaultPrompt) {
+            Ok(Signal::Success(buffer)) => buffer,
+            Ok(Signal::CtrlC) | Ok(Signal::CtrlD) => {
+                // Handle Ctrl+C/Ctrl+D by printing a message and exiting
+                println!("\nOperation cancelled by user");
+                std::process::exit(0);
+            }
+            Err(err) => {
+                eprintln!("Error reading line: {}", err);
+                String::new()
+            }
+        }
     }
 }
 
@@ -85,4 +101,3 @@ impl Default for StdinHelperWrapper {
     }
 }
 
-use std::io::Write;

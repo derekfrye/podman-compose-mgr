@@ -81,6 +81,7 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
 ) -> ReadValResult {
     let mut return_result = ReadValResult {
         user_entered_val: None,
+        was_interrupted: false,
     };
 
     // Format the prompt
@@ -114,7 +115,11 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
         let input = if let Some(editor) = rl_editor.as_mut() {
             match editor.read_line(&DefaultPrompt) {
                 Ok(Signal::Success(buffer)) => buffer,
-                Ok(Signal::CtrlC) | Ok(Signal::CtrlD) => String::new(),
+                Ok(Signal::CtrlC) | Ok(Signal::CtrlD) => {
+                    // Mark as interrupted but don't exit here, let the caller decide
+                    return_result.was_interrupted = true;
+                    String::new()
+                },
                 Err(err) => {
                     eprintln!("Error reading line: {}", err);
                     return return_result;

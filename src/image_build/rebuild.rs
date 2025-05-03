@@ -268,6 +268,11 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
 
             match result.user_entered_val {
                 None => {
+                    // Check if it's a Ctrl+C signal
+                    if result.was_interrupted {
+                        println!("\nOperation cancelled by user");
+                        std::process::exit(0);
+                    }
                     break;
                 }
                 Some(user_entered_val) => match user_entered_val.as_str() {

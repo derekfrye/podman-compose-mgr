@@ -53,9 +53,26 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     // Create app state
     let app = App::new();
     let tick_rate = Duration::from_millis(250);
+    
+    // Run the app and handle cleanup on exit or error
     let res = run_app(&mut terminal, app, tick_rate, args, logger);
+    
+    // Always restore terminal state, even on error
+    let cleanup_result = cleanup_terminal(&mut terminal);
+    
+    // Handle any errors
+    if let Err(err) = res {
+        logger.warn(&format!("Error in TUI: {}", err));
+    }
+    
+    // If cleanup failed but the app was ok, return that error
+    cleanup_result?;
 
-    // Restore terminal
+    Ok(())
+}
+
+// Separate function for terminal cleanup to ensure it always happens
+fn cleanup_terminal<B: Backend + std::io::Write>(terminal: &mut Terminal<B>) -> io::Result<()> {
     disable_raw_mode()?;
     execute!(
         terminal.backend_mut(),
@@ -63,15 +80,10 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
         DisableMouseCapture
     )?;
     terminal.show_cursor()?;
-
-    if let Err(err) = res {
-        logger.warn(&format!("Error in TUI: {}", err));
-    }
-
     Ok(())
 }
 
-fn run_app<B: Backend>(
+fn run_app<B: Backend + std::io::Write>(
     terminal: &mut Terminal<B>,
     mut app: App,
     tick_rate: Duration,

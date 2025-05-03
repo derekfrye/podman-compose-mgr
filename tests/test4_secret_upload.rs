@@ -159,6 +159,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                 // Return "Y" to approve all uploads
                 ReadValResult {
                     user_entered_val: Some("Y".to_string()),
+                    was_interrupted: false,
                 }
             });
 
@@ -262,6 +263,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                 // Return "n" to decline all uploads
                 ReadValResult {
                     user_entered_val: Some("n".to_string()),
+                    was_interrupted: false,
                 }
             });
 
@@ -473,6 +475,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     // Return "d" for details
                     ReadValResult {
                         user_entered_val: Some("d".to_string()),
+                        was_interrupted: false,
                     }
                 } else {
                     // Second time seeing this file, approve upload ("Y") and move to next file
@@ -487,6 +490,7 @@ fn test_upload_process_with_varying_terminal_sizes() -> Result<(), Box<dyn std::
                     // Return "Y" to approve
                     ReadValResult {
                         user_entered_val: Some("Y".to_string()),
+                        was_interrupted: false,
                     }
                 }
             });

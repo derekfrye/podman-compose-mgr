@@ -106,6 +106,7 @@ fn test_r2_upload_process() -> Result<(), Box<dyn std::error::Error>> {
 
                 ReadValResult {
                     user_entered_val: Some(response.to_string()),
+                    was_interrupted: false,
                 }
             });
 
