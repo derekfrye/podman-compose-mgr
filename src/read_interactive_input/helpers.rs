@@ -4,6 +4,8 @@ use crate::read_interactive_input::types::{
     GrammarFragment, GrammarType, PrintFunction, ReadValResult, StdinHelperWrapper,
 };
 use std::collections::HashSet;
+// Use reedline for line editing when no custom stdin helper is provided
+use reedline::{Reedline, DefaultPrompt, Signal};
 
 /// Default print function that writes to stdout
 pub fn default_print(s: &str) {
@@ -96,10 +98,31 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
     let default_stdin_wrapper = StdinHelperWrapper::default();
     let stdin_wrapper = stdin_helper.as_ref().unwrap_or(&default_stdin_wrapper);
 
+    // Determine whether to use reedline (only when no stdin_helper is provided)
+    let use_reedline = stdin_helper.is_none();
+    // Initialize reedline editor for interactive input if needed
+    let mut rl_editor = if use_reedline {
+        // Initialize reedline editor for interactive prompt
+        Some(Reedline::create())
+    } else {
+        None
+    };
+
     // Input loop
     loop {
-        // Get input
-        let input = stdin_wrapper.read_line();
+        // Get input: use reedline editor if available, otherwise fallback to stdin helper
+        let input = if let Some(editor) = rl_editor.as_mut() {
+            match editor.read_line(&DefaultPrompt) {
+                Ok(Signal::Success(buffer)) => buffer,
+                Ok(Signal::CtrlC) | Ok(Signal::CtrlD) => String::new(),
+                Err(err) => {
+                    eprintln!("Error reading line: {}", err);
+                    return return_result;
+                }
+            }
+        } else {
+            stdin_wrapper.read_line()
+        };
 
         // Process input
         if let Some(result) = process_user_input(&input, &user_choices, &print_fn, &prompt_string) {

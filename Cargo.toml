@@ -5,6 +5,7 @@ edition = "2024"
 
 
 [dependencies]
+reedline = "0.11"
 walkdir = "2"
 regex = "1"
 clap = { version = "4", features = ["derive"] }
@@ -37,6 +38,8 @@ base64 = "0"
 utf8-read = "0"
 anyhow = "1"
 tempfile = "3"  # For temporary file operations
+ratatui = "0"
+crossterm = "0"
 
 
 [dev-dependencies]

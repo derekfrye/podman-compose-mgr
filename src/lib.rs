@@ -5,6 +5,7 @@ pub mod read_interactive_input;
 
 pub mod secrets;
 pub mod testing;
+pub mod tui;
 pub mod utils;
 pub mod walk_dirs;
 
