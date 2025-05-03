@@ -11,6 +11,7 @@ use crate::{
         CommandHelper, DefaultCommandHelper, DefaultReadInteractiveInputHelper,
         ReadInteractiveInputHelper,
     },
+    tui,
     utils::log_utils::Logger,
 };
 
@@ -29,7 +30,7 @@ pub enum StartError {
 /// Main function that uses the default helper implementations
 ///
 /// This function handles errors internally and prints them rather than propagating them
-pub fn walk_dirs(args: &Args, logger: &Logger) {
+pub fn walk_dirs(args: &Args, logger: &Logger, tui_mode: bool) {
     // Use default implementations
     let cmd_helper = DefaultCommandHelper;
     let read_val_helper = DefaultReadInteractiveInputHelper;
@@ -37,6 +38,14 @@ pub fn walk_dirs(args: &Args, logger: &Logger) {
     // Call the injectable version with default implementations
     if let Err(e) = walk_dirs_with_helpers(args, &cmd_helper, &read_val_helper, logger) {
         eprintln!("Error processing directories: {}", e);
+    }
+    
+    // If TUI mode is enabled and we're in rebuild mode, launch the TUI
+    if tui_mode && matches!(args.mode, args::Mode::Rebuild) {
+        logger.info("Starting TUI mode...");
+        if let Err(e) = tui::run(args, logger) {
+            eprintln!("Error starting TUI: {}", e);
+        }
     }
 }
 

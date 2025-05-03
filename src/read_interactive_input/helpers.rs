@@ -112,7 +112,7 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
     loop {
         // Get input: use reedline editor if available, otherwise fallback to stdin helper
         let input = if let Some(editor) = rl_editor.as_mut() {
-            match editor.read_line(&DefaultPrompt::default()) {
+            match editor.read_line(&DefaultPrompt) {
                 Ok(Signal::Success(buffer)) => buffer,
                 Ok(Signal::CtrlC) | Ok(Signal::CtrlD) => String::new(),
                 Err(err) => {

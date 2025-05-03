@@ -112,7 +112,7 @@ fn main() -> io::Result<()> {
             }
         }
         _ => {
-            walk_dirs(&args, &logger);
+            walk_dirs(&args, &logger, args.tui);
         }
     }
 

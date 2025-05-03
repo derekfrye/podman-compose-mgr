@@ -73,6 +73,10 @@ pub struct Args {
     /// Directory to use for temporary files
     #[arg(long, default_value = "/tmp", value_parser = check_writable_dir)]
     pub temp_file_path: PathBuf,
+
+    /// Use terminal UI mode 
+    #[arg(long)]
+    pub tui: bool,
 }
 
 impl Default for Args {
@@ -101,6 +105,7 @@ impl Default for Args {
             s3_secret_key_filepath: None,
             s3_endpoint_filepath: None,
             temp_file_path: default_temp_path,
+            tui: false,
         }
     }
 }
