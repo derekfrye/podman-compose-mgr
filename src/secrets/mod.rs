@@ -10,6 +10,8 @@ pub mod s3_storage_base;
 pub mod upload;
 pub mod upload_handlers;
 pub mod upload_utils;
+pub mod upload_prompt;
+pub mod retrieve_prompt;
 pub mod user_prompt;
 pub mod utils;
 pub mod validation;
