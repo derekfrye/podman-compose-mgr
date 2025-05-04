@@ -47,7 +47,7 @@ pub struct Image {
 }
 
 pub struct RebuildManager<'a, C: CommandHelper, R: ReadInteractiveInputHelper> {
-    images_checked: Vec<Image>,
+    images_already_processed: Vec<Image>,
     cmd_helper: &'a C,
     read_val_helper: &'a R,
 }
@@ -55,7 +55,7 @@ pub struct RebuildManager<'a, C: CommandHelper, R: ReadInteractiveInputHelper> {
 impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, R> {
     pub fn new(cmd_helper: &'a C, read_val_helper: &'a R) -> Self {
         Self {
-            images_checked: Vec::new(),
+            images_already_processed: Vec::new(),
             cmd_helper,
             read_val_helper,
         }
@@ -110,7 +110,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                         .to_string();
 
                     // Check if this image should be skipped
-                    let img_is_set_to_skip = self.images_checked.iter().any(|i| {
+                    let img_is_set_to_skip = self.images_already_processed.iter().any(|i| {
                         if let Some(ref name) = i.name {
                             name == &image_string && i.skipall_by_this_name
                         } else {
@@ -120,7 +120,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
 
                     // Check if we've already processed this image+container combo
                     let img_and_container_previously_reviewed =
-                        self.images_checked.iter().any(|i| {
+                        self.images_already_processed.iter().any(|i| {
                             if let Some(ref name) = i.name {
                                 if let Some(ref container_name) = i.container {
                                     name == &image_string && container_name == &container_nm_string
@@ -133,7 +133,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                         });
 
                     // Skip if necessary, otherwise process
-                    if !self.images_checked.is_empty()
+                    if !self.images_already_processed.is_empty()
                         && (img_is_set_to_skip || img_and_container_previously_reviewed)
                     {
                         continue;
@@ -150,9 +150,9 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                         let c = Image {
                             name: Some(image_string),
                             container: Some(container_nm_string),
-                            skipall_by_this_name: false,
+                            skipall_by_this_name: true,
                         };
-                        self.images_checked.push(c);
+                        self.images_already_processed.push(c);
                     }
                 }
             }
@@ -358,7 +358,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                             container: Some(container_name.to_string()),
                             skipall_by_this_name: true,
                         };
-                        self.images_checked.push(c);
+                        self.images_already_processed.push(c);
                         break;
                     }
                     _ => {
