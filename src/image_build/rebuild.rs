@@ -161,13 +161,13 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
         Ok(())
     }
 
-    fn read_val_loop(
-        &mut self,
+    /// Build the interactive prompt grammars for rebuild
+    fn build_rebuild_grammars(
+        &self,
         entry: &DirEntry,
         custom_img_nm: &str,
-        build_args: &[String],
         container_name: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Vec<GrammarFragment> {
         let mut grammars: Vec<GrammarFragment> = vec![];
 
         let grm1 = GrammarFragment {
@@ -180,7 +180,6 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
             can_shorten: false,
             display_at_all: true,
         };
-
         grammars.push(grm1);
 
         let grm2 = GrammarFragment {
@@ -207,17 +206,14 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
         };
         grammars.push(grm3);
 
-        // Get parent directory safely with a fallback to root
         let docker_compose_pth = entry
             .path()
             .parent()
-            .unwrap_or_else(|| Path::new("/")) // Fallback to root if parent doesn't exist
-            .display();
-
-        let docker_compose_pth_fmtted = docker_compose_pth.to_string();
-
+            .unwrap_or_else(|| Path::new("/"))
+            .display()
+            .to_string();
         let grm4 = GrammarFragment {
-            original_val_for_prompt: Some(docker_compose_pth_fmtted.clone()),
+            original_val_for_prompt: Some(docker_compose_pth),
             shortened_val_for_prompt: None,
             pos: 3,
             prefix: None,
@@ -241,23 +237,36 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
         grammars.push(grm5);
 
         let choices = ["p", "N", "d", "b", "s", "?"];
-        for i in 0..choices.len() {
-            let mut choice_separator = Some("/".to_string());
+        for (i, &c) in choices.iter().enumerate() {
+            let mut sep = Some("/".to_string());
             if i == choices.len() - 1 {
-                choice_separator = Some(": ".to_string());
+                sep = Some(": ".to_string());
             }
             let choice_grammar = GrammarFragment {
-                original_val_for_prompt: Some(choices[i].to_string()),
+                original_val_for_prompt: Some(c.to_string()),
                 shortened_val_for_prompt: None,
                 pos: (i + 5) as u8,
                 prefix: None,
-                suffix: choice_separator,
+                suffix: sep,
                 grammar_type: GrammarType::UserChoice,
                 can_shorten: false,
                 display_at_all: true,
             };
             grammars.push(choice_grammar);
         }
+
+        grammars
+    }
+
+    fn read_val_loop(
+        &mut self,
+        entry: &DirEntry,
+        custom_img_nm: &str,
+        build_args: &[String],
+        container_name: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        // use extracted helper to build grammars
+        let mut grammars = self.build_rebuild_grammars(entry, custom_img_nm, container_name);
 
         loop {
             // Get the terminal width from the command helper instead of passing None
@@ -288,7 +297,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                         "d" => {
                             println!("Image: {}", custom_img_nm);
                             println!("Container name: {}", container_name);
-                            println!("Compose file: {}", docker_compose_pth_fmtted);
+                            println!("Compose file: {}", grammars[3].original_val_for_prompt.as_ref().unwrap());
                             // Display image creation time
                             match podman_utils::get_podman_image_upstream_create_time(custom_img_nm)
                             {
