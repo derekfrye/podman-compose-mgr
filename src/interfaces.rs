@@ -2,6 +2,7 @@ use crate::read_interactive_input::{GrammarFragment, ReadValResult};
 use crate::secrets::file_details::FileDetails;
 use crate::secrets::models::SetSecretResponse;
 use crate::secrets::r2_storage::R2UploadResult;
+use azure_security_keyvault_secrets::SecretClient;
 use mockall::automock;
 
 // Define a type alias for the file existence check result
@@ -99,14 +100,14 @@ pub trait AzureKeyVaultClient {
 
 /// Default implementation that uses the actual Azure KeyVault client
 pub struct DefaultAzureKeyVaultClient {
-    // The actual KeyvaultClient from the Azure SDK
-    client: azure_security_keyvault::KeyvaultClient,
+    // The actual SecretClient from the Azure SDK v0.2
+    client: azure_security_keyvault_secrets::SecretClient,
     // Shared tokio runtime for all operations
     runtime: tokio::runtime::Runtime,
 }
 
 impl DefaultAzureKeyVaultClient {
-    pub fn new(client: azure_security_keyvault::KeyvaultClient) -> Self {
+    pub fn new(client: azure_security_keyvault_secrets::SecretClient) -> Self {
         let runtime = tokio::runtime::Runtime::new()
             .expect("Failed to create tokio runtime for Azure KeyVault client");
         Self { client, runtime }
