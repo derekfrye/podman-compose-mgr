@@ -4,7 +4,7 @@ use crate::interfaces::{
 use crate::secrets::error::Result;
 use crate::secrets::file_details::check_encoding_and_size;
 use crate::secrets::models::UploadEntry;
-use crate::secrets::user_prompt::prompt_for_upload_with_helper;
+use crate::secrets::upload_prompt::prompt_for_upload_with_helper;
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
@@ -59,7 +59,7 @@ pub fn handle_r2_upload<R: ReadInteractiveInputHelper>(
         };
 
     // Prompt the user for confirmation
-    let upload_config = crate::secrets::user_prompt::UploadPromptConfig {
+    let upload_config = crate::secrets::upload_prompt::UploadPromptConfig {
         file_path: &entry.file_nm,
         secret_exists: file_exists,
         cloud_created,
@@ -138,7 +138,7 @@ pub fn handle_b2_upload<R: ReadInteractiveInputHelper>(
         };
 
     // Prompt the user for confirmation
-    let upload_config = crate::secrets::user_prompt::UploadPromptConfig {
+    let upload_config = crate::secrets::upload_prompt::UploadPromptConfig {
         file_path: &entry.file_nm,
         secret_exists: file_exists,
         cloud_created,
@@ -227,7 +227,7 @@ pub fn handle_azure_upload<R: ReadInteractiveInputHelper>(
     }
 
     // Prompt the user for confirmation
-    let upload_config = crate::secrets::user_prompt::UploadPromptConfig {
+    let upload_config = crate::secrets::upload_prompt::UploadPromptConfig {
         file_path: &entry.file_nm,
         secret_exists,
         cloud_created: existing_created,

@@ -9,3 +9,14 @@ tests/test7_new_init_fmt/test_for_init*
 "tests/test3_and_test4/e e.base64"
 tests/test9/generated_output.json
 .env
+tests/personal_testing_data/b2_account.txt
+tests/personal_testing_data/b2_key.txt
+tests/personal_testing_data/bucket_name.txt
+tests/personal_testing_data/client_id.txt
+tests/personal_testing_data/r2_account_id.txt
+tests/personal_testing_data/r2_endpoint.txt
+tests/personal_testing_data/r2_secret.txt
+tests/personal_testing_data/secret.txt
+tests/personal_testing_data/tenant_id.txt
+tests/personal_testing_data/vault_name.txt
+tests/test7_new_init_fmt/test_for_init

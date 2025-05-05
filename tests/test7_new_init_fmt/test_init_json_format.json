@@ -1,18 +1,18 @@
 [
     {
-        "filenm": "tests/test2_personal_testing_data/vault_name.txt",
+        "filenm": "tests/personal_testing_data/vault_name.txt",
         "destination_cloud": "azure_kv"
     },
     {
-        "filenm": "tests/test2_personal_testing_data/tenant_id.txt",
+        "filenm": "tests/personal_testing_data/tenant_id.txt",
         "destination_cloud": "azure_kv"
     },
     {
-        "filenm": "tests/test2_personal_testing_data/client_id.txt",
+        "filenm": "tests/personal_testing_data/client_id.txt",
         "destination_cloud": "azure_kv"
     },
     {
-        "filenm": "tests/test2_personal_testing_data/secret.txt",
+        "filenm": "tests/personal_testing_data/secret.txt",
         "destination_cloud": "azure_kv"
     },
     {
@@ -20,32 +20,32 @@
         "destination_cloud": "azure_kv"
     },
     {
-        "filenm": "tests/test2_personal_testing_data/r2_endpoint.txt",
+        "filenm": "tests/personal_testing_data/r2_endpoint.txt",
         "destination_cloud": "r2",
         "cloud_upload_bucket": "secrets-bucket"
     },
     {
-        "filenm": "tests/test2_personal_testing_data/r2_account_id.txt",
+        "filenm": "tests/personal_testing_data/r2_account_id.txt",
         "destination_cloud": "r2",
         "cloud_upload_bucket": "secrets-bucket"
     },
     {
-        "filenm": "tests/test2_personal_testing_data/r2_secret.txt",
+        "filenm": "tests/personal_testing_data/r2_secret.txt",
         "destination_cloud": "r2",
         "cloud_upload_bucket": "secrets-bucket"
     },
     {
-        "filenm": "tests/test2_personal_testing_data/bucket_name.txt",
+        "filenm": "tests/personal_testing_data/bucket_name.txt",
         "destination_cloud": "r2",
         "cloud_upload_bucket": "secrets-bucket"
     },
     {
-        "filenm": "tests/test2_personal_testing_data/b2_key.txt",
+        "filenm": "tests/personal_testing_data/b2_key.txt",
         "destination_cloud": "r2",
         "cloud_upload_bucket": "secrets-bucket"
     },
     {
-        "filenm": "tests/test2_personal_testing_data/b2_account.txt",
+        "filenm": "tests/personal_testing_data/b2_account.txt",
         "destination_cloud": "r2",
         "cloud_upload_bucket": "secrets-bucket"
     },

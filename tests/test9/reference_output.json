@@ -1,6 +1,6 @@
 [
   {
-    "file_nm": "tests/test2_personal_testing_data/vault_name.txt",
+    "file_nm": "tests/personal_testing_data/vault_name.txt",
     "hash": "test_file_hash",
     "hash_algo": "sha256",
     "ins_ts": "2024-01-01T00:00:00Z",
@@ -15,7 +15,7 @@
     "cloud_upload_bucket": ""
   },
   {
-    "file_nm": "tests/test2_personal_testing_data/tenant_id.txt",
+    "file_nm": "tests/personal_testing_data/tenant_id.txt",
     "hash": "test_file_hash",
     "hash_algo": "sha256",
     "ins_ts": "2024-01-01T00:00:00Z",
@@ -30,7 +30,7 @@
     "cloud_upload_bucket": ""
   },
   {
-    "file_nm": "tests/test2_personal_testing_data/client_id.txt",
+    "file_nm": "tests/personal_testing_data/client_id.txt",
     "hash": "test_file_hash",
     "hash_algo": "sha256",
     "ins_ts": "2024-01-01T00:00:00Z",
@@ -45,7 +45,7 @@
     "cloud_upload_bucket": ""
   },
   {
-    "file_nm": "tests/test2_personal_testing_data/secret.txt",
+    "file_nm": "tests/personal_testing_data/secret.txt",
     "hash": "test_file_hash",
     "hash_algo": "sha256",
     "ins_ts": "2024-01-01T00:00:00Z",
@@ -75,7 +75,7 @@
     "cloud_upload_bucket": ""
   },
   {
-    "file_nm": "tests/test2_personal_testing_data/r2_endpoint.txt",
+    "file_nm": "tests/personal_testing_data/r2_endpoint.txt",
     "hash": "test_file_hash",
     "hash_algo": "sha256",
     "ins_ts": "2024-01-01T00:00:00Z",
@@ -94,7 +94,7 @@
     "r2_name": "test_r2_name"
   },
   {
-    "file_nm": "tests/test2_personal_testing_data/r2_account_id.txt",
+    "file_nm": "tests/personal_testing_data/r2_account_id.txt",
     "hash": "test_file_hash",
     "hash_algo": "sha256",
     "ins_ts": "2024-01-01T00:00:00Z",
@@ -113,7 +113,7 @@
     "r2_name": "test_r2_name"
   },
   {
-    "file_nm": "tests/test2_personal_testing_data/r2_secret.txt",
+    "file_nm": "tests/personal_testing_data/r2_secret.txt",
     "hash": "test_file_hash",
     "hash_algo": "sha256",
     "ins_ts": "2024-01-01T00:00:00Z",
@@ -122,8 +122,8 @@
     "cloud_upd_ts": "",
     "hostname": "test-hostname",
     "encoding": "utf8",
-    "file_size": 65,
-    "encoded_size": 65,
+    "file_size": 41,
+    "encoded_size": 41,
     "destination_cloud": "r2",
     "cloud_upload_bucket": "secrets-bucket",
     "cloud_prefix": "",
@@ -132,7 +132,7 @@
     "r2_name": "test_r2_name"
   },
   {
-    "file_nm": "tests/test2_personal_testing_data/bucket_name.txt",
+    "file_nm": "tests/personal_testing_data/bucket_name.txt",
     "hash": "test_file_hash",
     "hash_algo": "sha256",
     "ins_ts": "2024-01-01T00:00:00Z",
@@ -151,7 +151,7 @@
     "r2_name": "test_r2_name"
   },
   {
-    "file_nm": "tests/test2_personal_testing_data/b2_key.txt",
+    "file_nm": "tests/personal_testing_data/b2_key.txt",
     "hash": "test_file_hash",
     "hash_algo": "sha256",
     "ins_ts": "2024-01-01T00:00:00Z",
@@ -170,7 +170,7 @@
     "r2_name": "test_r2_name"
   },
   {
-    "file_nm": "tests/test2_personal_testing_data/b2_account.txt",
+    "file_nm": "tests/personal_testing_data/b2_account.txt",
     "hash": "test_file_hash",
     "hash_algo": "sha256",
     "ins_ts": "2024-01-01T00:00:00Z",
