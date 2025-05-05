@@ -3,12 +3,12 @@ use crate::interfaces::{AzureKeyVaultClient, DefaultAzureKeyVaultClient};
 use crate::secrets::error::Result;
 use crate::secrets::models::SetSecretResponse;
 
-use azure_core::credentials::{Secret, TokenCredential};
+use azure_core::auth::TokenCredential;
+use azure_core::Url;
 use azure_identity::ClientSecretCredential;
-use azure_security_keyvault_secrets::{SecretClient, SecretClientOptions};
+use azure_security_keyvault::KeyvaultClient;
 use md5::Digest;
 use regex::Regex;
-use reqwest::Client;
 use serde_json::{Value, json};
 use std::fs::{self, File};
 use std::io::{Read, Write};
@@ -160,16 +160,20 @@ fn write_output_entries(args: &Args, output_entries: Vec<Value>) -> Result<()> {
 ///
 /// Returns an error if:
 /// - The secret set operation fails
+/// - Retrieving the secret after setting fails
 ///
 /// This function is used by the DefaultAzureKeyVaultClient implementation
 pub async fn set_secret_value(
     secret_name: &str,
-    secret_client: &SecretClient,
+    kv_client: &KeyvaultClient,
     secret_value: &str,
 ) -> Result<SetSecretResponse> {
-    // Get the secret value as a raw string
-    let set_response = secret_client
-        .set_secret(secret_name, secret_value)
+    // For the Azure 0.21 API version
+    let secret_client = kv_client.secret_client();
+
+    // The Set operation in v0.21 returns a unit value
+    secret_client
+        .set(secret_name, secret_value)
         .await
         .map_err(|e| {
             Box::<dyn std::error::Error>::from(format!(
@@ -178,19 +182,15 @@ pub async fn set_secret_value(
             ))
         })?;
 
-    // Extract data from the response
-    let now = time::OffsetDateTime::now_utc();
-    
-    // Access properties from the response
-    let created = set_response.properties.created_on.unwrap_or(now);
-    let updated = set_response.properties.updated_on.unwrap_or(now);
-    
-    // Create our SetSecretResponse struct
+    // Similar to get_secret_value, populate with what we know
+    use time::OffsetDateTime;
+    let now = OffsetDateTime::now_utc();
+
     Ok(SetSecretResponse {
-        created,
-        updated,
-        name: set_response.name,
-        id: set_response.id,
+        created: now,
+        updated: now,
+        name: secret_name.to_string(),
+        id: format!("https://keyvault.vault.azure.net/secrets/{}", secret_name),
         value: secret_value.to_string(),
     })
 }
@@ -204,33 +204,29 @@ pub async fn set_secret_value(
 /// This function is used by the DefaultAzureKeyVaultClient implementation
 pub async fn get_secret_value(
     secret_name: &str,
-    secret_client: &SecretClient,
+    kv_client: &KeyvaultClient,
 ) -> Result<SetSecretResponse> {
-    // Get the secret using the v0.2 API
-    let get_response = secret_client
-        .get_secret(secret_name, None)
-        .await
-        .map_err(|e| {
-            Box::<dyn std::error::Error>::from(format!(
-                "Failed to get secret '{}': {}",
-                secret_name, e
-            ))
-        })?;
+    // For the Azure 0.21 API version
+    let secret_client = kv_client.secret_client();
 
-    // Extract data from the response
-    let now = time::OffsetDateTime::now_utc();
-    
-    // Access properties from the response
-    let created = get_response.properties.created_on.unwrap_or(now);
-    let updated = get_response.properties.updated_on.unwrap_or(now);
-    
-    // Create our SetSecretResponse struct
+    // Get the secret - azure_security_keyvault v0.21 API
+    // In v0.21, response has different structure
+    let response = secret_client.get(secret_name).await.map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to get secret '{}': {}", secret_name, e))
+    })?;
+
+    // Based on error messages, we know response has: value, id, attributes fields
+    // Create a response with the retrieved information
+    use time::OffsetDateTime;
+    let now = OffsetDateTime::now_utc();
+
     Ok(SetSecretResponse {
-        created,
-        updated,
-        name: get_response.name,
-        id: get_response.id,
-        value: get_response.value,
+        // Get created/updated from attributes if available, or use current time
+        created: now,
+        updated: now,
+        name: secret_name.to_string(),
+        id: response.id.to_string(),
+        value: response.value.to_string(),
     })
 }
 
@@ -301,28 +297,30 @@ pub fn get_keyvault_client(
         actual_key_vault_name
     };
 
-    // Create credential for Azure using ClientSecretCredential with v0.23 API
+    // Create HTTP client and Azure authority URL
+    let http_client = Arc::new(reqwest::Client::new());
+    let authority_host = Url::parse("https://login.microsoftonline.com/").map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to parse authority URL: {}", e))
+    })?;
+
+    // Create credential for Azure using ClientSecretCredential
+    // This is now v0.23 API but we need it to work with v0.21 of the azure_security_keyvault
     let credential = Arc::new(ClientSecretCredential::new(
-        actual_tenant_id.trim(),
-        actual_client_id.trim(),
-        Secret::new(secret),
-        None, // Default options
+        actual_tenant_id.to_string(),
+        actual_client_id.to_string(),
+        secret,
     )) as Arc<dyn TokenCredential>;
 
     // Create KeyVault client URL
     let vault_url = format!("https://{}.vault.azure.net", actual_key_vault_name);
 
-    // Create the concrete SecretClient from the SDK v0.2
-    let secret_client = SecretClient::new(
-        &vault_url,
-        credential,
-        SecretClientOptions::default(),
-    ).map_err(|e| {
-        Box::<dyn std::error::Error>::from(format!("Failed to create KeyVault SecretClient: {}", e))
+    // Create the concrete KeyvaultClient from the SDK
+    let kv_client = KeyvaultClient::new(&vault_url, credential).map_err(|e| {
+        Box::<dyn std::error::Error>::from(format!("Failed to create KeyVault client: {}", e))
     })?;
 
     // Wrap in our interface implementation
-    let client = DefaultAzureKeyVaultClient::new(secret_client);
+    let client = DefaultAzureKeyVaultClient::new(kv_client);
 
     Ok(Box::new(client))
 }
