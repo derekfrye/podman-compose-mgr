@@ -320,6 +320,48 @@ impl Args {
             if let Some(output_json) = &self.output_json {
                 check_file_writable_path(output_json)?;
             }
+        } else if let Mode::SecretMigrate = self.mode {
+            // Check for required fields for SecretMigrate mode
+            if self.input_json.is_none() {
+                return Err("input_json is required for SecretMigrate mode".to_string());
+            }
+            if self.output_json.is_none() {
+                return Err("output_json is required for SecretMigrate mode".to_string());
+            }
+
+            // Check for Azure KeyVault credentials
+            if self.azure_vault_name_path.is_none() {
+                return Err("azure_vault_name_path is required for SecretMigrate mode".to_string());
+            }
+            if self.azure_tenant_id_path.is_none() {
+                return Err("azure_tenant_id_path is required for SecretMigrate mode".to_string());
+            }
+            if self.azure_client_secret_path.is_none() {
+                return Err("azure_client_secret_path is required for SecretMigrate mode".to_string());
+            }
+            if self.azure_client_id_path.is_none() {
+                return Err("azure_client_id_path is required for SecretMigrate mode".to_string());
+            }
+
+            // Check for S3 credentials
+            if self.s3_account_id_filepath.is_none() {
+                return Err("s3_account_id_filepath is required for SecretMigrate mode".to_string());
+            }
+            if self.s3_secret_key_filepath.is_none() {
+                return Err("s3_secret_key_filepath is required for SecretMigrate mode".to_string());
+            }
+            if self.s3_endpoint_filepath.is_none() {
+                return Err("s3_endpoint_filepath is required for SecretMigrate mode".to_string());
+            }
+
+            // Validate the file paths
+            if let Some(input_json) = &self.input_json {
+                check_valid_json_path(input_json)?;
+            }
+
+            if let Some(output_json) = &self.output_json {
+                check_file_writable_path(output_json)?;
+            }
         }
         Ok(())
     }
@@ -332,4 +374,5 @@ pub enum Mode {
     SecretRetrieve,
     SecretInitialize,
     SecretUpload,
+    SecretMigrate,
 }
