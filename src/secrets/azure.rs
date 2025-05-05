@@ -3,8 +3,7 @@ use crate::interfaces::{AzureKeyVaultClient, DefaultAzureKeyVaultClient};
 use crate::secrets::error::Result;
 use crate::secrets::models::SetSecretResponse;
 
-use azure_core::credentials::Secret;
-use azure_core::auth::TokenCredential;
+use azure_core::credentials::{Secret, TokenCredential};
 use azure_identity::ClientSecretCredential;
 use azure_security_keyvault_secrets::{SecretClient, SecretClientOptions};
 use md5::Digest;
@@ -168,8 +167,8 @@ pub async fn set_secret_value(
     secret_client: &SecretClient,
     secret_value: &str,
 ) -> Result<SetSecretResponse> {
-    // Set the secret using the v0.2 API
-    let response = secret_client
+    // Get the secret value as a raw string
+    let set_response = secret_client
         .set_secret(secret_name, secret_value)
         .await
         .map_err(|e| {
@@ -179,16 +178,19 @@ pub async fn set_secret_value(
             ))
         })?;
 
-    // Extract response values
+    // Extract data from the response
     let now = time::OffsetDateTime::now_utc();
-    let created = response.properties.created_on.unwrap_or(now);
-    let updated = response.properties.updated_on.unwrap_or(now);
-
+    
+    // Access properties from the response
+    let created = set_response.properties.created_on.unwrap_or(now);
+    let updated = set_response.properties.updated_on.unwrap_or(now);
+    
+    // Create our SetSecretResponse struct
     Ok(SetSecretResponse {
         created,
         updated,
-        name: response.name,
-        id: response.id,
+        name: set_response.name,
+        id: set_response.id,
         value: secret_value.to_string(),
     })
 }
@@ -204,22 +206,31 @@ pub async fn get_secret_value(
     secret_name: &str,
     secret_client: &SecretClient,
 ) -> Result<SetSecretResponse> {
-    // Get the secret using v0.2 API
-    let response = secret_client.get_secret(secret_name).await.map_err(|e| {
-        Box::<dyn std::error::Error>::from(format!("Failed to get secret '{}': {}", secret_name, e))
-    })?;
+    // Get the secret using the v0.2 API
+    let get_response = secret_client
+        .get_secret(secret_name, None)
+        .await
+        .map_err(|e| {
+            Box::<dyn std::error::Error>::from(format!(
+                "Failed to get secret '{}': {}",
+                secret_name, e
+            ))
+        })?;
 
-    // Extract data from response
+    // Extract data from the response
     let now = time::OffsetDateTime::now_utc();
-    let created = response.properties.created_on.unwrap_or(now);
-    let updated = response.properties.updated_on.unwrap_or(now);
-
+    
+    // Access properties from the response
+    let created = get_response.properties.created_on.unwrap_or(now);
+    let updated = get_response.properties.updated_on.unwrap_or(now);
+    
+    // Create our SetSecretResponse struct
     Ok(SetSecretResponse {
         created,
         updated,
-        name: response.name,
-        id: response.id,
-        value: response.value,
+        name: get_response.name,
+        id: get_response.id,
+        value: get_response.value,
     })
 }
 

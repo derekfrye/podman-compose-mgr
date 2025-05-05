@@ -2,6 +2,7 @@ use crate::read_interactive_input::{GrammarFragment, ReadValResult};
 use crate::secrets::file_details::FileDetails;
 use crate::secrets::models::SetSecretResponse;
 use crate::secrets::r2_storage::R2UploadResult;
+use azure_core::credentials::TokenCredential;
 use azure_security_keyvault_secrets::SecretClient;
 use mockall::automock;
 
