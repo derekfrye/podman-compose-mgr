@@ -74,7 +74,7 @@ pub struct Args {
     #[arg(long, default_value = "/tmp", value_parser = check_writable_dir)]
     pub temp_file_path: PathBuf,
 
-    /// Use terminal UI mode 
+    /// Use terminal UI mode
     #[arg(long)]
     pub tui: bool,
 }

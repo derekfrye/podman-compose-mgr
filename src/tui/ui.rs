@@ -1,10 +1,10 @@
 use crate::Args;
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout},
     style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
-    Frame,
 };
 
 use super::app::App;
@@ -16,9 +16,9 @@ pub fn draw(f: &mut Frame, app: &App, args: &Args) {
         .margin(1)
         .constraints(
             [
-                Constraint::Length(3),  // Title
-                Constraint::Min(3),     // Main content
-                Constraint::Length(3),  // Footer
+                Constraint::Length(3), // Title
+                Constraint::Min(3),    // Main content
+                Constraint::Length(3), // Footer
             ]
             .as_ref(),
         )
@@ -40,12 +40,12 @@ pub fn draw(f: &mut Frame, app: &App, args: &Args) {
         Line::from(format!("Mode: {:?}", args.mode)),
     ];
 
-    let content_widget = Paragraph::new(content)
-        .block(Block::default().title("Info").borders(Borders::ALL));
+    let content_widget =
+        Paragraph::new(content).block(Block::default().title("Info").borders(Borders::ALL));
     f.render_widget(content_widget, chunks[1]);
 
     // Footer
-    let footer = Paragraph::new("Podman Compose Manager TUI")
-        .block(Block::default().borders(Borders::ALL));
+    let footer =
+        Paragraph::new("Podman Compose Manager TUI").block(Block::default().borders(Borders::ALL));
     f.render_widget(footer, chunks[2]);
 }

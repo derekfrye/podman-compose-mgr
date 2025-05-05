@@ -1,9 +1,7 @@
+use crate::interfaces::ReadInteractiveInputHelper;
 use crate::read_interactive_input::{GrammarFragment, GrammarType};
 use crate::secrets::error::Result;
-use crate::utils::json_utils;
-use crate::interfaces::ReadInteractiveInputHelper;
 use crate::secrets::file_details::{display_file_details, format_file_size, get_file_details};
-use serde_json::Value;
 
 /// Add user choice options to the prompt for upload
 pub fn add_upload_choice_options(grammars: &mut Vec<GrammarFragment>) {

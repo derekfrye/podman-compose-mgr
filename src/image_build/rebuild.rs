@@ -297,7 +297,10 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                         "d" => {
                             println!("Image: {}", custom_img_nm);
                             println!("Container name: {}", container_name);
-                            println!("Compose file: {}", grammars[3].original_val_for_prompt.as_ref().unwrap());
+                            println!(
+                                "Compose file: {}",
+                                grammars[3].original_val_for_prompt.as_ref().unwrap()
+                            );
                             // Display image creation time
                             match podman_utils::get_podman_image_upstream_create_time(custom_img_nm)
                             {

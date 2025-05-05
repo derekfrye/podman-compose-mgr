@@ -81,13 +81,19 @@ fn buildfile_prompt_grammars(files: &[BuildFile]) -> (Vec<GrammarFragment>, Vec<
     let multiple = files.iter().filter(|x| x.filepath.is_some()).count() > 1;
 
     if multiple {
-        prompt_grammars.push(GrammarFragment { original_val_for_prompt: Some("Prefer Dockerfile or Makefile?".to_string()), ..Default::default() });
+        prompt_grammars.push(GrammarFragment {
+            original_val_for_prompt: Some("Prefer Dockerfile or Makefile?".to_string()),
+            ..Default::default()
+        });
         user_choices = vec!["D", "M", "d", "?"];
         prompt_grammars.extend(make_choice_grammar(&user_choices, 1));
     } else if buildfile.link_target_dir.is_some() {
         prompt_grammars = make_build_prompt_grammar(&buildfile);
         user_choices = vec!["1", "2", "d", "?"];
-        prompt_grammars.extend(make_choice_grammar(&user_choices, prompt_grammars.len() as u8));
+        prompt_grammars.extend(make_choice_grammar(
+            &user_choices,
+            prompt_grammars.len() as u8,
+        ));
     }
 
     (prompt_grammars, user_choices)
@@ -96,12 +102,17 @@ fn buildfile_prompt_grammars(files: &[BuildFile]) -> (Vec<GrammarFragment>, Vec<
 fn read_val_loop(files: Vec<BuildFile>) -> WhatWereBuilding {
     // use helper for grammars
     let (mut prompt_grammars, user_choices) = buildfile_prompt_grammars(&files);
-    
-    let mut choice_of_where_to_build = WhatWereBuilding { file: files[0].clone(), follow_link: false };
+
+    let mut choice_of_where_to_build = WhatWereBuilding {
+        file: files[0].clone(),
+        follow_link: false,
+    };
 
     if !prompt_grammars.is_empty() {
         loop {
-            let result = crate::read_interactive_input::read_val_from_cmd_line_and_proceed_default(&mut prompt_grammars);
+            let result = crate::read_interactive_input::read_val_from_cmd_line_and_proceed_default(
+                &mut prompt_grammars,
+            );
             if let Some(choice) = result.user_entered_val {
                 match choice.as_str() {
                     // only set back up near line 95, if both Makefile and Dockerfile exist in dir
@@ -123,8 +134,10 @@ fn read_val_loop(files: Vec<BuildFile>) -> WhatWereBuilding {
                             prompt_grammars = make_build_prompt_grammar(&files[0]);
                             let user_choices = vec!["1", "2", "d", "?"];
 
-                            prompt_grammars
-                                .extend(make_choice_grammar(&user_choices, prompt_grammars.len() as u8));
+                            prompt_grammars.extend(make_choice_grammar(
+                                &user_choices,
+                                prompt_grammars.len() as u8,
+                            ));
                         } else {
                             eprintln!(
                                 "No {} found at '{}'",

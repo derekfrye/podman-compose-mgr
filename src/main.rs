@@ -7,8 +7,8 @@ use podman_compose_mgr::{
 
 // use futures::executor;
 use std::io;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 fn main() -> io::Result<()> {
     // Set up a global Ctrl+C handler
@@ -20,7 +20,8 @@ fn main() -> io::Result<()> {
         r.store(false, Ordering::SeqCst);
         println!("\nOperation cancelled by user");
         std::process::exit(0);
-    }).expect("Error setting Ctrl+C handler");
+    })
+    .expect("Error setting Ctrl+C handler");
 
     // Parse command-line arguments
     let args = args::args_checks();

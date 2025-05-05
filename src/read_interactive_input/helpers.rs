@@ -5,7 +5,7 @@ use crate::read_interactive_input::types::{
 };
 use std::collections::HashSet;
 // Use reedline for line editing when no custom stdin helper is provided
-use reedline::{Reedline, DefaultPrompt, Signal};
+use reedline::{DefaultPrompt, Reedline, Signal};
 
 /// Default print function that writes to stdout
 pub fn default_print(s: &str) {
@@ -119,7 +119,7 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
                     // Mark as interrupted but don't exit here, let the caller decide
                     return_result.was_interrupted = true;
                     String::new()
-                },
+                }
                 Err(err) => {
                     eprintln!("Error reading line: {}", err);
                     return return_result;

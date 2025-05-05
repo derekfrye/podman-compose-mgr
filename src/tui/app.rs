@@ -3,11 +3,11 @@ use crate::utils::log_utils::Logger;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
-    backend::{Backend, CrosstermBackend},
     Terminal,
+    backend::{Backend, CrosstermBackend},
 };
 use std::{
     io,
@@ -53,18 +53,18 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     // Create app state
     let app = App::new();
     let tick_rate = Duration::from_millis(250);
-    
+
     // Run the app and handle cleanup on exit or error
     let res = run_app(&mut terminal, app, tick_rate, args, logger);
-    
+
     // Always restore terminal state, even on error
     let cleanup_result = cleanup_terminal(&mut terminal);
-    
+
     // Handle any errors
     if let Err(err) = res {
         logger.warn(&format!("Error in TUI: {}", err));
     }
-    
+
     // If cleanup failed but the app was ok, return that error
     cleanup_result?;
 
@@ -91,7 +91,7 @@ fn run_app<B: Backend + std::io::Write>(
     logger: &Logger,
 ) -> io::Result<()> {
     let mut last_tick = Instant::now();
-    
+
     logger.debug("TUI is running");
 
     while !app.should_quit {

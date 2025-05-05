@@ -5,16 +5,17 @@ use serde_json::Value;
 use std::path::Path;
 
 /// Setup the prompt for retrieving and comparing secrets
-pub fn setup_retrieve_prompt(
-    grammars: &mut Vec<GrammarFragment>,
-    entry: &Value,
-) -> Result<()> {
+pub fn setup_retrieve_prompt(grammars: &mut Vec<GrammarFragment>, entry: &Value) -> Result<()> {
     // Determine if local file exists
     let file_name = json_utils::extract_string_field(entry, "file_nm")?;
     let file_exists = Path::new(&file_name).exists();
 
     // Status text
-    let status_text = if file_exists { "Files differ" } else { "File missing" };
+    let status_text = if file_exists {
+        "Files differ"
+    } else {
+        "File missing"
+    };
     grammars.push(GrammarFragment {
         original_val_for_prompt: Some(status_text.to_string()),
         shortened_val_for_prompt: None,
@@ -39,7 +40,11 @@ pub fn setup_retrieve_prompt(
     });
 
     // Action text
-    let action_text = if file_exists { "View diff?" } else { "Save locally?" };
+    let action_text = if file_exists {
+        "View diff?"
+    } else {
+        "Save locally?"
+    };
     grammars.push(GrammarFragment {
         original_val_for_prompt: Some(action_text.to_string()),
         shortened_val_for_prompt: None,

@@ -39,7 +39,7 @@ pub fn walk_dirs(args: &Args, logger: &Logger, tui_mode: bool) {
     if let Err(e) = walk_dirs_with_helpers(args, &cmd_helper, &read_val_helper, logger) {
         eprintln!("Error processing directories: {}", e);
     }
-    
+
     // If TUI mode is enabled and we're in rebuild mode, launch the TUI
     if tui_mode && matches!(args.mode, args::Mode::Rebuild) {
         logger.info("Starting TUI mode...");

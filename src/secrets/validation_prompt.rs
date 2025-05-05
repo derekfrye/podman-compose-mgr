@@ -60,7 +60,9 @@ pub fn add_choice_options(grammars: &mut Vec<GrammarFragment>) {
 /// Display help for validation options
 pub fn display_validation_help() {
     println!("N = Do nothing, skip this secret.");
-    println!("d = Display info (file name, cloud storage name, upstream secret create date, and file name modify date).");
+    println!(
+        "d = Display info (file name, cloud storage name, upstream secret create date, and file name modify date)."
+    );
     println!("v = Validate on-disk item matches the cloud storage secret.");
     println!("a = Validate all items.");
     println!("? = Display this help.");

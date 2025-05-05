@@ -1,5 +1,5 @@
-use std::io::Write;
 use reedline::{DefaultPrompt, Reedline, Signal};
+use std::io::Write;
 
 /// Type for reading and processing user input
 pub struct ReadValResult {
@@ -61,10 +61,10 @@ impl StdinHelper for DefaultStdinHelper {
     fn read_line(&self) -> String {
         // flush stdout so prompt for sure displays
         std::io::stdout().flush().unwrap();
-        
+
         // Initialize reedline editor
         let mut editor = Reedline::create();
-        
+
         match editor.read_line(&DefaultPrompt) {
             Ok(Signal::Success(buffer)) => buffer,
             Ok(Signal::CtrlC) | Ok(Signal::CtrlD) => {
@@ -100,4 +100,3 @@ impl Default for StdinHelperWrapper {
         StdinHelperWrapper::Default(DefaultStdinHelper)
     }
 }
-
