@@ -3,12 +3,13 @@ use crate::interfaces::{AzureKeyVaultClient, DefaultAzureKeyVaultClient};
 use crate::secrets::error::Result;
 use crate::secrets::models::SetSecretResponse;
 
-use azure_core::auth::TokenCredential;
 use azure_core::Url;
+use azure_core::auth::TokenCredential;
 use azure_identity::ClientSecretCredential;
 use azure_security_keyvault::KeyvaultClient;
 use md5::Digest;
 use regex::Regex;
+use reqwest::Client;
 use serde_json::{Value, json};
 use std::fs::{self, File};
 use std::io::{Read, Write};
@@ -298,29 +299,30 @@ pub fn get_keyvault_client(
     };
 
     // Create HTTP client and Azure authority URL
-    let http_client = Arc::new(reqwest::Client::new());
+    let http_client = Arc::new(Client::new());
     let authority_host = Url::parse("https://login.microsoftonline.com/").map_err(|e| {
         Box::<dyn std::error::Error>::from(format!("Failed to parse authority URL: {}", e))
     })?;
 
-    // Create credential for Azure using ClientSecretCredential
-    // This is now v0.23 API but we need it to work with v0.21 of the azure_security_keyvault
+    // Create credential for Azure using ClientSecretCredential (no environment variables needed)
     let credential = Arc::new(ClientSecretCredential::new(
+        http_client,
+        authority_host,
         actual_tenant_id.to_string(),
         actual_client_id.to_string(),
         secret,
     )) as Arc<dyn TokenCredential>;
 
-    // Create KeyVault client URL
+    // Create KeyVault client
     let vault_url = format!("https://{}.vault.azure.net", actual_key_vault_name);
 
     // Create the concrete KeyvaultClient from the SDK
-    let kv_client = KeyvaultClient::new(&vault_url, credential).map_err(|e| {
+    let sdk_client = KeyvaultClient::new(&vault_url, credential).map_err(|e| {
         Box::<dyn std::error::Error>::from(format!("Failed to create KeyVault client: {}", e))
     })?;
 
     // Wrap in our interface implementation
-    let client = DefaultAzureKeyVaultClient::new(kv_client);
+    let client = DefaultAzureKeyVaultClient::new(sdk_client);
 
     Ok(Box::new(client))
 }
