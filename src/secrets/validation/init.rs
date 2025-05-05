@@ -30,19 +30,19 @@ pub fn prepare_validation(args: &Args) -> Result<(Box<dyn AzureKeyVaultClient>, 
 
     // Get Azure credentials
     let client_id_path = args
-        .secrets_client_id
+        .azure_client_id_path
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Client ID is required"))?;
     let client_secret = args
-        .secrets_client_secret_path
+        .azure_client_secret_path
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Client secret path is required"))?;
     let tenant_id_path = args
-        .secrets_tenant_id
+        .azure_tenant_id_path
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Tenant ID is required"))?;
     let vault_name_path = args
-        .secrets_vault_name
+        .azure_vault_name_path
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Key vault name is required"))?;
 
@@ -60,7 +60,7 @@ pub fn prepare_validation(args: &Args) -> Result<(Box<dyn AzureKeyVaultClient>, 
 /// Get client ID from args or file
 pub fn get_client_id(args: &Args) -> Result<String> {
     let client_id_path = args
-        .secrets_client_id
+        .azure_client_id_path
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Client ID is required"))?;
 
@@ -74,7 +74,7 @@ pub fn get_client_id(args: &Args) -> Result<String> {
 /// Get tenant ID from args or file
 pub fn get_tenant_id(args: &Args) -> Result<String> {
     let tenant_id_path = args
-        .secrets_tenant_id
+        .azure_tenant_id_path
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Tenant ID is required"))?;
 
@@ -88,7 +88,7 @@ pub fn get_tenant_id(args: &Args) -> Result<String> {
 /// Get key vault name from args or file
 pub fn get_key_vault_name(args: &Args) -> Result<String> {
     let vault_name_path = args
-        .secrets_vault_name
+        .azure_vault_name_path
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Key vault name is required"))?;
 

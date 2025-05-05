@@ -39,21 +39,21 @@ pub struct Args {
     pub build_args: Vec<String>,
     /// Pass as guid or filepath
     #[arg(long, value_parser = check_readable_file)]
-    pub secrets_client_id: Option<PathBuf>,
+    pub azure_client_id_path: Option<PathBuf>,
     /// Pass as filepath
     #[arg(long, value_parser = check_readable_file)]
-    pub secrets_client_secret_path: Option<PathBuf>,
+    pub azure_client_secret_path: Option<PathBuf>,
     /// Pass as guid or filepath
     #[arg(long, value_parser = check_readable_file)]
-    pub secrets_tenant_id: Option<PathBuf>,
+    pub azure_tenant_id_path: Option<PathBuf>,
     /// Pass as guid or filepath
     #[arg(long, value_parser = check_readable_file)]
-    pub secrets_vault_name: Option<PathBuf>,
+    pub azure_vault_name_path: Option<PathBuf>,
     #[arg(long, value_parser = check_file_writable)]
     pub output_json: Option<PathBuf>,
     #[arg(long, value_parser = check_readable_file)]
     pub input_json: Option<PathBuf>,
-    /// Path to the JSON file containing secret files to initialize
+    /// Path to the flat file that lists on-disk secrets
     #[arg(long, value_parser = check_readable_file)]
     pub secrets_init_filepath: Option<PathBuf>,
 
@@ -94,10 +94,10 @@ impl Default for Args {
             exclude_path_patterns: Vec::new(),
             include_path_patterns: Vec::new(),
             build_args: Vec::new(),
-            secrets_client_id: None,
-            secrets_client_secret_path: None,
-            secrets_tenant_id: None,
-            secrets_vault_name: None,
+            azure_client_id_path: None,
+            azure_client_secret_path: None,
+            azure_tenant_id_path: None,
+            azure_vault_name_path: None,
             output_json: None,
             input_json: None,
             secrets_init_filepath: None,
@@ -262,18 +262,18 @@ impl Args {
             }
 
             // Check for Azure KeyVault credentials
-            if self.secrets_vault_name.is_none() {
+            if self.azure_vault_name_path.is_none() {
                 return Err("secrets_vault_name is required for SecretUpload mode".to_string());
             }
-            if self.secrets_tenant_id.is_none() {
+            if self.azure_tenant_id_path.is_none() {
                 return Err("secrets_tenant_id is required for SecretUpload mode".to_string());
             }
-            if self.secrets_client_secret_path.is_none() {
+            if self.azure_client_secret_path.is_none() {
                 return Err(
                     "secrets_client_secret_path is required for SecretUpload mode".to_string(),
                 );
             }
-            if self.secrets_client_id.is_none() {
+            if self.azure_client_id_path.is_none() {
                 return Err("secrets_client_id is required for SecretUpload mode".to_string());
             }
 

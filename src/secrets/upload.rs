@@ -76,16 +76,16 @@ pub fn process_with_injected_dependencies<R: ReadInteractiveInputHelper>(
 
     // Create Azure Key Vault client if needed
     let kv_client = if need_azure_client {
-        let client_id_path = args.secrets_client_id.as_ref().ok_or_else(|| {
+        let client_id_path = args.azure_client_id_path.as_ref().ok_or_else(|| {
             Box::<dyn std::error::Error>::from("Client ID is required for Azure uploads")
         })?;
-        let client_secret_path = args.secrets_client_secret_path.as_ref().ok_or_else(|| {
+        let client_secret_path = args.azure_client_secret_path.as_ref().ok_or_else(|| {
             Box::<dyn std::error::Error>::from("Client secret path is required for Azure uploads")
         })?;
-        let tenant_id = args.secrets_tenant_id.as_ref().ok_or_else(|| {
+        let tenant_id = args.azure_tenant_id_path.as_ref().ok_or_else(|| {
             Box::<dyn std::error::Error>::from("Tenant ID is required for Azure uploads")
         })?;
-        let key_vault_name = args.secrets_vault_name.as_ref().ok_or_else(|| {
+        let key_vault_name = args.azure_vault_name_path.as_ref().ok_or_else(|| {
             Box::<dyn std::error::Error>::from("Key vault name is required for Azure uploads")
         })?;
 

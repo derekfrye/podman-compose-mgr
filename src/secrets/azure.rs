@@ -29,19 +29,19 @@ pub fn update_mode(args: &Args) -> Result<()> {
     let re = Regex::new(r"[^a-zA-Z0-9-]")?;
 
     let client_id = args
-        .secrets_client_id
+        .azure_client_id_path
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Client ID is required"))?;
     let client_secret = args
-        .secrets_client_secret_path
+        .azure_client_secret_path
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Client secret path is required"))?;
     let tenant_id = args
-        .secrets_tenant_id
+        .azure_tenant_id_path
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Tenant ID is required"))?;
     let key_vault_name = args
-        .secrets_vault_name
+        .azure_vault_name_path
         .as_ref()
         .ok_or_else(|| Box::<dyn std::error::Error>::from("Key vault name is required"))?;
 
