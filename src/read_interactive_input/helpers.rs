@@ -1,5 +1,5 @@
 use crate::interfaces::CommandHelper;
-use crate::read_interactive_input::format::{do_prompt_formatting, unroll_grammar_into_string};
+use crate::read_interactive_input::format::{do_prompt_formatting, unroll_grammar_into_string, Prompt};
 use crate::read_interactive_input::types::{
     GrammarFragment, GrammarType, PrintFunction, ReadValResult, StdinHelperWrapper,
 };
@@ -137,4 +137,29 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
     }
 
     return_result
+}
+
+/// New function for handling structured prompts
+pub fn read_val_from_prompt_and_proceed_default(prompt: &Prompt, verbose: bool) -> ReadValResult {
+    // Convert PromptGrammar to GrammarFragment
+    let mut grammar_fragments: Vec<GrammarFragment> = prompt.grammar.iter().map(|g| {
+        GrammarFragment {
+            grammar_type: if g.can_shorten { GrammarType::FileName } else { GrammarType::Verbiage },
+            can_shorten: g.can_shorten,
+            display_at_all: g.display_at_all,
+            original_val_for_prompt: Some(g.text.clone()),
+            shortened_val_for_prompt: None,
+            prefix: None,
+            suffix: Some(g.suffix.clone()),
+            pos: 0, // Default position
+        }
+    }).collect();
+
+    // Print full prompt if verbose
+    if verbose {
+        println!("{}", prompt.full_prompt);
+    }
+
+    // Use the existing function with our converted grammar
+    read_val_from_cmd_line_and_proceed_default(&mut grammar_fragments)
 }

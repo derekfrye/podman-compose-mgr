@@ -1,5 +1,21 @@
 use crate::read_interactive_input::types::{GrammarFragment, GrammarType};
 
+/// Grammar for a prompt element
+#[derive(Clone, Debug)]
+pub struct PromptGrammar {
+    pub text: String,
+    pub can_shorten: bool,
+    pub display_at_all: bool,
+    pub suffix: String,
+}
+
+/// Complete prompt with grammar
+#[derive(Clone, Debug)]
+pub struct Prompt {
+    pub full_prompt: String,
+    pub grammar: Vec<PromptGrammar>,
+}
+
 /// Build a string to display to the user. Generally use read_val_from_cmd_line_and_proceed instead.
 /// Made public to allow usage in tests.
 pub fn unroll_grammar_into_string(

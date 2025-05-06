@@ -1,6 +1,6 @@
 // Public modules
 pub mod initialization;
-mod types;
+pub mod types;
 mod validators;
 
 // Re-export everything from the submodules

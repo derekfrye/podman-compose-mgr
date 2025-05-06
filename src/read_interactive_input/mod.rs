@@ -1,5 +1,5 @@
 // Re-exporting from modular files for backward compatibility
-mod format;
+pub mod format;
 mod helpers;
 mod types;
 
@@ -11,6 +11,7 @@ pub use self::types::{
 pub use self::helpers::{
     default_print, default_println, read_val_from_cmd_line_and_proceed,
     read_val_from_cmd_line_and_proceed_default, read_val_from_cmd_line_and_proceed_with_deps,
+    read_val_from_prompt_and_proceed_default,
 };
 
 pub use self::format::{do_prompt_formatting, unroll_grammar_into_string};

@@ -199,6 +199,36 @@ pub struct JsonOutput {
     pub r2_name: String, // R2 object name
 }
 
+// Add Vec-like operations for JsonOutput
+impl JsonOutput {
+    pub fn is_empty(&self) -> bool {
+        self.file_nm.is_empty()
+    }
+    
+    pub fn iter(&self) -> std::vec::IntoIter<JsonEntry> {
+        // Convert to JsonEntry format for iteration
+        let entries = vec![JsonEntry {
+            file_name: self.file_nm.clone(),
+            hostname: self.hostname.clone(),
+            destination_cloud: self.destination_cloud.clone(),
+            sha256: if !self.hash_val.is_empty() { Some(self.hash_val.clone()) } else { None },
+            last_updated: if !self.cloud_upd_ts.is_empty() { Some(self.cloud_upd_ts.clone()) } else { None },
+        }];
+        
+        entries.into_iter()
+    }
+}
+
+/// Simplified entry for migration operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JsonEntry {
+    pub file_name: String,
+    pub hostname: String,
+    pub destination_cloud: String,
+    pub sha256: Option<String>,
+    pub last_updated: Option<String>,
+}
+
 // Default encoding for backward compatibility with existing JSON files
 #[allow(dead_code)]
 fn default_encoding() -> String {

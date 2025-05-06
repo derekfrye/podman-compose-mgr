@@ -3,6 +3,7 @@ pub mod error;
 pub mod file_details;
 pub mod initialize;
 pub mod json_utils;
+pub mod migrate;
 pub mod models;
 pub mod r2_storage;
 pub mod retrieve_prompt;
@@ -34,6 +35,11 @@ pub fn process_secrets_mode(args: &Args, logger: &Logger) -> Result<()> {
         }
         crate::args::Mode::SecretUpload => {
             upload::process(args, logger)?;
+        }
+        crate::args::Mode::SecretMigrate => {
+            logger.info("Starting secret migration process");
+            migrate::init::init_migrate(args)?;
+            logger.info("Secret migration process completed");
         }
         _ => {
             return Err(Box::<dyn std::error::Error>::from(

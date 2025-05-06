@@ -1,5 +1,6 @@
 use crate::args::Args;
 use crate::read_interactive_input::{self as read_val, GrammarFragment};
+use crate::read_interactive_input::format::Prompt;
 use crate::secrets::error::Result;
 use crate::secrets::file_details::{format_file_size, get_file_details};
 use crate::secrets::user_prompt::setup_retrieve_prompt;
@@ -78,25 +79,25 @@ pub fn prompt_for_diff_or_save(
                             save_file_locally(downloaded_path, local_path, entry)?;
                         }
                         // Continue with validation after saving
-                        return Ok(Some(true));
+                        return Ok(Some(true))
                     }
                     "d" => {
                         // Display details
                         show_file_details(entry, local_path)?;
                         // Don't affect validation, continue the loop
-                        continue;
+                        continue
                     }
                     "?" => {
                         // Display help with file_exists context
                         display_retrieve_help(file_exists);
                         // Don't affect validation, continue the loop
-                        continue;
+                        continue
                     }
                     _ => {
                         // Invalid choice
                         eprintln!("Invalid choice: {}", user_choice);
                         // Don't affect validation, continue the loop
-                        continue;
+                        continue
                     }
                 }
             }
@@ -373,5 +374,41 @@ pub fn display_retrieve_help(file_exists: bool) {
         println!("n = Skip this file, don't save it locally.");
         println!("d = Display detailed information about the file (creation dates, sizes, etc.)");
         println!("? = Display this help.");
+    }
+}
+
+/// Prompt the user for action when migrating secrets
+///
+/// Returns a string representing the user's choice
+pub fn prompt_for_diff_save_migrate(prompt: &Prompt, verbose: bool) -> Result<String> {
+    // Display the prompt and get user input
+    let result = read_val::read_val_from_prompt_and_proceed_default(prompt, verbose);
+
+    match result.user_entered_val {
+        None => {
+            // Empty input (default to 'N' for migration)
+            Ok("N".to_string())
+        }
+        Some(user_choice) => {
+            match user_choice.as_str() {
+                "Y" | "y" | "S" | "s" => {
+                    // User wants to migrate
+                    Ok(user_choice)
+                }
+                "N" | "n" => {
+                    // User wants to skip migration
+                    Ok(user_choice)
+                }
+                "D" | "d" | "?" => {
+                    // User wants more details
+                    Ok(user_choice)
+                }
+                _ => {
+                    // Invalid choice, default to 'N'
+                    println!("Invalid choice: {}. Defaulting to 'N'", user_choice);
+                    Ok("N".to_string())
+                }
+            }
+        }
     }
 }
