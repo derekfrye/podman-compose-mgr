@@ -119,7 +119,7 @@ fn main() -> io::Result<()> {
     }
 
     match args.mode {
-        Mode::SecretRetrieve | Mode::SecretInitialize | Mode::SecretUpload => {
+        Mode::SecretRetrieve | Mode::SecretInitialize | Mode::SecretUpload | Mode::SecretMigrate => {
             if let Err(e) = secrets::process_secrets_mode(&args, &logger) {
                 eprintln!("Error processing secrets: {}", e);
                 std::process::exit(1);

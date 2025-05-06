@@ -3,10 +3,13 @@ use podman_compose_mgr::secrets::migrate::migrate_process::migrate_to_localhost;
 use podman_compose_mgr::secrets::models::JsonEntry;
 use std::path::PathBuf;
 
-/// Test for checking that migrate_to_localhost works with expected error
+/// Test mimicking a basic migration flow
 #[test]
-fn test_simple_migrate() {
-    // Create the test args for SecretMigrate mode
+fn test_secret_migrate_main_flow() {
+    
+    // This part of the test is simplified since we can't actually set env::args() directly
+    // Instead, we'll create the Args structure manually to simulate what args_checks() would do
+    
     let args = Args {
         mode: Mode::SecretMigrate,
         input_json: Some(PathBuf::from("tests/test12/input.json")),
@@ -22,22 +25,24 @@ fn test_simple_migrate() {
         ..Default::default()
     };
     
-    // Create a test entry to migrate
-    let entry = JsonEntry {
-        file_name: "test_file.txt".to_string(),
-        hostname: "remote_host".to_string(),
+    // Create a test entry for migration
+    let test_entry = JsonEntry {
+        file_name: "test_secret.txt".to_string(),
+        hostname: "old_host.example.com".to_string(),
         destination_cloud: "azure_kv".to_string(),
-        sha256: None,
-        last_updated: None,
+        sha256: Some("abcdef1234567890".to_string()),
+        last_updated: Some("2025-04-30T12:00:00Z".to_string()),
     };
     
-    // Test directly calling migrate_to_localhost
-    let result = migrate_to_localhost(&args, &entry);
+    // Test the migration function directly
+    // This simulates what would happen in secrets::process_secrets_mode
+    let result = migrate_to_localhost(&args, &test_entry);
     
     // Verify we get the expected error
     assert!(result.is_err(), "migrate_to_localhost should return an error");
     let err = result.unwrap_err();
     let err_str = err.to_string();
+    
     assert!(
         err_str.contains("Secret migration functionality is not yet implemented"),
         "Expected error message about migration not being implemented, got: {}",
