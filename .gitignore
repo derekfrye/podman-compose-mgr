@@ -21,3 +21,4 @@ tests/personal_testing_data/tenant_id.txt
 tests/personal_testing_data/vault_name.txt
 tests/test7_new_init_fmt/test_for_init
 tests/test12/data/e e.base64
+tests/test12/output.json
