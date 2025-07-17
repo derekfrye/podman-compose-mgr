@@ -1,21 +1,24 @@
 use crate::args::types::Args;
 use crate::read_interactive_input::format::{Prompt, PromptGrammar};
-use crate::secrets::models::JsonOutput;
+use crate::secrets::models::{JsonEntry, JsonOutput};
 use crate::secrets::validation::ui::prompt_for_diff_save_migrate;
 use crate::utils::error_utils::ErrorFromStr;
 use hostname::get as get_hostname;
 use std::io::{self, Write};
 
 /// Process the migration of secrets from remote hosts to localhost
-pub fn migrate(args: &Args, entries: &JsonOutput) -> Result<(), Box<dyn std::error::Error>> {
+pub fn migrate(args: &Args, entry: &JsonOutput) -> Result<(), Box<dyn std::error::Error>> {
     // Get the current hostname
     let current_hostname = get_hostname()?
         .to_string_lossy()
         .to_string();
 
+    // Convert the JsonOutput to JsonEntry format
+    let entries: Vec<JsonEntry> = entry.iter().collect();
+    
     // Find entries that have a different hostname than the current machine
     let foreign_entries: Vec<_> = entries
-        .iter()
+        .into_iter()
         .filter(|entry| entry.hostname != current_hostname)
         .collect();
 

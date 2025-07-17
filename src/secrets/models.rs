@@ -205,19 +205,26 @@ impl JsonOutput {
         self.file_nm.is_empty()
     }
     
-    pub fn iter(&self) -> std::vec::IntoIter<JsonEntry> {
-        // Convert to JsonEntry format for iteration
-        let entries = vec![JsonEntry {
+    pub fn to_json_entry(&self) -> JsonEntry {
+        JsonEntry {
             file_name: self.file_nm.clone(),
             hostname: self.hostname.clone(),
             destination_cloud: self.destination_cloud.clone(),
             sha256: if !self.hash_val.is_empty() { Some(self.hash_val.clone()) } else { None },
             last_updated: if !self.cloud_upd_ts.is_empty() { Some(self.cloud_upd_ts.clone()) } else { None },
-        }];
+        }
+    }
+    
+    pub fn iter(&self) -> std::vec::IntoIter<JsonEntry> {
+        // Convert to JsonEntry format for iteration
+        let entries = vec![self.to_json_entry()];
         
         entries.into_iter()
     }
 }
+
+/// Collection type to handle arrays of JsonOutput entries
+pub type JsonOutputCollection = Vec<JsonOutput>;
 
 /// Simplified entry for migration operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
