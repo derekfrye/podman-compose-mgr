@@ -162,11 +162,19 @@ fn calculate_hash_from_bytes(bytes: &[u8]) -> String {
     hex::encode(result)
 }
 
-/// Calculate SHA-1 hash of the filepath (not the file contents)
+/// Calculate SHA-1 hash of the hostname + filepath (not the file contents)
 /// This ensures consistent locations for files even when their content changes
+/// and ensures uniqueness across different hosts
 pub fn calculate_hash(filepath: &str) -> Result<String> {
-    // Hash just the filepath bytes
-    Ok(calculate_hash_from_bytes(filepath.as_bytes()))
+    // Get the hostname
+    let hostname = get_hostname()?;
+    
+    // Concatenate hostname and filepath to ensure uniqueness across hosts
+    // No separator to maintain backwards compatibility with existing hashes
+    let combined = format!("{}{}", hostname, filepath);
+    
+    // Hash the combined hostname + filepath bytes
+    Ok(calculate_hash_from_bytes(combined.as_bytes()))
 }
 
 /// Calculate SHA-1 hash of the file contents

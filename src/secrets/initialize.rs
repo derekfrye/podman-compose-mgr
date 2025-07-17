@@ -11,7 +11,6 @@ use crate::secrets::file_details::check_encoding_and_size;
 
 use crate::Args;
 use crate::secrets::error::Result;
-use crate::utils::cmd_utils;
 use crate::utils::log_utils::Logger;
 
 /// Process the initialization of secrets
@@ -287,9 +286,5 @@ fn calculate_hash(filepath: &str) -> Result<String> {
 
 /// Get the system hostname
 fn hostname() -> Result<String> {
-    let hostname = cmd_utils::run_command_with_output("hostname", &[])?
-        .trim()
-        .to_string();
-
-    Ok(hostname)
+    crate::secrets::utils::get_hostname()
 }
