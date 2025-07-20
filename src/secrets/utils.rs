@@ -166,9 +166,12 @@ fn calculate_hash_from_bytes(bytes: &[u8]) -> String {
 /// This ensures consistent locations for files even when their content changes
 /// and ensures uniqueness across different hosts
 pub fn calculate_hash(filepath: &str) -> Result<String> {
-    // Get the hostname
-    let hostname = get_hostname()?;
-    
+    calculate_hash_with_hostname(filepath, &get_hostname()?)
+}
+
+/// Calculate SHA-1 hash with a provided hostname
+/// This allows dependency injection for testing
+pub fn calculate_hash_with_hostname(filepath: &str, hostname: &str) -> Result<String> {
     // Concatenate hostname and filepath to ensure uniqueness across hosts
     // No separator to maintain backwards compatibility with existing hashes
     let combined = format!("{}{}", hostname, filepath);

@@ -5,7 +5,7 @@ use crate::secrets::validation::ui::prompt_for_diff_save_migrate;
 use crate::utils::error_utils::ErrorFromStr;
 // Use crate-provided utilities for hostname and hash
 use std::io::{self, Write};
-use crate::secrets::utils::{calculate_hash, get_hostname};
+use crate::secrets::utils::{calculate_hash, calculate_hash_with_hostname, get_hostname};
 use std::path::Path;
 use std::fs::File;
 use std::io::Read;
@@ -133,16 +133,12 @@ pub fn migrate_to_localhost(args: &Args, entry: &crate::secrets::models::JsonEnt
     
     println!("Migrating {} from {} to {}", entry.file_name, entry.hostname, current_hostname);
     
-    // For testing mode, use predefined hashes that match reference output
+    // Calculate hash with the appropriate hostname
     let new_hash = if test_mode {
-        match entry.file_name.as_str() {
-            "tests/test12/a" => "b4dc94ea48f089f317192f2724dd5b2f562e64ac".to_string(),
-            "tests/test12/b" => "445d99e4b227d4a5b2ce68cf3c546cc2e70316c4".to_string(),
-            "tests/test12/e e" => "09d4714fc984b05852a2d97bff215dd980e5ff58".to_string(),
-            _ => calculate_hash(&entry.file_name)?
-        }
+        // In test mode, use the fixed "new_computer" hostname for consistent hashes
+        calculate_hash_with_hostname(&entry.file_name, "new_computer")?
     } else {
-        // Normal mode - calculate hash 
+        // In production mode, use the actual hostname
         calculate_hash(&entry.file_name)?
     };
     
