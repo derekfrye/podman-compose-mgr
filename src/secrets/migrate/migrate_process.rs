@@ -3,15 +3,18 @@ use crate::read_interactive_input::format::{Prompt, PromptGrammar};
 use crate::secrets::models::{JsonEntry, JsonOutput};
 use crate::secrets::validation::ui::prompt_for_diff_save_migrate;
 use crate::utils::error_utils::ErrorFromStr;
-use hostname::get as get_hostname;
+// Use crate-provided utilities for hostname and hash
 use std::io::{self, Write};
+use crate::secrets::utils::{calculate_hash, get_hostname};
+use std::path::Path;
+use std::fs::File;
+use std::io::Read;
+use serde_json::{json, Value};
 
 /// Process the migration of secrets from remote hosts to localhost
 pub fn migrate(args: &Args, entry: &JsonOutput) -> Result<(), Box<dyn std::error::Error>> {
-    // Get the current hostname
-    let current_hostname = get_hostname()?
-        .to_string_lossy()
-        .to_string();
+    // Get the current hostname using our util
+    let current_hostname = get_hostname()?;
 
     // Convert the JsonOutput to JsonEntry format
     let entries: Vec<JsonEntry> = entry.iter().collect();
@@ -119,12 +122,8 @@ pub fn migrate(args: &Args, entry: &JsonOutput) -> Result<(), Box<dyn std::error
 /// * `entry` - The entry to migrate
 /// * `test_mode` - Whether we're running in test mode (defaults to false)
 pub fn migrate_to_localhost(args: &Args, entry: &crate::secrets::models::JsonEntry, test_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
-    use crate::secrets::utils::{calculate_hash, get_hostname};
-    use std::path::Path;
-    use std::fs::File;
-    use std::io::{Read, Write};
-    use serde_json::{json, Value};
     
+    // For testing purposes, allow overriding the hostname
     // For testing purposes, allow overriding the hostname
     let current_hostname = if test_mode {
         "new_computer".to_string()
