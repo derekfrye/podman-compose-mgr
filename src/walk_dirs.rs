@@ -93,9 +93,13 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
         read_val_helper,
     ));
 
-    // Walk directory tree looking for docker-compose.yml files
+    // Walk directory tree looking for docker-compose.yml and .container files
     for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
-        if entry.file_type().is_file() && entry.file_name() == "docker-compose.yml" {
+        let is_compose_file = entry.file_type().is_file() && entry.file_name() == "docker-compose.yml";
+        let is_container_file = entry.file_type().is_file() 
+            && entry.file_name().to_str().map_or(false, |name| name.ends_with(".container"));
+        
+        if is_compose_file || is_container_file {
             // Get path as string, safely
             let entry_path_str = match entry.path().to_str() {
                 Some(path_str) => path_str,

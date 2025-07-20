@@ -1,5 +1,6 @@
 use crate::args::Args;
 use crate::image_build::buildfile::start;
+use crate::image_build::container_file::{parse_container_file, ContainerFileError};
 use crate::interfaces::{CommandHelper, ReadInteractiveInputHelper};
 use crate::read_interactive_input::{GrammarFragment, GrammarType};
 use crate::utils::podman_utils;
@@ -19,6 +20,9 @@ pub enum RebuildError {
 
     #[error("YAML parsing error: {0}")]
     YamlParse(#[from] serde_yaml::Error),
+
+    #[error("Container file parsing error: {0}")]
+    ContainerFileParse(#[from] ContainerFileError),
 
     #[error("Path not found: {0}")]
     PathNotFound(String),
@@ -61,16 +65,35 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
         }
     }
 
-    /// Process a docker-compose.yml file for rebuilding images
+    /// Process a docker-compose.yml or .container file for rebuilding images
     ///
     /// # Errors
     ///
     /// Returns an error if:
     /// - Unable to get the file path as a string
-    /// - Unable to read or parse the YAML file
+    /// - Unable to read or parse the file
     /// - Service configurations are invalid
     pub fn rebuild(&mut self, entry: &DirEntry, args: &Args) -> Result<(), RebuildError> {
         // Get file path safely
+        let file_path = entry.path().to_str().ok_or_else(|| {
+            RebuildError::PathNotFound(format!("Invalid UTF-8 in path: {:?}", entry.path()))
+        })?;
+
+        // Determine file type and process accordingly
+        if file_path.ends_with(".container") {
+            self.process_container_file(entry, args)
+        } else if file_path.ends_with("docker-compose.yml") {
+            self.process_compose_file(entry, args)
+        } else {
+            Err(RebuildError::InvalidConfig(format!(
+                "Unsupported file type: {}",
+                file_path
+            )))
+        }
+    }
+
+    /// Process a docker-compose.yml file for rebuilding images
+    fn process_compose_file(&mut self, entry: &DirEntry, args: &Args) -> Result<(), RebuildError> {
         let file_path = entry.path().to_str().ok_or_else(|| {
             RebuildError::PathNotFound(format!("Invalid UTF-8 in path: {:?}", entry.path()))
         })?;
@@ -417,6 +440,69 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
         let yaml: Value = serde_yaml::from_reader(file).map_err(RebuildError::YamlParse)?;
 
         Ok(yaml)
+    }
+
+    /// Process a .container file for rebuilding images
+    fn process_container_file(&mut self, entry: &DirEntry, args: &Args) -> Result<(), RebuildError> {
+        let file_path = entry.path().to_str().ok_or_else(|| {
+            RebuildError::PathNotFound(format!("Invalid UTF-8 in path: {:?}", entry.path()))
+        })?;
+
+        // Parse the .container file
+        let container_info = parse_container_file(file_path)?;
+
+        // Use the container name from the file, or fallback to the filename
+        let container_name = container_info.name.unwrap_or_else(|| {
+            entry
+                .path()
+                .file_stem()
+                .and_then(|stem| stem.to_str())
+                .unwrap_or("unknown")
+                .to_string()
+        });
+
+        // Check if this image should be skipped
+        let img_is_set_to_skip = self.images_already_processed.iter().any(|i| {
+            if let Some(ref name) = i.name {
+                name == &container_info.image && i.skipall_by_this_name
+            } else {
+                false
+            }
+        });
+
+        // Check if we've already processed this image+container combo
+        let img_and_container_previously_reviewed = self.images_already_processed.iter().any(|i| {
+            if let Some(ref name) = i.name {
+                if let Some(ref container) = i.container {
+                    name == &container_info.image && container == &container_name
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        });
+
+        // Skip if necessary, otherwise process
+        if !self.images_already_processed.is_empty()
+            && (img_is_set_to_skip || img_and_container_previously_reviewed)
+        {
+            return Ok(());
+        }
+
+        // Process the container image
+        self.read_val_loop(entry, &container_info.image, &args.build_args, &container_name)
+            .map_err(|e| RebuildError::Other(e.to_string()))?;
+
+        // Add to our list of checked images
+        let processed_image = Image {
+            name: Some(container_info.image),
+            container: Some(container_name),
+            skipall_by_this_name: true,
+        };
+        self.images_already_processed.push(processed_image);
+
+        Ok(())
     }
 
     /// Pull a container image using podman
