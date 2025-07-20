@@ -2,7 +2,7 @@
 Description=Pi-hole DNS Container
 
 [Container]
-Image=pihole/pihole:latest
+Image=pihole/pihole-from-cont:latest
 ContainerName=pihole
 HostName=pihole
 PublishPort=53:53/tcp

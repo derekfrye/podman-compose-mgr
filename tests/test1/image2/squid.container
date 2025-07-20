@@ -3,7 +3,7 @@ Description=Squid Proxy Container
 After=pihole.service
 
 [Container]
-Image=djf/squid
+Image=djf/squid-from-cont
 ContainerName=squid
 PublishPort=0:0
 Volume=squid_conf:/etc/squid:ro
