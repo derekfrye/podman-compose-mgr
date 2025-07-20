@@ -1,0 +1,26 @@
+[Unit]
+Description=Pi-hole DNS Container (Primary Service)
+
+[Container]
+Image=pihole/pihole:latest
+ContainerName=pihole
+HostName=pihole
+PublishPort=53:53/tcp
+PublishPort=53:53/udp
+PublishPort=8080:80
+Environment=TZ=Somewhere/somewhere
+Environment=WEBPASSWORD=xxx
+Environment=LOCAL_IPV4=0.0.0.0
+Environment=LOCAL_IPV6=0::0
+Environment=TEMPERATUREUNIT=f
+Environment=VIRTUAL_HOST=pihole
+Volume=pihole_etc:/etc/pihole/
+Volume=pihole_dnsmasq:/etc/dnsmasq.d/
+AddCapability=NET_ADMIN
+Network=x:ip=0.0.0.0
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

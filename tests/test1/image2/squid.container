@@ -1,0 +1,19 @@
+[Unit]
+Description=Squid Proxy Container
+After=pihole.service
+
+[Container]
+Image=djf/squid
+ContainerName=squid
+PublishPort=0:0
+Volume=squid_conf:/etc/squid:ro
+Volume=squid_spool:/var/spool/squid
+Volume=squid_log:/var/log/squid
+Environment=TZ=Somewhere/somewhere
+Network=wirehole-squid:ip=0.0.0.0
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target
