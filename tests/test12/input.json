@@ -1,6 +1,6 @@
 [
     {
-        "file_nm": "tests/test12/a",
+        "file_nm": "tests/test12/data/a",
         "md5": "",
         "ins_ts": "2025-04-30T17:56:46.386195765-05:00",
         "az_id": "",
@@ -24,7 +24,7 @@
         "r2_name": ""
     },
     {
-        "file_nm": "tests/test12/b",
+        "file_nm": "tests/test12/data/b",
         "md5": "",
         "ins_ts": "2025-04-30T17:56:46.386195765-05:00",
         "az_id": "",
@@ -48,7 +48,7 @@
         "r2_name": ""
     },
     {
-        "file_nm": "tests/test12/e e",
+        "file_nm": "tests/test12/data/e e",
         "md5": "",
         "ins_ts": "2025-04-30T17:56:46.386195765-05:00",
         "az_id": "",
