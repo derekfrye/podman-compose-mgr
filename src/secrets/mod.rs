@@ -38,7 +38,8 @@ pub fn process_secrets_mode(args: &Args, logger: &Logger) -> Result<()> {
         }
         crate::args::Mode::SecretMigrate => {
             logger.info("Starting secret migration process");
-            migrate::init::init_migrate(args)?;
+            // Pass false for test_mode in production code
+            migrate::init::init_migrate(args, false)?;
             logger.info("Secret migration process completed");
         }
         _ => {

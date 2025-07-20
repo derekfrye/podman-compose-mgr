@@ -5,10 +5,14 @@ use std::fs::File;
 use std::io::Read;
 
 use super::validator::validate_input_json;
-use super::migrate_process::migrate;
+use super::migrate_process::{migrate, migrate_to_localhost};
 
 /// Initialize the secrets migration process
-pub fn init_migrate(args: &Args) -> Result<(), Box<dyn std::error::Error>> {
+/// 
+/// # Parameters
+/// * `args` - The command line arguments
+/// * `test_mode` - Whether to run in test mode (defaults to false)
+pub fn init_migrate(args: &Args, test_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
     // Get the input JSON file path
     let input_json_path = args
         .input_json
@@ -19,6 +23,8 @@ pub fn init_migrate(args: &Args) -> Result<(), Box<dyn std::error::Error>> {
     let mut file = File::open(input_json_path)?;
     let mut content = String::new();
     file.read_to_string(&mut content)?;
+
+    // Use the provided test_mode parameter
 
     // Try to parse the JSON content as an array first
     let entries_result: Result<JsonOutputCollection, _> = serde_json::from_str(&content);
@@ -38,7 +44,13 @@ pub fn init_migrate(args: &Args) -> Result<(), Box<dyn std::error::Error>> {
             
             // Process each entry in the collection
             for entry in &entries_collection {
-                migrate(args, entry)?;
+                if test_mode {
+                    // In test mode, skip the interactive prompt and directly migrate
+                    migrate_to_localhost(args, &entry.to_json_entry(), test_mode)?;
+                } else {
+                    // Normal interactive mode
+                    migrate(args, entry)?;
+                }
             }
         },
         Err(_) => {
@@ -49,7 +61,13 @@ pub fn init_migrate(args: &Args) -> Result<(), Box<dyn std::error::Error>> {
             validate_input_json(&entry)?;
             
             // Proceed with migration for the single entry
-            migrate(args, &entry)?;
+            if test_mode {
+                // In test mode, skip the interactive prompt and directly migrate
+                migrate_to_localhost(args, &entry.to_json_entry(), test_mode)?;
+            } else {
+                // Normal interactive mode
+                migrate(args, &entry)?;
+            }
         }
     }
 

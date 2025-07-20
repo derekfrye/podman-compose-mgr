@@ -1,5 +1,5 @@
 use podman_compose_mgr::args::types::{Args, Mode};
-use podman_compose_mgr::run_app;
+use podman_compose_mgr::secrets::migrate::init::init_migrate;
 use podman_compose_mgr::secrets::migrate::migrate_process::migrate_to_localhost;
 use podman_compose_mgr::secrets::models::JsonEntry;
 use std::path::PathBuf;
@@ -25,32 +25,73 @@ fn create_test_args() -> Args {
 /// Comprehensive integration test that checks:
 /// 1. The run_app function correctly processes secrets in SecretMigrate mode
 /// 2. Different hosts are correctly identified for migration
+/// 3. Migration correctly updates hostname and recalculates hashes
 #[test]
 fn test_app_integration() {
+    use std::fs::{self, File};
+    use std::io::Read;
+    use std::path::Path;
+    
+    // We will use test_mode parameter instead of environment variables
+    
+    // Clean up any previous test output
+    let output_path = Path::new("tests/test12/output.json");
+    if output_path.exists() {
+        fs::remove_file(output_path).expect("Failed to remove previous test output");
+    }
+    
     // Part 1: Test the main application flow
     let args = create_test_args();
     
-    // Test run_app directly to verify higher-level integration
-    let result = run_app(args);
+    // Test directly with init_migrate in test mode instead of run_app
+    let result = init_migrate(&args, true);
+    assert!(result.is_ok(), "Application should run successfully");
     
-    // The implementation now handles JSON array format correctly, so we expect
-    // it to either succeed or fail with the not implemented error
-    // We allow both success and specific errors as valid outcomes
-    if result.is_err() {
-        let err = result.unwrap_err();
-        let err_str = err.to_string();
+    // Verify output.json was created
+    assert!(output_path.exists(), "Output file should be created");
+    
+    // Read the output file
+    let mut output_file = File::open(output_path).expect("Failed to open output file");
+    let mut output_content = String::new();
+    output_file.read_to_string(&mut output_content).expect("Failed to read output file");
+    
+    // Read the reference output file
+    let mut reference_file = File::open("tests/test12/reference_output.json").expect("Failed to open reference file");
+    let mut reference_content = String::new();
+    reference_file.read_to_string(&mut reference_content).expect("Failed to read reference file");
+    
+    // Parse both files to compare their structure 
+    // (ignoring timestamp differences by comparing parsed structures)
+    let output_json: serde_json::Value = serde_json::from_str(&output_content).expect("Failed to parse output JSON");
+    let reference_json: serde_json::Value = serde_json::from_str(&reference_content).expect("Failed to parse reference JSON");
+    
+    // Compare key fields for each entry
+    let output_entries = output_json.as_array().expect("Output should be an array");
+    let reference_entries = reference_json.as_array().expect("Reference should be an array");
+    
+    assert_eq!(output_entries.len(), reference_entries.len(), "Number of entries should match");
+    
+    for (i, (output_entry, reference_entry)) in output_entries.iter().zip(reference_entries.iter()).enumerate() {
+        // Compare important fields
+        let output_file_nm = output_entry["file_nm"].as_str().unwrap_or_default();
+        let reference_file_nm = reference_entry["file_nm"].as_str().unwrap_or_default();
+        assert_eq!(output_file_nm, reference_file_nm, "file_nm should match for entry {}", i);
         
-        // Check if the error is the expected migration message
-        assert!(
-            err_str.contains("Secret migration functionality is not yet implemented"),
-            "Expected an error related to migration not being implemented, got: {}", 
-            err_str
-        );
+        let output_hostname = output_entry["hostname"].as_str().unwrap_or_default();
+        let reference_hostname = reference_entry["hostname"].as_str().unwrap_or_default();
+        assert_eq!(output_hostname, reference_hostname, "hostname should match for entry {}", i);
+        
+        let output_hash = output_entry["hash"].as_str().unwrap_or_default();
+        let reference_hash = reference_entry["hash"].as_str().unwrap_or_default();
+        assert_eq!(output_hash, reference_hash, "hash should match for entry {}", i);
+        
+        let output_encoding = output_entry["encoding"].as_str().unwrap_or_default();
+        let reference_encoding = reference_entry["encoding"].as_str().unwrap_or_default();
+        assert_eq!(output_encoding, reference_encoding, "encoding should match for entry {}", i);
     }
-    // If it succeeded, that's fine too - our JSON parsing now works correctly
     
-    // Part 2: Test hostname identification logic
-    let args = create_test_args();
+    // Part 2: Test individual migration logic with a new args instance
+    let args2 = create_test_args();
     
     // Test entries with different hostnames
     let local_entry = JsonEntry {
@@ -71,20 +112,12 @@ fn test_app_integration() {
         last_updated: None,
     };
     
-    // Both should return "not implemented" errors at this stage
-    let result1 = migrate_to_localhost(&args, &local_entry);
-    let result2 = migrate_to_localhost(&args, &remote_entry);
+    // Both should succeed now with test_mode=true
+    let result1 = migrate_to_localhost(&args2, &local_entry, true);
+    let result2 = migrate_to_localhost(&args2, &remote_entry, true);
     
-    assert!(result1.is_err(), "Should error on local hostname");
-    assert!(result2.is_err(), "Should error on remote hostname");
+    assert!(result1.is_ok(), "Local migration should succeed");
+    assert!(result2.is_ok(), "Remote migration should succeed");
     
-    // Both should have the same error message about migration not being implemented
-    let err1 = result1.unwrap_err().to_string();
-    let err2 = result2.unwrap_err().to_string();
-    
-    assert!(
-        err1.contains("Secret migration functionality is not yet implemented") &&
-        err2.contains("Secret migration functionality is not yet implemented"),
-        "Both cases should return the 'not implemented' error"
-    );
+    // No need to clean up environment variables
 }
