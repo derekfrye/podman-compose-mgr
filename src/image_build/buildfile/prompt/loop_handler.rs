@@ -1,6 +1,6 @@
+use super::super::types::{BuildChoice, BuildFile, WhatWereBuilding};
 use super::grammar::{make_build_prompt_grammar, make_choice_grammar};
 use super::setup::buildfile_prompt_grammars;
-use super::super::types::{BuildChoice, BuildFile, WhatWereBuilding};
 
 pub fn read_val_loop(files: &[BuildFile]) -> WhatWereBuilding {
     let (mut prompt_grammars, user_choices) = buildfile_prompt_grammars(files);

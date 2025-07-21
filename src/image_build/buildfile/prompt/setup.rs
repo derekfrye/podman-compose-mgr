@@ -1,5 +1,5 @@
-use super::grammar::{make_build_prompt_grammar, make_choice_grammar};
 use super::super::types::BuildFile;
+use super::grammar::{make_build_prompt_grammar, make_choice_grammar};
 use crate::read_interactive_input::GrammarFragment;
 
 /// Build the interactive prompt grammars for buildfile selection

@@ -85,4 +85,3 @@ pub fn make_choice_grammar(user_choices: &[&str], pos_to_start_from: u8) -> Vec<
     }
     new_prompt_grammars
 }
-
