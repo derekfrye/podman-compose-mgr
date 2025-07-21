@@ -5,7 +5,34 @@ use std::path::Path;
 /// Interface for command-related functions to facilitate testing
 #[automock]
 pub trait CommandHelper {
+    /// Execute a command with arguments
+    /// 
+    /// # Arguments
+    /// 
+    /// * `cmd` - Command to execute
+    /// * `args` - Arguments to pass to the command
+    /// 
+    /// # Returns
+    /// 
+    /// * `Result<(), Box<dyn std::error::Error>>` - Success or error
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the command execution fails.
     fn exec_cmd(&self, cmd: &str, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>>;
+    /// Pull base image specified in dockerfile
+    /// 
+    /// # Arguments
+    /// 
+    /// * `dockerfile` - Path to the dockerfile
+    /// 
+    /// # Returns
+    /// 
+    /// * `Result<(), Box<dyn std::error::Error>>` - Success or error
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the image pull fails.
     fn pull_base_image(&self, dockerfile: &Path) -> Result<(), Box<dyn std::error::Error>>;
     fn get_terminal_display_width(&self, specify_size: Option<usize>) -> usize;
     fn file_exists_and_readable(&self, file: &std::path::Path) -> bool;
@@ -21,7 +48,7 @@ pub trait ReadInteractiveInputHelper {
     /// * `size` - Optional override for terminal width
     ///
     /// # Returns
-    /// ReadValResult containing the user's input
+    /// `ReadValResult` containing the user's input
     fn read_val_from_cmd_line_and_proceed(
         &self,
         grammars: &mut [GrammarFragment],
@@ -29,13 +56,13 @@ pub trait ReadInteractiveInputHelper {
     ) -> ReadValResult;
 }
 
-/// Default implementation of CommandHelper that uses the actual functions
+/// Default implementation of `CommandHelper` that uses the actual functions
 pub struct DefaultCommandHelper;
 
 impl CommandHelper for DefaultCommandHelper {
     fn exec_cmd(&self, cmd: &str, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         // Convert Vec<String> to Vec<&str> for compatibility with existing function
-        let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+        let args_ref: Vec<&str> = args.iter().map(std::string::String::as_str).collect();
         crate::utils::cmd_utils::exec_cmd(cmd, &args_ref)?;
         Ok(())
     }
@@ -53,7 +80,7 @@ impl CommandHelper for DefaultCommandHelper {
     }
 }
 
-/// Default implementation of ReadInteractiveInputHelper that uses the actual functions
+/// Default implementation of `ReadInteractiveInputHelper` that uses the actual functions
 pub struct DefaultReadInteractiveInputHelper;
 
 impl ReadInteractiveInputHelper for DefaultReadInteractiveInputHelper {

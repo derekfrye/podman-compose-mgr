@@ -43,7 +43,7 @@ pub fn extract_services(yaml: &Value) -> Result<Mapping, RebuildError> {
 /// # Errors
 ///
 /// Returns an error if:
-/// - 'image' or 'container_name' is not a string
+/// - 'image' or '`container_name`' is not a string
 pub fn extract_image_info(
     service_config: &Value,
 ) -> Result<Option<(String, String)>, RebuildError> {

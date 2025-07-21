@@ -14,7 +14,11 @@ use super::types::Args;
 ///
 /// # Returns
 ///
-/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+/// * `Result<PathBuf, String>` - The validated `PathBuf` or an error message
+/// 
+/// # Errors
+/// 
+/// Returns an error if the file is not readable or the home directory cannot be determined.
 pub fn check_readable_file(file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file);
 
@@ -31,19 +35,23 @@ pub fn check_readable_file(file: &str) -> Result<PathBuf, String> {
     if xpath.is_file() && fs::metadata(&xpath).is_ok() {
         Ok(xpath)
     } else {
-        Err(format!("The file '{}' is not readable.", file))
+        Err(format!("The file '{file}' is not readable."))
     }
 }
 
-/// Checks if a file is readable (PathBuf version)
+/// Checks if a file is readable (`PathBuf` version)
 ///
 /// # Arguments
 ///
-/// * `file` - PathBuf to check
+/// * `file` - `PathBuf` to check
 ///
 /// # Returns
 ///
-/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+/// * `Result<PathBuf, String>` - The validated `PathBuf` or an error message
+/// 
+/// # Errors
+/// 
+/// Returns an error if the file is not readable or contains non-UTF-8 characters.
 pub fn check_readable_path(file: &Path) -> Result<PathBuf, String> {
     if let Some(file_str) = file.to_str() {
         check_readable_file(file_str)
@@ -60,36 +68,44 @@ pub fn check_readable_path(file: &Path) -> Result<PathBuf, String> {
 ///
 /// # Returns
 ///
-/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+/// * `Result<PathBuf, String>` - The validated `PathBuf` or an error message
+/// 
+/// # Errors
+/// 
+/// Returns an error if the file cannot be opened, read, or parsed as JSON.
 pub fn check_valid_json_file(file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file);
 
     let mut file_handle =
-        File::open(&path).map_err(|e| format!("Unable to open '{}': {}", file, e))?;
+        File::open(&path).map_err(|e| format!("Unable to open '{file}': {e}"))?;
     let mut file_content = String::new();
     file_handle
         .read_to_string(&mut file_content)
-        .map_err(|e| format!("Unable to read '{}': {}", file, e))?;
+        .map_err(|e| format!("Unable to read '{file}': {e}"))?;
 
     let mut entries = Vec::new();
     let deserializer = serde_json::Deserializer::from_str(&file_content).into_iter::<Value>();
 
     for entry in deserializer {
-        let entry = entry.map_err(|e| format!("Invalid JSON in '{}': {}", file, e))?;
+        let entry = entry.map_err(|e| format!("Invalid JSON in '{file}': {e}"))?;
         entries.push(entry);
     }
     Ok(path)
 }
 
-/// Checks if a PathBuf is a valid JSON file
+/// Checks if a `PathBuf` is a valid JSON file
 ///
 /// # Arguments
 ///
-/// * `file` - PathBuf to check
+/// * `file` - `PathBuf` to check
 ///
 /// # Returns
 ///
-/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+/// * `Result<PathBuf, String>` - The validated `PathBuf` or an error message
+/// 
+/// # Errors
+/// 
+/// Returns an error if the path is invalid or the file cannot be processed as JSON.
 pub fn check_valid_json_path(file: &Path) -> Result<PathBuf, String> {
     if let Some(file_str) = file.to_str() {
         check_valid_json_file(file_str)
@@ -106,26 +122,34 @@ pub fn check_valid_json_path(file: &Path) -> Result<PathBuf, String> {
 ///
 /// # Returns
 ///
-/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+/// * `Result<PathBuf, String>` - The validated `PathBuf` or an error message
+/// 
+/// # Errors
+/// 
+/// Returns an error if the directory is not readable.
 pub fn check_readable_dir(dir: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(dir);
 
     if path.is_dir() && fs::metadata(&path).is_ok() && fs::read_dir(&path).is_ok() {
         Ok(path)
     } else {
-        Err(format!("The directory '{}' is not readable.", dir))
+        Err(format!("The directory '{dir}' is not readable."))
     }
 }
 
-/// Checks if a directory PathBuf is readable
+/// Checks if a directory `PathBuf` is readable
 ///
 /// # Arguments
 ///
-/// * `dir` - PathBuf to check
+/// * `dir` - `PathBuf` to check
 ///
 /// # Returns
 ///
-/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+/// * `Result<PathBuf, String>` - The validated `PathBuf` or an error message
+/// 
+/// # Errors
+/// 
+/// Returns an error if the directory is not readable or contains non-UTF-8 characters.
 pub fn check_readable_dir_path(dir: &Path) -> Result<PathBuf, String> {
     if let Some(dir_str) = dir.to_str() {
         check_readable_dir(dir_str)
@@ -142,7 +166,11 @@ pub fn check_readable_dir_path(dir: &Path) -> Result<PathBuf, String> {
 ///
 /// # Returns
 ///
-/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+/// * `Result<PathBuf, String>` - The validated `PathBuf` or an error message
+/// 
+/// # Errors
+/// 
+/// Returns an error if the directory cannot be created or is not writable.
 pub fn check_writable_dir(dir: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(dir);
 
@@ -192,7 +220,11 @@ pub fn check_writable_dir(dir: &str) -> Result<PathBuf, String> {
 ///
 /// # Returns
 ///
-/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+/// * `Result<PathBuf, String>` - The validated `PathBuf` or an error message
+/// 
+/// # Errors
+/// 
+/// Returns an error if the file cannot be created or written to.
 pub fn check_file_writable(file_path: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file_path);
 
@@ -240,15 +272,19 @@ pub fn check_file_writable(file_path: &str) -> Result<PathBuf, String> {
     }
 }
 
-/// Checks if a PathBuf is writable (or can be created and written to)
+/// Checks if a `PathBuf` is writable (or can be created and written to)
 ///
 /// # Arguments
 ///
-/// * `file_path` - PathBuf to check
+/// * `file_path` - `PathBuf` to check
 ///
 /// # Returns
 ///
-/// * `Result<PathBuf, String>` - The validated PathBuf or an error message
+/// * `Result<PathBuf, String>` - The validated `PathBuf` or an error message
+/// 
+/// # Errors
+/// 
+/// Returns an error if the file cannot be created or written to.
 pub fn check_file_writable_path(file_path: &Path) -> Result<PathBuf, String> {
     if let Some(path_str) = file_path.to_str() {
         check_file_writable(path_str)
@@ -259,6 +295,10 @@ pub fn check_file_writable_path(file_path: &Path) -> Result<PathBuf, String> {
 
 
 /// Validate the args for rebuild mode
+/// 
+/// # Errors
+/// 
+/// Returns an error if the arguments are invalid for rebuild mode.
 pub fn validate(_args: &Args) -> Result<(), String> {
     // For rebuild mode, basic validation is handled by clap value_parser
     // No additional validation needed

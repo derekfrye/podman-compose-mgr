@@ -86,8 +86,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
             self.process_compose_file(entry, args)
         } else {
             Err(RebuildError::InvalidConfig(format!(
-                "Unsupported file type: {}",
-                file_path
+                "Unsupported file type: {file_path}"
             )))
         }
     }
@@ -160,23 +159,23 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                         && (img_is_set_to_skip || img_and_container_previously_reviewed)
                     {
                         continue;
-                    } else {
-                        self.read_val_loop(
-                            entry,
-                            &image_string,
-                            &args.build_args,
-                            &container_nm_string,
-                        )
-                        .map_err(|e| RebuildError::Other(e.to_string()))?;
-
-                        // Add to our list of checked images
-                        let c = Image {
-                            name: Some(image_string),
-                            container: Some(container_nm_string),
-                            skipall_by_this_name: true,
-                        };
-                        self.images_already_processed.push(c);
                     }
+                    
+                    self.read_val_loop(
+                        entry,
+                        &image_string,
+                        &args.build_args,
+                        &container_nm_string,
+                    )
+                    .map_err(|e| RebuildError::Other(e.to_string()))?;
+
+                    // Add to our list of checked images
+                    let c = Image {
+                        name: Some(image_string),
+                        container: Some(container_nm_string),
+                        skipall_by_this_name: true,
+                    };
+                    self.images_already_processed.push(c);
                 }
             }
         }
@@ -310,7 +309,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                 Some(user_entered_val) => match user_entered_val.as_str() {
                     "p" => {
                         self.pull_image(custom_img_nm)
-                            .unwrap_or_else(|e| eprintln!("Error pulling image: {}", e));
+                            .unwrap_or_else(|e| eprintln!("Error pulling image: {e}"));
                         break;
                     }
                     "N" => {
@@ -318,8 +317,8 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                     }
                     "d" | "?" => match user_entered_val.as_str() {
                         "d" => {
-                            println!("Image: {}", custom_img_nm);
-                            println!("Container name: {}", container_name);
+                            println!("Image: {custom_img_nm}");
+                            println!("Container name: {container_name}");
                             println!(
                                 "Compose file: {}",
                                 grammars[3].original_val_for_prompt.as_ref().unwrap()
@@ -331,7 +330,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                                     println!("Created: {}", self.format_time_ago(created_time));
                                 }
                                 Err(e) => {
-                                    println!("Created: Error getting creation time - {}", e);
+                                    println!("Created: Error getting creation time - {e}");
                                 }
                             }
 
@@ -341,7 +340,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                                     println!("Pulled: {}", self.format_time_ago(pull_time));
                                 }
                                 Err(e) => {
-                                    println!("Pulled: Error getting pull time - {}", e);
+                                    println!("Pulled: Error getting pull time - {e}");
                                 }
                             }
 
@@ -383,7 +382,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                         start(
                             entry,
                             custom_img_nm,
-                            build_args.iter().map(|s| s.as_str()).collect(),
+                            build_args.iter().map(std::string::String::as_str).collect(),
                         )?;
                         break;
                     }
@@ -413,13 +412,13 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
         let minutes = duration.num_minutes();
         let seconds = duration.num_seconds();
         if days > 0 {
-            format!("{} days ago", days)
+            format!("{days} days ago")
         } else if hours > 0 {
-            format!("{} hours ago", hours)
+            format!("{hours} hours ago")
         } else if minutes > 0 {
-            format!("{} minutes ago", minutes)
+            format!("{minutes} minutes ago")
         } else {
-            format!("{} seconds ago", seconds)
+            format!("{seconds} seconds ago")
         }
     }
 
@@ -518,7 +517,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
         self.cmd_helper
             .exec_cmd("podman", podman_args)
             .map_err(|e| {
-                RebuildError::CommandExecution(format!("Failed to pull image {}: {}", image, e))
+                RebuildError::CommandExecution(format!("Failed to pull image {image}: {e}"))
             })
     }
 }

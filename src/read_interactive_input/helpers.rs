@@ -9,12 +9,12 @@ use reedline::{DefaultPrompt, Reedline, Signal};
 
 /// Default print function that writes to stdout
 pub fn default_print(s: &str) {
-    print!("{}", s);
+    print!("{s}");
 }
 
 /// Default println function that writes to stdout with newline
 pub fn default_println(s: &str) {
-    println!("{}", s);
+    println!("{s}");
 }
 
 /// Original function for backwards compatibility - forwards to the dependency-injected version
@@ -32,7 +32,7 @@ pub fn read_val_from_cmd_line_and_proceed<C: crate::interfaces::CommandHelper>(
     )
 }
 
-/// Compatibility wrapper that uses DefaultCommandHelper
+/// Compatibility wrapper that uses `DefaultCommandHelper`
 pub fn read_val_from_cmd_line_and_proceed_default(
     grammars: &mut [GrammarFragment],
 ) -> ReadValResult {
@@ -65,13 +65,13 @@ fn process_user_input(
         Some(None)
     } else {
         // Invalid input
-        eprintln!("Invalid input '{}'. Please try again.", input);
+        eprintln!("Invalid input '{input}'. Please try again.");
         print_fn(prompt_string);
         None
     }
 }
 
-/// Implementation with dependency injection for the CommandHelper trait. Keep in sync with testing code.
+/// Implementation with dependency injection for the `CommandHelper` trait. Keep in sync with testing code.
 pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
     grammars: &mut [GrammarFragment],
     cmd_helper: &C,
@@ -115,13 +115,13 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
         let input = if let Some(editor) = rl_editor.as_mut() {
             match editor.read_line(&DefaultPrompt) {
                 Ok(Signal::Success(buffer)) => buffer,
-                Ok(Signal::CtrlC) | Ok(Signal::CtrlD) => {
+                Ok(Signal::CtrlC | Signal::CtrlD) => {
                     // Mark as interrupted but don't exit here, let the caller decide
                     return_result.was_interrupted = true;
                     String::new()
                 }
                 Err(err) => {
-                    eprintln!("Error reading line: {}", err);
+                    eprintln!("Error reading line: {err}");
                     return return_result;
                 }
             }
@@ -140,7 +140,7 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
 }
 
 /// New function for handling structured prompts
-pub fn read_val_from_prompt_and_proceed_default(prompt: &Prompt, verbose: bool) -> ReadValResult {
+#[must_use] pub fn read_val_from_prompt_and_proceed_default(prompt: &Prompt, verbose: bool) -> ReadValResult {
     // Convert PromptGrammar to GrammarFragment
     let mut grammar_fragments: Vec<GrammarFragment> = prompt.grammar.iter().map(|g| {
         GrammarFragment {

@@ -17,11 +17,12 @@ pub use utils::json_utils;
 pub use utils::log_utils;
 
 use std::io;
+use std::fmt::Write as FmtWrite;
 
-/// Main application logic separated from main() for testing
+/// Main application logic separated from `main()` for testing
 ///
 /// This function contains all the core application logic that would normally
-/// be in main(), making it testable.
+/// be in `main()`, making it testable.
 ///
 /// # Arguments
 ///
@@ -30,6 +31,10 @@ use std::io;
 /// # Returns
 ///
 /// * `io::Result<()>` - Success or error
+/// 
+/// # Errors
+/// 
+/// Returns an error if the application fails to initialize or run.
 pub fn run_app(args: args::Args) -> io::Result<()> {
         use crate::utils::log_utils::Logger;
     use crate::walk_dirs::walk_dirs;
@@ -49,7 +54,7 @@ pub fn run_app(args: args::Args) -> io::Result<()> {
         let mut cmd_line = format!("{}", exe_name.to_string_lossy());
 
         // Use serde to convert Args to a JSON value for inspection
-        let args_json = serde_json::to_value(&args).unwrap_or_else(|_| serde_json::Value::Null);
+        let args_json = serde_json::to_value(&args).unwrap_or(serde_json::Value::Null);
 
         if let serde_json::Value::Object(map) = args_json {
             // Sort the keys for consistent output
@@ -63,7 +68,7 @@ pub fn run_app(args: args::Args) -> io::Result<()> {
                 // Skip certain fields that don't need to be included
                 if key == "verbose" {
                     // Add the verbose flag based on the count
-                    let count = map.get(key).and_then(|v| v.as_u64()).unwrap_or(0);
+                    let count = map.get(key).and_then(serde_json::Value::as_u64).unwrap_or(0);
                     for _ in 0..count {
                         cmd_line.push_str(" --verbose");
                     }
@@ -81,17 +86,17 @@ pub fn run_app(args: args::Args) -> io::Result<()> {
                         // Format arrays (e.g., vectors)
                         for item in arr {
                             let escaped_value = match item {
-                                serde_json::Value::String(s) => format!("\"{}\"", s),
+                                serde_json::Value::String(s) => format!("\"{s}\""),
                                 _ => item.to_string(),
                             };
-                            cmd_line.push_str(&format!(" --{} {}", arg_key, escaped_value));
+                            write!(cmd_line, " --{arg_key} {escaped_value}").unwrap();
                         }
                     }
                     Some(serde_json::Value::String(s)) if s.is_empty() => {
                         // Skip empty strings
                     }
                     Some(serde_json::Value::Bool(true)) => {
-                        cmd_line.push_str(&format!(" --{}", arg_key));
+                        write!(cmd_line, " --{arg_key}").unwrap();
                     }
                     Some(serde_json::Value::Bool(false)) => {
                         // Skip false boolean values
@@ -99,10 +104,10 @@ pub fn run_app(args: args::Args) -> io::Result<()> {
                     Some(value) => {
                         // Format everything else
                         let escaped_value = match value {
-                            serde_json::Value::String(s) => format!("\"{}\"", s),
+                            serde_json::Value::String(s) => format!("\"{s}\""),
                             _ => value.to_string(),
                         };
-                        cmd_line.push_str(&format!(" --{} {}", arg_key, escaped_value));
+                        write!(cmd_line, " --{arg_key} {escaped_value}").unwrap();
                     }
                     None => {
                         // Skip if the key doesn't exist (shouldn't happen)
@@ -110,7 +115,7 @@ pub fn run_app(args: args::Args) -> io::Result<()> {
                 }
             }
 
-            logger.debug(&format!("Command: {}", cmd_line));
+            logger.debug(&format!("Command: {cmd_line}"));
             println!();
         } else {
             // Fallback if the conversion fails

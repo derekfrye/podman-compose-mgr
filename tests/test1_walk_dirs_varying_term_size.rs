@@ -77,7 +77,7 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
                 false,
                 true,
             );
-            println!("prompt (width 60): {}", formatted);
+            println!("prompt (width 60): {formatted}");
 
             // Return a result with "N" as user input
             ReadValResult {
@@ -128,7 +128,7 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
                 false,
                 true,
             );
-            println!("prompt (width 40): {}", formatted);
+            println!("prompt (width 40): {formatted}");
 
             // Return a result with "N" as user input
             ReadValResult {

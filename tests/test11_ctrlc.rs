@@ -33,7 +33,7 @@ fn test_ctrl_c_handling() {
         .expect("Failed to start application");
 
     let pid = child.id();
-    println!("Started application with PID: {}", pid);
+    println!("Started application with PID: {pid}");
 
     // Create a stdout reader to monitor for prompts
     let stdout = child.stdout.take().expect("Failed to capture stdout");
@@ -47,7 +47,7 @@ fn test_ctrl_c_handling() {
             Err(_) => break,
         };
 
-        println!("Output: {}", line);
+        println!("Output: {line}");
 
         // Check if we've reached a prompt
         if line.contains("p/N/d/b/s/?") {
@@ -57,7 +57,7 @@ fn test_ctrl_c_handling() {
 
         // Check if the process has already exited
         if let Ok(Some(status)) = child.try_wait() {
-            panic!("Process exited unexpectedly with status: {}", status);
+            panic!("Process exited unexpectedly with status: {status}");
         }
     }
 
@@ -102,7 +102,7 @@ fn test_ctrl_c_handling() {
                 exit_timeout -= 1;
             }
             Err(e) => {
-                panic!("Error checking process status: {}", e);
+                panic!("Error checking process status: {e}");
             }
         }
     }
@@ -113,7 +113,7 @@ fn test_ctrl_c_handling() {
         panic!("Process didn't terminate after SIGINT within timeout");
     }
 
-    println!("Process exited with status: {:?}", status);
+    println!("Process exited with status: {status:?}");
 
     // We validate that the application exited, but we don't check the exit code
     // as SIGINT normally results in a non-zero exit code on Unix (130)

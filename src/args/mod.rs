@@ -13,7 +13,7 @@ use std::process;
 ///
 /// This function:
 /// 1. Parses command line arguments
-/// 2. For SecretInitialize mode, processes the init filepath if needed
+/// 2. For `SecretInitialize` mode, processes the init filepath if needed
 /// 3. Returns the validated Args structure
 ///
 /// # Returns
@@ -23,12 +23,12 @@ use std::process;
 /// # Panics
 ///
 /// Panics if validation fails
-pub fn args_checks() -> Args {
+#[must_use] pub fn args_checks() -> Args {
     let args = Args::parse();
 
     // Validate the arguments
     if let Err(e) = args.validate() {
-        eprintln!("Error: {}", e);
+        eprintln!("Error: {e}");
         process::exit(1);
     }
 

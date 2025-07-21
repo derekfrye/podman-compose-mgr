@@ -35,6 +35,10 @@ pub struct ContainerInfo {
 /// # Returns
 ///
 /// * `Result<ContainerInfo, ContainerFileError>` - Container information or error
+/// 
+/// # Errors
+/// 
+/// Returns an error if the file cannot be read, parsed, or if required sections are missing.
 pub fn parse_container_file<P: AsRef<Path>>(file_path: P) -> Result<ContainerInfo, ContainerFileError> {
     let path = file_path.as_ref();
     
@@ -63,7 +67,7 @@ pub fn parse_container_file<P: AsRef<Path>>(file_path: P) -> Result<ContainerInf
 /// Extract container name from the .container file
 ///
 /// This function looks for:
-/// 1. ContainerName directive in [Container] section
+/// 1. `ContainerName` directive in [Container] section
 /// 2. Description in [Unit] section
 /// 3. Filename without .container extension as fallback
 fn extract_container_name(conf: &Ini, file_path: &Path) -> Option<String> {
@@ -85,7 +89,7 @@ fn extract_container_name(conf: &Ini, file_path: &Path) -> Option<String> {
     file_path
         .file_stem()
         .and_then(|stem| stem.to_str())
-        .map(|s| s.to_string())
+        .map(std::string::ToString::to_string)
 }
 
 #[cfg(test)]
@@ -96,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_parse_container_file_basic() {
-        let content = r#"[Unit]
+        let content = r"[Unit]
 Description=My Test Container
 
 [Container]
@@ -108,7 +112,7 @@ Restart=always
 
 [Install]
 WantedBy=default.target
-"#;
+";
 
         let temp_file = NamedTempFile::new().unwrap();
         fs::write(temp_file.path(), content).unwrap();
@@ -121,11 +125,11 @@ WantedBy=default.target
 
     #[test]
     fn test_parse_container_file_with_container_name() {
-        let content = r#"[Container]
+        let content = r"[Container]
 Image=registry.example.com/myapp:v1.0
 ContainerName=myapp-prod
 PublishPort=3000:3000
-"#;
+";
 
         let temp_file = NamedTempFile::new().unwrap();
         fs::write(temp_file.path(), content).unwrap();
@@ -138,9 +142,9 @@ PublishPort=3000:3000
 
     #[test]
     fn test_parse_container_file_filename_fallback() {
-        let content = r#"[Container]
+        let content = r"[Container]
 Image=alpine:latest
-"#;
+";
 
         let temp_file = NamedTempFile::with_suffix(".container").unwrap();
         fs::write(temp_file.path(), content).unwrap();
@@ -154,12 +158,12 @@ Image=alpine:latest
 
     #[test]
     fn test_parse_container_file_no_container_section() {
-        let content = r#"[Unit]
+        let content = r"[Unit]
 Description=Invalid container file
 
 [Service]
 Type=simple
-"#;
+";
 
         let temp_file = NamedTempFile::new().unwrap();
         fs::write(temp_file.path(), content).unwrap();
@@ -171,9 +175,9 @@ Type=simple
 
     #[test]
     fn test_parse_container_file_no_image() {
-        let content = r#"[Container]
+        let content = r"[Container]
 PublishPort=8080:80
-"#;
+";
 
         let temp_file = NamedTempFile::new().unwrap();
         fs::write(temp_file.path(), content).unwrap();

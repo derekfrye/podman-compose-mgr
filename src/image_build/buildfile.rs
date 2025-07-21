@@ -1,5 +1,6 @@
+use crate::image_build::buildfile_build;
+use crate::image_build::buildfile_types::{BuildChoice as BuildChoiceExternal, BuildFile as BuildFileExternal, WhatWereBuilding as WhatWereBuildingExternal};
 use crate::read_interactive_input::{GrammarFragment, GrammarType};
-use crate::utils::cmd_utils;
 use std::path::PathBuf;
 use thiserror::Error;
 use walkdir::DirEntry;
@@ -42,12 +43,31 @@ pub enum BuildfileError {
     CommandExecution(#[from] Box<dyn std::error::Error>),
 }
 
+/// Start the build process for a directory
+/// 
+/// # Arguments
+/// 
+/// * `dir` - Directory entry to search for build files
+/// * `custom_img_nm` - Custom image name to use
+/// * `build_args` - Build arguments to pass to the build process
+/// 
+/// # Returns
+/// 
+/// * `Result<(), BuildfileError>` - Success or error
+/// 
+/// # Errors
+/// 
+/// Returns an error if no build files are found or if the build process fails.
+/// 
+/// # Panics
+/// 
+/// Panics if build files cannot be processed or if internal state is invalid.
 pub fn start(
     dir: &DirEntry,
     custom_img_nm: &str,
     build_args: Vec<&str>,
 ) -> Result<(), BuildfileError> {
-    let buildfiles = find_buildfile(dir, custom_img_nm, build_args);
+    let buildfiles = find_buildfile(dir, custom_img_nm, &build_args);
     if buildfiles.is_none()
         || buildfiles.as_ref().unwrap().is_empty()
         || buildfiles
@@ -62,11 +82,29 @@ pub fn start(
         );
         // std::process::exit(1);
     } else if let Some(found_buildfiles) = buildfiles {
-        let build_config = read_val_loop(found_buildfiles);
+        let build_config = read_val_loop(&found_buildfiles);
         // dbg!(&build_config);
 
         if build_config.file.filepath.is_some() {
-            build_image_from_spec(build_config)?;
+            // Convert internal types to external types
+            let external_build_config = WhatWereBuildingExternal {
+                file: BuildFileExternal {
+                    filetype: match build_config.file.filetype {
+                        BuildChoice::Dockerfile => BuildChoiceExternal::Dockerfile,
+                        BuildChoice::Makefile => BuildChoiceExternal::Makefile,
+                    },
+                    filepath: build_config.file.filepath.clone(),
+                    parent_dir: build_config.file.parent_dir.clone(),
+                    link_target_dir: build_config.file.link_target_dir.clone(),
+                    base_image: build_config.file.base_image.clone(),
+                    custom_img_nm: build_config.file.custom_img_nm.clone(),
+                    build_args: build_config.file.build_args.clone(),
+                },
+                follow_link: build_config.follow_link,
+            };
+            
+            buildfile_build::build_image_from_spec(&external_build_config)
+                .map_err(|e| BuildfileError::CommandExecution(Box::new(e)))?;
         }
     }
     Ok(())
@@ -99,7 +137,7 @@ fn buildfile_prompt_grammars(files: &[BuildFile]) -> (Vec<GrammarFragment>, Vec<
     (prompt_grammars, user_choices)
 }
 
-fn read_val_loop(files: Vec<BuildFile>) -> WhatWereBuilding {
+fn read_val_loop(files: &[BuildFile]) -> WhatWereBuilding {
     // use helper for grammars
     let (mut prompt_grammars, user_choices) = buildfile_prompt_grammars(&files);
 
@@ -157,19 +195,19 @@ fn read_val_loop(files: Vec<BuildFile>) -> WhatWereBuilding {
                             .filter(|f| f.filetype == BuildChoice::Dockerfile)
                         {
                             let dockerfile = &f.filepath.as_ref().unwrap().to_str().unwrap();
-                            println!("Dockerfile: {}", dockerfile);
+                            println!("Dockerfile: {dockerfile}");
                         }
                         for f in files.iter().filter(|f| f.filetype == BuildChoice::Makefile) {
                             let makefile = &f.filepath.as_ref().unwrap().to_str().unwrap();
-                            println!("Makefile: {}", makefile);
+                            println!("Makefile: {makefile}");
                         }
 
                         println!("Choices:");
 
                         if files.iter().filter(|x| x.filepath.is_some()).count() > 1
                             && !user_choices.is_empty()
-                            && user_choices.iter().any(|f| *f == "D")
-                            && user_choices.iter().any(|f| *f == "M")
+                            && user_choices.contains(&"D")
+                            && user_choices.contains(&"M")
                         {
                             println!("D = Build an image from a Dockerfile.");
                             println!("M = Execute `make` on a Makefile.");
@@ -185,11 +223,11 @@ fn read_val_loop(files: Vec<BuildFile>) -> WhatWereBuilding {
                                             .display()
                                             .to_string(),
                                     };
-                                println!("1 = Set build working dir to:\n\t{}", location1);
+                                println!("1 = Set build working dir to:\n\t{location1}");
                             }
 
                             let location2 = files[0].parent_dir.display();
-                            println!("2 = Set build working dir to:\n\t{}", location2);
+                            println!("2 = Set build working dir to:\n\t{location2}");
                         }
                         println!("d = Display info about Dockerfile and/or Makefile.");
                         println!("? = Display this help.");
@@ -205,7 +243,7 @@ fn read_val_loop(files: Vec<BuildFile>) -> WhatWereBuilding {
                         break;
                     }
                     _ => {
-                        eprintln!("Invalid choice '{}'", choice);
+                        eprintln!("Invalid choice '{choice}'");
                     }
                 }
             }
@@ -304,14 +342,14 @@ fn make_choice_grammar(user_choices: &[&str], pos_to_start_from: u8) -> Vec<Gram
 fn find_buildfile(
     dir: &DirEntry,
     custom_img_nm: &str,
-    build_args: Vec<&str>,
+    build_args: &[&str],
 ) -> Option<Vec<BuildFile>> {
     let parent_dir = dir.path().to_path_buf().parent().unwrap().to_path_buf();
     let dockerfile = parent_dir.join("Dockerfile");
     let makefile = parent_dir.join("Makefile");
     let mut buildfiles: Option<Vec<BuildFile>> = None;
 
-    for file_path in [&dockerfile, &makefile].iter() {
+    for file_path in &[&dockerfile, &makefile] {
         let buildfile = BuildFile {
             filetype: match file_path {
                 _ if *file_path == &makefile => BuildChoice::Makefile,
@@ -319,9 +357,9 @@ fn find_buildfile(
             },
             filepath: if let Ok(metadata) = file_path.symlink_metadata() {
                 if metadata.file_type().is_symlink() {
-                    Some(std::fs::read_link(file_path).unwrap().to_path_buf())
+                    Some(std::fs::read_link(file_path).unwrap().clone())
                 } else if metadata.is_file() {
-                    Some(file_path.to_path_buf())
+                    Some((*file_path).clone())
                 } else {
                     None
                 }
@@ -330,13 +368,13 @@ fn find_buildfile(
             },
             parent_dir: parent_dir.clone(),
             link_target_dir: if std::fs::read_link(file_path).is_ok() {
-                Some(std::fs::read_link(file_path).unwrap().to_path_buf())
+                Some(std::fs::read_link(file_path).unwrap().clone())
             } else {
                 None
             },
             base_image: Some(custom_img_nm.to_string()),
             custom_img_nm: Some(custom_img_nm.to_string()),
-            build_args: build_args.iter().map(|arg| arg.to_string()).collect(),
+            build_args: build_args.iter().map(|arg| (*arg).to_string()).collect(),
         };
         // dbg!(&buildfile.filepath);
         // dbg!(file_path);
@@ -354,59 +392,3 @@ fn find_buildfile(
     buildfiles
 }
 
-fn build_image_from_spec(build_config: WhatWereBuilding) -> Result<(), BuildfileError> {
-    match build_config.file.filetype {
-        BuildChoice::Dockerfile => {
-            let _ = crate::utils::podman_utils::pull_base_image(
-                build_config.file.filepath.as_ref().unwrap(),
-            );
-
-            let dockerfile_path = build_config
-                .file
-                .filepath
-                .as_ref()
-                .unwrap()
-                .to_str()
-                .unwrap();
-
-            let mut podman_args = vec![
-                "build",
-                "-t",
-                build_config.file.custom_img_nm.as_ref().unwrap(),
-                "-f",
-                dockerfile_path,
-            ];
-
-            // podman_args.push("--build-context=");
-            // let build_context = format!(".:{}", dockerfile_dir.to_str().unwrap());
-            // podman_args.push(&build_context);
-
-            for arg in build_config.file.build_args.iter() {
-                podman_args.push("--build-arg");
-                podman_args.push(arg);
-            }
-
-            podman_args.push(build_config.file.parent_dir.to_str().unwrap());
-
-            Ok(cmd_utils::exec_cmd("podman", &podman_args[..]).map_err(BuildfileError::from)?)
-        }
-        BuildChoice::Makefile => {
-            let chg_dir = if build_config.follow_link {
-                build_config
-                    .file
-                    .link_target_dir
-                    .as_ref()
-                    .unwrap()
-                    .parent()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-            } else {
-                build_config.file.parent_dir.to_str().unwrap()
-            };
-
-            cmd_utils::exec_cmd("make", &["-C", chg_dir, "clean"])?;
-            Ok(cmd_utils::exec_cmd("make", &["-C", chg_dir])?)
-        }
-    }
-}

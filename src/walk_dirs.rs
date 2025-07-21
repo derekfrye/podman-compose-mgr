@@ -36,19 +36,34 @@ pub fn walk_dirs(args: &Args, logger: &Logger, tui_mode: bool) {
 
     // Call the injectable version with default implementations
     if let Err(e) = walk_dirs_with_helpers(args, &cmd_helper, &read_val_helper, logger) {
-        eprintln!("Error processing directories: {}", e);
+        eprintln!("Error processing directories: {e}");
     }
 
     // If TUI mode is enabled, launch the TUI
     if tui_mode {
         logger.info("Starting TUI mode...");
         if let Err(e) = tui::run(args, logger) {
-            eprintln!("Error starting TUI: {}", e);
+            eprintln!("Error starting TUI: {e}");
         }
     }
 }
 
-/// Version of walk_dirs that accepts dependency injection for testing
+/// Version of `walk_dirs` that accepts dependency injection for testing
+/// 
+/// # Arguments
+/// 
+/// * `args` - Command line arguments
+/// * `cmd_helper` - Command helper implementation
+/// * `read_val_helper` - Interactive input helper implementation
+/// * `logger` - Logger instance
+/// 
+/// # Returns
+/// 
+/// * `Result<(), StartError>` - Success or error
+/// 
+/// # Errors
+/// 
+/// Returns an error if directory walking fails or rebuild operations encounter errors.
 pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
     args: &Args,
     cmd_helper: &C,
@@ -93,19 +108,16 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
     ));
 
     // Walk directory tree looking for docker-compose.yml and .container files
-    for entry in WalkDir::new(&args.path).into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(&args.path).into_iter().filter_map(std::result::Result::ok) {
         let is_compose_file = entry.file_type().is_file() && entry.file_name() == "docker-compose.yml";
         let is_container_file = entry.file_type().is_file() 
-            && entry.file_name().to_str().map_or(false, |name| name.ends_with(".container"));
+            && entry.file_name().to_str().is_some_and(|name| name.ends_with(".container"));
         
         if is_compose_file || is_container_file {
             // Get path as string, safely
-            let entry_path_str = match entry.path().to_str() {
-                Some(path_str) => path_str,
-                None => {
-                    eprintln!("Skipping path with invalid UTF-8: {:?}", entry.path());
-                    continue;
-                }
+            let entry_path_str = if let Some(path_str) = entry.path().to_str() { path_str } else {
+                eprintln!("Skipping path with invalid UTF-8: {:?}", entry.path());
+                continue;
             };
 
             // Check exclude patterns - skip if any match
@@ -127,8 +139,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
                     .all(|pattern| !pattern.is_match(entry_path_str))
             {
                 logger.debug(&format!(
-                    "Skipping path as it doesn't match any include pattern: {}",
-                    entry_path_str
+                    "Skipping path as it doesn't match any include pattern: {entry_path_str}"
                 ));
                 continue;
             }
@@ -136,7 +147,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
             // Process rebuild mode
             if let Some(ref mut mgr) = manager {
                 if let Err(e) = mgr.rebuild(&entry, args) {
-                    eprintln!("Error rebuilding from {}: {}", entry_path_str, e);
+                    eprintln!("Error rebuilding from {entry_path_str}: {e}");
                 }
             }
         }

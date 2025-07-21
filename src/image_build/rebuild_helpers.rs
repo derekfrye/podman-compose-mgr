@@ -16,7 +16,7 @@ pub fn pull_image<C: CommandHelper>(cmd_helper: &C, image: &str) -> Result<(), S
 
     cmd_helper
         .exec_cmd("podman", podman_args)
-        .map_err(|e| format!("Failed to pull image {}: {}", image, e))
+        .map_err(|e| format!("Failed to pull image {image}: {e}"))
 }
 
 /// Display image and container information
@@ -39,7 +39,7 @@ pub fn display_image_info<C: CommandHelper>(
 }
 
 /// Check if an image should be skipped
-pub fn should_skip_image(
+#[must_use] pub fn should_skip_image(
     images_checked: &[Image],
     image_string: &str,
     container_nm_string: &str,

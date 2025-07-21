@@ -16,9 +16,9 @@ pub struct Prompt {
     pub grammar: Vec<PromptGrammar>,
 }
 
-/// Build a string to display to the user. Generally use read_val_from_cmd_line_and_proceed instead.
+/// Build a string to display to the user. Generally use `read_val_from_cmd_line_and_proceed` instead.
 /// Made public to allow usage in tests.
-pub fn unroll_grammar_into_string(
+#[must_use] pub fn unroll_grammar_into_string(
     grammars: &[GrammarFragment],
     excl_if_not_in_base_prompt: bool,
     use_shortened_val: bool,
@@ -83,12 +83,12 @@ fn shorten_fragment(grammar: &mut GrammarFragment, allowed_len: usize) {
         if grammar.grammar_type == GrammarType::Image {
             // For images, keep the beginning and add ellipsis at the end
             let substring = &orig[..allowed_len - 1];
-            grammar.shortened_val_for_prompt = Some(format!("{}...", substring));
+            grammar.shortened_val_for_prompt = Some(format!("{substring}..."));
         } else {
             // For other types, keep the end and add ellipsis at the beginning
             let substring = &orig[orig.len() - allowed_len..];
-            grammar.shortened_val_for_prompt = Some(format!("...{}", substring));
-        };
+            grammar.shortened_val_for_prompt = Some(format!("...{substring}"));
+        }
     } else {
         // If it already fits, use the original
         grammar.shortened_val_for_prompt = Some(orig.clone());
@@ -121,7 +121,7 @@ pub fn do_prompt_formatting(grammars: &mut [GrammarFragment], term_width: usize)
             let allowed_len = ((total_remaining_space - 3) as f64 / n as f64).floor() as usize;
 
             // Shorten each fragment
-            for grammar in shortenable_grammars.iter_mut() {
+            for grammar in &mut shortenable_grammars {
                 shorten_fragment(grammar, allowed_len);
             }
         }

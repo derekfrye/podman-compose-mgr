@@ -60,6 +60,10 @@ impl Default for Args {
 impl Args {
 
     /// Validate the secrets based on the mode, without modifying the Args
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the arguments are invalid for the selected mode.
     pub fn validate(&self) -> Result<(), String> {
         // Call the validate function from validators.rs
         validate(self)

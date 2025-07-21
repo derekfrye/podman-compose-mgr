@@ -8,7 +8,7 @@ pub struct Image {
 }
 
 /// Format a timestamp as a relative time (e.g., "5 minutes ago")
-pub fn format_time_ago(dt: DateTime<Local>) -> String {
+#[must_use] pub fn format_time_ago(dt: DateTime<Local>) -> String {
     let now = Local::now();
     let duration = now.signed_duration_since(dt);
     let days = duration.num_days();
@@ -17,12 +17,12 @@ pub fn format_time_ago(dt: DateTime<Local>) -> String {
     let seconds = duration.num_seconds();
 
     if days > 0 {
-        format!("{} days ago", days)
+        format!("{days} days ago")
     } else if hours > 0 {
-        format!("{} hours ago", hours)
+        format!("{hours} hours ago")
     } else if minutes > 0 {
-        format!("{} minutes ago", minutes)
+        format!("{minutes} minutes ago")
     } else {
-        format!("{} seconds ago", seconds)
+        format!("{seconds} seconds ago")
     }
 }

@@ -9,9 +9,9 @@ pub fn display_basic_image_info(
     container_name: &str,
     docker_compose_pth: &str,
 ) {
-    println!("Image: {}", custom_img_nm);
-    println!("Container name: {}", container_name);
-    println!("Compose file: {}", docker_compose_pth);
+    println!("Image: {custom_img_nm}");
+    println!("Container name: {container_name}");
+    println!("Compose file: {docker_compose_pth}");
 }
 
 /// Display image timestamps
@@ -22,7 +22,7 @@ pub fn display_image_timestamps(custom_img_nm: &str) {
             println!("Created: {}", format_time_ago(created_time));
         }
         Err(e) => {
-            println!("Created: Error getting creation time - {}", e);
+            println!("Created: Error getting creation time - {e}");
         }
     }
 
@@ -32,7 +32,7 @@ pub fn display_image_timestamps(custom_img_nm: &str) {
             println!("Pulled: {}", format_time_ago(pull_time));
         }
         Err(e) => {
-            println!("Pulled: Error getting pull time - {}", e);
+            println!("Pulled: Error getting pull time - {e}");
         }
     }
 }

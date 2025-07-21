@@ -42,6 +42,20 @@ impl App {
     }
 }
 
+/// Run the terminal UI application
+/// 
+/// # Arguments
+/// 
+/// * `args` - Command line arguments
+/// * `logger` - Logger instance
+/// 
+/// # Returns
+/// 
+/// * `io::Result<()>` - Success or error
+/// 
+/// # Errors
+/// 
+/// Returns an error if the terminal setup fails or if the application crashes.
 pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     // Setup terminal
     enable_raw_mode()?;
@@ -62,7 +76,7 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
 
     // Handle any errors
     if let Err(err) = res {
-        logger.warn(&format!("Error in TUI: {}", err));
+        logger.warn(&format!("Error in TUI: {err}"));
     }
 
     // If cleanup failed but the app was ok, return that error

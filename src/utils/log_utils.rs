@@ -19,7 +19,7 @@ pub struct Logger {
 
 impl Logger {
     /// Create a new logger with the specified verbosity
-    pub fn new(verbosity: u8) -> Self {
+    #[must_use] pub fn new(verbosity: u8) -> Self {
         Self { verbosity }
     }
 
@@ -27,9 +27,9 @@ impl Logger {
     pub fn log(&self, msg: &str, level: LogLevel) {
         if self.verbosity >= level as u8 {
             match level {
-                LogLevel::Normal => println!("{}", msg),
-                LogLevel::Info => println!("info: {}", msg),
-                LogLevel::Debug => println!("dbg: {}", msg),
+                LogLevel::Normal => println!("{msg}"),
+                LogLevel::Info => println!("info: {msg}"),
+                LogLevel::Debug => println!("dbg: {msg}"),
             }
         }
     }
@@ -51,11 +51,11 @@ impl Logger {
 
     /// Log a warning message (always displayed, uses stderr)
     pub fn warn(&self, msg: &str) {
-        eprintln!("warn: {}", msg);
+        eprintln!("warn: {msg}");
     }
 
     /// Get current verbosity level
-    pub fn verbosity(&self) -> u8 {
+    #[must_use] pub fn verbosity(&self) -> u8 {
         self.verbosity
     }
 }
@@ -72,9 +72,9 @@ impl Logger {
 pub fn log(msg: &str, verbosity: u8, level: LogLevel) {
     if verbosity >= level as u8 {
         match level {
-            LogLevel::Normal => println!("{}", msg),
-            LogLevel::Info => println!("info: {}", msg),
-            LogLevel::Debug => println!("dbg: {}", msg),
+            LogLevel::Normal => println!("{msg}"),
+            LogLevel::Info => println!("info: {msg}"),
+            LogLevel::Debug => println!("dbg: {msg}"),
         }
     }
 }
@@ -86,7 +86,7 @@ pub fn log(msg: &str, verbosity: u8, level: LogLevel) {
 /// * `msg` - The message to log
 /// * `verbosity` - The current verbosity level
 pub fn info(msg: &str, verbosity: u8) {
-    log(msg, verbosity, LogLevel::Info)
+    log(msg, verbosity, LogLevel::Info);
 }
 
 /// Log at debug level (verbose >= 2)
@@ -96,7 +96,7 @@ pub fn info(msg: &str, verbosity: u8) {
 /// * `msg` - The message to log
 /// * `verbosity` - The current verbosity level
 pub fn debug(msg: &str, verbosity: u8) {
-    log(msg, verbosity, LogLevel::Debug)
+    log(msg, verbosity, LogLevel::Debug);
 }
 
 /// Always log a message, regardless of verbosity level
@@ -105,7 +105,7 @@ pub fn debug(msg: &str, verbosity: u8) {
 ///
 /// * `msg` - The message to log
 pub fn always(msg: &str) {
-    log(msg, 0, LogLevel::Normal)
+    log(msg, 0, LogLevel::Normal);
 }
 
 /// Log a warning message to stderr, regardless of verbosity level
@@ -114,5 +114,5 @@ pub fn always(msg: &str) {
 ///
 /// * `msg` - The message to log
 pub fn warn(msg: &str) {
-    eprintln!("warn: {}", msg);
+    eprintln!("warn: {msg}");
 }

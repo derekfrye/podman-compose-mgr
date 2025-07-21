@@ -7,7 +7,7 @@ pub struct ReadValResult {
     pub was_interrupted: bool,
 }
 
-/// For dependency injection in tests - PrintFunction type alias
+/// For dependency injection in tests - `PrintFunction` type alias
 /// Using trait object allows both regular functions and closures that capture environment
 pub type PrintFunction<'a> = Box<dyn Fn(&str) + 'a>;
 
@@ -67,27 +67,27 @@ impl StdinHelper for DefaultStdinHelper {
 
         match editor.read_line(&DefaultPrompt) {
             Ok(Signal::Success(buffer)) => buffer,
-            Ok(Signal::CtrlC) | Ok(Signal::CtrlD) => {
+            Ok(Signal::CtrlC | Signal::CtrlD) => {
                 // Handle Ctrl+C/Ctrl+D by printing a message and exiting
                 println!("\nOperation cancelled by user");
                 std::process::exit(0);
             }
             Err(err) => {
-                eprintln!("Error reading line: {}", err);
+                eprintln!("Error reading line: {err}");
                 String::new()
             }
         }
     }
 }
 
-/// Wrapper type for StdinHelper with static dispatch
+/// Wrapper type for `StdinHelper` with static dispatch
 pub enum StdinHelperWrapper {
     Default(DefaultStdinHelper),
     Test(crate::testing::stdin_helpers::TestStdinHelper),
 }
 
 impl StdinHelperWrapper {
-    pub fn read_line(&self) -> String {
+    #[must_use] pub fn read_line(&self) -> String {
         match self {
             StdinHelperWrapper::Default(helper) => helper.read_line(),
             StdinHelperWrapper::Test(helper) => helper.read_line(),

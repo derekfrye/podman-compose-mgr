@@ -37,7 +37,7 @@ pub type Result<T> = std::result::Result<T, PodmanHelperError>;
 // For compatibility with Box<dyn std::error::Error>
 impl From<Box<dyn std::error::Error>> for PodmanHelperError {
     fn from(err: Box<dyn std::error::Error>) -> Self {
-        PodmanHelperError::CommandExecution(format!("{}", err))
+        PodmanHelperError::CommandExecution(format!("{err}"))
     }
 }
 
@@ -56,13 +56,13 @@ pub fn get_podman_image_upstream_create_time(img: &str) -> Result<DateTime<Local
         .args(["image", "inspect", "--format", "{{.Created}}", img])
         .output()
         .map_err(|e| {
-            PodmanHelperError::CommandExecution(format!("Failed to execute podman: {}", e))
+            PodmanHelperError::CommandExecution(format!("Failed to execute podman: {e}"))
         })?;
 
     if output.status.success() {
         // Parse stdout into a string
         let stdout = String::from_utf8(output.stdout).map_err(|e| {
-            PodmanHelperError::OutputParsing(format!("Failed to parse podman output: {}", e))
+            PodmanHelperError::OutputParsing(format!("Failed to parse podman output: {e}"))
         })?;
 
         // Convert the date string
@@ -83,12 +83,10 @@ pub fn get_podman_image_upstream_create_time(img: &str) -> Result<DateTime<Local
                 Ok(dt)
             }
             Ok(stderr_str) => Err(PodmanHelperError::CommandExecution(format!(
-                "podman failed: {}",
-                stderr_str
+                "podman failed: {stderr_str}"
             ))),
             Err(e) => Err(PodmanHelperError::OutputParsing(format!(
-                "Failed to parse stderr as UTF-8: {}",
-                e
+                "Failed to parse stderr as UTF-8: {e}"
             ))),
         }
     }
@@ -112,13 +110,13 @@ pub fn get_podman_ondisk_modify_time(img: &str) -> Result<DateTime<Local>> {
         .args(["image", "inspect", "--format", "{{.Id}}", img])
         .output()
         .map_err(|e| {
-            PodmanHelperError::CommandExecution(format!("Failed to execute podman: {}", e))
+            PodmanHelperError::CommandExecution(format!("Failed to execute podman: {e}"))
         })?;
 
     if output.status.success() {
         // Parse the image ID
         let stdout = String::from_utf8(output.stdout).map_err(|e| {
-            PodmanHelperError::OutputParsing(format!("Failed to parse podman output: {}", e))
+            PodmanHelperError::OutputParsing(format!("Failed to parse podman output: {e}"))
         })?;
 
         let id = stdout.trim().to_string();
@@ -128,8 +126,7 @@ pub fn get_podman_ondisk_modify_time(img: &str) -> Result<DateTime<Local>> {
 
         // Build path to manifest file
         let path = format!(
-            "{}/.local/share/containers/storage/overlay-images/{}/manifest",
-            homedir, id
+            "{homedir}/.local/share/containers/storage/overlay-images/{id}/manifest"
         );
 
         // Run stat command on the manifest file
@@ -137,13 +134,13 @@ pub fn get_podman_ondisk_modify_time(img: &str) -> Result<DateTime<Local>> {
             .args(["-c", "%y", &path])
             .output()
             .map_err(|e| {
-                PodmanHelperError::CommandExecution(format!("Failed to execute stat: {}", e))
+                PodmanHelperError::CommandExecution(format!("Failed to execute stat: {e}"))
             })?;
 
         if output2.status.success() {
             // Parse stat output
             let stdout2 = String::from_utf8(output2.stdout).map_err(|e| {
-                PodmanHelperError::OutputParsing(format!("Failed to parse stat output: {}", e))
+                PodmanHelperError::OutputParsing(format!("Failed to parse stat output: {e}"))
             })?;
 
             // Convert date string
@@ -151,12 +148,11 @@ pub fn get_podman_ondisk_modify_time(img: &str) -> Result<DateTime<Local>> {
         } else {
             // Handle stat errors
             let stderr = String::from_utf8(output2.stderr).map_err(|e| {
-                PodmanHelperError::OutputParsing(format!("Failed to parse stat output: {}", e))
+                PodmanHelperError::OutputParsing(format!("Failed to parse stat output: {e}"))
             })?;
 
             Err(PodmanHelperError::CommandExecution(format!(
-                "stat failed: {}",
-                stderr
+                "stat failed: {stderr}"
             )))
         }
     } else {
@@ -175,18 +171,16 @@ pub fn get_podman_ondisk_modify_time(img: &str) -> Result<DateTime<Local>> {
                 Ok(dt)
             }
             Ok(stderr_str) => Err(PodmanHelperError::CommandExecution(format!(
-                "podman failed: {}",
-                stderr_str
+                "podman failed: {stderr_str}"
             ))),
             Err(e) => Err(PodmanHelperError::OutputParsing(format!(
-                "Failed to parse stderr as UTF-8: {}",
-                e
+                "Failed to parse stderr as UTF-8: {e}"
             ))),
         }
     }
 }
 
-/// Convert a date string to a DateTime object
+/// Convert a date string to a `DateTime` object
 ///
 /// Handles various date formats returned by podman and stat commands
 ///
@@ -197,7 +191,7 @@ pub fn get_podman_ondisk_modify_time(img: &str) -> Result<DateTime<Local>> {
 /// Returns an error if:
 /// - Failed to compile the regex
 /// - Failed to find pattern matches in the date string
-/// - Failed to parse the resulting date string into a DateTime
+/// - Failed to parse the resulting date string into a `DateTime`
 fn convert_str_to_date(date_str: &str) -> Result<DateTime<Local>> {
     // Handle specific format returned by podman image inspect
     // Example: 2024-10-03 12:28:30.701255218 +0100 +0100
@@ -206,7 +200,7 @@ fn convert_str_to_date(date_str: &str) -> Result<DateTime<Local>> {
     let re = Regex::new(r"(?P<datetime>[0-9:\-\s\.]+)(?P<tz_offset>[+-]\d{4})")?;
 
     let captures = re.captures(date_str).ok_or_else(|| {
-        PodmanHelperError::DateParsing(format!("Failed to parse date from '{}'", date_str))
+        PodmanHelperError::DateParsing(format!("Failed to parse date from '{date_str}'"))
     })?;
 
     // Extract timezone offset
@@ -214,8 +208,7 @@ fn convert_str_to_date(date_str: &str) -> Result<DateTime<Local>> {
         .name("tz_offset")
         .ok_or_else(|| {
             PodmanHelperError::DateParsing(format!(
-                "Failed to parse timezone offset from '{}'",
-                date_str
+                "Failed to parse timezone offset from '{date_str}'"
             ))
         })?
         .as_str()
@@ -226,8 +219,7 @@ fn convert_str_to_date(date_str: &str) -> Result<DateTime<Local>> {
         .name("datetime")
         .ok_or_else(|| {
             PodmanHelperError::DateParsing(format!(
-                "Failed to parse datetime part from '{}'",
-                date_str
+                "Failed to parse datetime part from '{date_str}'"
             ))
         })?
         .as_str();
@@ -235,19 +227,18 @@ fn convert_str_to_date(date_str: &str) -> Result<DateTime<Local>> {
     // Check if datetime part is valid
     if datetime_part.is_empty() {
         return Err(PodmanHelperError::DateParsing(format!(
-            "Empty datetime part in '{}'",
-            date_str
+            "Empty datetime part in '{date_str}'"
         )));
     }
 
     // Replace T with space for consistency
-    let cleaned_datetime = datetime_part.replace("T", " ");
+    let cleaned_datetime = datetime_part.replace('T', " ");
 
     // Combine datetime with timezone offset
-    let cleaned_date_str = if !tz_offset.is_empty() {
-        format!("{}{}", cleaned_datetime, tz_offset)
+    let cleaned_date_str = if tz_offset.is_empty() {
+        format!("{cleaned_datetime}+0000")
     } else {
-        format!("{}+0000", cleaned_datetime)
+        format!("{cleaned_datetime}{tz_offset}")
     };
 
     // Parse the cleaned string into a DateTime
@@ -255,7 +246,7 @@ fn convert_str_to_date(date_str: &str) -> Result<DateTime<Local>> {
         .parse::<DateTime<Utc>>()
         .map(|dt| dt.with_timezone(&Local))
         .map_err(|e| {
-            PodmanHelperError::DateParsing(format!("Failed to parse date '{}': {}", date_str, e))
+            PodmanHelperError::DateParsing(format!("Failed to parse date '{date_str}': {e}"))
         })
 }
 
@@ -315,7 +306,7 @@ pub fn pull_base_image(dockerfile: &Path) -> std::result::Result<(), Box<dyn std
 ///
 /// # Returns
 /// true if the file exists, is a file (not a directory), and can be read
-pub fn file_exists_and_readable(file: &Path) -> bool {
+#[must_use] pub fn file_exists_and_readable(file: &Path) -> bool {
     match file.try_exists() {
         Ok(true) => file.is_file() && file.metadata().is_ok(),
         _ => false,
@@ -329,7 +320,7 @@ pub fn file_exists_and_readable(file: &Path) -> bool {
 ///
 /// # Returns
 /// The terminal width in columns, or 80 if it can't be determined
-pub fn get_terminal_display_width(specify_size: Option<usize>) -> usize {
+#[must_use] pub fn get_terminal_display_width(specify_size: Option<usize>) -> usize {
     if let Some(size) = specify_size {
         return size;
     }

@@ -23,7 +23,7 @@ pub fn test_format_prompt<C: CommandHelper>(
     unroll_grammar_into_string(grammars, false, true)
 }
 
-/// A test-specific wrapper for read_val_from_cmd_line_and_proceed_with_deps that
+/// A test-specific wrapper for `read_val_from_cmd_line_and_proceed_with_deps` that
 /// displays the formatted prompt to stdout for debugging and test verification.
 pub fn test_read_val_with_debug_output<C: CommandHelper>(
     grammars: &mut [GrammarFragment],
@@ -42,13 +42,13 @@ pub fn test_read_val_with_debug_output<C: CommandHelper>(
     let prompt_string = unroll_grammar_into_string(grammars, false, true);
 
     // Print the formatted prompt for test verification
-    println!("TEST DEBUG - Formatted prompt: {}", prompt_string);
+    println!("TEST DEBUG - Formatted prompt: {prompt_string}");
 
     // Call the real function
     crate::read_interactive_input::read_val_from_cmd_line_and_proceed_with_deps(
         grammars,
         cmd_helper,
-        Box::new(|s| print!("{}", s)), // Print function that prints to stdout
+        Box::new(|s| print!("{s}")), // Print function that prints to stdout
         size,
         Some(stdin_helper),
     )
