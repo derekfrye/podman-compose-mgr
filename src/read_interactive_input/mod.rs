@@ -4,7 +4,7 @@ mod helpers;
 mod types;
 
 pub use self::types::{
-    DefaultStdinHelper, GrammarFragment, GrammarType, PrintFunction, ReadValResult, StdinHelper,
+    DefaultStdinHelper, GrammarFragment, GrammarType, InputProcessResult, PrintFunction, ReadValResult, StdinHelper,
     StdinHelperWrapper,
 };
 

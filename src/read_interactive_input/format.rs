@@ -18,6 +18,9 @@ pub struct Prompt {
 
 /// Build a string to display to the user. Generally use `read_val_from_cmd_line_and_proceed` instead.
 /// Made public to allow usage in tests.
+///
+/// # Panics
+/// Panics if grammar fragments contain invalid shortened values when `use_shortened_val` is true
 #[must_use] pub fn unroll_grammar_into_string(
     grammars: &[GrammarFragment],
     excl_if_not_in_base_prompt: bool,
@@ -118,7 +121,7 @@ pub fn do_prompt_formatting(grammars: &mut [GrammarFragment], term_width: usize)
         // Only proceed if we have space and fragments to shorten
         if total_remaining_space > 0 && n > 0 && total_remaining_space > 3 {
             // Calculate allowed length per fragment
-            let allowed_len = ((total_remaining_space - 3) as f64 / n as f64).floor() as usize;
+            let allowed_len = (total_remaining_space - 3) / n;
 
             // Shorten each fragment
             for grammar in &mut shortenable_grammars {

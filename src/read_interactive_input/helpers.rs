@@ -1,7 +1,7 @@
 use crate::interfaces::CommandHelper;
 use crate::read_interactive_input::format::{do_prompt_formatting, unroll_grammar_into_string, Prompt};
 use crate::read_interactive_input::types::{
-    GrammarFragment, GrammarType, PrintFunction, ReadValResult, StdinHelperWrapper,
+    GrammarFragment, GrammarType, InputProcessResult, PrintFunction, ReadValResult, StdinHelperWrapper,
 };
 use std::collections::HashSet;
 // Use reedline for line editing when no custom stdin helper is provided
@@ -56,28 +56,29 @@ fn process_user_input(
     user_choices: &HashSet<String>,
     print_fn: &PrintFunction<'_>,
     prompt_string: &str,
-) -> Option<Option<String>> {
+) -> InputProcessResult {
     if user_choices.contains(input) {
         // Valid choice
-        Some(Some(input.to_string()))
+        InputProcessResult::Valid(input.to_string())
     } else if input.is_empty() || input.trim().is_empty() {
         // Empty input
-        Some(None)
+        InputProcessResult::Empty
     } else {
         // Invalid input
         eprintln!("Invalid input '{input}'. Please try again.");
         print_fn(prompt_string);
-        None
+        InputProcessResult::Invalid
     }
 }
 
 /// Implementation with dependency injection for the `CommandHelper` trait. Keep in sync with testing code.
+#[allow(clippy::needless_pass_by_value)] // PrintFunction needs to be owned for trait object
 pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
     grammars: &mut [GrammarFragment],
     cmd_helper: &C,
     print_fn: PrintFunction<'_>,
     size: Option<usize>,
-    stdin_helper: Option<StdinHelperWrapper>,
+    stdin_helper: Option<&StdinHelperWrapper>,
 ) -> ReadValResult {
     let mut return_result = ReadValResult {
         user_entered_val: None,
@@ -97,7 +98,7 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
 
     // Setup stdin helper
     let default_stdin_wrapper = StdinHelperWrapper::default();
-    let stdin_wrapper = stdin_helper.as_ref().unwrap_or(&default_stdin_wrapper);
+    let stdin_wrapper = stdin_helper.as_ref().map_or(&default_stdin_wrapper, |v| v);
 
     // Determine whether to use reedline (only when no stdin_helper is provided)
     let use_reedline = stdin_helper.is_none();
@@ -130,9 +131,18 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
         };
 
         // Process input
-        if let Some(result) = process_user_input(&input, &user_choices, &print_fn, &prompt_string) {
-            return_result.user_entered_val = result;
-            break;
+        match process_user_input(&input, &user_choices, &print_fn, &prompt_string) {
+            InputProcessResult::Valid(value) => {
+                return_result.user_entered_val = Some(value);
+                break;
+            }
+            InputProcessResult::Empty => {
+                return_result.user_entered_val = None;
+                break;
+            }
+            InputProcessResult::Invalid => {
+                // Continue the loop to retry
+            }
         }
     }
 

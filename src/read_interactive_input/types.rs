@@ -7,6 +7,16 @@ pub struct ReadValResult {
     pub was_interrupted: bool,
 }
 
+/// Result of processing user input
+pub enum InputProcessResult {
+    /// Valid choice entered
+    Valid(String),
+    /// Empty input (should continue)
+    Empty,
+    /// Invalid input (should retry)
+    Invalid,
+}
+
 /// For dependency injection in tests - `PrintFunction` type alias
 /// Using trait object allows both regular functions and closures that capture environment
 pub type PrintFunction<'a> = Box<dyn Fn(&str) + 'a>;

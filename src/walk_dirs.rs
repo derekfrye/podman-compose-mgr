@@ -115,8 +115,8 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
         
         if is_compose_file || is_container_file {
             // Get path as string, safely
-            let entry_path_str = if let Some(path_str) = entry.path().to_str() { path_str } else {
-                eprintln!("Skipping path with invalid UTF-8: {:?}", entry.path());
+            let Some(entry_path_str) = entry.path().to_str() else {
+                eprintln!("Skipping path with invalid UTF-8: {}", entry.path().display());
                 continue;
             };
 

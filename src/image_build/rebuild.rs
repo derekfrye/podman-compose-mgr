@@ -76,7 +76,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
     pub fn rebuild(&mut self, entry: &DirEntry, args: &Args) -> Result<(), RebuildError> {
         // Get file path safely
         let file_path = entry.path().to_str().ok_or_else(|| {
-            RebuildError::PathNotFound(format!("Invalid UTF-8 in path: {:?}", entry.path()))
+            RebuildError::PathNotFound(format!("Invalid UTF-8 in path: {}", entry.path().display()))
         })?;
 
         // Determine file type and process accordingly
@@ -94,10 +94,10 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
     /// Process a docker-compose.yml file for rebuilding images
     fn process_compose_file(&mut self, entry: &DirEntry, args: &Args) -> Result<(), RebuildError> {
         let file_path = entry.path().to_str().ok_or_else(|| {
-            RebuildError::PathNotFound(format!("Invalid UTF-8 in path: {:?}", entry.path()))
+            RebuildError::PathNotFound(format!("Invalid UTF-8 in path: {}", entry.path().display()))
         })?;
 
-        let yaml = self.read_yaml_file(file_path)?;
+        let yaml = Self::read_yaml_file(file_path)?;
 
         // Get services from YAML
         let services = yaml.get("services").ok_or_else(|| {
@@ -185,7 +185,6 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
 
     /// Build the interactive prompt grammars for rebuild
     fn build_rebuild_grammars(
-        &self,
         entry: &DirEntry,
         custom_img_nm: &str,
         container_name: &str,
@@ -267,7 +266,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
             let choice_grammar = GrammarFragment {
                 original_val_for_prompt: Some(c.to_string()),
                 shortened_val_for_prompt: None,
-                pos: (i + 5) as u8,
+                pos: u8::try_from(i + 5).unwrap_or(255),
                 prefix: None,
                 suffix: sep,
                 grammar_type: GrammarType::UserChoice,
@@ -288,7 +287,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
         container_name: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // use extracted helper to build grammars
-        let mut grammars = self.build_rebuild_grammars(entry, custom_img_nm, container_name);
+        let mut grammars = Self::build_rebuild_grammars(entry, custom_img_nm, container_name);
 
         loop {
             // Get the terminal width from the command helper instead of passing None
@@ -306,105 +305,132 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                     }
                     break;
                 }
-                Some(user_entered_val) => match user_entered_val.as_str() {
-                    "p" => {
-                        self.pull_image(custom_img_nm)
-                            .unwrap_or_else(|e| eprintln!("Error pulling image: {e}"));
+                Some(user_entered_val) => {
+                    if self.handle_user_choice(&user_entered_val, entry, custom_img_nm, build_args, container_name, &grammars)? {
                         break;
                     }
-                    "N" => {
-                        break;
-                    }
-                    "d" | "?" => match user_entered_val.as_str() {
-                        "d" => {
-                            println!("Image: {custom_img_nm}");
-                            println!("Container name: {container_name}");
-                            println!(
-                                "Compose file: {}",
-                                grammars[3].original_val_for_prompt.as_ref().unwrap()
-                            );
-                            // Display image creation time
-                            match podman_utils::get_podman_image_upstream_create_time(custom_img_nm)
-                            {
-                                Ok(created_time) => {
-                                    println!("Created: {}", self.format_time_ago(created_time));
-                                }
-                                Err(e) => {
-                                    println!("Created: Error getting creation time - {e}");
-                                }
-                            }
-
-                            // Display image pull time
-                            match podman_utils::get_podman_ondisk_modify_time(custom_img_nm) {
-                                Ok(pull_time) => {
-                                    println!("Pulled: {}", self.format_time_ago(pull_time));
-                                }
-                                Err(e) => {
-                                    println!("Pulled: Error getting pull time - {e}");
-                                }
-                            }
-
-                            // Get parent directory safely
-                            let parent_dir =
-                                entry.path().parent().unwrap_or_else(|| Path::new("/"));
-
-                            // Check if Dockerfile exists
-                            println!(
-                                "Dockerfile exists: {}",
-                                self.cmd_helper
-                                    .file_exists_and_readable(&parent_dir.join("Dockerfile"))
-                            );
-
-                            // Check if Makefile exists
-                            println!(
-                                "Makefile exists: {}",
-                                self.cmd_helper
-                                    .file_exists_and_readable(&parent_dir.join("Makefile"))
-                            );
-                        }
-                        "?" => {
-                            println!("p = Pull image from upstream.");
-                            println!("N = Do nothing, skip this image.");
-                            println!(
-                                "d = Display info (image name, docker-compose.yml path, upstream img create date, and img on-disk modify date)."
-                            );
-                            println!(
-                                "b = Build image from the Dockerfile residing in same path as the docker-compose.yml."
-                            );
-                            println!(
-                                "s = Skip all subsequent images with this same name (regardless of container name)."
-                            );
-                            println!("? = Display this help.");
-                        }
-                        _ => {}
-                    },
-                    "b" => {
-                        start(
-                            entry,
-                            custom_img_nm,
-                            build_args.iter().map(std::string::String::as_str).collect(),
-                        )?;
-                        break;
-                    }
-                    "s" => {
-                        let c = Image {
-                            name: Some(custom_img_nm.to_string()),
-                            container: Some(container_name.to_string()),
-                            skipall_by_this_name: true,
-                        };
-                        self.images_already_processed.push(c);
-                        break;
-                    }
-                    _ => {
-                        eprintln!("Invalid input. Please enter p/N/d/b/s/?: ");
-                    }
-                },
+                }
             }
         }
         Ok(())
     }
 
-    fn format_time_ago(&mut self, dt: DateTime<Local>) -> String {
+    fn handle_user_choice(
+        &mut self,
+        user_entered_val: &str,
+        entry: &DirEntry,
+        custom_img_nm: &str,
+        build_args: &[String],
+        container_name: &str,
+        grammars: &[GrammarFragment],
+    ) -> Result<bool, Box<dyn std::error::Error>> {
+        match user_entered_val {
+            "p" => {
+                self.pull_image(custom_img_nm)
+                    .unwrap_or_else(|e| eprintln!("Error pulling image: {e}"));
+                Ok(true)
+            }
+            "N" => Ok(true),
+            "d" => {
+                self.display_image_info(custom_img_nm, container_name, entry, grammars);
+                Ok(false)
+            }
+            "?" => {
+                Self::display_help();
+                Ok(false)
+            }
+            "b" => {
+                start(
+                    entry,
+                    custom_img_nm,
+                    &build_args.iter().map(std::string::String::as_str).collect::<Vec<_>>(),
+                )?;
+                Ok(true)
+            }
+            "s" => {
+                let c = Image {
+                    name: Some(custom_img_nm.to_string()),
+                    container: Some(container_name.to_string()),
+                    skipall_by_this_name: true,
+                };
+                self.images_already_processed.push(c);
+                Ok(true)
+            }
+            _ => {
+                eprintln!("Invalid input. Please enter p/N/d/b/s/?: ");
+                Ok(false)
+            }
+        }
+    }
+
+    fn display_image_info(
+        &self,
+        custom_img_nm: &str,
+        container_name: &str,
+        entry: &DirEntry,
+        grammars: &[GrammarFragment],
+    ) {
+        println!("Image: {custom_img_nm}");
+        println!("Container name: {container_name}");
+        println!(
+            "Compose file: {}",
+            grammars[3].original_val_for_prompt.as_ref().unwrap()
+        );
+        
+        // Display image creation time
+        match podman_utils::get_podman_image_upstream_create_time(custom_img_nm) {
+            Ok(created_time) => {
+                println!("Created: {}", Self::format_time_ago(created_time));
+            }
+            Err(e) => {
+                println!("Created: Error getting creation time - {e}");
+            }
+        }
+
+        // Display image pull time
+        match podman_utils::get_podman_ondisk_modify_time(custom_img_nm) {
+            Ok(pull_time) => {
+                println!("Pulled: {}", Self::format_time_ago(pull_time));
+            }
+            Err(e) => {
+                println!("Pulled: Error getting pull time - {e}");
+            }
+        }
+
+        // Get parent directory safely
+        let parent_dir = entry.path().parent().unwrap_or_else(|| Path::new("/"));
+
+        // Check if Dockerfile exists
+        println!(
+            "Dockerfile exists: {}",
+            self.cmd_helper
+                .file_exists_and_readable(&parent_dir.join("Dockerfile"))
+        );
+
+        // Check if Makefile exists
+        println!(
+            "Makefile exists: {}",
+            self.cmd_helper
+                .file_exists_and_readable(&parent_dir.join("Makefile"))
+        );
+    }
+
+    fn display_help() {
+        println!("p = Pull image from upstream.");
+        println!("N = Do nothing, skip this image.");
+        println!(
+            "d = Display info (image name, docker-compose.yml path, upstream img create date, and img on-disk modify date)."
+        );
+        println!(
+            "b = Build image from the Dockerfile residing in same path as the docker-compose.yml."
+        );
+        println!(
+            "s = Skip all subsequent images with this same name (regardless of container name)."
+        );
+        println!("? = Display this help.");
+    }
+
+    fn format_time_ago(dt: DateTime<Local>) -> String {
         let now = Local::now();
         let duration = now.signed_duration_since(dt);
         let days = duration.num_days();
@@ -431,7 +457,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
     /// Returns an error if:
     /// - Unable to open the file
     /// - Unable to parse the file as YAML
-    fn read_yaml_file(&mut self, file_path: &str) -> Result<Value, RebuildError> {
+    fn read_yaml_file(file_path: &str) -> Result<Value, RebuildError> {
         // Open the file
         let file = File::open(file_path).map_err(RebuildError::Io)?;
 
@@ -444,7 +470,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
     /// Process a .container file for rebuilding images
     fn process_container_file(&mut self, entry: &DirEntry, args: &Args) -> Result<(), RebuildError> {
         let file_path = entry.path().to_str().ok_or_else(|| {
-            RebuildError::PathNotFound(format!("Invalid UTF-8 in path: {:?}", entry.path()))
+            RebuildError::PathNotFound(format!("Invalid UTF-8 in path: {}", entry.path().display()))
         })?;
 
         // Parse the .container file

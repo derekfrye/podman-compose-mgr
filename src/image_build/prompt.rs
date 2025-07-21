@@ -103,7 +103,7 @@ pub fn add_choice_options(grammars: &mut Vec<GrammarFragment>) {
         let choice_grammar = GrammarFragment {
             original_val_for_prompt: Some(choices[i].to_string()),
             shortened_val_for_prompt: None,
-            pos: (i + 5) as u8,
+            pos: u8::try_from(i + 5).unwrap_or(255),
             prefix: None,
             suffix: choice_separator,
             grammar_type: GrammarType::UserChoice,

@@ -1,10 +1,9 @@
 use podman_compose_mgr::{args, run_app};
 
-use std::io;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-fn main() -> io::Result<()> {
+fn main() {
     // Set up a global Ctrl+C handler
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
@@ -25,10 +24,9 @@ fn main() -> io::Result<()> {
     }
 
     // Run the application logic
-    if let Err(e) = run_app(args) {
+    if let Err(e) = run_app(&args) {
         eprintln!("Application error: {e}");
         std::process::exit(1);
     }
 
-    Ok(())
 }

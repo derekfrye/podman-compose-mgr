@@ -65,9 +65,9 @@ pub enum BuildfileError {
 pub fn start(
     dir: &DirEntry,
     custom_img_nm: &str,
-    build_args: Vec<&str>,
+    build_args: &[&str],
 ) -> Result<(), BuildfileError> {
-    let buildfiles = find_buildfile(dir, custom_img_nm, &build_args);
+    let buildfiles = find_buildfile(dir, custom_img_nm, build_args);
     if buildfiles.is_none()
         || buildfiles.as_ref().unwrap().is_empty()
         || buildfiles
@@ -130,7 +130,7 @@ fn buildfile_prompt_grammars(files: &[BuildFile]) -> (Vec<GrammarFragment>, Vec<
         user_choices = vec!["1", "2", "d", "?"];
         prompt_grammars.extend(make_choice_grammar(
             &user_choices,
-            prompt_grammars.len() as u8,
+            u8::try_from(prompt_grammars.len()).unwrap_or(255),
         ));
     }
 
@@ -139,7 +139,7 @@ fn buildfile_prompt_grammars(files: &[BuildFile]) -> (Vec<GrammarFragment>, Vec<
 
 fn read_val_loop(files: &[BuildFile]) -> WhatWereBuilding {
     // use helper for grammars
-    let (mut prompt_grammars, user_choices) = buildfile_prompt_grammars(&files);
+    let (mut prompt_grammars, user_choices) = buildfile_prompt_grammars(files);
 
     let mut choice_of_where_to_build = WhatWereBuilding {
         file: files[0].clone(),
@@ -174,7 +174,7 @@ fn read_val_loop(files: &[BuildFile]) -> WhatWereBuilding {
 
                             prompt_grammars.extend(make_choice_grammar(
                                 &user_choices,
-                                prompt_grammars.len() as u8,
+                                u8::try_from(prompt_grammars.len()).unwrap_or(255),
                             ));
                         } else {
                             eprintln!(
@@ -327,7 +327,7 @@ fn make_choice_grammar(user_choices: &[&str], pos_to_start_from: u8) -> Vec<Gram
         let choice_grammar = GrammarFragment {
             original_val_for_prompt: Some(user_choices[i].to_string()),
             shortened_val_for_prompt: None,
-            pos: (i + (pos_to_start_from as usize)) as u8,
+            pos: u8::try_from(i + (pos_to_start_from as usize)).unwrap_or(255),
             prefix: None,
             suffix: choice_separator,
             grammar_type: GrammarType::UserChoice,

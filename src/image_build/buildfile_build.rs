@@ -19,7 +19,7 @@ use crate::utils::podman_utils;
 /// 
 /// # Panics
 /// 
-/// Panics if build configuration contains invalid paths or if unwrap() fails on expected values.
+/// Panics if build configuration contains invalid paths or if `unwrap()` fails on expected values.
 pub fn build_dockerfile_image(build_config: &WhatWereBuilding) -> Result<(), BuildfileError> {
     let _ = podman_utils::pull_base_image(build_config.file.filepath.as_ref().unwrap());
 
@@ -66,7 +66,7 @@ pub fn build_dockerfile_image(build_config: &WhatWereBuilding) -> Result<(), Bui
 /// 
 /// # Panics
 /// 
-/// Panics if build configuration contains invalid paths or if unwrap() fails on expected values.
+/// Panics if build configuration contains invalid paths or if `unwrap()` fails on expected values.
 pub fn build_makefile_image(build_config: &WhatWereBuilding) -> Result<(), BuildfileError> {
     let chg_dir = if build_config.follow_link {
         build_config
@@ -101,7 +101,7 @@ pub fn build_makefile_image(build_config: &WhatWereBuilding) -> Result<(), Build
 /// Returns an error if the build process fails, depending on the build type (Dockerfile or Makefile).
 pub fn build_image_from_spec(build_config: &WhatWereBuilding) -> Result<(), BuildfileError> {
     match build_config.file.filetype {
-        BuildChoice::Dockerfile => build_dockerfile_image(&build_config),
-        BuildChoice::Makefile => build_makefile_image(&build_config),
+        BuildChoice::Dockerfile => build_dockerfile_image(build_config),
+        BuildChoice::Makefile => build_makefile_image(build_config),
     }
 }

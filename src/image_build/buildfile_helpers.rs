@@ -20,18 +20,21 @@ use walkdir::DirEntry;
         user_choices = vec!["D", "M", "d", "?"];
         prompt_grammars.extend(make_choice_grammar(
             &user_choices,
-            prompt_grammars.len() as u8,
+            u8::try_from(prompt_grammars.len()).unwrap_or(255),
         ));
     } else if buildfile.link_target_dir.is_some() {
         let t = make_build_prompt_grammar(buildfile);
         user_choices = vec!["1", "2", "d", "?"];
-        prompt_grammars.extend(make_choice_grammar(&user_choices, t.len() as u8));
+        prompt_grammars.extend(make_choice_grammar(&user_choices, u8::try_from(t.len()).unwrap_or(255)));
     }
 
     (prompt_grammars, user_choices, are_there_multiple_files)
 }
 
 /// Display information about available buildfiles
+///
+/// # Panics
+/// Panics if buildfile paths contain invalid UTF-8 characters or if filepath is None
 pub fn handle_display_info(
     files: &[BuildFile],
     buildfile: &BuildFile,
@@ -82,6 +85,9 @@ pub fn handle_display_info(
 }
 
 /// Handle file type choice
+///
+/// # Panics
+/// Panics if no file matches the chosen type or if file operations fail
 #[must_use] pub fn handle_file_type_choice<'a>(
     files: &[BuildFile],
     choice: &str,
@@ -120,6 +126,9 @@ pub fn handle_display_info(
 }
 
 /// Create grammar fragments for build prompts
+///
+/// # Panics
+/// Panics if buildfile contains invalid link target directory paths
 #[must_use] pub fn make_build_prompt_grammar(buildfile: &BuildFile) -> Vec<GrammarFragment> {
     let mut prompt_grammars: Vec<GrammarFragment> = vec![];
     // let mut user_choices: Vec<&str> ;
@@ -195,7 +204,7 @@ pub fn handle_display_info(
         let choice_grammar = GrammarFragment {
             original_val_for_prompt: Some(user_choices[i].to_string()),
             shortened_val_for_prompt: None,
-            pos: (i + (pos_to_start_from as usize)) as u8,
+            pos: u8::try_from(i + (pos_to_start_from as usize)).unwrap_or(255),
             prefix: None,
             suffix: choice_separator,
             grammar_type: GrammarType::UserChoice,
@@ -208,6 +217,9 @@ pub fn handle_display_info(
 }
 
 /// Find buildfiles in a directory
+///
+/// # Panics
+/// Panics if directory path operations fail or parent directory cannot be determined
 #[must_use] pub fn find_buildfile(
     dir: &DirEntry,
     custom_img_nm: &str,

@@ -50,6 +50,6 @@ pub fn test_read_val_with_debug_output<C: CommandHelper>(
         cmd_helper,
         Box::new(|s| print!("{s}")), // Print function that prints to stdout
         size,
-        Some(stdin_helper),
+        Some(&stdin_helper),
     )
 }

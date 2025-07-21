@@ -16,8 +16,8 @@ pub use utils::error_utils;
 pub use utils::json_utils;
 pub use utils::log_utils;
 
-use std::io;
 use std::fmt::Write as FmtWrite;
+use std::io;
 
 /// Main application logic separated from `main()` for testing
 ///
@@ -35,7 +35,7 @@ use std::fmt::Write as FmtWrite;
 /// # Errors
 /// 
 /// Returns an error if the application fails to initialize or run.
-pub fn run_app(args: args::Args) -> io::Result<()> {
+pub fn run_app(args: &args::Args) -> io::Result<()> {
         use crate::utils::log_utils::Logger;
     use crate::walk_dirs::walk_dirs;
     // Create logger instance
@@ -54,7 +54,7 @@ pub fn run_app(args: args::Args) -> io::Result<()> {
         let mut cmd_line = format!("{}", exe_name.to_string_lossy());
 
         // Use serde to convert Args to a JSON value for inspection
-        let args_json = serde_json::to_value(&args).unwrap_or(serde_json::Value::Null);
+        let args_json = serde_json::to_value(args).unwrap_or(serde_json::Value::Null);
 
         if let serde_json::Value::Object(map) = args_json {
             // Sort the keys for consistent output
@@ -76,11 +76,15 @@ pub fn run_app(args: args::Args) -> io::Result<()> {
                 }
 
                 match map.get(key) {
-                    Some(serde_json::Value::Null) => {
-                        // Skip null values (None options)
+                    // Skip values that should be ignored
+                    Some(serde_json::Value::Null | serde_json::Value::Bool(false)) | None => {
+                        // Skip null values, false booleans, and missing keys
                     }
                     Some(serde_json::Value::Array(arr)) if arr.is_empty() => {
                         // Skip empty arrays
+                    }
+                    Some(serde_json::Value::String(s)) if s.is_empty() => {
+                        // Skip empty strings
                     }
                     Some(serde_json::Value::Array(arr)) => {
                         // Format arrays (e.g., vectors)
@@ -92,14 +96,8 @@ pub fn run_app(args: args::Args) -> io::Result<()> {
                             write!(cmd_line, " --{arg_key} {escaped_value}").unwrap();
                         }
                     }
-                    Some(serde_json::Value::String(s)) if s.is_empty() => {
-                        // Skip empty strings
-                    }
                     Some(serde_json::Value::Bool(true)) => {
                         write!(cmd_line, " --{arg_key}").unwrap();
-                    }
-                    Some(serde_json::Value::Bool(false)) => {
-                        // Skip false boolean values
                     }
                     Some(value) => {
                         // Format everything else
@@ -108,9 +106,6 @@ pub fn run_app(args: args::Args) -> io::Result<()> {
                             _ => value.to_string(),
                         };
                         write!(cmd_line, " --{arg_key} {escaped_value}").unwrap();
-                    }
-                    None => {
-                        // Skip if the key doesn't exist (shouldn't happen)
                     }
                 }
             }
@@ -129,7 +124,7 @@ pub fn run_app(args: args::Args) -> io::Result<()> {
     }
 
     // Process rebuild mode
-    walk_dirs(&args, &logger, args.tui);
+    walk_dirs(args, &logger, args.tui);
 
     logger.info("Done.");
 
