@@ -7,7 +7,4 @@ pub mod container_file;
 pub mod image;
 pub mod prompt;
 pub mod rebuild;
-pub mod rebuild_error;
-pub mod rebuild_helpers;
-pub mod rebuild_yaml;
 pub mod ui;

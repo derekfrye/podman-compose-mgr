@@ -1,3 +1,4 @@
+use crate::image_build::container_file::ContainerFileError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -7,6 +8,9 @@ pub enum RebuildError {
 
     #[error("YAML parsing error: {0}")]
     YamlParse(#[from] serde_yaml::Error),
+
+    #[error("Container file parsing error: {0}")]
+    ContainerFileParse(#[from] ContainerFileError),
 
     #[error("Path not found: {0}")]
     PathNotFound(String),
