@@ -1,9 +1,10 @@
+use super::grammar_helpers::make_choice_grammar;
 use crate::image_build::buildfile_types::{BuildChoice, BuildFile};
 use crate::read_interactive_input::{GrammarFragment, GrammarType};
-use walkdir::DirEntry;
 
 /// Setup prompts for buildfile selection
-#[must_use] pub fn setup_prompts(files: &[BuildFile]) -> (Vec<GrammarFragment>, Vec<&str>, bool) {
+#[must_use]
+pub fn setup_prompts(files: &[BuildFile]) -> (Vec<GrammarFragment>, Vec<&str>, bool) {
     let mut prompt_grammars: Vec<GrammarFragment> = vec![];
     let mut user_choices: Vec<&str> = vec![];
 
@@ -25,7 +26,10 @@ use walkdir::DirEntry;
     } else if buildfile.link_target_dir.is_some() {
         let t = make_build_prompt_grammar(buildfile);
         user_choices = vec!["1", "2", "d", "?"];
-        prompt_grammars.extend(make_choice_grammar(&user_choices, u8::try_from(t.len()).unwrap_or(255)));
+        prompt_grammars.extend(make_choice_grammar(
+            &user_choices,
+            u8::try_from(t.len()).unwrap_or(255),
+        ));
     }
 
     (prompt_grammars, user_choices, are_there_multiple_files)
@@ -88,7 +92,8 @@ pub fn handle_display_info(
 ///
 /// # Panics
 /// Panics if no file matches the chosen type or if file operations fail
-#[must_use] pub fn handle_file_type_choice<'a>(
+#[must_use]
+pub fn handle_file_type_choice<'a>(
     files: &[BuildFile],
     choice: &str,
     buildfile: &BuildFile,
@@ -129,9 +134,9 @@ pub fn handle_display_info(
 ///
 /// # Panics
 /// Panics if buildfile contains invalid link target directory paths
-#[must_use] pub fn make_build_prompt_grammar(buildfile: &BuildFile) -> Vec<GrammarFragment> {
+#[must_use]
+pub fn make_build_prompt_grammar(buildfile: &BuildFile) -> Vec<GrammarFragment> {
     let mut prompt_grammars: Vec<GrammarFragment> = vec![];
-    // let mut user_choices: Vec<&str> ;
     let grm1 = GrammarFragment {
         original_val_for_prompt: Some(
             format!(
@@ -191,82 +196,4 @@ pub fn handle_display_info(
     prompt_grammars.push(grm5);
 
     prompt_grammars
-}
-
-/// Create grammar fragments for choice options
-#[must_use] pub fn make_choice_grammar(user_choices: &[&str], pos_to_start_from: u8) -> Vec<GrammarFragment> {
-    let mut new_prompt_grammars = vec![];
-    for i in 0..user_choices.len() {
-        let mut choice_separator = Some("/".to_string());
-        if i == user_choices.len() - 1 {
-            choice_separator = Some(": ".to_string());
-        }
-        let choice_grammar = GrammarFragment {
-            original_val_for_prompt: Some(user_choices[i].to_string()),
-            shortened_val_for_prompt: None,
-            pos: u8::try_from(i + (pos_to_start_from as usize)).unwrap_or(255),
-            prefix: None,
-            suffix: choice_separator,
-            grammar_type: GrammarType::UserChoice,
-            can_shorten: false,
-            display_at_all: true,
-        };
-        new_prompt_grammars.push(choice_grammar);
-    }
-    new_prompt_grammars
-}
-
-/// Find buildfiles in a directory
-///
-/// # Panics
-/// Panics if directory path operations fail or parent directory cannot be determined
-#[must_use] pub fn find_buildfile(
-    dir: &DirEntry,
-    custom_img_nm: &str,
-    build_args: &[&str],
-) -> Option<Vec<BuildFile>> {
-    let parent_dir = dir.path().to_path_buf().parent().unwrap().to_path_buf();
-    let dockerfile = parent_dir.join("Dockerfile");
-    let makefile = parent_dir.join("Makefile");
-    let mut buildfiles: Option<Vec<BuildFile>> = None;
-
-    for file_path in &[&dockerfile, &makefile] {
-        let buildfile = BuildFile {
-            filetype: match file_path {
-                _ if *file_path == &makefile => BuildChoice::Makefile,
-                _ => BuildChoice::Dockerfile,
-            },
-            filepath: if let Ok(metadata) = file_path.symlink_metadata() {
-                if metadata.file_type().is_symlink() {
-                    Some(std::fs::read_link(file_path).unwrap().clone())
-                } else if metadata.is_file() {
-                    Some((*file_path).clone())
-                } else {
-                    None
-                }
-            } else {
-                None
-            },
-            parent_dir: parent_dir.clone(),
-            link_target_dir: if std::fs::read_link(file_path).is_ok() {
-                Some(std::fs::read_link(file_path).unwrap().clone())
-            } else {
-                None
-            },
-            base_image: Some(custom_img_nm.to_string()),
-            custom_img_nm: Some(custom_img_nm.to_string()),
-            build_args: build_args.iter().map(|arg| (*arg).to_string()).collect(),
-        };
-
-        match &mut buildfiles {
-            Some(files) => {
-                files.push(buildfile);
-            }
-            None => {
-                buildfiles = Some(vec![buildfile]);
-            }
-        }
-    }
-
-    buildfiles
 }
