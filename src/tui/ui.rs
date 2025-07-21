@@ -37,7 +37,7 @@ pub fn draw(f: &mut Frame, app: &App, args: &Args) {
         Line::from("Press 'q' to quit"),
         Line::from(""),
         Line::from(format!("Path: {}", args.path.display())),
-        Line::from(format!("Mode: {:?}", args.mode)),
+        Line::from("Mode: Rebuild"),
     ];
 
     let content_widget =

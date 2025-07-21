@@ -25,7 +25,7 @@ fn test_ctrl_c_handling() {
 
     // Start the application with test parameters
     let mut child = Command::new(main_binary)
-        .args(["--path", "tests/test1", "--mode", "rebuild"])
+        .args(["--path", "tests/test1"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

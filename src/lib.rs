@@ -3,7 +3,6 @@ pub mod image_build;
 pub mod interfaces;
 pub mod read_interactive_input;
 
-pub mod secrets;
 pub mod testing;
 pub mod tui;
 pub mod utils;
@@ -32,8 +31,7 @@ use std::io;
 ///
 /// * `io::Result<()>` - Success or error
 pub fn run_app(args: args::Args) -> io::Result<()> {
-    use crate::args::Mode;
-    use crate::utils::log_utils::Logger;
+        use crate::utils::log_utils::Logger;
     use crate::walk_dirs::walk_dirs;
     // Create logger instance
     let logger = Logger::new(args.verbose);
@@ -125,18 +123,8 @@ pub fn run_app(args: args::Args) -> io::Result<()> {
         }
     }
 
-    // Process based on mode
-    match args.mode {
-        Mode::SecretRetrieve | Mode::SecretInitialize | Mode::SecretUpload | Mode::SecretMigrate => {
-            if let Err(e) = crate::secrets::process_secrets_mode(&args, &logger) {
-                eprintln!("Error processing secrets: {}", e);
-                return Err(io::Error::new(io::ErrorKind::Other, e.to_string()));
-            }
-        }
-        _ => {
-            walk_dirs(&args, &logger, args.tui);
-        }
-    }
+    // Process rebuild mode
+    walk_dirs(&args, &logger, args.tui);
 
     logger.info("Done.");
 

@@ -1,12 +1,11 @@
-use std::mem;
 
 use regex::Regex;
 use thiserror::Error;
 use walkdir::WalkDir;
 
 use crate::{
-    Args, args,
-    image_build::{self as build, rebuild::RebuildManager},
+    Args,
+    image_build::{self as build},
     interfaces::{
         CommandHelper, DefaultCommandHelper, DefaultReadInteractiveInputHelper,
         ReadInteractiveInputHelper,
@@ -40,8 +39,8 @@ pub fn walk_dirs(args: &Args, logger: &Logger, tui_mode: bool) {
         eprintln!("Error processing directories: {}", e);
     }
 
-    // If TUI mode is enabled and we're in rebuild mode, launch the TUI
-    if tui_mode && matches!(args.mode, args::Mode::Rebuild) {
+    // If TUI mode is enabled, launch the TUI
+    if tui_mode {
         logger.info("Starting TUI mode...");
         if let Err(e) = tui::run(args, logger) {
             eprintln!("Error starting TUI: {}", e);
@@ -134,17 +133,10 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
                 continue;
             }
 
-            // Process according to mode
-            match args.mode {
-                args::Mode::Rebuild => {
-                    if let Some(ref mut mgr) = manager {
-                        if let Err(e) = mgr.rebuild(&entry, args) {
-                            eprintln!("Error rebuilding from {}: {}", entry_path_str, e);
-                        }
-                    }
-                }
-                _ => {
-                    drop_mgr(&mut manager);
+            // Process rebuild mode
+            if let Some(ref mut mgr) = manager {
+                if let Err(e) = mgr.rebuild(&entry, args) {
+                    eprintln!("Error rebuilding from {}: {}", entry_path_str, e);
                 }
             }
         }
@@ -153,10 +145,3 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
     Ok(())
 }
 
-fn drop_mgr<C: CommandHelper, R: ReadInteractiveInputHelper>(
-    manager: &mut Option<RebuildManager<'_, C, R>>,
-) {
-    if let Some(manager) = manager.take() {
-        mem::drop(manager);
-    }
-}

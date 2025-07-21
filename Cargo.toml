@@ -12,31 +12,12 @@ clap = { version = "4", features = ["derive"] }
 chrono = "0"
 serde_yaml = "0"
 dockerfile-parser = "0"
-reqwest = { version = "0", features = ["json", "blocking"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-md-5 = "0"
-tokio = { version = "1", features = ["full"] }
-# Use consistent versions for Azure packages
-azure_identity = "0.21"
-azure_security_keyvault = "0.21"
-azure_core = "0.21"
-time = "0"
-hostname = "0"
 terminal_size = "0"
 mockall = "0"
 thiserror = "1"
-async-trait = "0"
 home = "0"
-sha1 = "0"
-hex = "0"
-aws-config = "1"
-aws-sdk-s3 = "1"
-aws-credential-types = "1"
-aws-smithy-runtime = { version = "1", features = ["test-util"] }
-base64 = "0"
-utf8-read = "0"
-anyhow = "1"
 tempfile = "3"  # For temporary file operations
 ratatui = "0"
 crossterm = "0"

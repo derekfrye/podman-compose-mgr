@@ -1,10 +1,8 @@
 // Public modules
-pub mod initialization;
 pub mod types;
 mod validators;
 
 // Re-export everything from the submodules
-pub use initialization::*;
 pub use types::*;
 pub use validators::*;
 
@@ -26,10 +24,10 @@ use std::process;
 ///
 /// Panics if validation fails
 pub fn args_checks() -> Args {
-    let mut args = Args::parse();
+    let args = Args::parse();
 
-    // Process and validate the arguments
-    if let Err(e) = args.validate_and_process() {
+    // Validate the arguments
+    if let Err(e) = args.validate() {
         eprintln!("Error: {}", e);
         process::exit(1);
     }
