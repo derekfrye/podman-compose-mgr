@@ -6,32 +6,32 @@ use std::path::Path;
 #[automock]
 pub trait CommandHelper {
     /// Execute a command with arguments
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `cmd` - Command to execute
     /// * `args` - Arguments to pass to the command
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// * `Result<(), Box<dyn std::error::Error>>` - Success or error
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Returns an error if the command execution fails.
     fn exec_cmd(&self, cmd: &str, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>>;
     /// Pull base image specified in dockerfile
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `dockerfile` - Path to the dockerfile
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// * `Result<(), Box<dyn std::error::Error>>` - Success or error
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Returns an error if the image pull fails.
     fn pull_base_image(&self, dockerfile: &Path) -> Result<(), Box<dyn std::error::Error>>;
     fn get_terminal_display_width(&self, specify_size: Option<usize>) -> usize;

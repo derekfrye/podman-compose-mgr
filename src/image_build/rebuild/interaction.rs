@@ -1,13 +1,13 @@
+use crate::image_build::buildfile::start;
 use crate::interfaces::{CommandHelper, ReadInteractiveInputHelper};
 use crate::read_interactive_input::GrammarFragment;
-use crate::image_build::buildfile::start;
 
 use walkdir::DirEntry;
 
-use super::types::Image;
-use super::image_ops::pull_image;
-use super::display::{display_image_info, display_help};
+use super::display::{display_help, display_image_info};
 use super::grammar::build_rebuild_grammars;
+use super::image_ops::pull_image;
+use super::types::Image;
 
 pub struct UserChoiceContext<'a> {
     pub entry: &'a DirEntry,
@@ -31,7 +31,13 @@ pub fn handle_user_choice<C: CommandHelper>(
         }
         "N" => Ok(true),
         "d" => {
-            display_image_info(cmd_helper, context.custom_img_nm, context.container_name, context.entry, context.grammars);
+            display_image_info(
+                cmd_helper,
+                context.custom_img_nm,
+                context.container_name,
+                context.entry,
+                context.grammars,
+            );
             Ok(false)
         }
         "?" => {
@@ -42,7 +48,11 @@ pub fn handle_user_choice<C: CommandHelper>(
             start(
                 context.entry,
                 context.custom_img_nm,
-                &context.build_args.iter().map(std::string::String::as_str).collect::<Vec<_>>(),
+                &context
+                    .build_args
+                    .iter()
+                    .map(std::string::String::as_str)
+                    .collect::<Vec<_>>(),
             )?;
             Ok(true)
         }
@@ -77,8 +87,8 @@ pub fn read_val_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
     loop {
         // Get the terminal width from the command helper instead of passing None
         let term_width = cmd_helper.get_terminal_display_width(None);
-        let result = read_val_helper
-            .read_val_from_cmd_line_and_proceed(&mut grammars, Some(term_width));
+        let result =
+            read_val_helper.read_val_from_cmd_line_and_proceed(&mut grammars, Some(term_width));
 
         match result.user_entered_val {
             None => {
@@ -97,7 +107,12 @@ pub fn read_val_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
                     container_name,
                     grammars: &grammars,
                 };
-                if handle_user_choice(cmd_helper, images_already_processed, &user_entered_val, &context)? {
+                if handle_user_choice(
+                    cmd_helper,
+                    images_already_processed,
+                    &user_entered_val,
+                    &context,
+                )? {
                     break;
                 }
             }

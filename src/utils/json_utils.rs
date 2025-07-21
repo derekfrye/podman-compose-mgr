@@ -5,18 +5,18 @@ use std::error::Error;
 use crate::utils::error_utils;
 
 /// Extract and parse a field from a JSON Value, with a typed error if missing
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `value` - JSON value to extract from
 /// * `field` - Field name to extract
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<T, Box<dyn Error>>` - Parsed field value or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the field is missing or cannot be parsed as type T.
 pub fn extract_field<T: DeserializeOwned>(value: &Value, field: &str) -> Result<T, Box<dyn Error>> {
     value
@@ -26,18 +26,18 @@ pub fn extract_field<T: DeserializeOwned>(value: &Value, field: &str) -> Result<
 }
 
 /// Extract a string field from a JSON Value
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `value` - JSON value to extract from
 /// * `field` - Field name to extract
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<String, Box<dyn Error>>` - Field value as string or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the field is missing or not a string.
 pub fn extract_string_field(value: &Value, field: &str) -> Result<String, Box<dyn Error>> {
     value
@@ -48,19 +48,19 @@ pub fn extract_string_field(value: &Value, field: &str) -> Result<String, Box<dy
 }
 
 /// Extract a string field from a JSON Value with a fallback field name
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `value` - JSON value to extract from
 /// * `field` - Primary field name to try
 /// * `fallback` - Fallback field name if primary is missing
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<String, Box<dyn Error>>` - Field value as string or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if both fields are missing or not strings.
 pub fn extract_string_field_or(
     value: &Value,
@@ -80,18 +80,18 @@ pub fn extract_string_field_or(
 }
 
 /// Extract a number field from a JSON Value
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `value` - JSON value to extract from
 /// * `field` - Field name to extract
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<T, Box<dyn Error>>` - Parsed number value or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the field is missing or cannot be parsed as the target type.
 pub fn extract_number_field<T: std::str::FromStr>(
     value: &Value,

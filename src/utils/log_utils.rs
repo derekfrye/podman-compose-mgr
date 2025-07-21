@@ -19,7 +19,8 @@ pub struct Logger {
 
 impl Logger {
     /// Create a new logger with the specified verbosity
-    #[must_use] pub fn new(verbosity: u8) -> Self {
+    #[must_use]
+    pub fn new(verbosity: u8) -> Self {
         Self { verbosity }
     }
 
@@ -55,7 +56,8 @@ impl Logger {
     }
 
     /// Get current verbosity level
-    #[must_use] pub fn verbosity(&self) -> u8 {
+    #[must_use]
+    pub fn verbosity(&self) -> u8 {
         self.verbosity
     }
 }

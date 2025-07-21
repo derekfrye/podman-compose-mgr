@@ -4,18 +4,18 @@ use std::process::{Command, Output};
 use crate::utils::error_utils;
 
 /// Execute a command and return its output as a Result
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `program` - Program to execute
 /// * `args` - Arguments to pass to the program
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<Output, Box<dyn Error>>` - Command output or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the command fails to execute.
 pub fn run_command(program: &str, args: &[&str]) -> Result<Output, Box<dyn Error>> {
     Command::new(program)
@@ -25,18 +25,18 @@ pub fn run_command(program: &str, args: &[&str]) -> Result<Output, Box<dyn Error
 }
 
 /// Execute a command and return stdout as a string
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `program` - Program to execute
 /// * `args` - Arguments to pass to the program
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<String, Box<dyn Error>>` - Command stdout or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the command fails to execute or returns non-zero exit code.
 pub fn run_command_with_output(program: &str, args: &[&str]) -> Result<String, Box<dyn Error>> {
     let output = run_command(program, args)?;
@@ -53,18 +53,18 @@ pub fn run_command_with_output(program: &str, args: &[&str]) -> Result<String, B
 }
 
 /// Execute a command with logging, returning stdout as a string
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `program` - Program to execute
 /// * `args` - Arguments to pass to the program
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<String, Box<dyn Error>>` - Command stdout or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the command fails to execute or returns non-zero exit code.
 pub fn run_command_with_logging(program: &str, args: &[&str]) -> Result<String, Box<dyn Error>> {
     println!("Executing: {} {}", program, args.join(" "));
@@ -78,41 +78,42 @@ pub fn run_command_with_logging(program: &str, args: &[&str]) -> Result<String, 
 }
 
 /// Execute a command, only caring about success/failure
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `program` - Program to execute
 /// * `args` - Arguments to pass to the program
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<(), Box<dyn Error>>` - Success or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the command fails to execute or returns non-zero exit code.
 pub fn run_command_checked(program: &str, args: &[&str]) -> Result<(), Box<dyn Error>> {
     run_command_with_output(program, args).map(|_| ())
 }
 
 /// Execute a command without capturing output (useful for interactive commands)
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `program` - Program to execute
 /// * `args` - Arguments to pass to the program
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<(), Box<dyn Error>>` - Success or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the command fails to execute or returns non-zero exit code.
 pub fn exec_cmd(program: &str, args: &[&str]) -> Result<(), Box<dyn Error>> {
-    let status = Command::new(program).args(args).status().map_err(|e| {
-        error_utils::into_boxed_error(e, &format!("Failed to execute '{program}'"))
-    })?;
+    let status = Command::new(program)
+        .args(args)
+        .status()
+        .map_err(|e| error_utils::into_boxed_error(e, &format!("Failed to execute '{program}'")))?;
 
     if !status.success() {
         return Err(error_utils::new_error(&format!(
@@ -124,23 +125,24 @@ pub fn exec_cmd(program: &str, args: &[&str]) -> Result<(), Box<dyn Error>> {
 }
 
 /// Execute a command and return status code
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `program` - Program to execute
 /// * `args` - Arguments to pass to the program
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<i32, Box<dyn Error>>` - Exit status code or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the command fails to execute.
 pub fn exec_cmd_with_status(program: &str, args: &[&str]) -> Result<i32, Box<dyn Error>> {
-    let status = Command::new(program).args(args).status().map_err(|e| {
-        error_utils::into_boxed_error(e, &format!("Failed to execute '{program}'"))
-    })?;
+    let status = Command::new(program)
+        .args(args)
+        .status()
+        .map_err(|e| error_utils::into_boxed_error(e, &format!("Failed to execute '{program}'")))?;
 
     Ok(status.code().unwrap_or(-1))
 }

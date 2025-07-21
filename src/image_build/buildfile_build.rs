@@ -4,21 +4,21 @@ use crate::utils::cmd_utils as cmd;
 use crate::utils::podman_utils;
 
 /// Build an image from a dockerfile
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `build_config` - Configuration for the build process
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<(), BuildfileError>` - Success or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the build process fails or if required fields are missing.
-/// 
+///
 /// # Panics
-/// 
+///
 /// Panics if build configuration contains invalid paths or if `unwrap()` fails on expected values.
 pub fn build_dockerfile_image(build_config: &WhatWereBuilding) -> Result<(), BuildfileError> {
     let _ = podman_utils::pull_base_image(build_config.file.filepath.as_ref().unwrap());
@@ -51,21 +51,21 @@ pub fn build_dockerfile_image(build_config: &WhatWereBuilding) -> Result<(), Bui
 }
 
 /// Build an image using a makefile
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `build_config` - Configuration for the build process
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<(), BuildfileError>` - Success or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the makefile execution fails or if required fields are missing.
-/// 
+///
 /// # Panics
-/// 
+///
 /// Panics if build configuration contains invalid paths or if `unwrap()` fails on expected values.
 pub fn build_makefile_image(build_config: &WhatWereBuilding) -> Result<(), BuildfileError> {
     let chg_dir = if build_config.follow_link {
@@ -87,17 +87,17 @@ pub fn build_makefile_image(build_config: &WhatWereBuilding) -> Result<(), Build
 }
 
 /// Build an image from the specified configuration
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `build_config` - Configuration specifying how to build the image
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<(), BuildfileError>` - Success or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the build process fails, depending on the build type (Dockerfile or Makefile).
 pub fn build_image_from_spec(build_config: &WhatWereBuilding) -> Result<(), BuildfileError> {
     match build_config.file.filetype {

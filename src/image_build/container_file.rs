@@ -35,33 +35,34 @@ pub struct ContainerInfo {
 /// # Returns
 ///
 /// * `Result<ContainerInfo, ContainerFileError>` - Container information or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the file cannot be read, parsed, or if required sections are missing.
-pub fn parse_container_file<P: AsRef<Path>>(file_path: P) -> Result<ContainerInfo, ContainerFileError> {
+pub fn parse_container_file<P: AsRef<Path>>(
+    file_path: P,
+) -> Result<ContainerInfo, ContainerFileError> {
     let path = file_path.as_ref();
-    
+
     // Load the INI file
-    let conf = Ini::load_from_file(path)
-        .map_err(|e| ContainerFileError::IniParse(e.to_string()))?;
+    let conf =
+        Ini::load_from_file(path).map_err(|e| ContainerFileError::IniParse(e.to_string()))?;
 
     // Look for the Container section
-    let container_section = conf.section(Some("Container"))
+    let container_section = conf
+        .section(Some("Container"))
         .ok_or(ContainerFileError::NoContainerSection)?;
 
     // Extract the Image directive
-    let image = container_section.get("Image")
+    let image = container_section
+        .get("Image")
         .ok_or(ContainerFileError::NoImageDirective)?
         .to_string();
 
     // Extract container name if present (from Unit section Description or filename)
     let name = extract_container_name(&conf, path);
 
-    Ok(ContainerInfo {
-        image,
-        name,
-    })
+    Ok(ContainerInfo { image, name })
 }
 
 /// Extract container name from the .container file
@@ -118,7 +119,7 @@ WantedBy=default.target
         fs::write(temp_file.path(), content).unwrap();
 
         let result = parse_container_file(temp_file.path()).unwrap();
-        
+
         assert_eq!(result.image, "docker.io/nginx:latest");
         assert_eq!(result.name, Some("My Test Container".to_string()));
     }
@@ -135,7 +136,7 @@ PublishPort=3000:3000
         fs::write(temp_file.path(), content).unwrap();
 
         let result = parse_container_file(temp_file.path()).unwrap();
-        
+
         assert_eq!(result.image, "registry.example.com/myapp:v1.0");
         assert_eq!(result.name, Some("myapp-prod".to_string()));
     }
@@ -150,7 +151,7 @@ Image=alpine:latest
         fs::write(temp_file.path(), content).unwrap();
 
         let result = parse_container_file(temp_file.path()).unwrap();
-        
+
         assert_eq!(result.image, "alpine:latest");
         // Should use filename without .container extension
         assert!(result.name.is_some());
@@ -169,8 +170,11 @@ Type=simple
         fs::write(temp_file.path(), content).unwrap();
 
         let result = parse_container_file(temp_file.path());
-        
-        assert!(matches!(result, Err(ContainerFileError::NoContainerSection)));
+
+        assert!(matches!(
+            result,
+            Err(ContainerFileError::NoContainerSection)
+        ));
     }
 
     #[test]
@@ -183,7 +187,7 @@ PublishPort=8080:80
         fs::write(temp_file.path(), content).unwrap();
 
         let result = parse_container_file(temp_file.path());
-        
+
         assert!(matches!(result, Err(ContainerFileError::NoImageDirective)));
     }
 }

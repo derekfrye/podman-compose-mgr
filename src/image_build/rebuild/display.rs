@@ -20,7 +20,7 @@ pub fn display_image_info<C: CommandHelper>(
         "Compose file: {}",
         grammars[3].original_val_for_prompt.as_ref().unwrap()
     );
-    
+
     // Display image creation time
     match podman_utils::get_podman_image_upstream_create_time(custom_img_nm) {
         Ok(created_time) => {
@@ -47,15 +47,13 @@ pub fn display_image_info<C: CommandHelper>(
     // Check if Dockerfile exists
     println!(
         "Dockerfile exists: {}",
-        cmd_helper
-            .file_exists_and_readable(&parent_dir.join("Dockerfile"))
+        cmd_helper.file_exists_and_readable(&parent_dir.join("Dockerfile"))
     );
 
     // Check if Makefile exists
     println!(
         "Makefile exists: {}",
-        cmd_helper
-            .file_exists_and_readable(&parent_dir.join("Makefile"))
+        cmd_helper.file_exists_and_readable(&parent_dir.join("Makefile"))
     );
 }
 
@@ -68,8 +66,6 @@ pub fn display_help() {
     println!(
         "b = Build image from the Dockerfile residing in same path as the docker-compose.yml."
     );
-    println!(
-        "s = Skip all subsequent images with this same name (regardless of container name)."
-    );
+    println!("s = Skip all subsequent images with this same name (regardless of container name).");
     println!("? = Display this help.");
 }

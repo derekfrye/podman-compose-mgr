@@ -1,4 +1,3 @@
-
 use regex::Regex;
 use thiserror::Error;
 use walkdir::WalkDir;
@@ -49,20 +48,20 @@ pub fn walk_dirs(args: &Args, logger: &Logger, tui_mode: bool) {
 }
 
 /// Version of `walk_dirs` that accepts dependency injection for testing
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `args` - Command line arguments
 /// * `cmd_helper` - Command helper implementation
 /// * `read_val_helper` - Interactive input helper implementation
 /// * `logger` - Logger instance
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<(), StartError>` - Success or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if directory walking fails or rebuild operations encounter errors.
 pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
     args: &Args,
@@ -108,15 +107,25 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
     ));
 
     // Walk directory tree looking for docker-compose.yml and .container files
-    for entry in WalkDir::new(&args.path).into_iter().filter_map(std::result::Result::ok) {
-        let is_compose_file = entry.file_type().is_file() && entry.file_name() == "docker-compose.yml";
-        let is_container_file = entry.file_type().is_file() 
-            && entry.file_name().to_str().is_some_and(|name| name.ends_with(".container"));
-        
+    for entry in WalkDir::new(&args.path)
+        .into_iter()
+        .filter_map(std::result::Result::ok)
+    {
+        let is_compose_file =
+            entry.file_type().is_file() && entry.file_name() == "docker-compose.yml";
+        let is_container_file = entry.file_type().is_file()
+            && entry
+                .file_name()
+                .to_str()
+                .is_some_and(|name| name.ends_with(".container"));
+
         if is_compose_file || is_container_file {
             // Get path as string, safely
             let Some(entry_path_str) = entry.path().to_str() else {
-                eprintln!("Skipping path with invalid UTF-8: {}", entry.path().display());
+                eprintln!(
+                    "Skipping path with invalid UTF-8: {}",
+                    entry.path().display()
+                );
                 continue;
             };
 
@@ -155,4 +164,3 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
 
     Ok(())
 }
-

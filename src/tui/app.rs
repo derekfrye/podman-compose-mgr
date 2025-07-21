@@ -43,18 +43,18 @@ impl App {
 }
 
 /// Run the terminal UI application
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `args` - Command line arguments
 /// * `logger` - Logger instance
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `io::Result<()>` - Success or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the terminal setup fails or if the application crashes.
 pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     // Setup terminal

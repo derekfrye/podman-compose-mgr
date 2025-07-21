@@ -14,7 +14,5 @@ pub fn pull_image<C: CommandHelper>(cmd_helper: &C, image: &str) -> Result<(), R
 
     cmd_helper
         .exec_cmd("podman", podman_args)
-        .map_err(|e| {
-            RebuildError::CommandExecution(format!("Failed to pull image {image}: {e}"))
-        })
+        .map_err(|e| RebuildError::CommandExecution(format!("Failed to pull image {image}: {e}")))
 }

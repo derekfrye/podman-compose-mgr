@@ -5,8 +5,8 @@ use crate::interfaces::{CommandHelper, ReadInteractiveInputHelper};
 use walkdir::DirEntry;
 
 use super::errors::RebuildError;
-use super::types::Image;
 use super::interaction::read_val_loop;
+use super::types::Image;
 
 /// Process a .container file for rebuilding images
 pub fn process_container_file<C: CommandHelper, R: ReadInteractiveInputHelper>(

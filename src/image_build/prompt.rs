@@ -3,7 +3,8 @@ use std::path::Path;
 use walkdir::DirEntry;
 
 /// Creates a grammar fragment for a specific prompt part
-#[must_use] pub fn create_grammar_fragment(
+#[must_use]
+pub fn create_grammar_fragment(
     text: &str,
     pos: u8,
     suffix: Option<String>,
@@ -24,7 +25,8 @@ use walkdir::DirEntry;
 }
 
 /// Creates grammar fragments for the rebuild prompt
-#[must_use] pub fn create_rebuild_grammars(
+#[must_use]
+pub fn create_rebuild_grammars(
     custom_img_nm: &str,
     entry: &DirEntry,
     container_name: &str,

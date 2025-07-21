@@ -97,7 +97,8 @@ pub enum StdinHelperWrapper {
 }
 
 impl StdinHelperWrapper {
-    #[must_use] pub fn read_line(&self) -> String {
+    #[must_use]
+    pub fn read_line(&self) -> String {
         match self {
             StdinHelperWrapper::Default(helper) => helper.read_line(),
             StdinHelperWrapper::Test(helper) => helper.read_line(),

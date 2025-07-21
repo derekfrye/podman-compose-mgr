@@ -21,7 +21,8 @@ pub struct Prompt {
 ///
 /// # Panics
 /// Panics if grammar fragments contain invalid shortened values when `use_shortened_val` is true
-#[must_use] pub fn unroll_grammar_into_string(
+#[must_use]
+pub fn unroll_grammar_into_string(
     grammars: &[GrammarFragment],
     excl_if_not_in_base_prompt: bool,
     use_shortened_val: bool,

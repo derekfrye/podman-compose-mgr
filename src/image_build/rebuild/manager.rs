@@ -3,10 +3,10 @@ use crate::interfaces::{CommandHelper, ReadInteractiveInputHelper};
 
 use walkdir::DirEntry;
 
-use super::errors::RebuildError;
-use super::types::Image;
 use super::compose::process_compose_file;
 use super::container::process_container_file;
+use super::errors::RebuildError;
+use super::types::Image;
 
 pub struct RebuildManager<'a, C: CommandHelper, R: ReadInteractiveInputHelper> {
     images_already_processed: Vec<Image>,

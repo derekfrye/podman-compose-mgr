@@ -23,7 +23,8 @@ use std::process;
 /// # Panics
 ///
 /// Panics if validation fails
-#[must_use] pub fn args_checks() -> Args {
+#[must_use]
+pub fn args_checks() -> Args {
     let args = Args::parse();
 
     // Validate the arguments

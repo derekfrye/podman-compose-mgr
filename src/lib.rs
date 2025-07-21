@@ -31,12 +31,12 @@ use std::io;
 /// # Returns
 ///
 /// * `io::Result<()>` - Success or error
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the application fails to initialize or run.
 pub fn run_app(args: &args::Args) -> io::Result<()> {
-        use crate::utils::log_utils::Logger;
+    use crate::utils::log_utils::Logger;
     use crate::walk_dirs::walk_dirs;
     // Create logger instance
     let logger = Logger::new(args.verbose);
@@ -44,8 +44,8 @@ pub fn run_app(args: &args::Args) -> io::Result<()> {
     // If double verbose, print the command line in a copy-paste friendly format
     if args.verbose >= 2 {
         // Get the program name
-        let exe_path =
-            std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("podman-compose-mgr"));
+        let exe_path = std::env::current_exe()
+            .unwrap_or_else(|_| std::path::PathBuf::from("podman-compose-mgr"));
         let exe_name = exe_path
             .file_name()
             .unwrap_or_else(|| std::ffi::OsStr::new("podman-compose-mgr"));
@@ -68,7 +68,10 @@ pub fn run_app(args: &args::Args) -> io::Result<()> {
                 // Skip certain fields that don't need to be included
                 if key == "verbose" {
                     // Add the verbose flag based on the count
-                    let count = map.get(key).and_then(serde_json::Value::as_u64).unwrap_or(0);
+                    let count = map
+                        .get(key)
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or(0);
                     for _ in 0..count {
                         cmd_line.push_str(" --verbose");
                     }

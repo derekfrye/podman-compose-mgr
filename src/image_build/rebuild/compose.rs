@@ -4,9 +4,9 @@ use crate::interfaces::{CommandHelper, ReadInteractiveInputHelper};
 use walkdir::DirEntry;
 
 use super::errors::RebuildError;
+use super::interaction::read_val_loop;
 use super::types::Image;
 use super::utils::read_yaml_file;
-use super::interaction::read_val_loop;
 
 /// Process a docker-compose.yml file for rebuilding images
 pub fn process_compose_file<C: CommandHelper, R: ReadInteractiveInputHelper>(
@@ -27,9 +27,9 @@ pub fn process_compose_file<C: CommandHelper, R: ReadInteractiveInputHelper>(
         RebuildError::MissingField("No 'services' section found in compose file".to_string())
     })?;
 
-    let services_map = services.as_mapping().ok_or_else(|| {
-        RebuildError::InvalidConfig("'services' is not a mapping".to_string())
-    })?;
+    let services_map = services
+        .as_mapping()
+        .ok_or_else(|| RebuildError::InvalidConfig("'services' is not a mapping".to_string()))?;
 
     // Process each service
     for (_, service_config) in services_map {
@@ -48,9 +48,7 @@ pub fn process_compose_file<C: CommandHelper, R: ReadInteractiveInputHelper>(
                 let container_nm_string = container_name
                     .as_str()
                     .ok_or_else(|| {
-                        RebuildError::InvalidConfig(
-                            "'container_name' is not a string".to_string(),
-                        )
+                        RebuildError::InvalidConfig("'container_name' is not a string".to_string())
                     })?
                     .to_string();
 
@@ -83,7 +81,7 @@ pub fn process_compose_file<C: CommandHelper, R: ReadInteractiveInputHelper>(
                 {
                     continue;
                 }
-                
+
                 read_val_loop(
                     cmd_helper,
                     read_val_helper,
