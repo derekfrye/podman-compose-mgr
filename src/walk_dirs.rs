@@ -1,5 +1,5 @@
+use crate::errors::PodmanComposeMgrError;
 use regex::Regex;
-use thiserror::Error;
 use walkdir::WalkDir;
 
 use crate::{
@@ -12,18 +12,6 @@ use crate::{
     tui,
     utils::log_utils::Logger,
 };
-
-#[derive(Debug, Error)]
-pub enum StartError {
-    #[error("Regex error: {0}")]
-    RegexError(#[from] regex::Error),
-
-    #[error("Path contains invalid UTF-8: {0}")]
-    InvalidPath(String),
-
-    #[error("Rebuild error: {0}")]
-    RebuildError(String),
-}
 
 /// Main function that uses the default helper implementations
 ///
@@ -58,7 +46,7 @@ pub fn walk_dirs(args: &Args, logger: &Logger, tui_mode: bool) {
 ///
 /// # Returns
 ///
-/// * `Result<(), StartError>` - Success or error
+/// * `Result<(), PodmanComposeMgrError>` - Success or error
 ///
 /// # Errors
 ///
@@ -68,7 +56,7 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
     cmd_helper: &C,
     read_val_helper: &R,
     logger: &Logger,
-) -> Result<(), StartError> {
+) -> Result<(), PodmanComposeMgrError> {
     let mut exclude_patterns = Vec::new();
     let mut include_patterns = Vec::new();
 

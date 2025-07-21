@@ -1,7 +1,8 @@
-use crate::image_build::image::format_time_ago;
 use crate::interfaces::CommandHelper;
-use crate::utils::podman_utils;
+use crate::read_interactive_input::GrammarFragment;
+use crate::utils::podman_utils::{self, format_time_ago};
 use std::path::Path;
+use walkdir::DirEntry;
 
 /// Display basic image information
 pub fn display_basic_image_info(
@@ -64,4 +65,24 @@ pub fn display_help() {
     );
     println!("s = Skip all subsequent images with this same name (regardless of container name).");
     println!("? = Display this help.");
+}
+
+/// # Panics
+///
+/// Panics if `grammars` does not contain at least 4 elements.
+pub fn display_image_info<C: CommandHelper>(
+    cmd_helper: &C,
+    custom_img_nm: &str,
+    container_name: &str,
+    entry: &DirEntry,
+    grammars: &[GrammarFragment],
+) {
+    display_basic_image_info(
+        custom_img_nm,
+        container_name,
+        grammars[3].original_val_for_prompt.as_ref().unwrap(),
+    );
+    display_image_timestamps(custom_img_nm);
+    let parent_dir = entry.path().parent().unwrap_or_else(|| Path::new("/"));
+    display_build_file_status(cmd_helper, parent_dir);
 }

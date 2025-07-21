@@ -1,4 +1,5 @@
 pub mod args;
+pub mod errors;
 pub mod image_build;
 pub mod interfaces;
 pub mod read_interactive_input;

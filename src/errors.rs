@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum BuildfileError {
+pub enum PodmanComposeMgrError {
     #[error("Regex error: {0}")]
     RegexError(#[from] regex::Error),
 
@@ -13,4 +13,7 @@ pub enum BuildfileError {
 
     #[error("Command execution error: {0}")]
     CommandExecution(#[from] Box<dyn std::error::Error>),
+
+    #[error("Buildfile error: {0}")]
+    Buildfile(#[from] crate::image_build::buildfile::BuildfileError),
 }

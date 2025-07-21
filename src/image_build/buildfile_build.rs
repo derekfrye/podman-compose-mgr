@@ -1,4 +1,4 @@
-use crate::image_build::buildfile_error::BuildfileError;
+use crate::errors::PodmanComposeMgrError;
 use crate::image_build::buildfile_types::{BuildChoice, WhatWereBuilding};
 use crate::utils::cmd_utils as cmd;
 use crate::utils::podman_utils;
@@ -11,7 +11,7 @@ use crate::utils::podman_utils;
 ///
 /// # Returns
 ///
-/// * `Result<(), BuildfileError>` - Success or error
+/// * `Result<(), PodmanComposeMgrError>` - Success or error
 ///
 /// # Errors
 ///
@@ -20,7 +20,9 @@ use crate::utils::podman_utils;
 /// # Panics
 ///
 /// Panics if build configuration contains invalid paths or if `unwrap()` fails on expected values.
-pub fn build_dockerfile_image(build_config: &WhatWereBuilding) -> Result<(), BuildfileError> {
+pub fn build_dockerfile_image(
+    build_config: &WhatWereBuilding,
+) -> Result<(), PodmanComposeMgrError> {
     let _ = podman_utils::pull_base_image(build_config.file.filepath.as_ref().unwrap());
 
     let dockerfile_path = build_config
@@ -47,7 +49,7 @@ pub fn build_dockerfile_image(build_config: &WhatWereBuilding) -> Result<(), Bui
 
     podman_args.push(build_config.file.parent_dir.to_str().unwrap());
 
-    cmd::exec_cmd("podman", &podman_args[..]).map_err(BuildfileError::from)
+    cmd::exec_cmd("podman", &podman_args[..]).map_err(PodmanComposeMgrError::from)
 }
 
 /// Build an image using a makefile
@@ -58,7 +60,7 @@ pub fn build_dockerfile_image(build_config: &WhatWereBuilding) -> Result<(), Bui
 ///
 /// # Returns
 ///
-/// * `Result<(), BuildfileError>` - Success or error
+/// * `Result<(), PodmanComposeMgrError>` - Success or error
 ///
 /// # Errors
 ///
@@ -67,7 +69,7 @@ pub fn build_dockerfile_image(build_config: &WhatWereBuilding) -> Result<(), Bui
 /// # Panics
 ///
 /// Panics if build configuration contains invalid paths or if `unwrap()` fails on expected values.
-pub fn build_makefile_image(build_config: &WhatWereBuilding) -> Result<(), BuildfileError> {
+pub fn build_makefile_image(build_config: &WhatWereBuilding) -> Result<(), PodmanComposeMgrError> {
     let chg_dir = if build_config.follow_link {
         build_config
             .file
@@ -94,12 +96,14 @@ pub fn build_makefile_image(build_config: &WhatWereBuilding) -> Result<(), Build
 ///
 /// # Returns
 ///
-/// * `Result<(), BuildfileError>` - Success or error
+/// * `Result<(), PodmanComposeMgrError>` - Success or error
 ///
 /// # Errors
 ///
 /// Returns an error if the build process fails, depending on the build type (Dockerfile or Makefile).
-pub fn build_image_from_spec(build_config: &WhatWereBuilding) -> Result<(), BuildfileError> {
+pub fn build_image_from_spec(
+    build_config: &WhatWereBuilding,
+) -> Result<(), PodmanComposeMgrError> {
     match build_config.file.filetype {
         BuildChoice::Dockerfile => build_dockerfile_image(build_config),
         BuildChoice::Makefile => build_makefile_image(build_config),

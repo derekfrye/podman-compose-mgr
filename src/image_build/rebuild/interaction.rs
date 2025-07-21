@@ -1,10 +1,10 @@
 use crate::image_build::buildfile::start;
+use crate::image_build::ui;
 use crate::interfaces::{CommandHelper, ReadInteractiveInputHelper};
 use crate::read_interactive_input::GrammarFragment;
 
 use walkdir::DirEntry;
 
-use super::display::{display_help, display_image_info};
 use super::grammar::build_rebuild_grammars;
 use super::image_ops::pull_image;
 use super::types::Image;
@@ -31,7 +31,7 @@ pub fn handle_user_choice<C: CommandHelper>(
         }
         "N" => Ok(true),
         "d" => {
-            display_image_info(
+            ui::display_image_info(
                 cmd_helper,
                 context.custom_img_nm,
                 context.container_name,
@@ -41,7 +41,7 @@ pub fn handle_user_choice<C: CommandHelper>(
             Ok(false)
         }
         "?" => {
-            display_help();
+            ui::display_help();
             Ok(false)
         }
         "b" => {
@@ -52,7 +52,7 @@ pub fn handle_user_choice<C: CommandHelper>(
                     .build_args
                     .iter()
                     .map(std::string::String::as_str)
-                    .collect::<Vec<_>>(),
+                    .collect::<Vec<_>>()
             )?;
             Ok(true)
         }

@@ -1,4 +1,3 @@
-use chrono::{DateTime, Local};
 use serde_yaml::Value;
 use std::fs::File;
 
@@ -19,22 +18,4 @@ pub fn read_yaml_file(file_path: &str) -> Result<Value, RebuildError> {
     let yaml: Value = serde_yaml::from_reader(file).map_err(RebuildError::YamlParse)?;
 
     Ok(yaml)
-}
-
-pub fn format_time_ago(dt: DateTime<Local>) -> String {
-    let now = Local::now();
-    let duration = now.signed_duration_since(dt);
-    let days = duration.num_days();
-    let hours = duration.num_hours();
-    let minutes = duration.num_minutes();
-    let seconds = duration.num_seconds();
-    if days > 0 {
-        format!("{days} days ago")
-    } else if hours > 0 {
-        format!("{hours} hours ago")
-    } else if minutes > 0 {
-        format!("{minutes} minutes ago")
-    } else {
-        format!("{seconds} seconds ago")
-    }
 }

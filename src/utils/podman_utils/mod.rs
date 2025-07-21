@@ -38,7 +38,7 @@ impl From<Box<dyn std::error::Error>> for PodmanHelperError {
 }
 
 // Re-export commonly used functions
-pub use datetime::convert_str_to_date;
+pub use datetime::{convert_str_to_date, format_time_ago};
 pub use image::{
     get_podman_image_upstream_create_time, get_podman_ondisk_modify_time, pull_base_image,
 };

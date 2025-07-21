@@ -1,6 +1,5 @@
 pub mod buildfile;
 pub mod buildfile_build;
-pub mod buildfile_error;
 pub mod buildfile_helpers;
 pub mod buildfile_types;
 pub mod container_file;

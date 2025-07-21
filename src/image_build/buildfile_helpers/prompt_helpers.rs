@@ -1,5 +1,5 @@
 use super::grammar_helpers::make_choice_grammar;
-use crate::image_build::buildfile_types::{BuildChoice, BuildFile};
+use crate::image_build::buildfile_types::{BuildChoice, BuildFile, WhatWereBuilding};
 use crate::read_interactive_input::{GrammarFragment, GrammarType};
 
 /// Setup prompts for buildfile selection
@@ -196,4 +196,57 @@ pub fn make_build_prompt_grammar(buildfile: &BuildFile) -> Vec<GrammarFragment> 
     prompt_grammars.push(grm5);
 
     prompt_grammars
+}
+
+#[must_use] pub fn read_val_loop(files: &[BuildFile]) -> WhatWereBuilding {
+    let (mut prompt_grammars, user_choices, are_there_multiple_files) = setup_prompts(files);
+
+    let mut choice_of_where_to_build = WhatWereBuilding {
+        file: files[0].clone(),
+        follow_link: false,
+    };
+
+    if !prompt_grammars.is_empty() {
+        loop {
+            let result = crate::read_interactive_input::read_val_from_cmd_line_and_proceed_default(
+                &mut prompt_grammars,
+            );
+            if let Some(choice) = result.user_entered_val {
+                match choice.as_str() {
+                    "D" | "M" => {
+                        if let Some((chosen_file, new_prompt_grammars, new_user_choices)) =
+                            handle_file_type_choice(files, &choice, &choice_of_where_to_build.file)
+                        {
+                            choice_of_where_to_build.file = chosen_file;
+                            prompt_grammars = new_prompt_grammars;
+                            let mut updated_user_choices = new_user_choices.clone();
+                            updated_user_choices.push("d");
+                            updated_user_choices.push("?");
+                        }
+                    }
+                    "d" | "?" => {
+                        handle_display_info(
+                            files,
+                            &choice_of_where_to_build.file,
+                            &user_choices,
+                            are_there_multiple_files,
+                        );
+                    }
+                    "1" => {
+                        choice_of_where_to_build.follow_link = true;
+                        break;
+                    }
+                    "2" => {
+                        choice_of_where_to_build.follow_link = false;
+                        break;
+                    }
+                    _ => {
+                        eprintln!("Invalid choice '{choice}'");
+                    }
+                }
+            }
+        }
+    }
+
+    choice_of_where_to_build
 }

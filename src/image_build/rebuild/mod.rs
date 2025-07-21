@@ -1,6 +1,5 @@
 mod compose;
 mod container;
-mod display;
 mod errors;
 mod grammar;
 mod image_ops;

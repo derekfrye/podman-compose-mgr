@@ -42,10 +42,7 @@ fn test_ctrl_c_handling() {
     // Wait for the application to reach a prompt
     let mut prompt_found = false;
     for line in reader.lines() {
-        let line = match line {
-            Ok(line) => line,
-            Err(_) => break,
-        };
+        let Ok(line) = line else { break };
 
         println!("Output: {line}");
 
@@ -70,7 +67,10 @@ fn test_ctrl_c_handling() {
         use nix::sys::signal::{Signal, kill};
         use nix::unistd::Pid;
 
-        kill(Pid::from_raw(pid as i32), Signal::SIGINT).expect("Failed to send SIGINT to process");
+        let pid_i32 =
+            i32::try_from(pid).expect("PID exceeds i32 range, which is highly unlikely");
+        kill(Pid::from_raw(pid_i32), Signal::SIGINT)
+            .expect("Failed to send SIGINT to process");
 
         println!("Sent SIGINT signal to application");
     }

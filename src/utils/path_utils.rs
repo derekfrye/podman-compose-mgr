@@ -4,6 +4,111 @@ use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
+// A helper function to expand the tilde in a path to the user's home directory.
+fn expand_tilde(path: &Path) -> Result<PathBuf, String> {
+    if path.starts_with("~") {
+        if let Some(home) = home_dir() {
+            Ok(home.join(path.strip_prefix("~").unwrap_or(path)))
+        } else {
+            Err("Home directory could not be determined.".to_string())
+        }
+    } else {
+        Ok(path.to_path_buf())
+    }
+}
+
+/// Checks if a directory is readable
+///
+/// # Arguments
+///
+/// * `dir` - Path to check
+///
+/// # Returns
+///
+/// * `Result<PathBuf, String>` - The validated `PathBuf` or an error message
+///
+/// # Errors
+///
+/// Returns an error if the directory is not readable.
+pub fn check_readable_dir(dir: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(dir);
+    let expanded_path = expand_tilde(&path)?;
+
+    if expanded_path.is_dir()
+        && fs::metadata(&expanded_path).is_ok()
+        && fs::read_dir(&expanded_path).is_ok()
+    {
+        Ok(expanded_path)
+    } else {
+        Err(format!("The directory '{dir}' is not readable."))
+    }
+}
+
+/// Checks if a directory `PathBuf` is readable
+///
+/// # Arguments
+///
+/// * `dir` - `PathBuf` to check
+///
+/// # Returns
+///
+/// * `Result<PathBuf, String>` - The validated `PathBuf` or an error message
+///
+/// # Errors
+///
+/// Returns an error if the directory is not readable or contains non-UTF-8 characters.
+pub fn check_readable_dir_path(dir: &Path) -> Result<PathBuf, String> {
+    if let Some(dir_str) = dir.to_str() {
+        check_readable_dir(dir_str)
+    } else {
+        Err("Invalid path: contains non-UTF-8 characters".to_string())
+    }
+}
+
+/// Checks if a directory is writable, creating it if it doesn't exist.
+///
+/// # Arguments
+///
+/// * `dir` - Path to check
+///
+/// # Returns
+///
+/// * `Result<PathBuf, String>` - The validated `PathBuf` or an error message
+///
+/// # Errors
+///
+/// Returns an error if the directory cannot be created or is not writable.
+pub fn check_writable_dir(dir: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(dir);
+    let expanded_path = expand_tilde(&path)?;
+
+    // Create the directory if it doesn't exist
+    if !expanded_path.exists() {
+        fs::create_dir_all(&expanded_path).map_err(|e| {
+            format!(
+                "Failed to create directory '{}': {}",
+                expanded_path.display(),
+                e
+            )
+        })?;
+    }
+
+    // Check if it's a directory
+    if !expanded_path.is_dir() {
+        return Err(format!("'{}' is not a directory.", expanded_path.display()));
+    }
+
+    // Check if it's writable by trying to create a temporary file inside it
+    match tempfile::tempfile_in(&expanded_path) {
+        Ok(_) => Ok(expanded_path), // Successfully created and implicitly deleted a temp file
+        Err(e) => Err(format!(
+            "Directory '{}' is not writable: {}",
+            expanded_path.display(),
+            e
+        )),
+    }
+}
+
 /// Checks if a file is readable
 ///
 /// # Arguments
@@ -19,19 +124,10 @@ use std::path::{Path, PathBuf};
 /// Returns an error if the file is not readable or the home directory cannot be determined.
 pub fn check_readable_file(file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file);
+    let expanded_path = expand_tilde(&path)?;
 
-    let xpath = if path.starts_with("~") {
-        if let Some(home) = home_dir() {
-            home.join(path.strip_prefix("~").unwrap_or(path.as_path()))
-        } else {
-            return Err("Home directory could not be determined.".to_string());
-        }
-    } else {
-        path
-    };
-
-    if xpath.is_file() && fs::metadata(&xpath).is_ok() {
-        Ok(xpath)
+    if expanded_path.is_file() && fs::metadata(&expanded_path).is_ok() {
+        Ok(expanded_path)
     } else {
         Err(format!("The file '{file}' is not readable."))
     }
@@ -73,8 +169,10 @@ pub fn check_readable_path(file: &Path) -> Result<PathBuf, String> {
 /// Returns an error if the file cannot be opened, read, or parsed as JSON.
 pub fn check_valid_json_file(file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file);
+    let expanded_path = expand_tilde(&path)?;
 
-    let mut file_handle = File::open(&path).map_err(|e| format!("Unable to open '{file}': {e}"))?;
+    let mut file_handle =
+        File::open(&expanded_path).map_err(|e| format!("Unable to open '{file}': {e}"))?;
     let mut file_content = String::new();
     file_handle
         .read_to_string(&mut file_content)
@@ -87,7 +185,7 @@ pub fn check_valid_json_file(file: &str) -> Result<PathBuf, String> {
         let entry = entry.map_err(|e| format!("Invalid JSON in '{file}': {e}"))?;
         entries.push(entry);
     }
-    Ok(path)
+    Ok(expanded_path)
 }
 
 /// Checks if a `PathBuf` is a valid JSON file
@@ -126,17 +224,7 @@ pub fn check_valid_json_path(file: &Path) -> Result<PathBuf, String> {
 /// Returns an error if the file cannot be created or written to.
 pub fn check_file_writable(file_path: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file_path);
-
-    // Resolve ~ if present
-    let expanded_path = if path.starts_with("~") {
-        if let Some(home) = home_dir() {
-            home.join(path.strip_prefix("~").unwrap_or(path.as_path()))
-        } else {
-            return Err("Home directory could not be determined.".to_string());
-        }
-    } else {
-        path
-    };
+    let expanded_path = expand_tilde(&path)?;
 
     // First check if the parent directory exists and is writable
     if let Some(parent) = expanded_path.parent() {
