@@ -24,3 +24,4 @@ tests/test12/data/e e.base64
 tests/test12/output.json
 
 **/.claude/settings.local.json
+.gemini/
