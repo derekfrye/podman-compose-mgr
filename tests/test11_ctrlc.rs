@@ -3,6 +3,7 @@ use std::{path::PathBuf, sync::mpsc};
 
 use podman_compose_mgr::Args;
 use podman_compose_mgr::tui::app::{self, App, Services, Msg};
+use crossbeam_channel as xchan;
 use podman_compose_mgr::utils::log_utils::Logger;
 use ratatui::{Terminal, backend::TestBackend};
 
@@ -21,13 +22,15 @@ fn tui_interrupt_exits_quickly() {
     let logger = Logger::new(0);
 
     // Message channel (unused except for init we won't send)
-    let (tx, rx) = mpsc::channel::<Msg>();
+    let (tx, rx) = xchan::unbounded::<Msg>();
     // Interrupt channel: send after a short delay
-    let (int_tx, int_rx) = mpsc::channel::<()>();
+    let (int_tx, int_rx_std) = mpsc::channel::<()>();
+    let (int_c_tx, int_c_rx) = xchan::bounded::<()>(0);
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(50));
         let _ = int_tx.send(());
     });
+    std::thread::spawn(move || { let _ = int_rx_std.recv(); let _ = int_c_tx.send(()); });
 
     let start = Instant::now();
     // Minimal services; effects won't run in this test
@@ -43,7 +46,8 @@ fn tui_interrupt_exits_quickly() {
         &args,
         &logger,
         &rx,
-        &int_rx,
+        &int_c_rx,
+        &xchan::tick(Duration::from_millis(16)),
         &services,
     );
     assert!(res.is_ok());

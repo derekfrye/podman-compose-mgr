@@ -5,7 +5,7 @@ edition = "2024"
 
 
 [dependencies]
-reedline = "0.11"
+reedline = "0"
 walkdir = "2"
 regex = "1"
 clap = { version = "4", features = ["derive"] }
@@ -16,13 +16,14 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 terminal_size = "0"
 mockall = "0"
-thiserror = "1"
+thiserror = "2"
 home = "0"
 tempfile = "3"  # For temporary file operations
 ratatui = "0"
 crossterm = "0"
 ctrlc = "3"
 rust-ini = "0"
+crossbeam-channel = "0.5"
 
 
 [dev-dependencies]

@@ -20,7 +20,7 @@ use std::{
 };
 
 use super::ui;
-use std::sync::mpsc;
+use crossbeam_channel as xchan;
 
 pub struct App {
     pub title: String,
@@ -91,7 +91,7 @@ pub struct Services {
     pub root: std::path::PathBuf,
     pub include: Vec<String>,
     pub exclude: Vec<String>,
-    pub tx: mpsc::Sender<Msg>,
+    pub tx: xchan::Sender<Msg>,
 }
 
 impl Default for App {
@@ -269,7 +269,7 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     let discovery = std::sync::Arc::new(crate::infra::discovery_adapter::FsDiscovery);
     let podman = std::sync::Arc::new(crate::infra::podman_adapter::PodmanCli);
     let app_core = std::sync::Arc::new(AppCore::new(discovery, podman));
-    let (tx, rx) = mpsc::channel::<Msg>();
+    let (tx, rx) = xchan::unbounded::<Msg>();
     let services = Services {
         core: app_core,
         root: args.path.clone(),
@@ -280,8 +280,10 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     let _ = tx.send(Msg::Init);
 
     // Interrupt channel (production: real Ctrl+C)
-    let interrupt_rx =
-        Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
+    let interrupt_std = Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
+    let (int_tx, int_rx) = xchan::bounded::<()>(0);
+    std::thread::spawn(move || { let _ = interrupt_std.recv(); let _ = int_tx.send(()); });
+    let tick_rx = xchan::tick(tick_rate);
 
     // Run the app and handle cleanup on exit or error
     let res = run_loop(
@@ -291,7 +293,8 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
         args,
         logger,
         &rx,
-        &interrupt_rx,
+        &int_rx,
+        &tick_rx,
         &services,
     );
 
@@ -331,8 +334,9 @@ pub fn run_loop<B: Backend>(
     tick_rate: Duration,
     args: &Args,
     logger: &Logger,
-    rx: &mpsc::Receiver<Msg>,
-    interrupt_rx: &std::sync::mpsc::Receiver<()>,
+    rx: &xchan::Receiver<Msg>,
+    interrupt_rx: &xchan::Receiver<()>,
+    tick_rx: &xchan::Receiver<std::time::Instant>,
     services: &Services,
 ) -> io::Result<()> {
     let mut last_tick = Instant::now();
@@ -340,34 +344,14 @@ pub fn run_loop<B: Backend>(
     logger.debug("TUI is running");
 
     while !app.should_quit {
-        // Check for interrupt
-        match interrupt_rx.try_recv() {
-            Ok(()) => update_with_services(app, Msg::Interrupt, Some(services)),
-            Err(
-                std::sync::mpsc::TryRecvError::Empty | std::sync::mpsc::TryRecvError::Disconnected,
-            ) => {}
-        }
-        if let Ok(msg) = rx.try_recv() {
-            update_with_services(app, msg, Some(services));
+        xchan::select! {
+            recv(interrupt_rx) -> _ => { update_with_services(app, Msg::Interrupt, Some(services)); },
+            recv(rx) -> msg => { if let Ok(msg) = msg { update_with_services(app, msg, Some(services)); } },
+            recv(tick_rx) -> _ => { update_with_services(app, Msg::Tick, Some(services)); last_tick = Instant::now(); },
+            default => {}
         }
 
         terminal.draw(|f| ui::draw(f, app, args))?;
-
-        let timeout = tick_rate
-            .checked_sub(last_tick.elapsed())
-            .unwrap_or_else(|| Duration::from_secs(0));
-
-        if let Ok(true) = crossterm::event::poll(timeout)
-            && let Ok(Event::Key(key)) = event::read()
-            && let Some(msg) = map_key_event_to_msg(app, key)
-        {
-            update_with_services(app, msg, Some(services));
-        }
-
-        if last_tick.elapsed() >= tick_rate {
-            last_tick = Instant::now();
-            update_with_services(app, Msg::Tick, Some(services));
-        }
     }
 
     Ok(())

@@ -75,7 +75,7 @@ impl StdinHelper for DefaultStdinHelper {
         // Initialize reedline editor
         let mut editor = Reedline::create();
 
-        match editor.read_line(&DefaultPrompt) {
+        match editor.read_line(&DefaultPrompt::default()) {
             Ok(Signal::Success(buffer)) => buffer,
             Ok(Signal::CtrlC | Signal::CtrlD) => {
                 // Handle Ctrl+C/Ctrl+D by printing a message and exiting

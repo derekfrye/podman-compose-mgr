@@ -4,7 +4,7 @@ use crate::image_build::rebuild::{read_val_loop, read_yaml_file, Image, build_re
 use crate::interfaces::DefaultCommandHelper;
 use crate::utils::log_utils::Logger;
 use std::path::PathBuf;
-use std::sync::mpsc::{self, Sender, TryRecvError};
+use crossbeam_channel as xchan;
 use crate::ports::InterruptPort;
 
 #[derive(Debug, Clone)]
@@ -41,44 +41,32 @@ enum Msg {
 struct Services<'a> {
     args: &'a Args,
     logger: &'a Logger,
-    tx: Sender<Msg>,
+    tx: xchan::Sender<Msg>,
 }
 
 pub fn run_cli_loop(args: &Args, logger: &Logger) {
-    let (tx, rx) = mpsc::channel::<Msg>();
-    let interrupt_rx = Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
+    let (tx, rx) = xchan::unbounded::<Msg>();
+    let interrupt_std = Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
+    let (int_tx, int_rx) = xchan::bounded::<()>(0);
+    std::thread::spawn(move || { let _ = interrupt_std.recv(); let _ = int_tx.send(()); });
     let services = Services { args, logger, tx: tx.clone() };
 
     let mut model = Model::new();
     let _ = tx.send(Msg::Init);
 
-    // Simple loop; blocks minimally on channel/interrupt
     loop {
-        // Interrupt
-        match interrupt_rx.try_recv() {
-            Ok(()) => {
-                update(&mut model, Msg::Interrupt, &services);
-            }
-            Err(TryRecvError::Empty | TryRecvError::Disconnected) => {}
+        xchan::select! {
+            recv(rx) -> msg => { if let Ok(msg) = msg { update(&mut model, msg, &services); } },
+            recv(int_rx) -> _ => { update(&mut model, Msg::Interrupt, &services); },
         }
-
-        // Messages
-        if let Ok(msg) = rx.try_recv() {
-            update(&mut model, msg, &services);
-        }
-
-        if matches!(model.state, State::Done) {
-            break;
-        }
-        // Small sleep to avoid busy-loop
-        std::thread::sleep(std::time::Duration::from_millis(5));
+        if matches!(model.state, State::Done) { break; }
     }
 }
 
 #[derive(Debug, Clone)]
 struct PromptItem { entry: PathBuf, image: String, container: String }
 
-fn spawn_discovery(tx: Sender<Msg>, root: PathBuf, include: Vec<String>, exclude: Vec<String>) {
+fn spawn_discovery(tx: xchan::Sender<Msg>, root: PathBuf, include: Vec<String>, exclude: Vec<String>) {
     std::thread::spawn(move || {
         use regex::Regex;
         use walkdir::WalkDir;
@@ -114,7 +102,7 @@ fn spawn_discovery(tx: Sender<Msg>, root: PathBuf, include: Vec<String>, exclude
     });
 }
 
-fn spawn_prompt(tx: Sender<Msg>, _args: &Args, item: PromptItem) {
+fn spawn_prompt(tx: xchan::Sender<Msg>, _args: &Args, item: PromptItem) {
     std::thread::spawn(move || {
         let cmd = DefaultCommandHelper;
 
