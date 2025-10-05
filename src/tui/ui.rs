@@ -154,7 +154,7 @@ fn build_rows_with_expansion(app: &App) -> (Vec<Row<'_>>, usize) {
                         Cell::from(""),
                     ])),
                     ViewMode::ByImage | ViewMode::ByFolderThenImage => {
-                        rows.push(Row::new([Cell::from(""), Cell::from(indented)]))
+                        rows.push(Row::new([Cell::from(""), Cell::from(indented)]));
                     }
                 }
                 visual_idx += 1;

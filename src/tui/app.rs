@@ -4,9 +4,7 @@ use crate::domain::{DiscoveredImage, ImageDetails};
 use crate::ports::InterruptPort;
 use crate::utils::log_utils::Logger;
 use crossterm::{
-    event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
-    },
+    event::{DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -16,7 +14,7 @@ use ratatui::{
 };
 use std::{
     io,
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 use super::ui;
@@ -69,6 +67,7 @@ pub struct ItemRow {
 #[derive(Clone, Debug)]
 pub enum Msg {
     Init,
+    Key(KeyEvent),
     Quit,
     MoveUp,
     MoveDown,
@@ -279,6 +278,18 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     };
     let _ = tx.send(Msg::Init);
 
+    // Key event forwarder: read keys and send as messages
+    {
+        let tx_keys = tx.clone();
+        std::thread::spawn(move || loop {
+            if let Ok(ev) = crossterm::event::read()
+                && let Event::Key(key) = ev
+            {
+                let _ = tx_keys.send(Msg::Key(key));
+            }
+        });
+    }
+
     // Interrupt channel (production: real Ctrl+C)
     let interrupt_std = Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
     let (int_tx, int_rx) = xchan::bounded::<()>(0);
@@ -289,7 +300,6 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     let res = run_loop(
         &mut terminal,
         &mut app,
-        tick_rate,
         args,
         logger,
         &rx,
@@ -328,10 +338,10 @@ fn cleanup_terminal<B: Backend + std::io::Write>(terminal: &mut Terminal<B>) -> 
 ///
 /// # Errors
 /// Returns an error if drawing the terminal fails.
+#[allow(clippy::too_many_arguments)]
 pub fn run_loop<B: Backend>(
     terminal: &mut Terminal<B>,
     app: &mut App,
-    tick_rate: Duration,
     args: &Args,
     logger: &Logger,
     rx: &xchan::Receiver<Msg>,
@@ -339,15 +349,13 @@ pub fn run_loop<B: Backend>(
     tick_rx: &xchan::Receiver<std::time::Instant>,
     services: &Services,
 ) -> io::Result<()> {
-    let mut last_tick = Instant::now();
-
     logger.debug("TUI is running");
 
     while !app.should_quit {
         xchan::select! {
-            recv(interrupt_rx) -> _ => { update_with_services(app, Msg::Interrupt, Some(services)); },
-            recv(rx) -> msg => { if let Ok(msg) = msg { update_with_services(app, msg, Some(services)); } },
-            recv(tick_rx) -> _ => { update_with_services(app, Msg::Tick, Some(services)); last_tick = Instant::now(); },
+            recv(interrupt_rx) -> _ => update_with_services(app, Msg::Interrupt, Some(services)),
+            recv(rx) -> msg => if let Ok(msg) = msg { update_with_services(app, msg, Some(services)); },
+            recv(tick_rx) -> _ => update_with_services(app, Msg::Tick, Some(services)),
             default => {}
         }
 
@@ -424,6 +432,11 @@ fn compute_details_for(core: &AppCore, image: &str, source_dir: &std::path::Path
 #[allow(clippy::too_many_lines)]
 pub fn update_with_services(app: &mut App, msg: Msg, services: Option<&Services>) {
     match msg {
+        Msg::Key(key) => {
+            if let Some(m) = map_key_event_to_msg(app, key) {
+                update_with_services(app, m, services);
+            }
+        }
         Msg::Init => {
             if let Some(s) = services {
                 let tx = s.tx.clone();

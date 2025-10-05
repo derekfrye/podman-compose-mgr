@@ -42,7 +42,6 @@ fn tui_interrupt_exits_quickly() {
     let res = app::run_loop(
         &mut terminal,
         &mut app,
-        Duration::from_millis(16),
         &args,
         &logger,
         &rx,

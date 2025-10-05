@@ -72,6 +72,10 @@ pub fn handle_user_choice<C: CommandHelper>(
     }
 }
 
+/// Read a value from the user and handle the action loop for rebuild.
+///
+/// # Errors
+/// Returns an error if reading input or executing the selected action fails.
 pub fn read_val_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
     cmd_helper: &C,
     read_val_helper: &R,

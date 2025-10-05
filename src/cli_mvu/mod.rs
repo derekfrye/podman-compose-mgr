@@ -1,6 +1,6 @@
 use crate::args::Args;
 use crate::image_build::container_file::parse_container_file;
-use crate::image_build::rebuild::{read_val_loop, read_yaml_file, Image, build_rebuild_grammars};
+use crate::image_build::rebuild::{read_yaml_file, Image, build_rebuild_grammars};
 use crate::interfaces::DefaultCommandHelper;
 use crate::utils::log_utils::Logger;
 use std::path::PathBuf;
@@ -56,8 +56,8 @@ pub fn run_cli_loop(args: &Args, logger: &Logger) {
 
     loop {
         xchan::select! {
-            recv(rx) -> msg => { if let Ok(msg) = msg { update(&mut model, msg, &services); } },
-            recv(int_rx) -> _ => { update(&mut model, Msg::Interrupt, &services); },
+            recv(rx) -> msg => if let Ok(msg) = msg { update(&mut model, msg, &services); },
+            recv(int_rx) -> _ => update(&mut model, Msg::Interrupt, &services),
         }
         if matches!(model.state, State::Done) { break; }
     }
@@ -81,21 +81,21 @@ fn spawn_discovery(tx: xchan::Sender<Msg>, root: PathBuf, include: Vec<String>, 
             if !exc.is_empty() && exc.iter().any(|r| r.is_match(pstr)) { continue; }
             if !inc.is_empty() && inc.iter().all(|r| !r.is_match(pstr)) { continue; }
             if entry.file_name() == "docker-compose.yml" {
-                if let Ok(yaml) = read_yaml_file(pstr) {
-                    if let Some(services) = yaml.get("services").and_then(|v| v.as_mapping()) {
+                if let Ok(yaml) = read_yaml_file(pstr)
+                    && let Some(services) = yaml.get("services").and_then(|v| v.as_mapping())
+                {
                         for (_, svc_cfg) in services {
                             let Some(m) = svc_cfg.as_mapping() else { continue };
                             let Some(img) = m.get("image").and_then(|v| v.as_str()) else { continue };
                             let Some(container) = m.get("container_name").and_then(|v| v.as_str()) else { continue };
                             items.push(PromptItem { entry: entry.path().to_path_buf(), image: img.to_string(), container: container.to_string() });
                         }
-                    }
                 }
-            } else if entry.path().extension().and_then(|s| s.to_str()) == Some("container") {
-                if let Ok(info) = parse_container_file(entry.path()) {
+            } else if entry.path().extension().and_then(|s| s.to_str()) == Some("container")
+                && let Ok(info) = parse_container_file(entry.path())
+            {
                     let container = info.name.unwrap_or_else(|| entry.path().file_stem().and_then(|s| s.to_str()).unwrap_or("unknown").to_string());
                     items.push(PromptItem { entry: entry.path().to_path_buf(), image: info.image, container });
-                }
             }
         }
         let _ = tx.send(Msg::Discovered(items));
@@ -133,6 +133,7 @@ fn spawn_prompt(tx: xchan::Sender<Msg>, _args: &Args, item: PromptItem) {
     });
 }
 
+#[allow(clippy::too_many_lines)]
 fn update(model: &mut Model, msg: Msg, services: &Services) {
     match msg {
         Msg::Init => {
@@ -152,7 +153,7 @@ fn update(model: &mut Model, msg: Msg, services: &Services) {
             model.idx = 0;
             model.state = State::Ready;
             // Immediately prompt first file if any
-            if let Some(item) = model.items.get(0).cloned() {
+            if let Some(item) = model.items.first().cloned() {
                 spawn_prompt(services.tx.clone(), services.args, item);
             } else {
                 model.state = State::Done;

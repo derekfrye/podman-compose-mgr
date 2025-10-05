@@ -4,6 +4,7 @@ use std::path::Path;
 use walkdir::DirEntry;
 
 /// Build the interactive prompt grammars for rebuild
+#[must_use]
 pub fn build_rebuild_grammars(
     entry: &DirEntry,
     custom_img_nm: &str,
