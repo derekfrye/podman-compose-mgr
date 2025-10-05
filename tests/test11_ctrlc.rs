@@ -1,4 +1,4 @@
-use std::io::{BufRead, BufReader};
+use std::io::Read;
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
@@ -12,16 +12,11 @@ use std::time::Duration;
 /// 4. Verifies the process exits within a reasonable time
 #[test]
 fn test_ctrl_c_handling() {
-    // Build the application first to make sure it's available
-    let build_status = Command::new("cargo")
-        .args(["build"])
-        .status()
-        .expect("Failed to run cargo build");
-
-    assert!(build_status.success(), "Failed to build the application");
-
-    // Path to the built binary
-    let main_binary = "target/debug/podman-compose-mgr";
+    // Resolve the built binary path.
+    // With Cargo/nextest, the binary path is provided via env var.
+    // Fallback to target/debug for ad-hoc runs.
+    let main_binary = std::env::var("CARGO_BIN_EXE_podman-compose-mgr")
+        .unwrap_or_else(|_| "target/debug/podman-compose-mgr".to_string());
 
     // Start the application with test parameters
     let mut child = Command::new(main_binary)
@@ -35,31 +30,42 @@ fn test_ctrl_c_handling() {
     let pid = child.id();
     println!("Started application with PID: {pid}");
 
-    // Create a stdout reader to monitor for prompts
-    let stdout = child.stdout.take().expect("Failed to capture stdout");
-    let reader = BufReader::new(stdout);
-
-    // Wait for the application to reach a prompt
-    let mut prompt_found = false;
-    for line in reader.lines() {
-        let Ok(line) = line else { break };
-
-        println!("Output: {line}");
-
-        // Check if we've reached a prompt
-        if line.contains("p/N/d/b/s/?") {
-            prompt_found = true;
-            break;
+    // Monitor stdout in a background thread without relying on newlines
+    let mut stdout = child.stdout.take().expect("Failed to capture stdout");
+    let (tx_found, rx_found) = std::sync::mpsc::channel::<()>();
+    let (tx_buf, rx_buf) = std::sync::mpsc::channel::<String>();
+    std::thread::spawn(move || {
+        let mut buf = String::new();
+        let mut tmp = [0u8; 1024];
+        loop {
+            match stdout.read(&mut tmp) {
+                Ok(0) => break,               // EOF
+                Ok(n) => {
+                    let chunk = String::from_utf8_lossy(&tmp[..n]).to_string();
+                    print!("{}", chunk);
+                    buf.push_str(&chunk);
+                    let _ = tx_buf.send(chunk);
+                    if buf.contains("p/N/d/b/s/?") {
+                        let _ = tx_found.send(());
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
         }
+    });
 
-        // Check if the process has already exited
-        if let Ok(Some(status)) = child.try_wait() {
-            panic!("Process exited unexpectedly with status: {status}");
+    // Wait up to 5 seconds for the prompt substring
+    match rx_found.recv_timeout(Duration::from_secs(5)) {
+        Ok(()) => println!("Prompt found, sending SIGINT..."),
+        Err(_) => {
+            // Collect whatever we read for debugging
+            let mut collected = String::new();
+            while let Ok(chunk) = rx_buf.try_recv() { collected.push_str(&chunk); }
+            let _ = child.kill();
+            panic!("Application didn't output expected prompt within timeout. Output so far: {collected}");
         }
     }
-
-    assert!(prompt_found, "Application didn't output an expected prompt");
-    println!("Prompt found, sending SIGINT...");
 
     // Send SIGINT to the process
     #[cfg(unix)]

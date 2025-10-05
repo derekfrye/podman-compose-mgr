@@ -27,6 +27,7 @@ fn discovery_finds_expected_images_in_test1() {
         ("djf/rusty-golf".to_string(), Some("golf".to_string())),
         ("djf/squid".to_string(), Some("squid".to_string())),
         ("pihole/pihole:latest".to_string(), Some("pihole".to_string())),
+        ("djf/rusty-golf_unq".to_string(), Some("golf".to_string())),
         (
             "djf/rusty-golf-from-cont-file".to_string(),
             Some("golf".to_string()),

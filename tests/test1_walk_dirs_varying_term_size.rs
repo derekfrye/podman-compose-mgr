@@ -85,7 +85,7 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
                 was_interrupted: false,
             }
         })
-        .times(6);
+        .times(7);
 
     // Create logger
     let logger = Logger::new(args.verbose);
@@ -136,7 +136,7 @@ fn test1() -> Result<(), Box<dyn std::error::Error>> {
                 was_interrupted: false,
             }
         })
-        .times(6);
+        .times(7);
 
     // Create logger
     let logger = Logger::new(args.verbose);

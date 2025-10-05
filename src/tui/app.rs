@@ -102,6 +102,13 @@ impl Default for App {
 impl App {
     pub fn new() -> Self { Self::default() }
 
+    // Back-compat for tests: map key events to messages and update
+    pub fn on_key(&mut self, key: KeyCode) {
+        if let Some(msg) = map_key_to_msg(self, key) {
+            update(self, msg);
+        }
+    }
+
     fn rebuild_rows_for_view(&mut self) {
         match self.view_mode {
             ViewMode::ByContainer => {
