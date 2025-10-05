@@ -9,6 +9,7 @@ pub mod infra {
     pub mod podman_adapter;
 }
 pub mod image_build;
+pub mod mvu;
 pub mod cli_mvu;
 pub mod interfaces;
 pub mod read_interactive_input;

@@ -93,17 +93,8 @@ pub struct Services {
     pub tx: xchan::Sender<Msg>,
 }
 
-pub struct LoopChans<'a> {
-    pub rx: &'a xchan::Receiver<Msg>,
-    pub interrupt_rx: &'a xchan::Receiver<()>,
-    pub tick_rx: &'a xchan::Receiver<std::time::Instant>,
-}
-
-pub struct Env<'a> {
-    pub args: &'a Args,
-    pub logger: &'a Logger,
-    pub services: &'a Services,
-}
+pub type LoopChans<'a> = crate::mvu::LoopChans<'a, Msg>;
+pub type Env<'a> = crate::mvu::Env<'a, Args, Logger, Services>;
 
 impl Default for App {
     fn default() -> Self {
@@ -309,7 +300,7 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     let tick_rx = xchan::tick(tick_rate);
 
     // Run the app and handle cleanup on exit or error
-    let chans = LoopChans { rx: &rx, interrupt_rx: &int_rx, tick_rx: &tick_rx };
+    let chans = LoopChans { rx: &rx, interrupt_rx: &int_rx, tick_rx: Some(&tick_rx) };
     let env = Env { args, logger, services: &services };
     let res = run_loop(&mut terminal, &mut app, &chans, &env);
 
@@ -344,6 +335,10 @@ fn cleanup_terminal<B: Backend + std::io::Write>(terminal: &mut Terminal<B>) -> 
 /// # Errors
 /// Returns an error if drawing the terminal fails.
 #[allow(clippy::too_many_arguments)]
+/// Run the TUI loop with unified channels and environment.
+///
+/// # Panics
+/// Panics if a tick channel is not provided in `chans.tick_rx`.
 pub fn run_loop<B: Backend>(
     terminal: &mut Terminal<B>,
     app: &mut App,
@@ -356,7 +351,7 @@ pub fn run_loop<B: Backend>(
         xchan::select! {
             recv(chans.interrupt_rx) -> _ => update_with_services(app, Msg::Interrupt, Some(env.services)),
             recv(chans.rx) -> msg => if let Ok(msg) = msg { update_with_services(app, msg, Some(env.services)); },
-            recv(chans.tick_rx) -> _ => update_with_services(app, Msg::Tick, Some(env.services)),
+            recv(chans.tick_rx.unwrap()) -> _ => update_with_services(app, Msg::Tick, Some(env.services)),
             default => {}
         }
 
