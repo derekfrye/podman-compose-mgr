@@ -1,5 +1,12 @@
 pub mod args;
 pub mod errors;
+pub mod domain;
+pub mod ports;
+pub mod app;
+pub mod infra {
+    pub mod discovery_adapter;
+    pub mod podman_adapter;
+}
 pub mod image_build;
 pub mod interfaces;
 pub mod read_interactive_input;

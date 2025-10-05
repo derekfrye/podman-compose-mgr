@@ -1,8 +1,7 @@
 use crate::Args;
+use crate::app::AppCore;
+use crate::domain::{DiscoveredImage, ImageDetails};
 use crate::utils::log_utils::Logger;
-use crate::utils::podman_utils::image::{get_podman_image_upstream_create_time, get_podman_ondisk_modify_time};
-use crate::utils::podman_utils::terminal::file_exists_and_readable;
-use crate::tui::discover::scan_images;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
@@ -28,9 +27,10 @@ pub struct App {
     pub spinner_idx: usize,
     pub view_mode: ViewMode,
     pub modal: Option<ModalState>,
-    pub all_items: Vec<crate::tui::discover::DiscoveredImage>,
+    pub all_items: Vec<DiscoveredImage>,
     pub root_path: std::path::PathBuf,
     pub current_path: Vec<String>,
+    pub app_core: Option<std::sync::Arc<AppCore>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -63,6 +63,13 @@ pub struct ItemRow {
     pub dir_name: Option<String>,
 }
 
+#[derive(Clone, Debug)]
+pub enum Msg {
+    Key(crossterm::event::KeyCode),
+    Tick,
+    ScanResults(Vec<DiscoveredImage>),
+}
+
 impl Default for App {
     fn default() -> Self {
         Self {
@@ -77,6 +84,7 @@ impl Default for App {
             all_items: Vec::new(),
             root_path: std::path::PathBuf::new(),
             current_path: Vec::new(),
+            app_core: None,
         }
     }
 }
@@ -144,11 +152,11 @@ impl App {
                         self.selected = 0;
                     } else if let Some(row) = self.rows.get_mut(self.selected) && !row.expanded {
                         // Expand details for image rows in folder view
-                        row.details = compute_details(row);
+                        row.details = compute_details(self, row);
                         row.expanded = true;
                     }
                 } else if let Some(row) = self.rows.get_mut(self.selected) && !row.expanded {
-                    row.details = compute_details(row);
+                    row.details = compute_details(self, row);
                     row.expanded = true;
                 }
             }
@@ -321,9 +329,14 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     app.root_path = args.path.clone();
     let tick_rate = Duration::from_millis(250);
 
-    // Start background scan
-    let (tx, rx) = std::sync::mpsc::channel::<Vec<crate::tui::discover::DiscoveredImage>>();
-    start_background_scan(args, tx);
+    // Wire ports/adapters and start background scan via app core
+    let discovery = std::sync::Arc::new(crate::infra::discovery_adapter::FsDiscovery);
+    let podman = std::sync::Arc::new(crate::infra::podman_adapter::PodmanCli);
+    let app_core = std::sync::Arc::new(AppCore::new(discovery, podman));
+    app.app_core = Some(app_core.clone());
+
+    let (tx, rx) = std::sync::mpsc::channel::<Vec<DiscoveredImage>>();
+    start_background_scan(args, app_core.clone(), tx);
 
     // Run the app and handle cleanup on exit or error
     let res = run_app(&mut terminal, &mut app, tick_rate, args, logger, rx);
@@ -360,7 +373,7 @@ fn run_app<B: Backend + std::io::Write>(
     tick_rate: Duration,
     args: &Args,
     logger: &Logger,
-    rx: std::sync::mpsc::Receiver<Vec<crate::tui::discover::DiscoveredImage>>,
+    rx: std::sync::mpsc::Receiver<Vec<DiscoveredImage>>,
 ) -> io::Result<()> {
     let mut last_tick = Instant::now();
 
@@ -369,24 +382,9 @@ fn run_app<B: Backend + std::io::Write>(
     while !app.should_quit {
         // Check for scan results
         match rx.try_recv() {
-            Ok(discovered) => {
-                app.all_items = discovered;
-                // Build rows for current view
-                app.rows = match app.view_mode {
-                    ViewMode::ByContainer => app.build_rows_for_container_view(),
-                    ViewMode::ByImage => {
-                        let mut tmp = App::new();
-                        tmp.all_items = app.all_items.clone();
-                        tmp.build_rows_for_view_mode(ViewMode::ByImage)
-                    }
-                    ViewMode::ByFolderThenImage => app.build_rows_for_folder_view(),
-                };
-                app.state = UiState::Ready;
-                app.selected = 0;
-            }
+            Ok(discovered) => update(app, Msg::ScanResults(discovered)),
             Err(std::sync::mpsc::TryRecvError::Empty) => {}
             Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                // Treat as no results
                 if app.state == UiState::Scanning { app.state = UiState::Ready; }
             }
         }
@@ -398,13 +396,12 @@ fn run_app<B: Backend + std::io::Write>(
             .unwrap_or_else(|| Duration::from_secs(0));
 
         if crossterm::event::poll(timeout)? && let Event::Key(key) = event::read()? {
-            app.on_key(key.code);
+            update(app, Msg::Key(key.code));
         }
 
         if last_tick.elapsed() >= tick_rate {
             last_tick = Instant::now();
-            // advance spinner
-            app.spinner_idx = (app.spinner_idx + 1) % SPINNER_FRAMES.len();
+            update(app, Msg::Tick);
         }
     }
 
@@ -413,25 +410,19 @@ fn run_app<B: Backend + std::io::Write>(
 
 pub(super) const SPINNER_FRAMES: &[&str] = &["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"];
 
-fn start_background_scan(args: &Args, tx: std::sync::mpsc::Sender<Vec<crate::tui::discover::DiscoveredImage>>) {
+fn start_background_scan(
+    args: &Args,
+    app_core: std::sync::Arc<AppCore>,
+    tx: std::sync::mpsc::Sender<Vec<DiscoveredImage>>,
+) {
     let path = args.path.clone();
     let exclude = args.exclude_path_patterns.clone();
     let include = args.include_path_patterns.clone();
-    let verbosity = args.verbose;
-    let tmp = args.temp_file_path.clone();
 
     std::thread::spawn(move || {
-        let args_c = Args {
-            path,
-            verbose: verbosity,
-            exclude_path_patterns: exclude,
-            include_path_patterns: include,
-            build_args: vec![],
-            temp_file_path: tmp,
-            tui: true,
-        };
-        let logger = Logger::new(args_c.verbose);
-        let discovered = scan_images(&args_c, &logger);
+        let discovered = app_core
+            .scan_images(path, include, exclude)
+            .unwrap_or_else(|_| Vec::new());
         let _ = tx.send(discovered);
     });
 }
@@ -479,33 +470,49 @@ impl App {
             all_items: self.all_items.clone(),
             root_path: self.root_path.clone(),
             current_path: self.current_path.clone(),
+            app_core: self.app_core.clone(),
         }
     }
 }
 
-fn compute_details(row: &ItemRow) -> Vec<String> {
+fn compute_details(app: &App, row: &ItemRow) -> Vec<String> {
     let mut lines = Vec::new();
     lines.push(format!("Compose dir: {}", row.source_dir.display()));
 
-    match get_podman_image_upstream_create_time(&row.image) {
-        Ok(dt) => lines.push(format!("Created: {}", crate::utils::podman_utils::datetime::format_time_ago(dt))),
-        Err(e) => lines.push(format!("Created: error: {e}")),
+    if let Some(core) = &app.app_core {
+        match core.image_details(&row.image, &row.source_dir) {
+            Ok(ImageDetails { created_time_ago, pulled_time_ago, has_dockerfile, has_makefile }) => {
+                if let Some(s) = created_time_ago { lines.push(format!("Created: {s}")); }
+                if let Some(s) = pulled_time_ago { lines.push(format!("Pulled: {s}")); }
+                if has_dockerfile { lines.push("Found Dockerfile".into()); }
+                if has_makefile { lines.push("Found Makefile".into()); }
+            }
+            Err(e) => lines.push(format!("error: {e}")),
+        }
     }
-    match get_podman_ondisk_modify_time(&row.image) {
-        Ok(dt) => lines.push(format!("Pulled: {}", crate::utils::podman_utils::datetime::format_time_ago(dt))),
-        Err(e) => lines.push(format!("Pulled: error: {e}")),
-    }
-
-    let dockerfile = row.source_dir.join("Dockerfile");
-    let makefile = row.source_dir.join("Makefile");
-    lines.push(format!(
-        "Dockerfile exists: {}",
-        file_exists_and_readable(&dockerfile)
-    ));
-    lines.push(format!(
-        "Makefile exists: {}",
-        file_exists_and_readable(&makefile)
-    ));
 
     lines
+}
+
+pub fn update(app: &mut App, msg: Msg) {
+    match msg {
+        Msg::Key(key) => app.on_key(key),
+        Msg::Tick => {
+            app.spinner_idx = (app.spinner_idx + 1) % SPINNER_FRAMES.len();
+        }
+        Msg::ScanResults(discovered) => {
+            app.all_items = discovered;
+            app.rows = match app.view_mode {
+                ViewMode::ByContainer => app.build_rows_for_container_view(),
+                ViewMode::ByImage => {
+                    let mut tmp = App::new();
+                    tmp.all_items = app.all_items.clone();
+                    tmp.build_rows_for_view_mode(ViewMode::ByImage)
+                }
+                ViewMode::ByFolderThenImage => app.build_rows_for_folder_view(),
+            };
+            app.state = UiState::Ready;
+            app.selected = 0;
+        }
+    }
 }
