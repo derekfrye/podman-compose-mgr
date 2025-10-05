@@ -323,10 +323,10 @@ pub fn run_loop<B: Backend>(
 
         match crossterm::event::poll(timeout) {
             Ok(true) => {
-                if let Ok(Event::Key(key)) = event::read() {
-                    if let Some(msg) = map_key_event_to_msg(app, key) {
-                        update(app, msg);
-                    }
+                if let Ok(Event::Key(key)) = event::read()
+                    && let Some(msg) = map_key_event_to_msg(app, key)
+                {
+                    update(app, msg);
                 }
             }
             Ok(false) => {}
@@ -503,13 +503,17 @@ pub fn update(app: &mut App, msg: Msg) {
             app.modal = Some(ModalState::ViewPicker { selected_idx: default_idx });
         }
         Msg::ViewPickerUp => {
-            if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal {
-                if *selected_idx > 0 { *selected_idx -= 1; }
+            if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal
+                && *selected_idx > 0
+            {
+                *selected_idx -= 1;
             }
         }
         Msg::ViewPickerDown => {
-            if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal {
-                if *selected_idx < 2 { *selected_idx += 1; }
+            if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal
+                && *selected_idx < 2
+            {
+                *selected_idx += 1;
             }
         }
         Msg::ViewPickerAccept => {
@@ -543,10 +547,10 @@ pub fn update(app: &mut App, msg: Msg) {
 }
 
 fn map_key_event_to_msg(app: &App, ev: KeyEvent) -> Option<Msg> {
-    if ev.modifiers.contains(KeyModifiers::CONTROL) {
-        if let KeyCode::Char('c') | KeyCode::Char('C') = ev.code {
-            return Some(Msg::Interrupt);
-        }
+    if ev.modifiers.contains(KeyModifiers::CONTROL)
+        && let KeyCode::Char('c') | KeyCode::Char('C') = ev.code
+    {
+        return Some(Msg::Interrupt);
     }
     map_keycode_to_msg(app, ev.code)
 }

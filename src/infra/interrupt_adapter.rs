@@ -18,9 +18,12 @@ impl CtrlcInterruptor {
     }
 }
 
+impl Default for CtrlcInterruptor {
+    fn default() -> Self { Self::new() }
+}
+
 impl InterruptPort for CtrlcInterruptor {
     fn subscribe(self: Box<Self>) -> Receiver<()> {
         self.rx
     }
 }
-

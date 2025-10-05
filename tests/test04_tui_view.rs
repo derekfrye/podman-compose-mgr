@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crossterm::event::KeyCode;
-use podman_compose_mgr::tui::app::{App, ItemRow, ViewMode};
+use podman_compose_mgr::tui::app::{App, ViewMode};
 use podman_compose_mgr::tui::discover::scan_images;
 use podman_compose_mgr::utils::log_utils::Logger;
 use podman_compose_mgr::Args;
@@ -21,7 +21,7 @@ fn change_view_to_by_image_dedupes_images() {
     let logger = Logger::new(0);
     let mut discovered = scan_images(&args, &logger);
     // Inject a duplicate image with different container if possible
-    if let Some(first) = discovered.get(0).cloned() {
+    if let Some(first) = discovered.first().cloned() {
         let mut dup = first.clone();
         dup.container = Some("duplicate-container".to_string());
         discovered.push(dup);

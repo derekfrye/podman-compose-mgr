@@ -47,8 +47,7 @@ use crate::ports::InterruptPort;
 /// Returns an error if the application fails to initialize or run.
 pub fn run_app(args: &args::Args) -> io::Result<()> {
     use crate::utils::log_utils::Logger;
-    use crate::walk_dirs::walk_dirs;
-    use std::sync::mpsc;
+    // no extra imports needed here
     // Create logger instance
     let logger = Logger::new(args.verbose);
 

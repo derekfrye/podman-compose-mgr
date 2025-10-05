@@ -52,10 +52,10 @@ impl DiscoveryPort for FsDiscovery {
                             continue;
                         }
                         let mut container = yaml_get_string(svc_cfg, "container_name");
-                        if container.is_none() {
-                            if let Some(name) = svc_name.as_str() {
-                                container = Some(name.to_string());
-                            }
+                        if container.is_none()
+                            && let Some(name) = svc_name.as_str()
+                        {
+                            container = Some(name.to_string());
                         }
                         let source_dir = entry
                             .path()
@@ -71,8 +71,9 @@ impl DiscoveryPort for FsDiscovery {
                 continue;
             }
 
-            if entry.path().extension().and_then(|s| s.to_str()) == Some("container") {
-                if let Ok(info) = parse_container_file(entry.path()) {
+            if entry.path().extension().and_then(|s| s.to_str()) == Some("container")
+                && let Ok(info) = parse_container_file(entry.path())
+            {
                     let source_dir = entry
                         .path()
                         .parent()
@@ -82,7 +83,6 @@ impl DiscoveryPort for FsDiscovery {
                     if seen.insert(key) {
                         rows.push(DiscoveredImage { image: info.image, container: info.name, source_dir });
                     }
-                }
             }
         }
 
@@ -102,4 +102,3 @@ fn read_yaml_file_local(path: &str) -> Option<serde_yaml::Value> {
     let file = File::open(path).ok()?;
     serde_yaml::from_reader(file).ok()
 }
-

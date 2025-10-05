@@ -30,8 +30,8 @@ impl AppCore {
         let pulled = self.podman.image_modified(image).ok();
 
         // Format relative time strings in app layer, keep UI simpler
-        let created_time_ago = created.map(|dt| crate::utils::podman_utils::datetime::format_time_ago(dt));
-        let pulled_time_ago = pulled.map(|dt| crate::utils::podman_utils::datetime::format_time_ago(dt));
+        let created_time_ago = created.map(crate::utils::podman_utils::datetime::format_time_ago);
+        let pulled_time_ago = pulled.map(crate::utils::podman_utils::datetime::format_time_ago);
 
         let dockerfile = source_dir.join("Dockerfile");
         let makefile = source_dir.join("Makefile");
@@ -41,4 +41,3 @@ impl AppCore {
         Ok(ImageDetails { created_time_ago, pulled_time_ago, has_dockerfile, has_makefile })
     }
 }
-
