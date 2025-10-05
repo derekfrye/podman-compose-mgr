@@ -17,6 +17,7 @@ pub mod read_interactive_input;
 pub mod testing;
 pub mod tui;
 pub mod utils;
+#[cfg(debug_assertions)]
 pub mod walk_dirs;
 
 pub use args::Args;

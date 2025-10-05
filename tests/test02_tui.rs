@@ -1,8 +1,6 @@
 use std::collections::HashSet;
 
 use podman_compose_mgr::Args;
-use podman_compose_mgr::tui::discover::scan_images;
-use podman_compose_mgr::utils::log_utils::Logger;
 
 #[test]
 fn discovery_finds_expected_images_in_test1() {
@@ -15,8 +13,16 @@ fn discovery_finds_expected_images_in_test1() {
         temp_file_path: std::env::temp_dir(),
         tui: true,
     };
-    let logger = Logger::new(0);
-    let found = scan_images(&args, &logger);
+    let discovery = std::sync::Arc::new(podman_compose_mgr::infra::discovery_adapter::FsDiscovery);
+    let podman = std::sync::Arc::new(podman_compose_mgr::infra::podman_adapter::PodmanCli);
+    let core = podman_compose_mgr::app::AppCore::new(discovery, podman);
+    let found = core
+        .scan_images(
+            args.path.clone(),
+            args.include_path_patterns.clone(),
+            args.exclude_path_patterns.clone(),
+        )
+        .unwrap();
 
     let got: HashSet<(String, Option<String>)> = found
         .iter()

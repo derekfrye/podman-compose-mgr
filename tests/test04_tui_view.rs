@@ -1,10 +1,8 @@
 use std::collections::HashSet;
 
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use podman_compose_mgr::Args;
-use podman_compose_mgr::tui::app::{App, ViewMode};
-use podman_compose_mgr::tui::discover::scan_images;
-use podman_compose_mgr::utils::log_utils::Logger;
+use podman_compose_mgr::tui::app::{self, App, ViewMode, Msg};
 
 #[test]
 fn change_view_to_by_image_dedupes_images() {
@@ -18,8 +16,16 @@ fn change_view_to_by_image_dedupes_images() {
         temp_file_path: std::env::temp_dir(),
         tui: true,
     };
-    let logger = Logger::new(0);
-    let mut discovered = scan_images(&args, &logger);
+    let discovery = std::sync::Arc::new(podman_compose_mgr::infra::discovery_adapter::FsDiscovery);
+    let podman = std::sync::Arc::new(podman_compose_mgr::infra::podman_adapter::PodmanCli);
+    let core = podman_compose_mgr::app::AppCore::new(discovery, podman);
+    let mut discovered = core
+        .scan_images(
+            args.path.clone(),
+            args.include_path_patterns.clone(),
+            args.exclude_path_patterns.clone(),
+        )
+        .unwrap();
     // Inject a duplicate image with different container if possible
     if let Some(first) = discovered.first().cloned() {
         let mut dup = first.clone();
@@ -34,11 +40,11 @@ fn change_view_to_by_image_dedupes_images() {
     app.all_items = discovered;
 
     // Open modal
-    app.on_key(KeyCode::Char('v'));
+    app::update_with_services(&mut app, Msg::Key(KeyEvent::new(KeyCode::Char('v'), KeyModifiers::NONE)), None);
     // Move to "List by image"
-    app.on_key(KeyCode::Down);
+    app::update_with_services(&mut app, Msg::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)), None);
     // Select
-    app.on_key(KeyCode::Enter);
+    app::update_with_services(&mut app, Msg::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)), None);
 
     assert_eq!(app.view_mode, ViewMode::ByImage);
 
