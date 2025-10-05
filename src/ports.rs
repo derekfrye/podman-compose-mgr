@@ -2,6 +2,7 @@ use crate::domain::DiscoveredImage;
 use crate::errors::PodmanComposeMgrError;
 use chrono::Local;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::Receiver;
 
 pub trait PodmanPort: Send + Sync {
     fn image_created(&self, image: &str) -> Result<chrono::DateTime<Local>, PodmanComposeMgrError>;
@@ -19,3 +20,8 @@ pub trait DiscoveryPort: Send + Sync {
     fn scan(&self, opts: &ScanOptions) -> Result<Vec<DiscoveredImage>, PodmanComposeMgrError>;
 }
 
+// Interrupt port for graceful shutdown without OS signals in tests.
+pub trait InterruptPort: Send {
+    // Returns a one-shot receiver that yields on interrupt. May only be called once.
+    fn subscribe(self: Box<Self>) -> Receiver<()>;
+}

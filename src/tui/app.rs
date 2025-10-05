@@ -1,9 +1,10 @@
 use crate::Args;
 use crate::app::AppCore;
+use crate::ports::InterruptPort;
 use crate::domain::{DiscoveredImage, ImageDetails};
 use crate::utils::log_utils::Logger;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -76,6 +77,7 @@ pub enum Msg {
     ViewPickerDown,
     ViewPickerAccept,
     ViewPickerCancel,
+    Interrupt,
     Tick,
     ScanResults(Vec<DiscoveredImage>),
 }
@@ -102,9 +104,9 @@ impl Default for App {
 impl App {
     pub fn new() -> Self { Self::default() }
 
-    // Back-compat for tests: map key events to messages and update
+    // Back-compat for tests: map key codes (no modifiers) to messages and update
     pub fn on_key(&mut self, key: KeyCode) {
-        if let Some(msg) = map_key_to_msg(self, key) {
+        if let Some(msg) = map_keycode_to_msg(self, key) {
             update(self, msg);
         }
     }
@@ -252,8 +254,11 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     let (tx, rx) = std::sync::mpsc::channel::<Vec<DiscoveredImage>>();
     start_background_scan(args, app_core.clone(), tx);
 
+    // Interrupt channel (production: real Ctrl+C)
+    let interrupt_rx = Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
+
     // Run the app and handle cleanup on exit or error
-    let res = run_app(&mut terminal, &mut app, tick_rate, args, logger, rx);
+    let res = run_loop(&mut terminal, &mut app, tick_rate, args, logger, rx, interrupt_rx);
 
     // Always restore terminal state, even on error
     let cleanup_result = cleanup_terminal(&mut terminal);
@@ -281,19 +286,26 @@ fn cleanup_terminal<B: Backend + std::io::Write>(terminal: &mut Terminal<B>) -> 
     Ok(())
 }
 
-fn run_app<B: Backend + std::io::Write>(
+pub fn run_loop<B: Backend + std::io::Write>(
     terminal: &mut Terminal<B>,
     app: &mut App,
     tick_rate: Duration,
     args: &Args,
     logger: &Logger,
     rx: std::sync::mpsc::Receiver<Vec<DiscoveredImage>>,
+    interrupt_rx: std::sync::mpsc::Receiver<()>,
 ) -> io::Result<()> {
     let mut last_tick = Instant::now();
 
     logger.debug("TUI is running");
 
     while !app.should_quit {
+        // Check for interrupt
+        match interrupt_rx.try_recv() {
+            Ok(()) => update(app, Msg::Interrupt),
+            Err(std::sync::mpsc::TryRecvError::Empty) => {}
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {}
+        }
         // Check for scan results
         match rx.try_recv() {
             Ok(discovered) => update(app, Msg::ScanResults(discovered)),
@@ -310,7 +322,7 @@ fn run_app<B: Backend + std::io::Write>(
             .unwrap_or_else(|| Duration::from_secs(0));
 
         if crossterm::event::poll(timeout)? && let Event::Key(key) = event::read()? {
-            if let Some(msg) = map_key_to_msg(app, key.code) {
+            if let Some(msg) = map_key_event_to_msg(app, key) {
                 update(app, msg);
             }
         }
@@ -413,6 +425,7 @@ fn compute_details(app: &App, image: &str, source_dir: &std::path::Path) -> Vec<
 pub fn update(app: &mut App, msg: Msg) {
     match msg {
         Msg::Quit => app.should_quit = true,
+        Msg::Interrupt => { app.should_quit = true; },
         Msg::MoveUp => {
             if app.selected > 0 { app.selected -= 1; }
         }
@@ -523,7 +536,16 @@ pub fn update(app: &mut App, msg: Msg) {
     }
 }
 
-fn map_key_to_msg(app: &App, key: KeyCode) -> Option<Msg> {
+fn map_key_event_to_msg(app: &App, ev: KeyEvent) -> Option<Msg> {
+    if ev.modifiers.contains(KeyModifiers::CONTROL) {
+        if let KeyCode::Char('c') | KeyCode::Char('C') = ev.code {
+            return Some(Msg::Interrupt);
+        }
+    }
+    map_keycode_to_msg(app, ev.code)
+}
+
+fn map_keycode_to_msg(app: &App, key: KeyCode) -> Option<Msg> {
     // If modal is open, keys control the modal
     if let Some(ModalState::ViewPicker { .. }) = app.modal {
         return Some(match key {

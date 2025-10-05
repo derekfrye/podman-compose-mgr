@@ -12,6 +12,7 @@ use crate::{
     tui,
     utils::log_utils::Logger,
 };
+use std::sync::mpsc::Receiver;
 
 /// Main function that uses the default helper implementations
 ///
@@ -22,7 +23,13 @@ pub fn walk_dirs(args: &Args, logger: &Logger, tui_mode: bool) {
     let read_val_helper = DefaultReadInteractiveInputHelper;
 
     // Call the injectable version with default implementations
-    if let Err(e) = walk_dirs_with_helpers(args, &cmd_helper, &read_val_helper, logger) {
+    if let Err(e) = walk_dirs_with_helpers_and_interrupt(
+        args,
+        &cmd_helper,
+        &read_val_helper,
+        logger,
+        None,
+    ) {
         eprintln!("Error processing directories: {e}");
     }
 
@@ -56,6 +63,17 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
     cmd_helper: &C,
     read_val_helper: &R,
     logger: &Logger,
+) -> Result<(), PodmanComposeMgrError> {
+    walk_dirs_with_helpers_and_interrupt(args, cmd_helper, read_val_helper, logger, None)
+}
+
+/// Injectable version with optional interrupt receiver for graceful cancellation
+pub fn walk_dirs_with_helpers_and_interrupt<C: CommandHelper, R: ReadInteractiveInputHelper>(
+    args: &Args,
+    cmd_helper: &C,
+    read_val_helper: &R,
+    logger: &Logger,
+    interrupt: Option<&Receiver<()>>,
 ) -> Result<(), PodmanComposeMgrError> {
     let mut exclude_patterns = Vec::new();
     let mut include_patterns = Vec::new();
@@ -99,6 +117,17 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
         .into_iter()
         .filter_map(std::result::Result::ok)
     {
+        // Check for interrupt on each iteration
+        if let Some(rx) = interrupt {
+            match rx.try_recv() {
+                Ok(()) => {
+                    logger.info("Interrupt received; stopping traversal.");
+                    break;
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => {}
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {}
+            }
+        }
         let is_compose_file =
             entry.file_type().is_file() && entry.file_name() == "docker-compose.yml";
         let is_container_file = entry.file_type().is_file()
