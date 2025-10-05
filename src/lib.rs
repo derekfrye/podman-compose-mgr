@@ -9,6 +9,7 @@ pub mod infra {
     pub mod podman_adapter;
 }
 pub mod image_build;
+pub mod cli_mvu;
 pub mod interfaces;
 pub mod read_interactive_input;
 
@@ -25,7 +26,7 @@ pub use utils::error_utils;
 pub use utils::json_utils;
 pub use utils::log_utils;
 
-use crate::ports::InterruptPort;
+// no-op
 use std::fmt::Write as FmtWrite;
 use std::io;
 
@@ -143,24 +144,8 @@ pub fn run_app(args: &args::Args) -> io::Result<()> {
         return Ok(());
     }
 
-    // CLI mode: process rebuild mode (interactive prompt loop)
-    // Use an interrupt receiver for graceful cancellation
-    let interrupt_rx =
-        Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
-    // Use default helpers via walk_dirs, but thread interrupt receiver using the DI variant
-    {
-        use crate::interfaces::{DefaultCommandHelper, DefaultReadInteractiveInputHelper};
-        use crate::walk_dirs::walk_dirs_with_helpers_and_interrupt;
-        let cmd_helper = DefaultCommandHelper;
-        let read_val_helper = DefaultReadInteractiveInputHelper;
-        let _ = walk_dirs_with_helpers_and_interrupt(
-            args,
-            &cmd_helper,
-            &read_val_helper,
-            &logger,
-            Some(&interrupt_rx),
-        );
-    }
+    // CLI mode: MVU-driven loop
+    crate::cli_mvu::run_cli_loop(args, &logger);
 
     logger.info("Done.");
 
