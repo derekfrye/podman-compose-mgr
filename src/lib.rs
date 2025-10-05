@@ -127,8 +127,15 @@ pub fn run_app(args: &args::Args) -> io::Result<()> {
         }
     }
 
-    // Process rebuild mode
-    walk_dirs(args, &logger, args.tui);
+    // If TUI is requested, launch it immediately and skip CLI prompt loop
+    if args.tui {
+        crate::tui::run(args, &logger)?;
+        logger.info("Done.");
+        return Ok(());
+    }
+
+    // CLI mode: process rebuild mode (interactive prompt loop)
+    walk_dirs(args, &logger, false);
 
     logger.info("Done.");
 

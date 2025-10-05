@@ -1,0 +1,17 @@
+[Unit]
+Description=Rusty Golf Container
+
+[Container]
+Image=djf/rusty-golf-from-cont-file
+ContainerName=golf
+PublishPort=8088:8081
+Exec=["/usr/bin/tini", "--", "/usr/local/cargo/bin/rusty-golf", "--db-type=sqlite", "--db-name=/data/xxx", "--db-startup-script=/db_startup_script.sql", "--db-populate-json=/eup.json", "--dont-poll-espn-after-num-days=0"]
+Volume=rusty_golf_sqlite_data:/data
+Volume=./db_startup_script.sql:/db_startup_script.sql:z
+Volume=./eup.json:/eup.json:z
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

@@ -73,17 +73,17 @@ pub fn parse_container_file<P: AsRef<Path>>(
 /// 3. Filename without .container extension as fallback
 fn extract_container_name(conf: &Ini, file_path: &Path) -> Option<String> {
     // First, check for ContainerName in [Container] section
-    if let Some(container_section) = conf.section(Some("Container")) {
-        if let Some(container_name) = container_section.get("ContainerName") {
-            return Some(container_name.to_string());
-        }
+    if let Some(container_section) = conf.section(Some("Container"))
+        && let Some(container_name) = container_section.get("ContainerName")
+    {
+        return Some(container_name.to_string());
     }
 
     // Second, check for Description in [Unit] section
-    if let Some(unit_section) = conf.section(Some("Unit")) {
-        if let Some(description) = unit_section.get("Description") {
-            return Some(description.to_string());
-        }
+    if let Some(unit_section) = conf.section(Some("Unit"))
+        && let Some(description) = unit_section.get("Description")
+    {
+        return Some(description.to_string());
     }
 
     // Fallback: use filename without .container extension

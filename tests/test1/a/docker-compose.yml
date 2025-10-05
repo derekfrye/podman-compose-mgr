@@ -1,0 +1,21 @@
+version: '3.1'
+
+services:
+  rust:
+    image: djf/rusty-golf_unq
+    container_name: golf
+    ports:
+      - 8088:8081
+    entrypoint: ["/usr/bin/tini", "--", "/usr/local/cargo/bin/rusty-golf"]
+    command: [
+      "--db-type=sqlite"
+      , "--db-name=/data/xxx"
+      , "--db-startup-script=/db_startup_script.sql"
+      , "--db-populate-json=/eup.json"
+      , "--dont-poll-espn-after-num-days=0",
+      ]
+    volumes:
+      # - ./db_password.txt:/secrets/db_password:ro,z
+      - rusty_golf_sqlite_data:/data
+      - ./db_startup_script.sql:/db_startup_script.sql:z
+      - ./eup.json:/eup.json:z

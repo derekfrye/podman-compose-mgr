@@ -142,10 +142,10 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
             }
 
             // Process rebuild mode
-            if let Some(ref mut mgr) = manager {
-                if let Err(e) = mgr.rebuild(&entry, args) {
-                    eprintln!("Error rebuilding from {entry_path_str}: {e}");
-                }
+            if let Some(ref mut mgr) = manager
+                && let Err(e) = mgr.rebuild(&entry, args)
+            {
+                eprintln!("Error rebuilding from {entry_path_str}: {e}");
             }
         }
     }
