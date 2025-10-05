@@ -7,6 +7,11 @@ pub struct CtrlcInterruptor {
 }
 
 impl CtrlcInterruptor {
+    /// Create a new interruptor wired to OS Ctrl+C.
+    ///
+    /// # Panics
+    /// Panics if setting the Ctrl+C handler fails.
+    #[must_use]
     pub fn new() -> Self {
         let (tx, rx) = mpsc::channel();
         let tx2 = tx.clone();

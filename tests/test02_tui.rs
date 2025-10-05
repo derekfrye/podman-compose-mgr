@@ -89,9 +89,9 @@ fn ui_snapshot_renders_table_with_rows() {
         tui: true,
     };
 
-    const W: u16 = 60;
-    const H: u16 = 10;
-    let backend = TestBackend::new(W, H);
+    let width: u16 = 60;
+    let height: u16 = 10;
+    let backend = TestBackend::new(width, height);
     let mut terminal = Terminal::new(backend).expect("terminal");
     terminal
         .draw(|f| ui::draw(f, &app, &args))
@@ -102,8 +102,8 @@ fn ui_snapshot_renders_table_with_rows() {
 
     // Flatten lines
     let mut all = String::new();
-    for y in 0..H {
-        for x in 0..W {
+    for y in 0..height {
+        for x in 0..width {
             let cell = buf
                 .cell((x, y))
                 .expect("cell must exist in test backend buffer");

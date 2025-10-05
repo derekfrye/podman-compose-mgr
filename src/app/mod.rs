@@ -15,6 +15,10 @@ impl AppCore {
         Self { discovery, podman }
     }
 
+    /// Scan for images using the discovery port.
+    ///
+    /// # Errors
+    /// Returns an error if discovery fails.
     pub fn scan_images(
         &self,
         root: PathBuf,
@@ -25,6 +29,10 @@ impl AppCore {
         self.discovery.scan(&opts)
     }
 
+    /// Get image details for display.
+    ///
+    /// # Errors
+    /// Returns an error if filesystem checks fail unexpectedly.
     pub fn image_details(&self, image: &str, source_dir: &Path) -> Result<ImageDetails, PodmanComposeMgrError> {
         let created = self.podman.image_created(image).ok();
         let pulled = self.podman.image_modified(image).ok();

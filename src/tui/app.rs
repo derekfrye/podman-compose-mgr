@@ -102,6 +102,7 @@ impl Default for App {
 }
 
 impl App {
+    #[must_use]
     pub fn new() -> Self { Self::default() }
 
     // Back-compat for tests: map key codes (no modifiers) to messages and update
@@ -190,7 +191,7 @@ impl App {
             }
         }
         let mut rows: Vec<ItemRow> = Vec::new();
-        for dir in subdirs.into_iter() {
+        for dir in subdirs {
             rows.push(ItemRow {
                 checked: false,
                 image: String::new(),
@@ -202,7 +203,7 @@ impl App {
                 dir_name: Some(dir),
             });
         }
-        for img in images.into_iter() {
+        for img in images {
             rows.push(ItemRow {
                 checked: false,
                 image: img,
@@ -242,7 +243,7 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
 
     // Create app state
     let mut app = App::new();
-    app.root_path = args.path.clone();
+    app.root_path.clone_from(&args.path);
     let tick_rate = Duration::from_millis(250);
 
     // Wire ports/adapters and start background scan via app core
@@ -258,7 +259,7 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     let interrupt_rx = Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
 
     // Run the app and handle cleanup on exit or error
-    let res = run_loop(&mut terminal, &mut app, tick_rate, args, logger, rx, interrupt_rx);
+    let res = run_loop(&mut terminal, &mut app, tick_rate, args, logger, &rx, &interrupt_rx);
 
     // Always restore terminal state, even on error
     let cleanup_result = cleanup_terminal(&mut terminal);
@@ -286,14 +287,18 @@ fn cleanup_terminal<B: Backend + std::io::Write>(terminal: &mut Terminal<B>) -> 
     Ok(())
 }
 
+/// Run the TUI loop with injected channels for scan results and interrupts.
+///
+/// # Errors
+/// Returns an error if drawing the terminal fails.
 pub fn run_loop<B: Backend>(
     terminal: &mut Terminal<B>,
     app: &mut App,
     tick_rate: Duration,
     args: &Args,
     logger: &Logger,
-    rx: std::sync::mpsc::Receiver<Vec<DiscoveredImage>>,
-    interrupt_rx: std::sync::mpsc::Receiver<()>,
+    rx: &std::sync::mpsc::Receiver<Vec<DiscoveredImage>>,
+    interrupt_rx: &std::sync::mpsc::Receiver<()>,
 ) -> io::Result<()> {
     let mut last_tick = Instant::now();
 
@@ -303,8 +308,7 @@ pub fn run_loop<B: Backend>(
         // Check for interrupt
         match interrupt_rx.try_recv() {
             Ok(()) => update(app, Msg::Interrupt),
-            Err(std::sync::mpsc::TryRecvError::Empty) => {}
-            Err(std::sync::mpsc::TryRecvError::Disconnected) => {}
+            Err(std::sync::mpsc::TryRecvError::Empty | std::sync::mpsc::TryRecvError::Disconnected) => {}
         }
         // Check for scan results
         match rx.try_recv() {
@@ -321,16 +325,11 @@ pub fn run_loop<B: Backend>(
             .checked_sub(last_tick.elapsed())
             .unwrap_or_else(|| Duration::from_secs(0));
 
-        match crossterm::event::poll(timeout) {
-            Ok(true) => {
-                if let Ok(Event::Key(key)) = event::read()
-                    && let Some(msg) = map_key_event_to_msg(app, key)
-                {
-                    update(app, msg);
-                }
-            }
-            Ok(false) => {}
-            Err(_) => {}
+        if let Ok(true) = crossterm::event::poll(timeout)
+            && let Ok(Event::Key(key)) = event::read()
+            && let Some(msg) = map_key_event_to_msg(app, key)
+        {
+            update(app, msg);
         }
 
         if last_tick.elapsed() >= tick_rate {
@@ -428,6 +427,7 @@ fn compute_details(app: &App, image: &str, source_dir: &std::path::Path) -> Vec<
     lines
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn update(app: &mut App, msg: Msg) {
     match msg {
         Msg::Quit => app.should_quit = true,
@@ -518,7 +518,7 @@ pub fn update(app: &mut App, msg: Msg) {
         }
         Msg::ViewPickerAccept => {
             if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal {
-                app.view_mode = match *selected_idx { 0 => ViewMode::ByContainer, 1 => ViewMode::ByImage, 2 => ViewMode::ByFolderThenImage, _ => ViewMode::ByContainer };
+                app.view_mode = match *selected_idx { 1 => ViewMode::ByImage, 2 => ViewMode::ByFolderThenImage, _ => ViewMode::ByContainer };
                 app.rebuild_rows_for_view();
                 app.modal = None;
             }
@@ -535,7 +535,7 @@ pub fn update(app: &mut App, msg: Msg) {
                 ViewMode::ByContainer => app.build_rows_for_container_view(),
                 ViewMode::ByImage => {
                     let mut tmp = App::new();
-                    tmp.all_items = app.all_items.clone();
+                    tmp.all_items.clone_from(&app.all_items);
                     tmp.build_rows_for_view_mode(ViewMode::ByImage)
                 }
                 ViewMode::ByFolderThenImage => app.build_rows_for_folder_view(),
@@ -548,7 +548,7 @@ pub fn update(app: &mut App, msg: Msg) {
 
 fn map_key_event_to_msg(app: &App, ev: KeyEvent) -> Option<Msg> {
     if ev.modifiers.contains(KeyModifiers::CONTROL)
-        && let KeyCode::Char('c') | KeyCode::Char('C') = ev.code
+        && let KeyCode::Char('c' | 'C') = ev.code
     {
         return Some(Msg::Interrupt);
     }

@@ -68,6 +68,10 @@ pub fn walk_dirs_with_helpers<C: CommandHelper, R: ReadInteractiveInputHelper>(
 }
 
 /// Injectable version with optional interrupt receiver for graceful cancellation
+/// Walk directories and handle rebuilds, with optional interrupt support.
+///
+/// # Errors
+/// Returns an error if regex compilation fails or rebuild operations return an error.
 pub fn walk_dirs_with_helpers_and_interrupt<C: CommandHelper, R: ReadInteractiveInputHelper>(
     args: &Args,
     cmd_helper: &C,
@@ -124,8 +128,7 @@ pub fn walk_dirs_with_helpers_and_interrupt<C: CommandHelper, R: ReadInteractive
                     logger.info("Interrupt received; stopping traversal.");
                     break;
                 }
-                Err(std::sync::mpsc::TryRecvError::Empty) => {}
-                Err(std::sync::mpsc::TryRecvError::Disconnected) => {}
+                Err(std::sync::mpsc::TryRecvError::Empty | std::sync::mpsc::TryRecvError::Disconnected) => {}
             }
         }
         let is_compose_file =

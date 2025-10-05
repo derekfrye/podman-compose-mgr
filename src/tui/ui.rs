@@ -9,13 +9,13 @@ use ratatui::{
 
 use super::app::{App, UiState, ItemRow, ModalState, ViewMode};
 
-pub fn draw(f: &mut Frame, app: &App, args: &Args) {
+pub fn draw(frame: &mut Frame, app: &App, args: &Args) {
     // Layout: title | main (draw help as overlay later)
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([Constraint::Length(3), Constraint::Min(3)])
-        .split(f.area());
+        .split(frame.area());
 
     // Title
     let mut title_text = app.title.clone();
@@ -32,24 +32,24 @@ pub fn draw(f: &mut Frame, app: &App, args: &Args) {
         Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
     )]))
     .block(Block::default().borders(Borders::ALL));
-    f.render_widget(title, chunks[0]);
+    frame.render_widget(title, chunks[0]);
 
     // Main
     match app.state {
-        UiState::Scanning => draw_scanning(f, chunks[1], app, args),
-        UiState::Ready => draw_table(f, chunks[1], app),
+        UiState::Scanning => draw_scanning(frame, chunks[1], app, args),
+        UiState::Ready => draw_table(frame, chunks[1], app),
     }
 
     // Help overlay (always on top)
-    draw_help_overlay(f, f.area());
+    draw_help_overlay(frame, frame.area());
 
     // Modal overlays (draw last)
     if let Some(ModalState::ViewPicker { selected_idx }) = app.modal.clone() {
-        draw_view_picker(f, f.area(), selected_idx, app.view_mode);
+        draw_view_picker(frame, frame.area(), selected_idx, app.view_mode);
     }
 }
 
-fn draw_scanning(f: &mut Frame, area: ratatui::prelude::Rect, app: &App, args: &Args) {
+fn draw_scanning(frame: &mut Frame, area: ratatui::prelude::Rect, app: &App, args: &Args) {
     let spinner = super::app::SPINNER_FRAMES[app.spinner_idx];
     let line = Line::from(vec![
         Span::styled(spinner, Style::default().fg(Color::Yellow)),
@@ -60,10 +60,10 @@ fn draw_scanning(f: &mut Frame, area: ratatui::prelude::Rect, app: &App, args: &
 
     let widget = Paragraph::new(line)
         .block(Block::default().title("Status").borders(Borders::ALL));
-    f.render_widget(widget, area);
+    frame.render_widget(widget, area);
 }
 
-fn draw_table(f: &mut Frame, area: ratatui::prelude::Rect, app: &App) {
+fn draw_table(frame: &mut Frame, area: ratatui::prelude::Rect, app: &App) {
     let (header, widths) = match app.view_mode {
         ViewMode::ByContainer => (
             Row::new([Cell::from("Select"), Cell::from("Container"), Cell::from("Image")])
@@ -99,7 +99,7 @@ fn draw_table(f: &mut Frame, area: ratatui::prelude::Rect, app: &App) {
     if !app.rows.is_empty() {
         state.select(Some(selected_visual_idx));
     }
-    f.render_stateful_widget(table, area, &mut state);
+    frame.render_stateful_widget(table, area, &mut state);
 }
 
 fn row_for_item<'a>(app: &'a App, it: &'a ItemRow) -> Row<'a> {
@@ -141,8 +141,7 @@ fn build_rows_with_expansion(app: &App) -> (Vec<Row<'_>>, usize) {
                         Cell::from(indented),
                         Cell::from(""),
                     ])),
-                    ViewMode::ByImage => rows.push(Row::new([Cell::from(""), Cell::from(indented)])),
-                    ViewMode::ByFolderThenImage => rows.push(Row::new([Cell::from(""), Cell::from(indented)])),
+                    ViewMode::ByImage | ViewMode::ByFolderThenImage => rows.push(Row::new([Cell::from(""), Cell::from(indented)])),
                 }
                 visual_idx += 1;
             }
@@ -151,7 +150,7 @@ fn build_rows_with_expansion(app: &App) -> (Vec<Row<'_>>, usize) {
     (rows, selected_visual_idx)
 }
 
-fn draw_help_overlay(f: &mut Frame, full: Rect) {
+fn draw_help_overlay(frame: &mut Frame, full_area: Rect) {
     // Compose help text with glyphs (two lines)
     let lines = vec![
         Line::from(vec![
@@ -177,26 +176,26 @@ fn draw_help_overlay(f: &mut Frame, full: Rect) {
     // Make the overlay wide enough to include all labels
     let content_width: u16 = 55; // approximate width of the lines above inside borders
     let help_width: u16 = content_width + 2; // borders
-    let w = help_width.min(full.width);
-    let h = help_height.min(full.height);
-    let x = full.x; // align to left side
-    let y = full.y + full.height.saturating_sub(h);
-    let area = Rect { x, y, width: w, height: h };
+    let width_final = help_width.min(full_area.width);
+    let height_final = help_height.min(full_area.height);
+    let left = full_area.x; // align to left side
+    let top = full_area.y + full_area.height.saturating_sub(height_final);
+    let area = Rect { x: left, y: top, width: width_final, height: height_final };
 
     // Clear and draw overlay last so it sits above content
-    f.render_widget(Clear, area);
-    f.render_widget(widget, area);
+    frame.render_widget(Clear, area);
+    frame.render_widget(widget, area);
 }
 
-fn draw_view_picker(f: &mut Frame, full: Rect, selected_idx: usize, current: ViewMode) {
+fn draw_view_picker(frame: &mut Frame, full_area: Rect, selected_idx: usize, current: ViewMode) {
     // Popup size
     let height: u16 = 8; // title + 3 items + padding
     let width: u16 = 40;
-    let w = width.min(full.width);
-    let h = height.min(full.height);
-    let x = full.x + (full.width.saturating_sub(w)) / 2;
-    let y = full.y + (full.height.saturating_sub(h)) / 2;
-    let area = Rect { x, y, width: w, height: h };
+    let width_final = width.min(full_area.width);
+    let height_final = height.min(full_area.height);
+    let left = full_area.x + (full_area.width.saturating_sub(width_final)) / 2;
+    let top = full_area.y + (full_area.height.saturating_sub(height_final)) / 2;
+    let area = Rect { x: left, y: top, width: width_final, height: height_final };
 
     // Build item lines
     let items = [
@@ -221,6 +220,6 @@ fn draw_view_picker(f: &mut Frame, full: Rect, selected_idx: usize, current: Vie
     let widget = Paragraph::new(lines)
         .block(Block::default().title("View Options (Enter=select, Esc=close)").borders(Borders::ALL));
 
-    f.render_widget(Clear, area);
-    f.render_widget(widget, area);
+    frame.render_widget(Clear, area);
+    frame.render_widget(widget, area);
 }

@@ -36,8 +36,8 @@ fn tui_interrupt_exits_quickly() {
         Duration::from_millis(16),
         &args,
         &logger,
-        scan_rx,
-        int_rx,
+        &scan_rx,
+        &int_rx,
     );
     assert!(res.is_ok());
     assert!(app.should_quit);

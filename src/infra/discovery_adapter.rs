@@ -27,10 +27,7 @@ impl DiscoveryPort for FsDiscovery {
             if !entry.file_type().is_file() {
                 continue;
             }
-            let path_str = match entry.path().to_str() {
-                Some(s) => s,
-                None => continue,
-            };
+            let Some(path_str) = entry.path().to_str() else { continue };
 
             if !exclude_patterns.is_empty() && exclude_patterns.iter().any(|r| r.is_match(path_str)) {
                 continue;
@@ -46,7 +43,7 @@ impl DiscoveryPort for FsDiscovery {
                         .and_then(|v| v.as_mapping())
                 {
                     for (svc_name, svc_cfg) in services {
-                        let svc_cfg = if let Some(m) = svc_cfg.as_mapping() { m } else { continue };
+                        let Some(svc_cfg) = svc_cfg.as_mapping() else { continue };
                         let image = yaml_get_string(svc_cfg, "image");
                         if image.is_none() {
                             continue;
@@ -94,7 +91,7 @@ impl DiscoveryPort for FsDiscovery {
 fn yaml_get_string(m: &serde_yaml::Mapping, key: &str) -> Option<String> {
     m.get(serde_yaml::Value::String(key.to_string()))
         .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
+        .map(ToString::to_string)
 }
 
 fn read_yaml_file_local(path: &str) -> Option<serde_yaml::Value> {

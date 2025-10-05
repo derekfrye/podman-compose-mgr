@@ -8,6 +8,7 @@ pub use crate::domain::DiscoveredImage;
 
 // Compatibility shim: old free function that performs a scan.
 // Internally wires default adapters and uses the app core.
+#[must_use]
 pub fn scan_images(args: &Args, _logger: &Logger) -> Vec<DiscoveredImage> {
     let discovery = std::sync::Arc::new(FsDiscovery);
     let podman = std::sync::Arc::new(PodmanCli);
