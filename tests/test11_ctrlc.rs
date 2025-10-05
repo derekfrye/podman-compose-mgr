@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 use std::{path::PathBuf, sync::mpsc};
 
 use podman_compose_mgr::Args;
-use podman_compose_mgr::tui::app::{self, App};
+use podman_compose_mgr::tui::app::{self, App, Services, Msg};
 use podman_compose_mgr::utils::log_utils::Logger;
 use ratatui::{Terminal, backend::TestBackend};
 
@@ -20,8 +20,8 @@ fn tui_interrupt_exits_quickly() {
     };
     let logger = Logger::new(0);
 
-    // Scan results channel (unused in this test)
-    let (_scan_tx, scan_rx) = mpsc::channel::<Vec<podman_compose_mgr::domain::DiscoveredImage>>();
+    // Message channel (unused except for init we won't send)
+    let (tx, rx) = mpsc::channel::<Msg>();
     // Interrupt channel: send after a short delay
     let (int_tx, int_rx) = mpsc::channel::<()>();
     std::thread::spawn(move || {
@@ -30,14 +30,21 @@ fn tui_interrupt_exits_quickly() {
     });
 
     let start = Instant::now();
+    // Minimal services; effects won't run in this test
+    let discovery = std::sync::Arc::new(podman_compose_mgr::infra::discovery_adapter::FsDiscovery);
+    let podman = std::sync::Arc::new(podman_compose_mgr::infra::podman_adapter::PodmanCli);
+    let core = std::sync::Arc::new(podman_compose_mgr::app::AppCore::new(discovery, podman));
+    let services = Services { core, root: args.path.clone(), include: vec![], exclude: vec![], tx };
+
     let res = app::run_loop(
         &mut terminal,
         &mut app,
         Duration::from_millis(16),
         &args,
         &logger,
-        &scan_rx,
+        &rx,
         &int_rx,
+        &services,
     );
     assert!(res.is_ok());
     assert!(app.should_quit);
