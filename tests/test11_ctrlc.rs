@@ -39,16 +39,9 @@ fn tui_interrupt_exits_quickly() {
     let core = std::sync::Arc::new(podman_compose_mgr::app::AppCore::new(discovery, podman));
     let services = Services { core, root: args.path.clone(), include: vec![], exclude: vec![], tx };
 
-    let res = app::run_loop(
-        &mut terminal,
-        &mut app,
-        &args,
-        &logger,
-        &rx,
-        &int_c_rx,
-        &xchan::tick(Duration::from_millis(16)),
-        &services,
-    );
+    let chans = app::LoopChans { rx: &rx, interrupt_rx: &int_c_rx, tick_rx: &xchan::tick(Duration::from_millis(16)) };
+    let env = app::Env { args: &args, logger: &logger, services: &services };
+    let res = app::run_loop(&mut terminal, &mut app, &chans, &env);
     assert!(res.is_ok());
     assert!(app.should_quit);
     assert!(start.elapsed() < Duration::from_secs(2));

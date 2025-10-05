@@ -133,7 +133,6 @@ fn spawn_prompt(tx: xchan::Sender<Msg>, _args: &Args, item: PromptItem) {
     });
 }
 
-#[allow(clippy::too_many_lines)]
 fn update(model: &mut Model, msg: Msg, services: &Services) {
     match msg {
         Msg::Init => {
@@ -166,72 +165,7 @@ fn update(model: &mut Model, msg: Msg, services: &Services) {
                 model.state = State::Done;
             }
         }
-        Msg::PromptInput(s) => {
-            let choice = s.trim();
-            if let Some(item) = model.items.get(model.idx).cloned() {
-                match choice {
-                    "p" => {
-                        let tx = services.tx.clone();
-                        let image = item.image.clone();
-                        std::thread::spawn(move || {
-                            let _ = crate::image_build::rebuild::pull_image(&DefaultCommandHelper, &image);
-                            let _ = tx.send(Msg::ActionDone);
-                        });
-                    }
-                    "N" => {
-                        let _ = services.tx.send(Msg::ActionDone);
-                    }
-                    "d" => {
-                        let tx = services.tx.clone();
-                        std::thread::spawn(move || {
-                            // Recreate entry
-                            let entry = walkdir::WalkDir::new(&item.entry)
-                                .into_iter().filter_map(Result::ok)
-                                .find(|e| e.path() == item.entry).expect("entry must exist");
-                            crate::image_build::ui::display_image_info(
-                                &DefaultCommandHelper,
-                                &item.image,
-                                &item.container,
-                                &entry,
-                                &build_rebuild_grammars(&entry, &item.image, &item.container),
-                            );
-                            let _ = tx.send(Msg::PromptStart);
-                        });
-                    }
-                    "?" => {
-                        let tx = services.tx.clone();
-                        std::thread::spawn(move || {
-                            crate::image_build::ui::display_help();
-                            let _ = tx.send(Msg::PromptStart);
-                        });
-                    }
-                    "b" => {
-                        let tx = services.tx.clone();
-                        let build_args: Vec<String> = services.args.build_args.clone();
-                        std::thread::spawn(move || {
-                            // Recreate entry
-                            let entry = walkdir::WalkDir::new(&item.entry)
-                                .into_iter().filter_map(Result::ok)
-                                .find(|e| e.path() == item.entry).expect("entry must exist");
-                            let build_args_refs: Vec<&str> = build_args.iter().map(String::as_str).collect();
-                            let _ = crate::image_build::buildfile::start(&entry, &item.image, &build_args_refs);
-                            let _ = tx.send(Msg::ActionDone);
-                        });
-                    }
-                    "s" => {
-                        // Mark skip-all-by-name and advance
-                        model.processed.push(Image { name: Some(item.image.clone()), container: Some(item.container.clone()), skipall_by_this_name: true });
-                        let _ = services.tx.send(Msg::ActionDone);
-                    }
-                    _ => {
-                        eprintln!("Invalid input. Please enter p/N/d/b/s/?: ");
-                        let _ = services.tx.send(Msg::PromptStart);
-                    }
-                }
-            } else {
-                model.state = State::Done;
-            }
-        }
+        Msg::PromptInput(s) => handle_prompt_input(model, s.trim(), services),
         Msg::ActionDone => {
             // Advance to next file
             model.idx += 1;
@@ -257,5 +191,68 @@ fn update(model: &mut Model, msg: Msg, services: &Services) {
         Msg::Interrupt => {
             model.state = State::Done;
         }
+    }
+}
+
+fn handle_prompt_input(model: &mut Model, choice: &str, services: &Services) {
+    if let Some(item) = model.items.get(model.idx).cloned() {
+        match choice {
+            "p" => {
+                let tx = services.tx.clone();
+                let image = item.image.clone();
+                std::thread::spawn(move || {
+                    let _ = crate::image_build::rebuild::pull_image(&DefaultCommandHelper, &image);
+                    let _ = tx.send(Msg::ActionDone);
+                });
+            }
+            "N" => {
+                let _ = services.tx.send(Msg::ActionDone);
+            }
+            "d" => {
+                let tx = services.tx.clone();
+                std::thread::spawn(move || {
+                    let entry = walkdir::WalkDir::new(&item.entry)
+                        .into_iter().filter_map(Result::ok)
+                        .find(|e| e.path() == item.entry).expect("entry must exist");
+                    crate::image_build::ui::display_image_info(
+                        &DefaultCommandHelper,
+                        &item.image,
+                        &item.container,
+                        &entry,
+                        &build_rebuild_grammars(&entry, &item.image, &item.container),
+                    );
+                    let _ = tx.send(Msg::PromptStart);
+                });
+            }
+            "?" => {
+                let tx = services.tx.clone();
+                std::thread::spawn(move || {
+                    crate::image_build::ui::display_help();
+                    let _ = tx.send(Msg::PromptStart);
+                });
+            }
+            "b" => {
+                let tx = services.tx.clone();
+                let build_args: Vec<String> = services.args.build_args.clone();
+                std::thread::spawn(move || {
+                    let entry = walkdir::WalkDir::new(&item.entry)
+                        .into_iter().filter_map(Result::ok)
+                        .find(|e| e.path() == item.entry).expect("entry must exist");
+                    let build_args_refs: Vec<&str> = build_args.iter().map(String::as_str).collect();
+                    let _ = crate::image_build::buildfile::start(&entry, &item.image, &build_args_refs);
+                    let _ = tx.send(Msg::ActionDone);
+                });
+            }
+            "s" => {
+                model.processed.push(Image { name: Some(item.image.clone()), container: Some(item.container.clone()), skipall_by_this_name: true });
+                let _ = services.tx.send(Msg::ActionDone);
+            }
+            _ => {
+                eprintln!("Invalid input. Please enter p/N/d/b/s/?: ");
+                let _ = services.tx.send(Msg::PromptStart);
+            }
+        }
+    } else {
+        model.state = State::Done;
     }
 }

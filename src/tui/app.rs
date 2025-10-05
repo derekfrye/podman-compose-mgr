@@ -93,6 +93,18 @@ pub struct Services {
     pub tx: xchan::Sender<Msg>,
 }
 
+pub struct LoopChans<'a> {
+    pub rx: &'a xchan::Receiver<Msg>,
+    pub interrupt_rx: &'a xchan::Receiver<()>,
+    pub tick_rx: &'a xchan::Receiver<std::time::Instant>,
+}
+
+pub struct Env<'a> {
+    pub args: &'a Args,
+    pub logger: &'a Logger,
+    pub services: &'a Services,
+}
+
 impl Default for App {
     fn default() -> Self {
         Self {
@@ -297,16 +309,9 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     let tick_rx = xchan::tick(tick_rate);
 
     // Run the app and handle cleanup on exit or error
-    let res = run_loop(
-        &mut terminal,
-        &mut app,
-        args,
-        logger,
-        &rx,
-        &int_rx,
-        &tick_rx,
-        &services,
-    );
+    let chans = LoopChans { rx: &rx, interrupt_rx: &int_rx, tick_rx: &tick_rx };
+    let env = Env { args, logger, services: &services };
+    let res = run_loop(&mut terminal, &mut app, &chans, &env);
 
     // Always restore terminal state, even on error
     let cleanup_result = cleanup_terminal(&mut terminal);
@@ -342,24 +347,20 @@ fn cleanup_terminal<B: Backend + std::io::Write>(terminal: &mut Terminal<B>) -> 
 pub fn run_loop<B: Backend>(
     terminal: &mut Terminal<B>,
     app: &mut App,
-    args: &Args,
-    logger: &Logger,
-    rx: &xchan::Receiver<Msg>,
-    interrupt_rx: &xchan::Receiver<()>,
-    tick_rx: &xchan::Receiver<std::time::Instant>,
-    services: &Services,
+    chans: &LoopChans<'_>,
+    env: &Env<'_>,
 ) -> io::Result<()> {
-    logger.debug("TUI is running");
+    env.logger.debug("TUI is running");
 
     while !app.should_quit {
         xchan::select! {
-            recv(interrupt_rx) -> _ => update_with_services(app, Msg::Interrupt, Some(services)),
-            recv(rx) -> msg => if let Ok(msg) = msg { update_with_services(app, msg, Some(services)); },
-            recv(tick_rx) -> _ => update_with_services(app, Msg::Tick, Some(services)),
+            recv(chans.interrupt_rx) -> _ => update_with_services(app, Msg::Interrupt, Some(env.services)),
+            recv(chans.rx) -> msg => if let Ok(msg) = msg { update_with_services(app, msg, Some(env.services)); },
+            recv(chans.tick_rx) -> _ => update_with_services(app, Msg::Tick, Some(env.services)),
             default => {}
         }
 
-        terminal.draw(|f| ui::draw(f, app, args))?;
+        terminal.draw(|f| ui::draw(f, app, env.args))?;
     }
 
     Ok(())
