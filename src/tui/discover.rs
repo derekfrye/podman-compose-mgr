@@ -1,6 +1,5 @@
 use crate::Args;
 use crate::app::AppCore;
-use crate::domain::DiscoveredImage;
 use crate::infra::{discovery_adapter::FsDiscovery, podman_adapter::PodmanCli};
 use crate::utils::log_utils::Logger;
 

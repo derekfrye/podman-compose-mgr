@@ -65,7 +65,17 @@ pub struct ItemRow {
 
 #[derive(Clone, Debug)]
 pub enum Msg {
-    Key(crossterm::event::KeyCode),
+    Quit,
+    MoveUp,
+    MoveDown,
+    ToggleCheck,
+    ExpandOrEnter,
+    CollapseOrBack,
+    OpenViewPicker,
+    ViewPickerUp,
+    ViewPickerDown,
+    ViewPickerAccept,
+    ViewPickerCancel,
     Tick,
     ScanResults(Vec<DiscoveredImage>),
 }
@@ -90,110 +100,7 @@ impl Default for App {
 }
 
 impl App {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn on_key(&mut self, key: KeyCode) {
-        // If a modal is open, handle modal navigation
-        if let Some(ModalState::ViewPicker { selected_idx }) = &mut self.modal {
-            match key {
-                KeyCode::Esc => {
-                    self.modal = None;
-                }
-                KeyCode::Up => {
-                    if *selected_idx > 0 {
-                        *selected_idx -= 1;
-                    }
-                }
-                KeyCode::Down => {
-                    // 0 = ByContainer, 1 = ByImage, 2 = ByFolderThenImage
-                    if *selected_idx < 2 {
-                        *selected_idx += 1;
-                    }
-                }
-                KeyCode::Enter => {
-                    // Apply selection
-                    self.view_mode = match *selected_idx {
-                        0 => ViewMode::ByContainer,
-                        1 => ViewMode::ByImage,
-                        2 => ViewMode::ByFolderThenImage,
-                        _ => ViewMode::ByContainer,
-                    };
-                    self.rebuild_rows_for_view();
-                    self.modal = None;
-                }
-                _ => {}
-            }
-            return;
-        }
-
-        match key {
-            KeyCode::Char('q') => self.should_quit = true,
-            KeyCode::Up => {
-                if self.selected > 0 { self.selected -= 1; }
-            }
-            KeyCode::Down => {
-                if self.selected + 1 < self.rows.len() { self.selected += 1; }
-            }
-            KeyCode::Char(' ') | KeyCode::Enter => {
-                if let Some(row) = self.rows.get_mut(self.selected) {
-                    row.checked = !row.checked;
-                }
-            }
-            KeyCode::Right => {
-                if self.view_mode == ViewMode::ByFolderThenImage {
-                    if let Some(row) = self.rows.get(self.selected)
-                        && row.is_dir
-                        && let Some(name) = &row.dir_name
-                    {
-                        self.current_path.push(name.clone());
-                        self.rows = self.build_rows_for_folder_view();
-                        self.selected = 0;
-                    } else if let Some(row) = self.rows.get_mut(self.selected) && !row.expanded {
-                        // Expand details for image rows in folder view
-                        row.details = compute_details(self, row);
-                        row.expanded = true;
-                    }
-                } else if let Some(row) = self.rows.get_mut(self.selected) && !row.expanded {
-                    row.details = compute_details(self, row);
-                    row.expanded = true;
-                }
-            }
-            KeyCode::Left => {
-                if self.view_mode == ViewMode::ByFolderThenImage {
-                    // First, if current selection is an expanded image row, collapse it
-                    if let Some(row) = self.rows.get_mut(self.selected)
-                        && !row.is_dir
-                        && row.expanded
-                    {
-                        row.expanded = false;
-                        return;
-                    }
-                    // Otherwise, navigate up to parent folder if possible
-                    if !self.current_path.is_empty()
-                        && let Some(last_name) = self.current_path.pop()
-                    {
-                        self.rows = self.build_rows_for_folder_view();
-                        // Reselect the folder we just navigated out of in the parent view
-                        self.selected = self
-                            .rows
-                            .iter()
-                            .position(|r| r.is_dir && r.dir_name.as_deref() == Some(&last_name))
-                            .unwrap_or(0);
-                    }
-                } else if let Some(row) = self.rows.get_mut(self.selected) {
-                    row.expanded = false;
-                }
-            }
-            KeyCode::Char('v') => {
-                // Open view picker modal, default selection reflects current view
-                let default_idx = match self.view_mode { ViewMode::ByContainer => 0, ViewMode::ByImage => 1, ViewMode::ByFolderThenImage => 2 };
-                self.modal = Some(ModalState::ViewPicker { selected_idx: default_idx });
-            }
-            _ => {}
-        }
-    }
+    pub fn new() -> Self { Self::default() }
 
     fn rebuild_rows_for_view(&mut self) {
         match self.view_mode {
@@ -396,7 +303,9 @@ fn run_app<B: Backend + std::io::Write>(
             .unwrap_or_else(|| Duration::from_secs(0));
 
         if crossterm::event::poll(timeout)? && let Event::Key(key) = event::read()? {
-            update(app, Msg::Key(key.code));
+            if let Some(msg) = map_key_to_msg(app, key.code) {
+                update(app, msg);
+            }
         }
 
         if last_tick.elapsed() >= tick_rate {
@@ -475,12 +384,12 @@ impl App {
     }
 }
 
-fn compute_details(app: &App, row: &ItemRow) -> Vec<String> {
+fn compute_details(app: &App, image: &str, source_dir: &std::path::Path) -> Vec<String> {
     let mut lines = Vec::new();
-    lines.push(format!("Compose dir: {}", row.source_dir.display()));
+    lines.push(format!("Compose dir: {}", source_dir.display()));
 
     if let Some(core) = &app.app_core {
-        match core.image_details(&row.image, &row.source_dir) {
+        match core.image_details(image, source_dir) {
             Ok(ImageDetails { created_time_ago, pulled_time_ago, has_dockerfile, has_makefile }) => {
                 if let Some(s) = created_time_ago { lines.push(format!("Created: {s}")); }
                 if let Some(s) = pulled_time_ago { lines.push(format!("Pulled: {s}")); }
@@ -496,7 +405,97 @@ fn compute_details(app: &App, row: &ItemRow) -> Vec<String> {
 
 pub fn update(app: &mut App, msg: Msg) {
     match msg {
-        Msg::Key(key) => app.on_key(key),
+        Msg::Quit => app.should_quit = true,
+        Msg::MoveUp => {
+            if app.selected > 0 { app.selected -= 1; }
+        }
+        Msg::MoveDown => {
+            if app.selected + 1 < app.rows.len() { app.selected += 1; }
+        }
+        Msg::ToggleCheck => {
+            if let Some(row) = app.rows.get_mut(app.selected) {
+                row.checked = !row.checked;
+            }
+        }
+        Msg::ExpandOrEnter => {
+            if app.view_mode == ViewMode::ByFolderThenImage {
+                if let Some(row) = app.rows.get(app.selected)
+                    && row.is_dir
+                    && let Some(name) = &row.dir_name
+                {
+                    app.current_path.push(name.clone());
+                    app.rows = app.build_rows_for_folder_view();
+                    app.selected = 0;
+                } else if app.rows.get(app.selected).is_some() {
+                    let (image, source_dir, already_expanded) = {
+                        let r = &app.rows[app.selected];
+                        (r.image.clone(), r.source_dir.clone(), r.expanded)
+                    };
+                    if !already_expanded {
+                        let details = compute_details(app, &image, &source_dir);
+                        if let Some(rm) = app.rows.get_mut(app.selected) {
+                            rm.details = details;
+                            rm.expanded = true;
+                        }
+                    }
+                }
+            } else if app.rows.get(app.selected).is_some() {
+                let (image, source_dir, already_expanded) = {
+                    let r = &app.rows[app.selected];
+                    (r.image.clone(), r.source_dir.clone(), r.expanded)
+                };
+                if !already_expanded {
+                    let details = compute_details(app, &image, &source_dir);
+                    if let Some(rm) = app.rows.get_mut(app.selected) {
+                        rm.details = details;
+                        rm.expanded = true;
+                    }
+                }
+            }
+        }
+        Msg::CollapseOrBack => {
+            if app.view_mode == ViewMode::ByFolderThenImage {
+                if let Some(row) = app.rows.get_mut(app.selected)
+                    && !row.is_dir
+                    && row.expanded
+                {
+                    row.expanded = false;
+                } else if !app.current_path.is_empty() && let Some(last_name) = app.current_path.pop() {
+                    app.rows = app.build_rows_for_folder_view();
+                    app.selected = app
+                        .rows
+                        .iter()
+                        .position(|r| r.is_dir && r.dir_name.as_deref() == Some(&last_name))
+                        .unwrap_or(0);
+                }
+            } else if let Some(row) = app.rows.get_mut(app.selected) {
+                row.expanded = false;
+            }
+        }
+        Msg::OpenViewPicker => {
+            let default_idx = match app.view_mode { ViewMode::ByContainer => 0, ViewMode::ByImage => 1, ViewMode::ByFolderThenImage => 2 };
+            app.modal = Some(ModalState::ViewPicker { selected_idx: default_idx });
+        }
+        Msg::ViewPickerUp => {
+            if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal {
+                if *selected_idx > 0 { *selected_idx -= 1; }
+            }
+        }
+        Msg::ViewPickerDown => {
+            if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal {
+                if *selected_idx < 2 { *selected_idx += 1; }
+            }
+        }
+        Msg::ViewPickerAccept => {
+            if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal {
+                app.view_mode = match *selected_idx { 0 => ViewMode::ByContainer, 1 => ViewMode::ByImage, 2 => ViewMode::ByFolderThenImage, _ => ViewMode::ByContainer };
+                app.rebuild_rows_for_view();
+                app.modal = None;
+            }
+        }
+        Msg::ViewPickerCancel => {
+            app.modal = None;
+        }
         Msg::Tick => {
             app.spinner_idx = (app.spinner_idx + 1) % SPINNER_FRAMES.len();
         }
@@ -515,4 +514,29 @@ pub fn update(app: &mut App, msg: Msg) {
             app.selected = 0;
         }
     }
+}
+
+fn map_key_to_msg(app: &App, key: KeyCode) -> Option<Msg> {
+    // If modal is open, keys control the modal
+    if let Some(ModalState::ViewPicker { .. }) = app.modal {
+        return Some(match key {
+            KeyCode::Esc => Msg::ViewPickerCancel,
+            KeyCode::Up => Msg::ViewPickerUp,
+            KeyCode::Down => Msg::ViewPickerDown,
+            KeyCode::Enter => Msg::ViewPickerAccept,
+            _ => return None,
+        });
+    }
+
+    // Normal mode
+    Some(match key {
+        KeyCode::Char('q') => Msg::Quit,
+        KeyCode::Up => Msg::MoveUp,
+        KeyCode::Down => Msg::MoveDown,
+        KeyCode::Char(' ') | KeyCode::Enter => Msg::ToggleCheck,
+        KeyCode::Right => Msg::ExpandOrEnter,
+        KeyCode::Left => Msg::CollapseOrBack,
+        KeyCode::Char('v') => Msg::OpenViewPicker,
+        _ => return None,
+    })
 }
