@@ -1,8 +1,8 @@
+use podman_compose_mgr::Args;
 use podman_compose_mgr::tui::app::{App, ItemRow, UiState};
 use podman_compose_mgr::tui::ui;
-use podman_compose_mgr::Args;
-use ratatui::backend::TestBackend;
 use ratatui::Terminal;
+use ratatui::backend::TestBackend;
 
 #[test]
 fn keys_overlay_is_drawn_with_labels() {
@@ -34,18 +34,14 @@ fn keys_overlay_is_drawn_with_labels() {
     // Render at a reasonable size
     let backend = TestBackend::new(100, 12);
     let mut terminal = Terminal::new(backend).expect("terminal");
-    terminal
-        .draw(|f| ui::draw(f, &app, &args))
-        .expect("draw");
+    terminal.draw(|f| ui::draw(f, &app, &args)).expect("draw");
 
     // Flatten buffer
     let buf = terminal.backend_mut().buffer().clone();
     let mut all = String::new();
     for y in 0..buf.area.height {
         for x in 0..buf.area.width {
-            let cell = buf
-                .cell((x, y))
-                .expect("cell exists");
+            let cell = buf.cell((x, y)).expect("cell exists");
             all.push_str(cell.symbol());
         }
         all.push('\n');

@@ -56,8 +56,7 @@ pub fn start(
             dir.path().display()
         );
     } else if let Some(found_buildfiles) = buildfiles {
-        let build_config =
-            crate::image_build::buildfile_helpers::read_val_loop(&found_buildfiles);
+        let build_config = crate::image_build::buildfile_helpers::read_val_loop(&found_buildfiles);
 
         if build_config.file.filepath.is_some() {
             buildfile_build::build_image_from_spec(&build_config)

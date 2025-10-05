@@ -1,10 +1,10 @@
-use podman_compose_mgr::tui::app::{App, UiState, ViewMode};
-use podman_compose_mgr::tui::ui;
-use podman_compose_mgr::tui::discover::DiscoveredImage;
-use podman_compose_mgr::Args;
-use ratatui::backend::TestBackend;
-use ratatui::Terminal;
 use crossterm::event::KeyCode;
+use podman_compose_mgr::Args;
+use podman_compose_mgr::tui::app::{App, UiState, ViewMode};
+use podman_compose_mgr::tui::discover::DiscoveredImage;
+use podman_compose_mgr::tui::ui;
+use ratatui::Terminal;
+use ratatui::backend::TestBackend;
 
 #[test]
 fn view_modal_shows_three_options_and_selects_folder_view() {

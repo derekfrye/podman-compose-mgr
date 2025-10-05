@@ -14,7 +14,8 @@ pub trait PodmanPort: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if the underlying command fails or the output cannot be parsed.
-    fn image_modified(&self, image: &str) -> Result<chrono::DateTime<Local>, PodmanComposeMgrError>;
+    fn image_modified(&self, image: &str)
+    -> Result<chrono::DateTime<Local>, PodmanComposeMgrError>;
     fn file_exists_and_readable(&self, file: &Path) -> bool;
 }
 

@@ -1,6 +1,6 @@
+use crossterm::event::KeyCode;
 use podman_compose_mgr::tui::app::{App, UiState, ViewMode};
 use podman_compose_mgr::tui::discover::DiscoveredImage;
-use crossterm::event::KeyCode;
 
 #[test]
 fn folder_view_lists_subfolders_even_with_duplicate_images() {

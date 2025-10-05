@@ -1,10 +1,12 @@
 use crate::Args;
 use crate::app::AppCore;
-use crate::ports::InterruptPort;
 use crate::domain::{DiscoveredImage, ImageDetails};
+use crate::ports::InterruptPort;
 use crate::utils::log_utils::Logger;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers},
+    event::{
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
+    },
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -103,7 +105,9 @@ impl Default for App {
 
 impl App {
     #[must_use]
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     // Back-compat for tests: map key codes (no modifiers) to messages and update
     pub fn on_key(&mut self, key: KeyCode) {
@@ -179,7 +183,10 @@ impl App {
                     .collect();
                 // Filter to current path
                 if comps.len() >= self.current_path.len()
-                    && comps.iter().take(self.current_path.len()).eq(self.current_path.iter())
+                    && comps
+                        .iter()
+                        .take(self.current_path.len())
+                        .eq(self.current_path.iter())
                 {
                     let remainder = &comps[self.current_path.len()..];
                     if remainder.is_empty() {
@@ -196,7 +203,10 @@ impl App {
                 checked: false,
                 image: String::new(),
                 container: None,
-                source_dir: self.root_path.join(self.current_path.iter().collect::<std::path::PathBuf>()).join(&dir),
+                source_dir: self
+                    .root_path
+                    .join(self.current_path.iter().collect::<std::path::PathBuf>())
+                    .join(&dir),
                 expanded: false,
                 details: Vec::new(),
                 is_dir: true,
@@ -208,7 +218,9 @@ impl App {
                 checked: false,
                 image: img,
                 container: None,
-                source_dir: self.root_path.join(self.current_path.iter().collect::<std::path::PathBuf>()),
+                source_dir: self
+                    .root_path
+                    .join(self.current_path.iter().collect::<std::path::PathBuf>()),
                 expanded: false,
                 details: Vec::new(),
                 is_dir: false,
@@ -256,10 +268,19 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     start_background_scan(args, app_core.clone(), tx);
 
     // Interrupt channel (production: real Ctrl+C)
-    let interrupt_rx = Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
+    let interrupt_rx =
+        Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
 
     // Run the app and handle cleanup on exit or error
-    let res = run_loop(&mut terminal, &mut app, tick_rate, args, logger, &rx, &interrupt_rx);
+    let res = run_loop(
+        &mut terminal,
+        &mut app,
+        tick_rate,
+        args,
+        logger,
+        &rx,
+        &interrupt_rx,
+    );
 
     // Always restore terminal state, even on error
     let cleanup_result = cleanup_terminal(&mut terminal);
@@ -308,14 +329,18 @@ pub fn run_loop<B: Backend>(
         // Check for interrupt
         match interrupt_rx.try_recv() {
             Ok(()) => update(app, Msg::Interrupt),
-            Err(std::sync::mpsc::TryRecvError::Empty | std::sync::mpsc::TryRecvError::Disconnected) => {}
+            Err(
+                std::sync::mpsc::TryRecvError::Empty | std::sync::mpsc::TryRecvError::Disconnected,
+            ) => {}
         }
         // Check for scan results
         match rx.try_recv() {
             Ok(discovered) => update(app, Msg::ScanResults(discovered)),
             Err(std::sync::mpsc::TryRecvError::Empty) => {}
             Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                if app.state == UiState::Scanning { app.state = UiState::Ready; }
+                if app.state == UiState::Scanning {
+                    app.state = UiState::Ready;
+                }
             }
         }
 
@@ -341,7 +366,7 @@ pub fn run_loop<B: Backend>(
     Ok(())
 }
 
-pub(super) const SPINNER_FRAMES: &[&str] = &["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"];
+pub(super) const SPINNER_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 fn start_background_scan(
     args: &Args,
@@ -414,11 +439,24 @@ fn compute_details(app: &App, image: &str, source_dir: &std::path::Path) -> Vec<
 
     if let Some(core) = &app.app_core {
         match core.image_details(image, source_dir) {
-            Ok(ImageDetails { created_time_ago, pulled_time_ago, has_dockerfile, has_makefile }) => {
-                if let Some(s) = created_time_ago { lines.push(format!("Created: {s}")); }
-                if let Some(s) = pulled_time_ago { lines.push(format!("Pulled: {s}")); }
-                if has_dockerfile { lines.push("Found Dockerfile".into()); }
-                if has_makefile { lines.push("Found Makefile".into()); }
+            Ok(ImageDetails {
+                created_time_ago,
+                pulled_time_ago,
+                has_dockerfile,
+                has_makefile,
+            }) => {
+                if let Some(s) = created_time_ago {
+                    lines.push(format!("Created: {s}"));
+                }
+                if let Some(s) = pulled_time_ago {
+                    lines.push(format!("Pulled: {s}"));
+                }
+                if has_dockerfile {
+                    lines.push("Found Dockerfile".into());
+                }
+                if has_makefile {
+                    lines.push("Found Makefile".into());
+                }
             }
             Err(e) => lines.push(format!("error: {e}")),
         }
@@ -431,12 +469,18 @@ fn compute_details(app: &App, image: &str, source_dir: &std::path::Path) -> Vec<
 pub fn update(app: &mut App, msg: Msg) {
     match msg {
         Msg::Quit => app.should_quit = true,
-        Msg::Interrupt => { app.should_quit = true; },
+        Msg::Interrupt => {
+            app.should_quit = true;
+        }
         Msg::MoveUp => {
-            if app.selected > 0 { app.selected -= 1; }
+            if app.selected > 0 {
+                app.selected -= 1;
+            }
         }
         Msg::MoveDown => {
-            if app.selected + 1 < app.rows.len() { app.selected += 1; }
+            if app.selected + 1 < app.rows.len() {
+                app.selected += 1;
+            }
         }
         Msg::ToggleCheck => {
             if let Some(row) = app.rows.get_mut(app.selected) {
@@ -486,7 +530,9 @@ pub fn update(app: &mut App, msg: Msg) {
                     && row.expanded
                 {
                     row.expanded = false;
-                } else if !app.current_path.is_empty() && let Some(last_name) = app.current_path.pop() {
+                } else if !app.current_path.is_empty()
+                    && let Some(last_name) = app.current_path.pop()
+                {
                     app.rows = app.build_rows_for_folder_view();
                     app.selected = app
                         .rows
@@ -499,8 +545,14 @@ pub fn update(app: &mut App, msg: Msg) {
             }
         }
         Msg::OpenViewPicker => {
-            let default_idx = match app.view_mode { ViewMode::ByContainer => 0, ViewMode::ByImage => 1, ViewMode::ByFolderThenImage => 2 };
-            app.modal = Some(ModalState::ViewPicker { selected_idx: default_idx });
+            let default_idx = match app.view_mode {
+                ViewMode::ByContainer => 0,
+                ViewMode::ByImage => 1,
+                ViewMode::ByFolderThenImage => 2,
+            };
+            app.modal = Some(ModalState::ViewPicker {
+                selected_idx: default_idx,
+            });
         }
         Msg::ViewPickerUp => {
             if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal
@@ -518,7 +570,11 @@ pub fn update(app: &mut App, msg: Msg) {
         }
         Msg::ViewPickerAccept => {
             if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal {
-                app.view_mode = match *selected_idx { 1 => ViewMode::ByImage, 2 => ViewMode::ByFolderThenImage, _ => ViewMode::ByContainer };
+                app.view_mode = match *selected_idx {
+                    1 => ViewMode::ByImage,
+                    2 => ViewMode::ByFolderThenImage,
+                    _ => ViewMode::ByContainer,
+                };
                 app.rebuild_rows_for_view();
                 app.modal = None;
             }

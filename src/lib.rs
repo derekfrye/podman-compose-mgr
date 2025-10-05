@@ -1,12 +1,12 @@
-pub mod args;
-pub mod errors;
-pub mod domain;
-pub mod ports;
 pub mod app;
+pub mod args;
+pub mod domain;
+pub mod errors;
+pub mod ports;
 pub mod infra {
     pub mod discovery_adapter;
-    pub mod podman_adapter;
     pub mod interrupt_adapter;
+    pub mod podman_adapter;
 }
 pub mod image_build;
 pub mod interfaces;
@@ -25,9 +25,9 @@ pub use utils::error_utils;
 pub use utils::json_utils;
 pub use utils::log_utils;
 
+use crate::ports::InterruptPort;
 use std::fmt::Write as FmtWrite;
 use std::io;
-use crate::ports::InterruptPort;
 
 /// Main application logic separated from `main()` for testing
 ///
@@ -145,14 +145,21 @@ pub fn run_app(args: &args::Args) -> io::Result<()> {
 
     // CLI mode: process rebuild mode (interactive prompt loop)
     // Use an interrupt receiver for graceful cancellation
-    let interrupt_rx = Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
+    let interrupt_rx =
+        Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
     // Use default helpers via walk_dirs, but thread interrupt receiver using the DI variant
     {
         use crate::interfaces::{DefaultCommandHelper, DefaultReadInteractiveInputHelper};
         use crate::walk_dirs::walk_dirs_with_helpers_and_interrupt;
         let cmd_helper = DefaultCommandHelper;
         let read_val_helper = DefaultReadInteractiveInputHelper;
-        let _ = walk_dirs_with_helpers_and_interrupt(args, &cmd_helper, &read_val_helper, &logger, Some(&interrupt_rx));
+        let _ = walk_dirs_with_helpers_and_interrupt(
+            args,
+            &cmd_helper,
+            &read_val_helper,
+            &logger,
+            Some(&interrupt_rx),
+        );
     }
 
     logger.info("Done.");

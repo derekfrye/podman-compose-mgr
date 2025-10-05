@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
+use podman_compose_mgr::Args;
 use podman_compose_mgr::tui::discover::scan_images;
 use podman_compose_mgr::utils::log_utils::Logger;
-use podman_compose_mgr::Args;
 
 #[test]
 fn discovery_finds_expected_images_in_test1() {
@@ -26,7 +26,10 @@ fn discovery_finds_expected_images_in_test1() {
     let expected: HashSet<(String, Option<String>)> = [
         ("djf/rusty-golf".to_string(), Some("golf".to_string())),
         ("djf/squid".to_string(), Some("squid".to_string())),
-        ("pihole/pihole:latest".to_string(), Some("pihole".to_string())),
+        (
+            "pihole/pihole:latest".to_string(),
+            Some("pihole".to_string()),
+        ),
         ("djf/rusty-golf_unq".to_string(), Some("golf".to_string())),
         (
             "djf/rusty-golf-from-cont-file".to_string(),
@@ -49,8 +52,8 @@ fn discovery_finds_expected_images_in_test1() {
 fn ui_snapshot_renders_table_with_rows() {
     use podman_compose_mgr::tui::app::{App, ItemRow, UiState};
     use podman_compose_mgr::tui::ui;
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
 
     // Build app state
     let mut app = App::new();
@@ -93,9 +96,7 @@ fn ui_snapshot_renders_table_with_rows() {
     let height: u16 = 10;
     let backend = TestBackend::new(width, height);
     let mut terminal = Terminal::new(backend).expect("terminal");
-    terminal
-        .draw(|f| ui::draw(f, &app, &args))
-        .expect("draw");
+    terminal.draw(|f| ui::draw(f, &app, &args)).expect("draw");
 
     // Access buffer
     let buf = terminal.backend_mut().buffer().clone();

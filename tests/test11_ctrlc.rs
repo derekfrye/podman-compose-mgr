@@ -1,10 +1,10 @@
 use std::time::{Duration, Instant};
 use std::{path::PathBuf, sync::mpsc};
 
-use podman_compose_mgr::tui::app::{self, App};
 use podman_compose_mgr::Args;
+use podman_compose_mgr::tui::app::{self, App};
 use podman_compose_mgr::utils::log_utils::Logger;
-use ratatui::{backend::TestBackend, Terminal};
+use ratatui::{Terminal, backend::TestBackend};
 
 // In-process test: TUI exits when receiving an interrupt via channel.
 #[test]

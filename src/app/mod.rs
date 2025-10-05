@@ -25,7 +25,11 @@ impl AppCore {
         include: Vec<String>,
         exclude: Vec<String>,
     ) -> Result<Vec<DiscoveredImage>, PodmanComposeMgrError> {
-        let opts = ScanOptions { root, include_patterns: include, exclude_patterns: exclude };
+        let opts = ScanOptions {
+            root,
+            include_patterns: include,
+            exclude_patterns: exclude,
+        };
         self.discovery.scan(&opts)
     }
 
@@ -33,7 +37,11 @@ impl AppCore {
     ///
     /// # Errors
     /// Returns an error if filesystem checks fail unexpectedly.
-    pub fn image_details(&self, image: &str, source_dir: &Path) -> Result<ImageDetails, PodmanComposeMgrError> {
+    pub fn image_details(
+        &self,
+        image: &str,
+        source_dir: &Path,
+    ) -> Result<ImageDetails, PodmanComposeMgrError> {
         let created = self.podman.image_created(image).ok();
         let pulled = self.podman.image_modified(image).ok();
 
@@ -46,6 +54,11 @@ impl AppCore {
         let has_dockerfile = self.podman.file_exists_and_readable(&dockerfile);
         let has_makefile = self.podman.file_exists_and_readable(&makefile);
 
-        Ok(ImageDetails { created_time_ago, pulled_time_ago, has_dockerfile, has_makefile })
+        Ok(ImageDetails {
+            created_time_ago,
+            pulled_time_ago,
+            has_dockerfile,
+            has_makefile,
+        })
     }
 }

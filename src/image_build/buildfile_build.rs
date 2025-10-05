@@ -101,9 +101,7 @@ pub fn build_makefile_image(build_config: &WhatWereBuilding) -> Result<(), Podma
 /// # Errors
 ///
 /// Returns an error if the build process fails, depending on the build type (Dockerfile or Makefile).
-pub fn build_image_from_spec(
-    build_config: &WhatWereBuilding,
-) -> Result<(), PodmanComposeMgrError> {
+pub fn build_image_from_spec(build_config: &WhatWereBuilding) -> Result<(), PodmanComposeMgrError> {
     match build_config.file.filetype {
         BuildChoice::Dockerfile => build_dockerfile_image(build_config),
         BuildChoice::Makefile => build_makefile_image(build_config),

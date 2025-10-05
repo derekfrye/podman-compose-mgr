@@ -52,7 +52,7 @@ pub fn handle_user_choice<C: CommandHelper>(
                     .build_args
                     .iter()
                     .map(std::string::String::as_str)
-                    .collect::<Vec<_>>()
+                    .collect::<Vec<_>>(),
             )?;
             Ok(true)
         }

@@ -27,12 +27,17 @@ impl DiscoveryPort for FsDiscovery {
             if !entry.file_type().is_file() {
                 continue;
             }
-            let Some(path_str) = entry.path().to_str() else { continue };
+            let Some(path_str) = entry.path().to_str() else {
+                continue;
+            };
 
-            if !exclude_patterns.is_empty() && exclude_patterns.iter().any(|r| r.is_match(path_str)) {
+            if !exclude_patterns.is_empty() && exclude_patterns.iter().any(|r| r.is_match(path_str))
+            {
                 continue;
             }
-            if !include_patterns.is_empty() && include_patterns.iter().all(|r| !r.is_match(path_str)) {
+            if !include_patterns.is_empty()
+                && include_patterns.iter().all(|r| !r.is_match(path_str))
+            {
                 continue;
             }
 
@@ -43,7 +48,9 @@ impl DiscoveryPort for FsDiscovery {
                         .and_then(|v| v.as_mapping())
                 {
                     for (svc_name, svc_cfg) in services {
-                        let Some(svc_cfg) = svc_cfg.as_mapping() else { continue };
+                        let Some(svc_cfg) = svc_cfg.as_mapping() else {
+                            continue;
+                        };
                         let image = yaml_get_string(svc_cfg, "image");
                         if image.is_none() {
                             continue;
@@ -59,9 +66,17 @@ impl DiscoveryPort for FsDiscovery {
                             .parent()
                             .unwrap_or_else(|| Path::new("/"))
                             .to_path_buf();
-                        let key = (image.clone().unwrap(), container.clone(), source_dir.clone());
+                        let key = (
+                            image.clone().unwrap(),
+                            container.clone(),
+                            source_dir.clone(),
+                        );
                         if seen.insert(key) {
-                            rows.push(DiscoveredImage { image: image.unwrap(), container, source_dir });
+                            rows.push(DiscoveredImage {
+                                image: image.unwrap(),
+                                container,
+                                source_dir,
+                            });
                         }
                     }
                 }
@@ -71,19 +86,27 @@ impl DiscoveryPort for FsDiscovery {
             if entry.path().extension().and_then(|s| s.to_str()) == Some("container")
                 && let Ok(info) = parse_container_file(entry.path())
             {
-                    let source_dir = entry
-                        .path()
-                        .parent()
-                        .unwrap_or_else(|| Path::new("/"))
-                        .to_path_buf();
-                    let key = (info.image.clone(), info.name.clone(), source_dir.clone());
-                    if seen.insert(key) {
-                        rows.push(DiscoveredImage { image: info.image, container: info.name, source_dir });
-                    }
+                let source_dir = entry
+                    .path()
+                    .parent()
+                    .unwrap_or_else(|| Path::new("/"))
+                    .to_path_buf();
+                let key = (info.image.clone(), info.name.clone(), source_dir.clone());
+                if seen.insert(key) {
+                    rows.push(DiscoveredImage {
+                        image: info.image,
+                        container: info.name,
+                        source_dir,
+                    });
+                }
             }
         }
 
-        rows.sort_by(|a, b| a.image.cmp(&b.image).then_with(|| a.container.cmp(&b.container)));
+        rows.sort_by(|a, b| {
+            a.image
+                .cmp(&b.image)
+                .then_with(|| a.container.cmp(&b.container))
+        });
         Ok(rows)
     }
 }

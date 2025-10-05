@@ -23,13 +23,9 @@ pub fn walk_dirs(args: &Args, logger: &Logger, tui_mode: bool) {
     let read_val_helper = DefaultReadInteractiveInputHelper;
 
     // Call the injectable version with default implementations
-    if let Err(e) = walk_dirs_with_helpers_and_interrupt(
-        args,
-        &cmd_helper,
-        &read_val_helper,
-        logger,
-        None,
-    ) {
+    if let Err(e) =
+        walk_dirs_with_helpers_and_interrupt(args, &cmd_helper, &read_val_helper, logger, None)
+    {
         eprintln!("Error processing directories: {e}");
     }
 
@@ -128,7 +124,10 @@ pub fn walk_dirs_with_helpers_and_interrupt<C: CommandHelper, R: ReadInteractive
                     logger.info("Interrupt received; stopping traversal.");
                     break;
                 }
-                Err(std::sync::mpsc::TryRecvError::Empty | std::sync::mpsc::TryRecvError::Disconnected) => {}
+                Err(
+                    std::sync::mpsc::TryRecvError::Empty
+                    | std::sync::mpsc::TryRecvError::Disconnected,
+                ) => {}
             }
         }
         let is_compose_file =

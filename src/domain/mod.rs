@@ -16,4 +16,3 @@ pub struct ImageDetails {
     pub has_dockerfile: bool,
     pub has_makefile: bool,
 }
-

@@ -20,4 +20,3 @@ impl PodmanPort for PodmanCli {
         crate::utils::podman_utils::terminal::file_exists_and_readable(file)
     }
 }
-

@@ -7,7 +7,7 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table, TableState},
 };
 
-use super::app::{App, UiState, ItemRow, ModalState, ViewMode};
+use super::app::{App, ItemRow, ModalState, UiState, ViewMode};
 
 pub fn draw(frame: &mut Frame, app: &App, args: &Args) {
     // Layout: title | main (draw help as overlay later)
@@ -29,7 +29,9 @@ pub fn draw(frame: &mut Frame, app: &App, args: &Args) {
     }
     let title = Paragraph::new(Line::from(vec![Span::styled(
         title_text,
-        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD),
     )]))
     .block(Block::default().borders(Borders::ALL));
     frame.render_widget(title, chunks[0]);
@@ -54,20 +56,26 @@ fn draw_scanning(frame: &mut Frame, area: ratatui::prelude::Rect, app: &App, arg
     let line = Line::from(vec![
         Span::styled(spinner, Style::default().fg(Color::Yellow)),
         Span::raw("  Scanning "),
-        Span::styled(args.path.display().to_string(), Style::default().fg(Color::White)),
+        Span::styled(
+            args.path.display().to_string(),
+            Style::default().fg(Color::White),
+        ),
         Span::raw(" for images..."),
     ]);
 
-    let widget = Paragraph::new(line)
-        .block(Block::default().title("Status").borders(Borders::ALL));
+    let widget = Paragraph::new(line).block(Block::default().title("Status").borders(Borders::ALL));
     frame.render_widget(widget, area);
 }
 
 fn draw_table(frame: &mut Frame, area: ratatui::prelude::Rect, app: &App) {
     let (header, widths) = match app.view_mode {
         ViewMode::ByContainer => (
-            Row::new([Cell::from("Select"), Cell::from("Container"), Cell::from("Image")])
-                .style(Style::default().add_modifier(Modifier::BOLD)),
+            Row::new([
+                Cell::from("Select"),
+                Cell::from("Container"),
+                Cell::from("Image"),
+            ])
+            .style(Style::default().add_modifier(Modifier::BOLD)),
             vec![
                 Constraint::Length(6),
                 Constraint::Percentage(35),
@@ -107,7 +115,11 @@ fn row_for_item<'a>(app: &'a App, it: &'a ItemRow) -> Row<'a> {
     match app.view_mode {
         ViewMode::ByContainer => {
             let container = it.container.clone().unwrap_or_else(|| "—".to_string());
-            Row::new([Cell::from(checkbox), Cell::from(container), Cell::from(it.image.clone())])
+            Row::new([
+                Cell::from(checkbox),
+                Cell::from(container),
+                Cell::from(it.image.clone()),
+            ])
         }
         ViewMode::ByImage => Row::new([Cell::from(checkbox), Cell::from(it.image.clone())]),
         ViewMode::ByFolderThenImage => {
@@ -141,7 +153,9 @@ fn build_rows_with_expansion(app: &App) -> (Vec<Row<'_>>, usize) {
                         Cell::from(indented),
                         Cell::from(""),
                     ])),
-                    ViewMode::ByImage | ViewMode::ByFolderThenImage => rows.push(Row::new([Cell::from(""), Cell::from(indented)])),
+                    ViewMode::ByImage | ViewMode::ByFolderThenImage => {
+                        rows.push(Row::new([Cell::from(""), Cell::from(indented)]))
+                    }
                 }
                 visual_idx += 1;
             }
@@ -154,17 +168,40 @@ fn draw_help_overlay(frame: &mut Frame, full_area: Rect) {
     // Compose help text with glyphs (two lines)
     let lines = vec![
         Line::from(vec![
-            Span::styled("↑/↓", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "↑/↓",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" scroll   "),
-            Span::styled("←/→", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "←/→",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" details   "),
-            Span::styled("[space]", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "[space]",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" select   "),
-            Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "q",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" quit"),
         ]),
         Line::from(vec![
-            Span::styled("v", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "v",
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" View"),
         ]),
     ];
@@ -180,7 +217,12 @@ fn draw_help_overlay(frame: &mut Frame, full_area: Rect) {
     let height_final = help_height.min(full_area.height);
     let left = full_area.x; // align to left side
     let top = full_area.y + full_area.height.saturating_sub(height_final);
-    let area = Rect { x: left, y: top, width: width_final, height: height_final };
+    let area = Rect {
+        x: left,
+        y: top,
+        width: width_final,
+        height: height_final,
+    };
 
     // Clear and draw overlay last so it sits above content
     frame.render_widget(Clear, area);
@@ -195,7 +237,12 @@ fn draw_view_picker(frame: &mut Frame, full_area: Rect, selected_idx: usize, cur
     let height_final = height.min(full_area.height);
     let left = full_area.x + (full_area.width.saturating_sub(width_final)) / 2;
     let top = full_area.y + (full_area.height.saturating_sub(height_final)) / 2;
-    let area = Rect { x: left, y: top, width: width_final, height: height_final };
+    let area = Rect {
+        x: left,
+        y: top,
+        width: width_final,
+        height: height_final,
+    };
 
     // Build item lines
     let items = [
@@ -208,7 +255,12 @@ fn draw_view_picker(frame: &mut Frame, full_area: Rect, selected_idx: usize, cur
         let active = if *mode == current { "▶" } else { " " };
         let marker = if i == selected_idx { ">" } else { " " };
         let styled = Line::from(vec![
-            Span::styled(marker, Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                marker,
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" "),
             Span::styled(active, Style::default().fg(Color::Cyan)),
             Span::raw(" "),
@@ -217,8 +269,11 @@ fn draw_view_picker(frame: &mut Frame, full_area: Rect, selected_idx: usize, cur
         lines.push(styled);
     }
 
-    let widget = Paragraph::new(lines)
-        .block(Block::default().title("View Options (Enter=select, Esc=close)").borders(Borders::ALL));
+    let widget = Paragraph::new(lines).block(
+        Block::default()
+            .title("View Options (Enter=select, Esc=close)")
+            .borders(Borders::ALL),
+    );
 
     frame.render_widget(Clear, area);
     frame.render_widget(widget, area);

@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
 use crossterm::event::KeyCode;
+use podman_compose_mgr::Args;
 use podman_compose_mgr::tui::app::{App, ViewMode};
 use podman_compose_mgr::tui::discover::scan_images;
 use podman_compose_mgr::utils::log_utils::Logger;
-use podman_compose_mgr::Args;
 
 #[test]
 fn change_view_to_by_image_dedupes_images() {

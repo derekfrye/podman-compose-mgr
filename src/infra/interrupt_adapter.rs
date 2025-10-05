@@ -24,7 +24,9 @@ impl CtrlcInterruptor {
 }
 
 impl Default for CtrlcInterruptor {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl InterruptPort for CtrlcInterruptor {

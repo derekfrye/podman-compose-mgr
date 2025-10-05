@@ -198,7 +198,8 @@ pub fn make_build_prompt_grammar(buildfile: &BuildFile) -> Vec<GrammarFragment> 
     prompt_grammars
 }
 
-#[must_use] pub fn read_val_loop(files: &[BuildFile]) -> WhatWereBuilding {
+#[must_use]
+pub fn read_val_loop(files: &[BuildFile]) -> WhatWereBuilding {
     let (mut prompt_grammars, user_choices, are_there_multiple_files) = setup_prompts(files);
 
     let mut choice_of_where_to_build = WhatWereBuilding {

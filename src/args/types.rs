@@ -1,8 +1,8 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-use crate::utils::path_utils::{check_readable_dir, check_writable_dir};
 use super::validators::validate;
+use crate::utils::path_utils::{check_readable_dir, check_writable_dir};
 
 #[derive(Parser, Debug, serde::Serialize)]
 #[command(author, version, about, long_about = None)]
