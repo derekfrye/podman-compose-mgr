@@ -286,7 +286,7 @@ fn cleanup_terminal<B: Backend + std::io::Write>(terminal: &mut Terminal<B>) -> 
     Ok(())
 }
 
-pub fn run_loop<B: Backend + std::io::Write>(
+pub fn run_loop<B: Backend>(
     terminal: &mut Terminal<B>,
     app: &mut App,
     tick_rate: Duration,
@@ -321,10 +321,16 @@ pub fn run_loop<B: Backend + std::io::Write>(
             .checked_sub(last_tick.elapsed())
             .unwrap_or_else(|| Duration::from_secs(0));
 
-        if crossterm::event::poll(timeout)? && let Event::Key(key) = event::read()? {
-            if let Some(msg) = map_key_event_to_msg(app, key) {
-                update(app, msg);
+        match crossterm::event::poll(timeout) {
+            Ok(true) => {
+                if let Ok(Event::Key(key)) = event::read() {
+                    if let Some(msg) = map_key_event_to_msg(app, key) {
+                        update(app, msg);
+                    }
+                }
             }
+            Ok(false) => {}
+            Err(_) => {}
         }
 
         if last_tick.elapsed() >= tick_rate {
