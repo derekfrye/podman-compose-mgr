@@ -22,6 +22,7 @@ pub fn setup_prompts(files: &[BuildFile]) -> (Vec<GrammarFragment>, Vec<&str>, b
         prompt_grammars.extend(make_choice_grammar(
             &user_choices,
             u8::try_from(prompt_grammars.len()).unwrap_or(255),
+            None,
         ));
     } else if buildfile.link_target_dir.is_some() {
         let t = make_build_prompt_grammar(buildfile);
@@ -29,6 +30,7 @@ pub fn setup_prompts(files: &[BuildFile]) -> (Vec<GrammarFragment>, Vec<&str>, b
         prompt_grammars.extend(make_choice_grammar(
             &user_choices,
             u8::try_from(t.len()).unwrap_or(255),
+            None,
         ));
     }
 

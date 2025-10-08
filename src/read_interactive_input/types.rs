@@ -41,6 +41,7 @@ pub struct GrammarFragment {
     pub grammar_type: GrammarType,
     pub display_at_all: bool,
     pub can_shorten: bool,
+    pub is_default_choice: bool,
 }
 
 impl Default for GrammarFragment {
@@ -54,6 +55,7 @@ impl Default for GrammarFragment {
             grammar_type: GrammarType::Verbiage,
             can_shorten: false,
             display_at_all: true,
+            is_default_choice: false,
         }
     }
 }

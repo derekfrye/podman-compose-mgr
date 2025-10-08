@@ -98,6 +98,10 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
 
     // Get available user choices
     let user_choices = collect_user_choices(grammars);
+    let default_choice = grammars
+        .iter()
+        .find(|g| g.grammar_type == GrammarType::UserChoice && g.is_default_choice)
+        .and_then(|g| g.original_val_for_prompt.clone());
 
     // Setup stdin helper
     let default_stdin_wrapper = StdinHelperWrapper::default();
@@ -117,7 +121,7 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
     loop {
         // Get input: use reedline editor if available, otherwise fallback to stdin helper
         let input = if let Some(editor) = rl_editor.as_mut() {
-        match editor.read_line(&DefaultPrompt::default()) {
+            match editor.read_line(&DefaultPrompt::default()) {
                 Ok(Signal::Success(buffer)) => buffer,
                 Ok(Signal::CtrlC | Signal::CtrlD) => {
                     // Mark as interrupted but don't exit here, let the caller decide
@@ -140,7 +144,7 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
                 break;
             }
             InputProcessResult::Empty => {
-                return_result.user_entered_val = None;
+                return_result.user_entered_val = default_choice.clone();
                 break;
             }
             InputProcessResult::Invalid => {
@@ -173,6 +177,7 @@ pub fn read_val_from_prompt_and_proceed_default(prompt: &Prompt, verbose: bool) 
                 prefix: None,
                 suffix: Some(g.suffix.clone()),
                 pos: 0, // Default position
+                is_default_choice: false,
             }
         })
         .collect();

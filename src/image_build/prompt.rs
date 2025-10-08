@@ -21,6 +21,7 @@ pub fn create_grammar_fragment(
         grammar_type,
         can_shorten,
         display_at_all,
+        is_default_choice: false,
     }
 }
 
@@ -111,6 +112,7 @@ pub fn add_choice_options(grammars: &mut Vec<GrammarFragment>) {
             grammar_type: GrammarType::UserChoice,
             can_shorten: false,
             display_at_all: true,
+            is_default_choice: choices[i] == "N",
         };
         grammars.push(choice_grammar);
     }

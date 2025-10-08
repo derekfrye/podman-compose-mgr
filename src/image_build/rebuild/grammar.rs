@@ -21,6 +21,7 @@ pub fn build_rebuild_grammars(
         grammar_type: GrammarType::Verbiage,
         can_shorten: false,
         display_at_all: true,
+        is_default_choice: false,
     };
     grammars.push(grm1);
 
@@ -33,6 +34,7 @@ pub fn build_rebuild_grammars(
         grammar_type: GrammarType::Image,
         can_shorten: true,
         display_at_all: true,
+        is_default_choice: false,
     };
     grammars.push(grm2);
 
@@ -45,6 +47,7 @@ pub fn build_rebuild_grammars(
         grammar_type: GrammarType::Verbiage,
         can_shorten: false,
         display_at_all: true,
+        is_default_choice: false,
     };
     grammars.push(grm3);
 
@@ -63,6 +66,7 @@ pub fn build_rebuild_grammars(
         grammar_type: GrammarType::DockerComposePath,
         can_shorten: true,
         display_at_all: true,
+        is_default_choice: false,
     };
     grammars.push(grm4);
 
@@ -75,6 +79,7 @@ pub fn build_rebuild_grammars(
         grammar_type: GrammarType::ContainerName,
         can_shorten: true,
         display_at_all: false,
+        is_default_choice: false,
     };
     grammars.push(grm5);
 
@@ -93,6 +98,7 @@ pub fn build_rebuild_grammars(
             grammar_type: GrammarType::UserChoice,
             can_shorten: false,
             display_at_all: true,
+            is_default_choice: c == "N",
         };
         grammars.push(choice_grammar);
     }
