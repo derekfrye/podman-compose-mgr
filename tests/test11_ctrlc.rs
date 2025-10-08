@@ -1,9 +1,9 @@
 use std::time::{Duration, Instant};
 use std::{path::PathBuf, sync::mpsc};
 
-use podman_compose_mgr::Args;
-use podman_compose_mgr::tui::app::{self, App, Services, Msg};
 use crossbeam_channel as xchan;
+use podman_compose_mgr::Args;
+use podman_compose_mgr::tui::app::{self, App, Msg, Services};
 use podman_compose_mgr::utils::log_utils::Logger;
 use ratatui::{Terminal, backend::TestBackend};
 
@@ -30,17 +30,34 @@ fn tui_interrupt_exits_quickly() {
         std::thread::sleep(Duration::from_millis(50));
         let _ = int_tx.send(());
     });
-    std::thread::spawn(move || { let _ = int_rx_std.recv(); let _ = int_c_tx.send(()); });
+    std::thread::spawn(move || {
+        let _ = int_rx_std.recv();
+        let _ = int_c_tx.send(());
+    });
 
     let start = Instant::now();
     // Minimal services; effects won't run in this test
     let discovery = std::sync::Arc::new(podman_compose_mgr::infra::discovery_adapter::FsDiscovery);
     let podman = std::sync::Arc::new(podman_compose_mgr::infra::podman_adapter::PodmanCli);
     let core = std::sync::Arc::new(podman_compose_mgr::app::AppCore::new(discovery, podman));
-    let services = Services { core, root: args.path.clone(), include: vec![], exclude: vec![], tx };
+    let services = Services {
+        core,
+        root: args.path.clone(),
+        include: vec![],
+        exclude: vec![],
+        tx,
+    };
 
-    let chans = app::LoopChans { rx: &rx, interrupt_rx: &int_c_rx, tick_rx: Some(&xchan::tick(Duration::from_millis(16))) };
-    let env = app::Env { args: &args, logger: &logger, services: &services };
+    let chans = app::LoopChans {
+        rx: &rx,
+        interrupt_rx: &int_c_rx,
+        tick_rx: Some(&xchan::tick(Duration::from_millis(16))),
+    };
+    let env = app::Env {
+        args: &args,
+        logger: &logger,
+        services: &services,
+    };
     let res = app::run_loop(&mut terminal, &mut app, &chans, &env);
     assert!(res.is_ok());
     assert!(app.should_quit);

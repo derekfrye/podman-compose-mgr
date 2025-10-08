@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use podman_compose_mgr::Args;
-use podman_compose_mgr::tui::app::{self, App, ViewMode, Msg};
+use podman_compose_mgr::tui::app::{self, App, Msg, ViewMode};
 
 #[test]
 fn change_view_to_by_image_dedupes_images() {
@@ -40,11 +40,23 @@ fn change_view_to_by_image_dedupes_images() {
     app.all_items = discovered;
 
     // Open modal
-    app::update_with_services(&mut app, Msg::Key(KeyEvent::new(KeyCode::Char('v'), KeyModifiers::NONE)), None);
+    app::update_with_services(
+        &mut app,
+        Msg::Key(KeyEvent::new(KeyCode::Char('v'), KeyModifiers::NONE)),
+        None,
+    );
     // Move to "List by image"
-    app::update_with_services(&mut app, Msg::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)), None);
+    app::update_with_services(
+        &mut app,
+        Msg::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)),
+        None,
+    );
     // Select
-    app::update_with_services(&mut app, Msg::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)), None);
+    app::update_with_services(
+        &mut app,
+        Msg::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+        None,
+    );
 
     assert_eq!(app.view_mode, ViewMode::ByImage);
 

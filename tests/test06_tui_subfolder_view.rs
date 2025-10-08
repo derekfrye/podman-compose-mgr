@@ -1,6 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use podman_compose_mgr::tui::app::{self, App, UiState, ViewMode, Msg};
 use podman_compose_mgr::domain::DiscoveredImage;
+use podman_compose_mgr::tui::app::{self, App, Msg, UiState, ViewMode};
 
 #[test]
 fn folder_view_lists_subfolders_even_with_duplicate_images() {
@@ -23,10 +23,26 @@ fn folder_view_lists_subfolders_even_with_duplicate_images() {
     ];
 
     // Open folder view via modal simulation: 'v', Down, Down, Enter
-    app::update_with_services(&mut app, Msg::Key(KeyEvent::new(KeyCode::Char('v'), KeyModifiers::NONE)), None);
-    app::update_with_services(&mut app, Msg::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)), None);
-    app::update_with_services(&mut app, Msg::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)), None);
-    app::update_with_services(&mut app, Msg::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)), None);
+    app::update_with_services(
+        &mut app,
+        Msg::Key(KeyEvent::new(KeyCode::Char('v'), KeyModifiers::NONE)),
+        None,
+    );
+    app::update_with_services(
+        &mut app,
+        Msg::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)),
+        None,
+    );
+    app::update_with_services(
+        &mut app,
+        Msg::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)),
+        None,
+    );
+    app::update_with_services(
+        &mut app,
+        Msg::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+        None,
+    );
 
     assert_eq!(app.view_mode, ViewMode::ByFolderThenImage);
 

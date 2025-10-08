@@ -1,11 +1,11 @@
 use crate::args::Args;
 use crate::image_build::container_file::parse_container_file;
-use crate::image_build::rebuild::{read_yaml_file, Image, build_rebuild_grammars};
+use crate::image_build::rebuild::{Image, build_rebuild_grammars, read_yaml_file};
 use crate::interfaces::DefaultCommandHelper;
-use crate::utils::log_utils::Logger;
-use std::path::PathBuf;
-use crossbeam_channel as xchan;
 use crate::ports::InterruptPort;
+use crate::utils::log_utils::Logger;
+use crossbeam_channel as xchan;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 enum State {
@@ -24,7 +24,12 @@ struct Model {
 
 impl Model {
     fn new() -> Self {
-        Self { state: State::Discovering, items: Vec::new(), idx: 0, processed: Vec::new() }
+        Self {
+            state: State::Discovering,
+            items: Vec::new(),
+            idx: 0,
+            processed: Vec::new(),
+        }
     }
 }
 
@@ -46,10 +51,18 @@ struct Services<'a> {
 
 pub fn run_cli_loop(args: &Args, logger: &Logger) {
     let (tx, rx) = xchan::unbounded::<Msg>();
-    let interrupt_std = Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
+    let interrupt_std =
+        Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
     let (int_tx, int_rx) = xchan::bounded::<()>(0);
-    std::thread::spawn(move || { let _ = interrupt_std.recv(); let _ = int_tx.send(()); });
-    let services = Services { args, logger, tx: tx.clone() };
+    std::thread::spawn(move || {
+        let _ = interrupt_std.recv();
+        let _ = int_tx.send(());
+    });
+    let services = Services {
+        args,
+        logger,
+        tx: tx.clone(),
+    };
 
     let mut model = Model::new();
     let _ = tx.send(Msg::Init);
@@ -59,43 +72,92 @@ pub fn run_cli_loop(args: &Args, logger: &Logger) {
             recv(rx) -> msg => if let Ok(msg) = msg { update(&mut model, msg, &services); },
             recv(int_rx) -> _ => update(&mut model, Msg::Interrupt, &services),
         }
-        if matches!(model.state, State::Done) { break; }
+        if matches!(model.state, State::Done) {
+            break;
+        }
     }
 }
 
 #[derive(Debug, Clone)]
-struct PromptItem { entry: PathBuf, image: String, container: String }
+struct PromptItem {
+    entry: PathBuf,
+    image: String,
+    container: String,
+}
 
-fn spawn_discovery(tx: xchan::Sender<Msg>, root: PathBuf, include: Vec<String>, exclude: Vec<String>) {
+fn spawn_discovery(
+    tx: xchan::Sender<Msg>,
+    root: PathBuf,
+    include: Vec<String>,
+    exclude: Vec<String>,
+) {
     std::thread::spawn(move || {
         use regex::Regex;
         use walkdir::WalkDir;
         let mut inc: Vec<Regex> = Vec::new();
         let mut exc: Vec<Regex> = Vec::new();
-        for p in include { if let Ok(r) = Regex::new(&p) { inc.push(r); } }
-        for p in exclude { if let Ok(r) = Regex::new(&p) { exc.push(r); } }
+        for p in include {
+            if let Ok(r) = Regex::new(&p) {
+                inc.push(r);
+            }
+        }
+        for p in exclude {
+            if let Ok(r) = Regex::new(&p) {
+                exc.push(r);
+            }
+        }
         let mut items: Vec<PromptItem> = Vec::new();
         for entry in WalkDir::new(root).into_iter().filter_map(Result::ok) {
-            if !entry.file_type().is_file() { continue; }
-            let Some(pstr) = entry.path().to_str() else { continue };
-            if !exc.is_empty() && exc.iter().any(|r| r.is_match(pstr)) { continue; }
-            if !inc.is_empty() && inc.iter().all(|r| !r.is_match(pstr)) { continue; }
+            if !entry.file_type().is_file() {
+                continue;
+            }
+            let Some(pstr) = entry.path().to_str() else {
+                continue;
+            };
+            if !exc.is_empty() && exc.iter().any(|r| r.is_match(pstr)) {
+                continue;
+            }
+            if !inc.is_empty() && inc.iter().all(|r| !r.is_match(pstr)) {
+                continue;
+            }
             if entry.file_name() == "docker-compose.yml" {
                 if let Ok(yaml) = read_yaml_file(pstr)
                     && let Some(services) = yaml.get("services").and_then(|v| v.as_mapping())
                 {
-                        for (_, svc_cfg) in services {
-                            let Some(m) = svc_cfg.as_mapping() else { continue };
-                            let Some(img) = m.get("image").and_then(|v| v.as_str()) else { continue };
-                            let Some(container) = m.get("container_name").and_then(|v| v.as_str()) else { continue };
-                            items.push(PromptItem { entry: entry.path().to_path_buf(), image: img.to_string(), container: container.to_string() });
-                        }
+                    for (_, svc_cfg) in services {
+                        let Some(m) = svc_cfg.as_mapping() else {
+                            continue;
+                        };
+                        let Some(img) = m.get("image").and_then(|v| v.as_str()) else {
+                            continue;
+                        };
+                        let Some(container) = m.get("container_name").and_then(|v| v.as_str())
+                        else {
+                            continue;
+                        };
+                        items.push(PromptItem {
+                            entry: entry.path().to_path_buf(),
+                            image: img.to_string(),
+                            container: container.to_string(),
+                        });
+                    }
                 }
             } else if entry.path().extension().and_then(|s| s.to_str()) == Some("container")
                 && let Ok(info) = parse_container_file(entry.path())
             {
-                    let container = info.name.unwrap_or_else(|| entry.path().file_stem().and_then(|s| s.to_str()).unwrap_or("unknown").to_string());
-                    items.push(PromptItem { entry: entry.path().to_path_buf(), image: info.image, container });
+                let container = info.name.unwrap_or_else(|| {
+                    entry
+                        .path()
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("unknown")
+                        .to_string()
+                });
+                items.push(PromptItem {
+                    entry: entry.path().to_path_buf(),
+                    image: info.image,
+                    container,
+                });
             }
         }
         let _ = tx.send(Msg::Discovered(items));
@@ -181,7 +243,11 @@ fn update(model: &mut Model, msg: Msg, services: &Services) {
                     let _ = services.tx.send(Msg::ActionDone);
                 } else {
                     // Mark processed for skip-by-name behavior going forward
-                    model.processed.push(Image { name: Some(item.image.clone()), container: Some(item.container.clone()), skipall_by_this_name: true });
+                    model.processed.push(Image {
+                        name: Some(item.image.clone()),
+                        container: Some(item.container.clone()),
+                        skipall_by_this_name: true,
+                    });
                     spawn_prompt(services.tx.clone(), services.args, item);
                 }
             } else {
@@ -212,8 +278,10 @@ fn handle_prompt_input(model: &mut Model, choice: &str, services: &Services) {
                 let tx = services.tx.clone();
                 std::thread::spawn(move || {
                     let entry = walkdir::WalkDir::new(&item.entry)
-                        .into_iter().filter_map(Result::ok)
-                        .find(|e| e.path() == item.entry).expect("entry must exist");
+                        .into_iter()
+                        .filter_map(Result::ok)
+                        .find(|e| e.path() == item.entry)
+                        .expect("entry must exist");
                     crate::image_build::ui::display_image_info(
                         &DefaultCommandHelper,
                         &item.image,
@@ -236,15 +304,23 @@ fn handle_prompt_input(model: &mut Model, choice: &str, services: &Services) {
                 let build_args: Vec<String> = services.args.build_args.clone();
                 std::thread::spawn(move || {
                     let entry = walkdir::WalkDir::new(&item.entry)
-                        .into_iter().filter_map(Result::ok)
-                        .find(|e| e.path() == item.entry).expect("entry must exist");
-                    let build_args_refs: Vec<&str> = build_args.iter().map(String::as_str).collect();
-                    let _ = crate::image_build::buildfile::start(&entry, &item.image, &build_args_refs);
+                        .into_iter()
+                        .filter_map(Result::ok)
+                        .find(|e| e.path() == item.entry)
+                        .expect("entry must exist");
+                    let build_args_refs: Vec<&str> =
+                        build_args.iter().map(String::as_str).collect();
+                    let _ =
+                        crate::image_build::buildfile::start(&entry, &item.image, &build_args_refs);
                     let _ = tx.send(Msg::ActionDone);
                 });
             }
             "s" => {
-                model.processed.push(Image { name: Some(item.image.clone()), container: Some(item.container.clone()), skipall_by_this_name: true });
+                model.processed.push(Image {
+                    name: Some(item.image.clone()),
+                    container: Some(item.container.clone()),
+                    skipall_by_this_name: true,
+                });
                 let _ = services.tx.send(Msg::ActionDone);
             }
             _ => {

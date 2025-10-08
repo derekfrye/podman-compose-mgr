@@ -8,10 +8,10 @@ pub mod infra {
     pub mod interrupt_adapter;
     pub mod podman_adapter;
 }
-pub mod image_build;
-pub mod mvu;
 pub mod cli_mvu;
+pub mod image_build;
 pub mod interfaces;
+pub mod mvu;
 pub mod read_interactive_input;
 
 pub mod testing;

@@ -12,10 +12,7 @@ use ratatui::{
     Terminal,
     backend::{Backend, CrosstermBackend},
 };
-use std::{
-    io,
-    time::Duration,
-};
+use std::{io, time::Duration};
 
 use super::ui;
 use crossbeam_channel as xchan;
@@ -122,7 +119,9 @@ impl App {
 
     // Back-compat for tests: map key codes (no modifiers) to messages and update
     pub fn on_key(&mut self, key: KeyCode) {
-        if let Some(msg) = map_keycode_to_msg(self, key) { update_with_services(self, msg, None); }
+        if let Some(msg) = map_keycode_to_msg(self, key) {
+            update_with_services(self, msg, None);
+        }
     }
 
     fn rebuild_rows_for_view(&mut self) {
@@ -284,24 +283,38 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     // Key event forwarder: read keys and send as messages
     {
         let tx_keys = tx.clone();
-        std::thread::spawn(move || loop {
-            if let Ok(ev) = crossterm::event::read()
-                && let Event::Key(key) = ev
-            {
-                let _ = tx_keys.send(Msg::Key(key));
+        std::thread::spawn(move || {
+            loop {
+                if let Ok(ev) = crossterm::event::read()
+                    && let Event::Key(key) = ev
+                {
+                    let _ = tx_keys.send(Msg::Key(key));
+                }
             }
         });
     }
 
     // Interrupt channel (production: real Ctrl+C)
-    let interrupt_std = Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
+    let interrupt_std =
+        Box::new(crate::infra::interrupt_adapter::CtrlcInterruptor::new()).subscribe();
     let (int_tx, int_rx) = xchan::bounded::<()>(0);
-    std::thread::spawn(move || { let _ = interrupt_std.recv(); let _ = int_tx.send(()); });
+    std::thread::spawn(move || {
+        let _ = interrupt_std.recv();
+        let _ = int_tx.send(());
+    });
     let tick_rx = xchan::tick(tick_rate);
 
     // Run the app and handle cleanup on exit or error
-    let chans = LoopChans { rx: &rx, interrupt_rx: &int_rx, tick_rx: Some(&tick_rx) };
-    let env = Env { args, logger, services: &services };
+    let chans = LoopChans {
+        rx: &rx,
+        interrupt_rx: &int_rx,
+        tick_rx: Some(&tick_rx),
+    };
+    let env = Env {
+        args,
+        logger,
+        services: &services,
+    };
     let res = run_loop(&mut terminal, &mut app, &chans, &env);
 
     // Always restore terminal state, even on error
@@ -414,11 +427,24 @@ fn compute_details_for(core: &AppCore, image: &str, source_dir: &std::path::Path
     let mut lines = Vec::new();
     lines.push(format!("Compose dir: {}", source_dir.display()));
     match core.image_details(image, source_dir) {
-        Ok(ImageDetails { created_time_ago, pulled_time_ago, has_dockerfile, has_makefile }) => {
-            if let Some(s) = created_time_ago { lines.push(format!("Created: {s}")); }
-            if let Some(s) = pulled_time_ago { lines.push(format!("Pulled: {s}")); }
-            if has_dockerfile { lines.push("Found Dockerfile".into()); }
-            if has_makefile { lines.push("Found Makefile".into()); }
+        Ok(ImageDetails {
+            created_time_ago,
+            pulled_time_ago,
+            has_dockerfile,
+            has_makefile,
+        }) => {
+            if let Some(s) = created_time_ago {
+                lines.push(format!("Created: {s}"));
+            }
+            if let Some(s) = pulled_time_ago {
+                lines.push(format!("Pulled: {s}"));
+            }
+            if has_dockerfile {
+                lines.push("Found Dockerfile".into());
+            }
+            if has_makefile {
+                lines.push("Found Makefile".into());
+            }
         }
         Err(e) => lines.push(format!("error: {e}")),
     }
@@ -490,7 +516,10 @@ pub fn update_with_services(app: &mut App, msg: Msg, services: Option<&Services>
                             let row_idx = app.selected;
                             std::thread::spawn(move || {
                                 let details = compute_details_for(&core, &image, &source_dir);
-                                let _ = tx.send(Msg::DetailsReady { row: row_idx, details });
+                                let _ = tx.send(Msg::DetailsReady {
+                                    row: row_idx,
+                                    details,
+                                });
                             });
                         }
                     }
@@ -511,7 +540,10 @@ pub fn update_with_services(app: &mut App, msg: Msg, services: Option<&Services>
                         let row_idx = app.selected;
                         std::thread::spawn(move || {
                             let details = compute_details_for(&core, &image, &source_dir);
-                            let _ = tx.send(Msg::DetailsReady { row: row_idx, details });
+                            let _ = tx.send(Msg::DetailsReady {
+                                row: row_idx,
+                                details,
+                            });
                         });
                     }
                 }

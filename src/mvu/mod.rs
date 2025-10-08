@@ -11,4 +11,3 @@ pub struct Env<'a, A, L, S> {
     pub logger: &'a L,
     pub services: &'a S,
 }
-

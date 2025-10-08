@@ -1,7 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use podman_compose_mgr::Args;
-use podman_compose_mgr::tui::app::{self, App, UiState, ViewMode, Msg};
 use podman_compose_mgr::domain::DiscoveredImage;
+use podman_compose_mgr::tui::app::{self, App, Msg, UiState, ViewMode};
 use podman_compose_mgr::tui::ui;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
@@ -40,7 +40,11 @@ fn view_modal_shows_three_options_and_selects_folder_view() {
     let mut terminal = Terminal::new(backend).expect("terminal");
 
     // Open modal (v), then move to 3rd item (Down, Down), then Enter
-    app::update_with_services(&mut app, Msg::Key(KeyEvent::new(KeyCode::Char('v'), KeyModifiers::NONE)), None);
+    app::update_with_services(
+        &mut app,
+        Msg::Key(KeyEvent::new(KeyCode::Char('v'), KeyModifiers::NONE)),
+        None,
+    );
     terminal.draw(|f| ui::draw(f, &app, &args)).unwrap();
 
     // Buffer should include the third option line
@@ -56,9 +60,21 @@ fn view_modal_shows_three_options_and_selects_folder_view() {
     assert!(all.contains("List by folder, then image"));
 
     // Navigate to third option and select it
-    app::update_with_services(&mut app, Msg::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)), None);
-    app::update_with_services(&mut app, Msg::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)), None);
-    app::update_with_services(&mut app, Msg::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)), None);
+    app::update_with_services(
+        &mut app,
+        Msg::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)),
+        None,
+    );
+    app::update_with_services(
+        &mut app,
+        Msg::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)),
+        None,
+    );
+    app::update_with_services(
+        &mut app,
+        Msg::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+        None,
+    );
 
     assert_eq!(app.view_mode, ViewMode::ByFolderThenImage);
 
