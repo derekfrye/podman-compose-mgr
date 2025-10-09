@@ -83,77 +83,116 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
     size: Option<usize>,
     stdin_helper: Option<&StdinHelperWrapper>,
 ) -> ReadValResult {
-    let mut return_result = ReadValResult {
-        user_entered_val: None,
-        was_interrupted: false,
-    };
+    let prompt_data = build_prompt_data(grammars, cmd_helper, size);
+    print_fn(&prompt_data.prompt_string);
 
-    // Format the prompt
+    let default_stdin_wrapper = StdinHelperWrapper::default();
+    let stdin_wrapper = resolve_stdin_wrapper(stdin_helper, &default_stdin_wrapper);
+    let mut editor = create_reedline_editor(stdin_helper);
+
+    read_input_loop(
+        &prompt_data,
+        &print_fn,
+        stdin_wrapper,
+        editor.as_mut(),
+    )
+}
+
+struct PromptData {
+    prompt_string: String,
+    user_choices: HashSet<String>,
+    default_choice: Option<String>,
+}
+
+fn build_prompt_data<C: CommandHelper>(
+    grammars: &mut [GrammarFragment],
+    cmd_helper: &C,
+    size: Option<usize>,
+) -> PromptData {
     let term_width = cmd_helper.get_terminal_display_width(size);
     do_prompt_formatting(grammars, term_width);
+
     let prompt_string = unroll_grammar_into_string(grammars, false, true);
-
-    // Print the prompt
-    print_fn(&prompt_string);
-
-    // Get available user choices
     let user_choices = collect_user_choices(grammars);
     let default_choice = grammars
         .iter()
         .find(|g| g.grammar_type == GrammarType::UserChoice && g.is_default_choice)
         .and_then(|g| g.original_val_for_prompt.clone());
 
-    // Setup stdin helper
-    let default_stdin_wrapper = StdinHelperWrapper::default();
-    let stdin_wrapper = stdin_helper.as_ref().map_or(&default_stdin_wrapper, |v| v);
+    PromptData {
+        prompt_string,
+        user_choices,
+        default_choice,
+    }
+}
 
-    // Determine whether to use reedline (only when no stdin_helper is provided)
-    let use_reedline = stdin_helper.is_none();
-    // Initialize reedline editor for interactive input if needed
-    let mut rl_editor = if use_reedline {
-        // Initialize reedline editor for interactive prompt
+fn resolve_stdin_wrapper<'a>(
+    stdin_helper: Option<&'a StdinHelperWrapper>,
+    default_wrapper: &'a StdinHelperWrapper,
+) -> &'a StdinHelperWrapper {
+    stdin_helper.unwrap_or(default_wrapper)
+}
+
+fn create_reedline_editor(stdin_helper: Option<&StdinHelperWrapper>) -> Option<Reedline> {
+    if stdin_helper.is_none() {
         Some(Reedline::create())
     } else {
         None
+    }
+}
+
+fn read_input_loop(
+    prompt_data: &PromptData,
+    print_fn: &PrintFunction<'_>,
+    stdin_wrapper: &StdinHelperWrapper,
+    mut editor: Option<&mut Reedline>,
+) -> ReadValResult {
+    let mut result = ReadValResult {
+        user_entered_val: None,
+        was_interrupted: false,
     };
 
-    // Input loop
-    loop {
-        // Get input: use reedline editor if available, otherwise fallback to stdin helper
-        let input = if let Some(editor) = rl_editor.as_mut() {
-            match editor.read_line(&DefaultPrompt::default()) {
-                Ok(Signal::Success(buffer)) => buffer,
-                Ok(Signal::CtrlC | Signal::CtrlD) => {
-                    // Mark as interrupted but don't exit here, let the caller decide
-                    return_result.was_interrupted = true;
-                    String::new()
-                }
-                Err(err) => {
-                    eprintln!("Error reading line: {err}");
-                    return return_result;
-                }
-            }
-        } else {
-            stdin_wrapper.read_line()
-        };
-
-        // Process input
-        match process_user_input(&input, &user_choices, &print_fn, &prompt_string) {
+    while let Some(input) = read_input(editor.as_deref_mut(), stdin_wrapper, &mut result) {
+        match process_user_input(
+            &input,
+            &prompt_data.user_choices,
+            print_fn,
+            &prompt_data.prompt_string,
+        ) {
             InputProcessResult::Valid(value) => {
-                return_result.user_entered_val = Some(value);
+                result.user_entered_val = Some(value);
                 break;
             }
             InputProcessResult::Empty => {
-                return_result.user_entered_val = default_choice.clone();
+                result.user_entered_val = prompt_data.default_choice.clone();
                 break;
             }
-            InputProcessResult::Invalid => {
-                // Continue the loop to retry
-            }
+            InputProcessResult::Invalid => {}
         }
     }
 
-    return_result
+    result
+}
+
+fn read_input(
+    editor: Option<&mut Reedline>,
+    stdin_wrapper: &StdinHelperWrapper,
+    result: &mut ReadValResult,
+) -> Option<String> {
+    match editor {
+        Some(editor) => match editor.read_line(&DefaultPrompt::default()) {
+            Ok(Signal::Success(buffer)) => Some(buffer),
+            Ok(Signal::CtrlC | Signal::CtrlD) => {
+                result.was_interrupted = true;
+                Some(String::new())
+            }
+            Err(err) => {
+                eprintln!("Error reading line: {err}");
+                None
+            }
+        },
+        None => Some(stdin_wrapper.read_line()),
+    }
 }
 
 /// New function for handling structured prompts

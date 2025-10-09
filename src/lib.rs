@@ -50,106 +50,98 @@ use std::io;
 /// Returns an error if the application fails to initialize or run.
 pub fn run_app(args: &args::Args) -> io::Result<()> {
     use crate::utils::log_utils::Logger;
-    // no extra imports needed here
-    // Create logger instance
+
     let logger = Logger::new(args.verbose);
+    log_command_line(args, &logger);
 
-    // If double verbose, print the command line in a copy-paste friendly format
-    if args.verbose >= 2 {
-        // Get the program name
-        let exe_path = std::env::current_exe()
-            .unwrap_or_else(|_| std::path::PathBuf::from("podman-compose-mgr"));
-        let exe_name = exe_path
-            .file_name()
-            .unwrap_or_else(|| std::ffi::OsStr::new("podman-compose-mgr"));
-
-        // Start building the command line
-        let mut cmd_line = format!("{}", exe_name.to_string_lossy());
-
-        // Use serde to convert Args to a JSON value for inspection
-        let args_json = serde_json::to_value(args).unwrap_or(serde_json::Value::Null);
-
-        if let serde_json::Value::Object(map) = args_json {
-            // Sort the keys for consistent output
-            let mut keys: Vec<_> = map.keys().collect();
-            keys.sort();
-
-            for key in keys {
-                // Format key from snake_case to kebab-case for command line args
-                let arg_key = key.replace('_', "-");
-
-                // Skip certain fields that don't need to be included
-                if key == "verbose" {
-                    // Add the verbose flag based on the count
-                    let count = map
-                        .get(key)
-                        .and_then(serde_json::Value::as_u64)
-                        .unwrap_or(0);
-                    for _ in 0..count {
-                        cmd_line.push_str(" --verbose");
-                    }
-                    continue;
-                }
-
-                match map.get(key) {
-                    // Skip values that should be ignored
-                    Some(serde_json::Value::Null | serde_json::Value::Bool(false)) | None => {
-                        // Skip null values, false booleans, and missing keys
-                    }
-                    Some(serde_json::Value::Array(arr)) if arr.is_empty() => {
-                        // Skip empty arrays
-                    }
-                    Some(serde_json::Value::String(s)) if s.is_empty() => {
-                        // Skip empty strings
-                    }
-                    Some(serde_json::Value::Array(arr)) => {
-                        // Format arrays (e.g., vectors)
-                        for item in arr {
-                            let escaped_value = match item {
-                                serde_json::Value::String(s) => format!("\"{s}\""),
-                                _ => item.to_string(),
-                            };
-                            write!(cmd_line, " --{arg_key} {escaped_value}").unwrap();
-                        }
-                    }
-                    Some(serde_json::Value::Bool(true)) => {
-                        write!(cmd_line, " --{arg_key}").unwrap();
-                    }
-                    Some(value) => {
-                        // Format everything else
-                        let escaped_value = match value {
-                            serde_json::Value::String(s) => format!("\"{s}\""),
-                            _ => value.to_string(),
-                        };
-                        write!(cmd_line, " --{arg_key} {escaped_value}").unwrap();
-                    }
-                }
-            }
-
-            logger.debug(&format!("Command: {cmd_line}"));
-            println!();
-        } else {
-            // Fallback if the conversion fails
-            logger.debug(&format!(
-                "Command: {} {:?}",
-                exe_name.to_string_lossy(),
-                args
-            ));
-            println!();
-        }
-    }
-
-    // If TUI is requested, launch it immediately and skip CLI prompt loop
     if args.tui {
         crate::tui::run(args, &logger)?;
         logger.info("Done.");
         return Ok(());
     }
 
-    // CLI mode: MVU-driven loop
     crate::cli_mvu::run_cli_loop(args, &logger);
-
     logger.info("Done.");
 
     Ok(())
+}
+
+fn log_command_line(args: &args::Args, logger: &crate::utils::log_utils::Logger) {
+    if args.verbose < 2 {
+        return;
+    }
+
+    let exe_name = current_exe_name();
+    if let Some(cmd_line) = build_command_line(args, &exe_name) {
+        logger.debug(&format!("Command: {cmd_line}"));
+    } else {
+        logger.debug(&format!(
+            "Command: {} {:?}",
+            exe_name.to_string_lossy(),
+            args
+        ));
+    }
+
+    println!();
+}
+
+fn current_exe_name() -> std::ffi::OsString {
+    std::env::current_exe()
+        .ok()
+        .and_then(|path| path.file_name().map(std::ffi::OsStr::to_os_string))
+        .unwrap_or_else(|| std::ffi::OsString::from("podman-compose-mgr"))
+}
+
+fn build_command_line(
+    args: &args::Args,
+    exe_name: &std::ffi::OsStr,
+) -> Option<String> {
+    let mut cmd_line = exe_name.to_string_lossy().to_string();
+    let args_json = serde_json::to_value(args).ok()?;
+    let map = args_json.as_object()?;
+    let mut keys: Vec<_> = map.keys().collect();
+    keys.sort();
+
+    for key in keys {
+        let arg_key = key.replace('_', "-");
+
+        if key == "verbose" {
+            let count = map
+                .get(key)
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+            for _ in 0..count {
+                cmd_line.push_str(" --verbose");
+            }
+            continue;
+        }
+
+        match map.get(key) {
+            Some(serde_json::Value::Null | serde_json::Value::Bool(false)) | None => {}
+            Some(serde_json::Value::Array(arr)) if arr.is_empty() => {}
+            Some(serde_json::Value::String(s)) if s.is_empty() => {}
+            Some(serde_json::Value::Array(arr)) => {
+                for item in arr {
+                    let escaped_value = format_cli_value(item);
+                    write!(cmd_line, " --{arg_key} {escaped_value}").unwrap();
+                }
+            }
+            Some(serde_json::Value::Bool(true)) => {
+                write!(cmd_line, " --{arg_key}").unwrap();
+            }
+            Some(value) => {
+                let escaped_value = format_cli_value(value);
+                write!(cmd_line, " --{arg_key} {escaped_value}").unwrap();
+            }
+        }
+    }
+
+    Some(cmd_line)
+}
+
+fn format_cli_value(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(s) => format!("\"{s}\""),
+        _ => value.to_string(),
+    }
 }

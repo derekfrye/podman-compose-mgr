@@ -75,111 +75,128 @@ pub fn walk_dirs_with_helpers_and_interrupt<C: CommandHelper, R: ReadInteractive
     logger: &Logger,
     interrupt: Option<&Receiver<()>>,
 ) -> Result<(), PodmanComposeMgrError> {
-    let mut exclude_patterns = Vec::new();
-    let mut include_patterns = Vec::new();
-
-    // Compile exclude patterns
-    if !args.exclude_path_patterns.is_empty() {
-        logger.info(&format!(
-            "Excluding paths: {:?}",
-            args.exclude_path_patterns
-        ));
-
-        for pattern in &args.exclude_path_patterns {
-            let regex = Regex::new(pattern)?;
-            exclude_patterns.push(regex);
-        }
-    }
-
-    // Compile include patterns
-    if !args.include_path_patterns.is_empty() {
-        logger.info(&format!(
-            "Including paths: {:?}",
-            args.include_path_patterns
-        ));
-
-        for pattern in &args.include_path_patterns {
-            let regex = Regex::new(pattern)?;
-            include_patterns.push(regex);
-        }
-    }
+    let exclude_patterns =
+        compile_patterns(logger, "Excluding paths", &args.exclude_path_patterns)?;
+    let include_patterns =
+        compile_patterns(logger, "Including paths", &args.include_path_patterns)?;
 
     logger.info(&format!("Rebuild images in path: {}", args.path.display()));
 
-    // Create rebuild manager
     let mut manager = Some(build::rebuild::RebuildManager::new(
         cmd_helper,
         read_val_helper,
     ));
 
-    // Walk directory tree looking for docker-compose.yml and .container files
-    for entry in WalkDir::new(&args.path)
-        .into_iter()
-        .filter_map(std::result::Result::ok)
-    {
-        // Check for interrupt on each iteration
-        if let Some(rx) = interrupt {
-            match rx.try_recv() {
-                Ok(()) => {
-                    logger.info("Interrupt received; stopping traversal.");
-                    break;
-                }
-                Err(
-                    std::sync::mpsc::TryRecvError::Empty
-                    | std::sync::mpsc::TryRecvError::Disconnected,
-                ) => {}
-            }
+    for entry in walk_target_entries(&args.path) {
+        if interrupt_triggered(interrupt, logger) {
+            break;
         }
-        let is_compose_file =
-            entry.file_type().is_file() && entry.file_name() == "docker-compose.yml";
-        let is_container_file = entry.file_type().is_file()
-            && entry
-                .file_name()
-                .to_str()
-                .is_some_and(|name| name.ends_with(".container"));
 
-        if is_compose_file || is_container_file {
-            // Get path as string, safely
-            let Some(entry_path_str) = entry.path().to_str() else {
-                eprintln!(
-                    "Skipping path with invalid UTF-8: {}",
-                    entry.path().display()
-                );
-                continue;
-            };
+        if !is_target_entry(&entry) {
+            continue;
+        }
 
-            // Check exclude patterns - skip if any match
-            if !exclude_patterns.is_empty()
-                && exclude_patterns
-                    .iter()
-                    .any(|pattern| pattern.is_match(entry_path_str))
-            {
-                // if args.verbose > 0 {
-                //     println!("info: Excluding path due to exclude pattern: {}", entry_path_str);
-                // }
-                continue;
-            }
+        let Some(entry_path) = entry.path().to_str() else {
+            log_invalid_path(&entry);
+            continue;
+        };
 
-            // Check include patterns - skip if none match
-            if !include_patterns.is_empty()
-                && include_patterns
-                    .iter()
-                    .all(|pattern| !pattern.is_match(entry_path_str))
-            {
-                logger.debug(&format!(
-                    "Skipping path as it doesn't match any include pattern: {entry_path_str}"
-                ));
-                continue;
-            }
+        if should_skip_entry(entry_path, &exclude_patterns, &include_patterns, logger) {
+            continue;
+        }
 
-            // Process rebuild mode
-            if let Some(ref mut mgr) = manager
-                && let Err(e) = mgr.rebuild(&entry, args)
-            {
-                eprintln!("Error rebuilding from {entry_path_str}: {e}");
-            }
+        if let Some(ref mut mgr) = manager
+            && let Err(e) = mgr.rebuild(&entry, args)
+        {
+            eprintln!("Error rebuilding from {entry_path}: {e}");
         }
     }
 
     Ok(())
+}
+
+fn compile_patterns(
+    logger: &Logger,
+    label: &str,
+    patterns: &[String],
+) -> Result<Vec<Regex>, PodmanComposeMgrError> {
+    if patterns.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    logger.info(&format!("{label}: {patterns:?}"));
+    patterns
+        .iter()
+        .map(|pattern| Regex::new(pattern))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(Into::into)
+}
+
+fn walk_target_entries(path: &std::path::Path) -> impl Iterator<Item = walkdir::DirEntry> {
+    WalkDir::new(path)
+        .into_iter()
+        .filter_map(std::result::Result::ok)
+}
+
+fn interrupt_triggered(interrupt: Option<&Receiver<()>>, logger: &Logger) -> bool {
+    let Some(rx) = interrupt else {
+        return false;
+    };
+
+    match rx.try_recv() {
+        Ok(()) => {
+            logger.info("Interrupt received; stopping traversal.");
+            true
+        }
+        Err(std::sync::mpsc::TryRecvError::Empty) => false,
+        Err(std::sync::mpsc::TryRecvError::Disconnected) => false,
+    }
+}
+
+fn is_target_entry(entry: &walkdir::DirEntry) -> bool {
+    let is_file = entry.file_type().is_file();
+    if !is_file {
+        return false;
+    }
+
+    entry.file_name() == "docker-compose.yml"
+        || entry
+            .file_name()
+            .to_str()
+            .is_some_and(|name| name.ends_with(".container"))
+}
+
+fn log_invalid_path(entry: &walkdir::DirEntry) {
+    eprintln!(
+        "Skipping path with invalid UTF-8: {}",
+        entry.path().display()
+    );
+}
+
+fn should_skip_entry(
+    entry_path: &str,
+    exclude_patterns: &[Regex],
+    include_patterns: &[Regex],
+    logger: &Logger,
+) -> bool {
+    if !exclude_patterns.is_empty()
+        && exclude_patterns
+            .iter()
+            .any(|pattern| pattern.is_match(entry_path))
+    {
+        return true;
+    }
+
+    if !include_patterns.is_empty()
+        && include_patterns
+            .iter()
+            .all(|pattern| !pattern.is_match(entry_path))
+    {
+        logger.debug(&format!(
+            "Skipping path as it doesn't match any include pattern: {entry_path}"
+        ));
+        return true;
+    }
+
+    false
 }

@@ -25,19 +25,12 @@ pub fn handle_user_choice<C: CommandHelper>(
 ) -> Result<bool, Box<dyn std::error::Error>> {
     match user_entered_val {
         "p" => {
-            pull_image(cmd_helper, context.custom_img_nm)
-                .unwrap_or_else(|e| eprintln!("Error pulling image: {e}"));
+            pull_selected_image(cmd_helper, context);
             Ok(true)
         }
         "N" => Ok(true),
         "d" => {
-            ui::display_image_info(
-                cmd_helper,
-                context.custom_img_nm,
-                context.container_name,
-                context.entry,
-                context.grammars,
-            );
+            display_image_details(cmd_helper, context);
             Ok(false)
         }
         "?" => {
@@ -45,31 +38,52 @@ pub fn handle_user_choice<C: CommandHelper>(
             Ok(false)
         }
         "b" => {
-            start(
-                context.entry,
-                context.custom_img_nm,
-                &context
-                    .build_args
-                    .iter()
-                    .map(std::string::String::as_str)
-                    .collect::<Vec<_>>(),
-            )?;
+            start_selected_build(context)?;
             Ok(true)
         }
         "s" => {
-            let c = Image {
-                name: Some(context.custom_img_nm.to_string()),
-                container: Some(context.container_name.to_string()),
-                skipall_by_this_name: true,
-            };
-            images_already_processed.push(c);
+            mark_image_as_skipped(images_already_processed, context);
             Ok(true)
         }
         _ => {
-            eprintln!("Invalid input. Please enter p/N/d/b/s/?: ");
+            notify_invalid_choice();
             Ok(false)
         }
     }
+}
+
+fn pull_selected_image<C: CommandHelper>(cmd_helper: &C, context: &UserChoiceContext<'_>) {
+    pull_image(cmd_helper, context.custom_img_nm)
+        .unwrap_or_else(|e| eprintln!("Error pulling image: {e}"));
+}
+
+fn display_image_details<C: CommandHelper>(cmd_helper: &C, context: &UserChoiceContext<'_>) {
+    ui::display_image_info(
+        cmd_helper,
+        context.custom_img_nm,
+        context.container_name,
+        context.entry,
+        context.grammars,
+    );
+}
+
+fn start_selected_build(context: &UserChoiceContext<'_>) -> Result<(), Box<dyn std::error::Error>> {
+    let build_args: Vec<&str> = context.build_args.iter().map(String::as_str).collect();
+    start(context.entry, context.custom_img_nm, &build_args)
+        .map_err(Box::<dyn std::error::Error>::from)?;
+    Ok(())
+}
+
+fn mark_image_as_skipped(images: &mut Vec<Image>, context: &UserChoiceContext<'_>) {
+    images.push(Image {
+        name: Some(context.custom_img_nm.to_string()),
+        container: Some(context.container_name.to_string()),
+        skipall_by_this_name: true,
+    });
+}
+
+fn notify_invalid_choice() {
+    eprintln!("Invalid input. Please enter p/N/d/b/s/?: ");
 }
 
 /// Read a value from the user and handle the action loop for rebuild.

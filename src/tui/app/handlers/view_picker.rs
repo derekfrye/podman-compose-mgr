@@ -12,18 +12,18 @@ pub fn handle_open_view_picker(app: &mut App) {
 }
 
 pub fn handle_view_picker_up(app: &mut App) {
-    if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal {
-        if *selected_idx > 0 {
-            *selected_idx -= 1;
-        }
+    if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal
+        && *selected_idx > 0
+    {
+        *selected_idx -= 1;
     }
 }
 
 pub fn handle_view_picker_down(app: &mut App) {
-    if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal {
-        if *selected_idx < 2 {
-            *selected_idx += 1;
-        }
+    if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal
+        && *selected_idx < 2
+    {
+        *selected_idx += 1;
     }
 }
 

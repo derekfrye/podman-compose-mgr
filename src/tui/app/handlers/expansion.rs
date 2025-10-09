@@ -27,15 +27,14 @@ pub fn handle_collapse_or_back(app: &mut App) {
 }
 
 fn handle_directory_enter(app: &mut App) -> bool {
-    if let Some(row) = app.rows.get(app.selected) {
-        if row.is_dir {
-            if let Some(name) = &row.dir_name {
-                app.current_path.push(name.clone());
-                app.rows = app.build_rows_for_folder_view();
-                app.selected = 0;
-                return true;
-            }
-        }
+    if let Some(row) = app.rows.get(app.selected)
+        && row.is_dir
+        && let Some(name) = &row.dir_name
+    {
+        app.current_path.push(name.clone());
+        app.rows = app.build_rows_for_folder_view();
+        app.selected = 0;
+        return true;
     }
     false
 }
@@ -61,11 +60,12 @@ fn handle_row_expand(app: &mut App, services: Option<&Services>) {
 }
 
 fn collapse_selected_row(app: &mut App) -> bool {
-    if let Some(row) = app.rows.get_mut(app.selected) {
-        if !row.is_dir && row.expanded {
-            row.expanded = false;
-            return true;
-        }
+    if let Some(row) = app.rows.get_mut(app.selected)
+        && !row.is_dir
+        && row.expanded
+    {
+        row.expanded = false;
+        return true;
     }
     false
 }

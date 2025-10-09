@@ -32,67 +32,51 @@ pub fn create_rebuild_grammars(
     entry: &DirEntry,
     container_name: &str,
 ) -> Vec<GrammarFragment> {
-    let mut grammars: Vec<GrammarFragment> = vec![];
-
-    // Add "Refresh" text
-    grammars.push(create_grammar_fragment(
-        "Refresh",
-        0,
-        Some(" ".to_string()),
-        GrammarType::Verbiage,
-        false,
-        true,
-    ));
-
-    // Add image name
-    grammars.push(create_grammar_fragment(
-        custom_img_nm,
-        1,
-        Some(" ".to_string()),
-        GrammarType::Image,
-        true,
-        true,
-    ));
-
-    // Add "from" text
-    grammars.push(create_grammar_fragment(
-        "from",
-        2,
-        Some(" ".to_string()),
-        GrammarType::Verbiage,
-        false,
-        true,
-    ));
-
-    // Get Docker compose path
     let docker_compose_pth = entry
         .path()
         .parent()
         .unwrap_or_else(|| Path::new("/"))
         .display()
         .to_string();
+    vec![
+        rebuild_fragment("Refresh", 0, Some(" "), GrammarType::Verbiage, false, true),
+        rebuild_fragment(custom_img_nm, 1, Some(" "), GrammarType::Image, true, true),
+        rebuild_fragment("from", 2, Some(" "), GrammarType::Verbiage, false, true),
+        rebuild_fragment(
+            &docker_compose_pth,
+            3,
+            Some("? "),
+            GrammarType::DockerComposePath,
+            true,
+            true,
+        ),
+        rebuild_fragment(
+            container_name,
+            4,
+            None,
+            GrammarType::ContainerName,
+            true,
+            false,
+        ),
+    ]
+}
 
-    // Add Docker compose path
-    grammars.push(create_grammar_fragment(
-        &docker_compose_pth,
-        3,
-        Some("? ".to_string()),
-        GrammarType::DockerComposePath,
-        true,
-        true,
-    ));
-
-    // Add container name (hidden)
-    grammars.push(create_grammar_fragment(
-        container_name,
-        4,
-        None,
-        GrammarType::ContainerName,
-        true,
-        false,
-    ));
-
-    grammars
+fn rebuild_fragment(
+    text: &str,
+    pos: u8,
+    suffix: Option<&str>,
+    grammar_type: GrammarType,
+    can_shorten: bool,
+    display_at_all: bool,
+) -> GrammarFragment {
+    create_grammar_fragment(
+        text,
+        pos,
+        suffix.map(std::string::ToString::to_string),
+        grammar_type,
+        can_shorten,
+        display_at_all,
+    )
 }
 
 /// Add user choice options to the grammar fragments

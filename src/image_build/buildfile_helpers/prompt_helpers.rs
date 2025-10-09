@@ -138,66 +138,62 @@ pub fn handle_file_type_choice<'a>(
 /// Panics if buildfile contains invalid link target directory paths
 #[must_use]
 pub fn make_build_prompt_grammar(buildfile: &BuildFile) -> Vec<GrammarFragment> {
-    let mut prompt_grammars: Vec<GrammarFragment> = vec![];
-    let grm1 = GrammarFragment {
-        original_val_for_prompt: Some(
+    vec![
+        build_prompt_fragment(
             format!(
                 "Run `{}` in (1):",
                 match buildfile.filetype {
                     BuildChoice::Dockerfile => "podman build",
                     BuildChoice::Makefile => "make",
                 }
-            )
-            .to_string(),
+            ),
+            0,
+            None,
+            None,
         ),
-        ..Default::default()
-    };
-    prompt_grammars.push(grm1);
-
-    let grm2 = GrammarFragment {
-        original_val_for_prompt: Some(
+        build_prompt_fragment(
             buildfile
                 .link_target_dir
                 .clone()
                 .unwrap()
                 .display()
                 .to_string(),
+            1,
+            Some(GrammarType::FileName),
+            None,
         ),
-        pos: 1,
-        grammar_type: GrammarType::FileName,
-        suffix: None,
+        build_prompt_fragment(", or (2):".to_string(), 2, None, None),
+        build_prompt_fragment(
+            buildfile.parent_dir.display().to_string(),
+            3,
+            Some(GrammarType::FileName),
+            None,
+        ),
+        build_prompt_fragment("?".to_string(), 4, None, Some(" ")),
+    ]
+}
+
+fn build_prompt_fragment(
+    text: String,
+    pos: u8,
+    grammar_type: Option<GrammarType>,
+    suffix: Option<&str>,
+) -> GrammarFragment {
+    let mut fragment = GrammarFragment {
+        original_val_for_prompt: Some(text),
+        pos,
         ..Default::default()
     };
 
-    prompt_grammars.push(grm2);
+    if let Some(grammar_type) = grammar_type {
+        fragment.grammar_type = grammar_type;
+    }
 
-    let grm3 = GrammarFragment {
-        original_val_for_prompt: Some(", or (2):".to_string()),
-        pos: 2,
-        ..Default::default()
-    };
-    prompt_grammars.push(grm3);
+    if let Some(suffix) = suffix {
+        fragment.suffix = Some(suffix.to_string());
+    }
 
-    let grm4 = GrammarFragment {
-        original_val_for_prompt: Some(buildfile.parent_dir.display().to_string()),
-        pos: 3,
-        grammar_type: GrammarType::FileName,
-        suffix: None,
-        ..Default::default()
-    };
-
-    prompt_grammars.push(grm4);
-
-    let grm5 = GrammarFragment {
-        original_val_for_prompt: Some("?".to_string()),
-        pos: 4,
-        suffix: Some(" ".to_string()),
-        prefix: None,
-        ..Default::default()
-    };
-    prompt_grammars.push(grm5);
-
-    prompt_grammars
+    fragment
 }
 
 #[must_use]
@@ -209,47 +205,86 @@ pub fn read_val_loop(files: &[BuildFile]) -> WhatWereBuilding {
         follow_link: false,
     };
 
-    if !prompt_grammars.is_empty() {
-        loop {
-            let result = crate::read_interactive_input::read_val_from_cmd_line_and_proceed_default(
-                &mut prompt_grammars,
-            );
-            if let Some(choice) = result.user_entered_val {
-                match choice.as_str() {
-                    "D" | "M" => {
-                        if let Some((chosen_file, new_prompt_grammars, new_user_choices)) =
-                            handle_file_type_choice(files, &choice, &choice_of_where_to_build.file)
-                        {
-                            choice_of_where_to_build.file = chosen_file;
-                            prompt_grammars = new_prompt_grammars;
-                            let mut updated_user_choices = new_user_choices.clone();
-                            updated_user_choices.push("d");
-                            updated_user_choices.push("?");
-                        }
-                    }
-                    "d" | "?" => {
-                        handle_display_info(
-                            files,
-                            &choice_of_where_to_build.file,
-                            &user_choices,
-                            are_there_multiple_files,
-                        );
-                    }
-                    "1" => {
-                        choice_of_where_to_build.follow_link = true;
-                        break;
-                    }
-                    "2" => {
-                        choice_of_where_to_build.follow_link = false;
-                        break;
-                    }
-                    _ => {
-                        eprintln!("Invalid choice '{choice}'");
-                    }
-                }
-            }
-        }
-    }
+    while should_keep_prompting(
+        &mut prompt_grammars,
+        files,
+        &mut choice_of_where_to_build,
+        &user_choices,
+        are_there_multiple_files,
+    ) {}
 
     choice_of_where_to_build
+}
+
+fn should_keep_prompting(
+    prompt_grammars: &mut Vec<GrammarFragment>,
+    files: &[BuildFile],
+    choice_of_where_to_build: &mut WhatWereBuilding,
+    user_choices: &[&str],
+    are_there_multiple_files: bool,
+) -> bool {
+    if prompt_grammars.is_empty() {
+        return false;
+    }
+
+    let result = crate::read_interactive_input::read_val_from_cmd_line_and_proceed_default(
+        prompt_grammars,
+    );
+
+    if let Some(choice) = result.user_entered_val {
+        return !process_choice(
+            &choice,
+            files,
+            choice_of_where_to_build,
+            prompt_grammars,
+            user_choices,
+            are_there_multiple_files,
+        );
+    }
+
+    true
+}
+
+fn process_choice(
+    choice: &str,
+    files: &[BuildFile],
+    choice_of_where_to_build: &mut WhatWereBuilding,
+    prompt_grammars: &mut Vec<GrammarFragment>,
+    user_choices: &[&str],
+    are_there_multiple_files: bool,
+) -> bool {
+    match choice {
+        "D" | "M" => {
+            if let Some((chosen_file, new_prompt_grammars, _new_user_choices)) = handle_file_type_choice(
+                files,
+                choice,
+                &choice_of_where_to_build.file,
+            ) {
+                choice_of_where_to_build.file = chosen_file;
+                *prompt_grammars = new_prompt_grammars;
+            }
+            false
+        }
+        "d" | "?" => {
+            handle_display_info(
+                files,
+                &choice_of_where_to_build.file,
+                user_choices,
+                are_there_multiple_files,
+            );
+            false
+        }
+        "1" => {
+            choice_of_where_to_build.follow_link = true;
+            true
+        }
+        "2" => {
+            choice_of_where_to_build.follow_link = false;
+            true
+        }
+        _ => {
+            eprintln!("Invalid choice '{choice}'");
+            false
+        }
+    }
 }

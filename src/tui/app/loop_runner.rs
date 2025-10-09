@@ -79,10 +79,8 @@ fn build_services(args: &Args, tx: xchan::Sender<Msg>) -> Services {
 fn spawn_key_forwarder(tx: xchan::Sender<Msg>) {
     std::thread::spawn(move || {
         loop {
-            if let Ok(event) = crossterm::event::read() {
-                if let Event::Key(key) = event {
-                    let _ = tx.send(Msg::Key(key));
-                }
+            if let Ok(Event::Key(key)) = crossterm::event::read() {
+                let _ = tx.send(Msg::Key(key));
             }
         }
     });

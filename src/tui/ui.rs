@@ -165,68 +165,53 @@ fn build_rows_with_expansion(app: &App) -> (Vec<Row<'_>>, usize) {
 }
 
 fn draw_help_overlay(frame: &mut Frame, full_area: Rect) {
-    // Compose help text with glyphs (two lines)
-    let lines = vec![
+    let lines = help_overlay_lines();
+    let area = help_overlay_area(full_area);
+    let widget = Paragraph::new(lines).block(help_overlay_block());
+
+    frame.render_widget(Clear, area);
+    frame.render_widget(widget, area);
+}
+
+fn help_overlay_lines() -> Vec<Line<'static>> {
+    vec![
         Line::from(vec![
-            Span::styled(
-                "↑/↓",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
+            styled_key("↑/↓", Color::Yellow),
             Span::raw(" scroll   "),
-            Span::styled(
-                "←/→",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
+            styled_key("←/→", Color::Yellow),
             Span::raw(" details   "),
-            Span::styled(
-                "[space]",
-                Style::default()
-                    .fg(Color::Green)
-                    .add_modifier(Modifier::BOLD),
-            ),
+            styled_key("[space]", Color::Green),
             Span::raw(" select   "),
-            Span::styled(
-                "q",
-                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-            ),
+            styled_key("q", Color::Red),
             Span::raw(" quit"),
         ]),
-        Line::from(vec![
-            Span::styled(
-                "v",
-                Style::default()
-                    .fg(Color::Cyan)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(" View"),
-        ]),
-    ];
+        Line::from(vec![styled_key("v", Color::Cyan), Span::raw(" View")]),
+    ]
+}
 
-    let widget = Paragraph::new(lines).block(Block::default().title("Keys").borders(Borders::ALL));
+fn styled_key(content: &'static str, color: Color) -> Span<'static> {
+    Span::styled(content, Style::default().fg(color).add_modifier(Modifier::BOLD))
+}
 
-    // Size: 4 rows tall, width based on content
+fn help_overlay_area(full_area: Rect) -> Rect {
     let help_height: u16 = 4;
-    // Make the overlay wide enough to include all labels
-    let content_width: u16 = 55; // approximate width of the lines above inside borders
-    let help_width: u16 = content_width + 2; // borders
+    let content_width: u16 = 55;
+    let help_width: u16 = content_width + 2;
     let width_final = help_width.min(full_area.width);
     let height_final = help_height.min(full_area.height);
-    let left = full_area.x; // align to left side
+    let left = full_area.x;
     let top = full_area.y + full_area.height.saturating_sub(height_final);
-    let area = Rect {
+
+    Rect {
         x: left,
         y: top,
         width: width_final,
         height: height_final,
-    };
+    }
+}
 
-    // Clear and draw overlay last so it sits above content
-    frame.render_widget(Clear, area);
-    frame.render_widget(widget, area);
+fn help_overlay_block() -> Block<'static> {
+    Block::default().title("Keys").borders(Borders::ALL)
 }
 
 fn draw_view_picker(frame: &mut Frame, full_area: Rect, selected_idx: usize, current: ViewMode) {

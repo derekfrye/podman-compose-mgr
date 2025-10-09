@@ -88,72 +88,74 @@ pub fn get_podman_image_upstream_create_time(img: &str) -> Result<DateTime<Local
 /// - Failed to execute stat command
 /// - Failed to parse the date
 pub fn get_podman_ondisk_modify_time(img: &str) -> Result<DateTime<Local>, ImageError> {
-    // Get image ID using podman
+    let Some(image_id) = inspect_image_id(img)? else {
+        return placeholder_date();
+    };
+
+    let manifest_path = build_manifest_path(&image_id)?;
+    let stat_output = stat_manifest(&manifest_path)?;
+    convert_str_to_date(stat_output.trim()).map_err(|e| ImageError::DateParsing(e.to_string()))
+}
+
+fn inspect_image_id(img: &str) -> Result<Option<String>, ImageError> {
     let output = Command::new("podman")
         .args(["image", "inspect", "--format", "{{.Id}}", img])
         .output()
         .map_err(|e| ImageError::CommandExecution(format!("Failed to execute podman: {e}")))?;
 
     if output.status.success() {
-        // Parse the image ID
         let stdout = String::from_utf8(output.stdout).map_err(|e| {
             ImageError::OutputParsing(format!("Failed to parse podman output: {e}"))
         })?;
-
-        let id = stdout.trim().to_string();
-
-        // Get HOME directory safely
-        let homedir = env::var("HOME")?;
-
-        // Build path to manifest file
-        let path =
-            format!("{homedir}/.local/share/containers/storage/overlay-images/{id}/manifest");
-
-        // Run stat command on the manifest file
-        let output2 = Command::new("stat")
-            .args(["-c", "%y", &path])
-            .output()
-            .map_err(|e| ImageError::CommandExecution(format!("Failed to execute stat: {e}")))?;
-
-        if output2.status.success() {
-            // Parse stat output
-            let stdout2 = String::from_utf8(output2.stdout).map_err(|e| {
-                ImageError::OutputParsing(format!("Failed to parse stat output: {e}"))
-            })?;
-
-            // Convert date string
-            convert_str_to_date(stdout2.trim()).map_err(|e| ImageError::DateParsing(e.to_string()))
-        } else {
-            // Handle stat errors
-            let stderr = String::from_utf8(output2.stderr).map_err(|e| {
-                ImageError::OutputParsing(format!("Failed to parse stat output: {e}"))
-            })?;
-
-            Err(ImageError::CommandExecution(format!(
-                "stat failed: {stderr}"
-            )))
-        }
+        Ok(Some(stdout.trim().to_string()))
     } else {
-        // Handle "image not known" error gracefully
-        match std::str::from_utf8(&output.stderr) {
-            Ok(stderr_str) if stderr_str.contains("image not known") => {
-                // Return a placeholder date for unknown images
-                let dt = Local
-                    .with_ymd_and_hms(1900, 1, 1, 0, 0, 0)
-                    .single()
-                    .ok_or_else(|| {
-                        ImageError::DateParsing("Failed to create placeholder date".to_string())
-                    })?;
-                Ok(dt)
-            }
-            Ok(stderr_str) => Err(ImageError::CommandExecution(format!(
-                "podman failed: {stderr_str}"
-            ))),
-            Err(e) => Err(ImageError::OutputParsing(format!(
-                "Failed to parse stderr as UTF-8: {e}"
-            ))),
-        }
+        handle_unknown_image(&output)
     }
+}
+
+fn build_manifest_path(image_id: &str) -> Result<String, ImageError> {
+    let homedir = env::var("HOME")?;
+    Ok(format!(
+        "{homedir}/.local/share/containers/storage/overlay-images/{image_id}/manifest"
+    ))
+}
+
+fn stat_manifest(path: &str) -> Result<String, ImageError> {
+    let output = Command::new("stat")
+        .args(["-c", "%y", path])
+        .output()
+        .map_err(|e| ImageError::CommandExecution(format!("Failed to execute stat: {e}")))?;
+
+    if output.status.success() {
+        String::from_utf8(output.stdout).map_err(|e| {
+            ImageError::OutputParsing(format!("Failed to parse stat output: {e}"))
+        })
+    } else {
+        let stderr = String::from_utf8(output.stderr).map_err(|e| {
+            ImageError::OutputParsing(format!("Failed to parse stat output: {e}"))
+        })?;
+
+        Err(ImageError::CommandExecution(format!("stat failed: {stderr}")))
+    }
+}
+
+fn handle_unknown_image(output: &std::process::Output) -> Result<Option<String>, ImageError> {
+    match std::str::from_utf8(&output.stderr) {
+        Ok(stderr_str) if stderr_str.contains("image not known") => Ok(None),
+        Ok(stderr_str) => Err(ImageError::CommandExecution(format!(
+            "podman failed: {stderr_str}"
+        ))),
+        Err(e) => Err(ImageError::OutputParsing(format!(
+            "Failed to parse stderr as UTF-8: {e}"
+        ))),
+    }
+}
+
+fn placeholder_date() -> Result<DateTime<Local>, ImageError> {
+    Local
+        .with_ymd_and_hms(1900, 1, 1, 0, 0, 0)
+        .single()
+        .ok_or_else(|| ImageError::DateParsing("Failed to create placeholder date".to_string()))
 }
 
 /// Parse Dockerfile and pull base image
