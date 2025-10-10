@@ -127,15 +127,15 @@ fn stat_manifest(path: &str) -> Result<String, ImageError> {
         .map_err(|e| ImageError::CommandExecution(format!("Failed to execute stat: {e}")))?;
 
     if output.status.success() {
-        String::from_utf8(output.stdout).map_err(|e| {
-            ImageError::OutputParsing(format!("Failed to parse stat output: {e}"))
-        })
+        String::from_utf8(output.stdout)
+            .map_err(|e| ImageError::OutputParsing(format!("Failed to parse stat output: {e}")))
     } else {
-        let stderr = String::from_utf8(output.stderr).map_err(|e| {
-            ImageError::OutputParsing(format!("Failed to parse stat output: {e}"))
-        })?;
+        let stderr = String::from_utf8(output.stderr)
+            .map_err(|e| ImageError::OutputParsing(format!("Failed to parse stat output: {e}")))?;
 
-        Err(ImageError::CommandExecution(format!("stat failed: {stderr}")))
+        Err(ImageError::CommandExecution(format!(
+            "stat failed: {stderr}"
+        )))
     }
 }
 

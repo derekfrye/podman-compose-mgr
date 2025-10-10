@@ -79,9 +79,9 @@ fn service_names(
         return Ok(None);
     };
 
-    let image = image_value.as_str().ok_or_else(|| {
-        RebuildError::InvalidConfig("'image' is not a string".to_string())
-    })?;
+    let image = image_value
+        .as_str()
+        .ok_or_else(|| RebuildError::InvalidConfig("'image' is not a string".to_string()))?;
     let container = container_value.as_str().ok_or_else(|| {
         RebuildError::InvalidConfig("'container_name' is not a string".to_string())
     })?;

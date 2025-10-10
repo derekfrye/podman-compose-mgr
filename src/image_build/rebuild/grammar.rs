@@ -17,7 +17,15 @@ pub fn build_rebuild_grammars(
         .display()
         .to_string();
     let mut grammars = vec![
-        make_fragment("Refresh", 0, GrammarType::Verbiage, Some(" "), false, true, false),
+        make_fragment(
+            "Refresh",
+            0,
+            GrammarType::Verbiage,
+            Some(" "),
+            false,
+            true,
+            false,
+        ),
         make_fragment(
             custom_img_nm,
             1,
@@ -27,7 +35,15 @@ pub fn build_rebuild_grammars(
             true,
             false,
         ),
-        make_fragment("from", 2, GrammarType::Verbiage, Some(" "), false, true, false),
+        make_fragment(
+            "from",
+            2,
+            GrammarType::Verbiage,
+            Some(" "),
+            false,
+            true,
+            false,
+        ),
         make_fragment(
             &docker_compose_pth,
             3,

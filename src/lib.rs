@@ -92,10 +92,7 @@ fn current_exe_name() -> std::ffi::OsString {
         .unwrap_or_else(|| std::ffi::OsString::from("podman-compose-mgr"))
 }
 
-fn build_command_line(
-    args: &args::Args,
-    exe_name: &std::ffi::OsStr,
-) -> Option<String> {
+fn build_command_line(args: &args::Args, exe_name: &std::ffi::OsStr) -> Option<String> {
     let mut cmd_line = exe_name.to_string_lossy().to_string();
     let args_json = serde_json::to_value(args).ok()?;
     let map = args_json.as_object()?;

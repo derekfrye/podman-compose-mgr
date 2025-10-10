@@ -1,15 +1,14 @@
 use crate::args::Args;
 use crate::image_build::rebuild::RebuildManager;
-use crate::read_interactive_input::{
-    format::{do_prompt_formatting, unroll_grammar_into_string},
-    GrammarFragment,
-    ReadValResult,
-};
-use crate::utils::error_utils;
-use crate::tui::app::state::{Msg, OutputStream, RebuildJobSpec, RebuildResult, Services};
 use crate::interfaces::CommandHelper;
-use crate::interfaces::ReadInteractiveInputHelper;
 use crate::interfaces::DefaultCommandHelper;
+use crate::interfaces::ReadInteractiveInputHelper;
+use crate::read_interactive_input::{
+    GrammarFragment, ReadValResult,
+    format::{do_prompt_formatting, unroll_grammar_into_string},
+};
+use crate::tui::app::state::{Msg, OutputStream, RebuildJobSpec, RebuildResult, Services};
+use crate::utils::error_utils;
 use crossbeam_channel::Sender;
 use std::error::Error;
 use std::io::{BufRead, BufReader};
@@ -76,9 +75,7 @@ fn run_job(
     let read_helper = NonInteractiveReadHelper::new(tx.clone(), job_idx);
     let mut manager = RebuildManager::new(&cmd_helper, &read_helper);
 
-    manager
-        .rebuild(&entry, args)
-        .map_err(|e| e.to_string())
+    manager.rebuild(&entry, args).map_err(|e| e.to_string())
 }
 
 struct TuiCommandHelper {

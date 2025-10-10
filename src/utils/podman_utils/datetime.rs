@@ -45,9 +45,7 @@ fn capture_date_parts(date_str: &str) -> Result<(String, String), DateTimeError>
     let datetime_part = captures
         .name("datetime")
         .ok_or_else(|| {
-            DateTimeError::DateParsing(format!(
-                "Failed to parse datetime part from '{date_str}'"
-            ))
+            DateTimeError::DateParsing(format!("Failed to parse datetime part from '{date_str}'"))
         })?
         .as_str()
         .to_string();

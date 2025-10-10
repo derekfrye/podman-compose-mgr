@@ -227,9 +227,8 @@ fn should_keep_prompting(
         return false;
     }
 
-    let result = crate::read_interactive_input::read_val_from_cmd_line_and_proceed_default(
-        prompt_grammars,
-    );
+    let result =
+        crate::read_interactive_input::read_val_from_cmd_line_and_proceed_default(prompt_grammars);
 
     if let Some(choice) = result.user_entered_val {
         return !process_choice(
@@ -255,11 +254,9 @@ fn process_choice(
 ) -> bool {
     match choice {
         "D" | "M" => {
-            if let Some((chosen_file, new_prompt_grammars, _new_user_choices)) = handle_file_type_choice(
-                files,
-                choice,
-                &choice_of_where_to_build.file,
-            ) {
+            if let Some((chosen_file, new_prompt_grammars, _new_user_choices)) =
+                handle_file_type_choice(files, choice, &choice_of_where_to_build.file)
+            {
                 choice_of_where_to_build.file = chosen_file;
                 *prompt_grammars = new_prompt_grammars;
             }

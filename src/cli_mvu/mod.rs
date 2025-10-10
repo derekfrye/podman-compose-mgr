@@ -106,7 +106,11 @@ fn compile_regexes(patterns: Vec<String>) -> Vec<regex::Regex> {
         .collect()
 }
 
-fn collect_prompt_items(root: &Path, include: &[regex::Regex], exclude: &[regex::Regex]) -> Vec<PromptItem> {
+fn collect_prompt_items(
+    root: &Path,
+    include: &[regex::Regex],
+    exclude: &[regex::Regex],
+) -> Vec<PromptItem> {
     use walkdir::WalkDir;
 
     let mut items = Vec::new();
@@ -148,10 +152,7 @@ fn push_compose_items(entry: &walkdir::DirEntry, path_str: &str, items: &mut Vec
             let Some(image) = mapping.get("image").and_then(|v| v.as_str()) else {
                 continue;
             };
-            let Some(container) = mapping
-                .get("container_name")
-                .and_then(|v| v.as_str())
-            else {
+            let Some(container) = mapping.get("container_name").and_then(|v| v.as_str()) else {
                 continue;
             };
 

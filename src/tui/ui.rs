@@ -56,7 +56,9 @@ pub fn draw(frame: &mut Frame, app: &App, args: &Args) {
         Some(ModalState::ViewPicker { selected_idx }) => {
             draw_view_picker(frame, frame.area(), selected_idx, app.view_mode);
         }
-        Some(ModalState::WorkQueue { selected_idx }) => draw_work_queue(frame, frame.area(), app, selected_idx),
+        Some(ModalState::WorkQueue { selected_idx }) => {
+            draw_work_queue(frame, frame.area(), app, selected_idx)
+        }
         None => {}
     }
 }
@@ -182,15 +184,13 @@ fn draw_rebuild_sidebar(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild
         if let Some(container) = &job.container {
             lines.push(Line::from(format!("Container: {container}")));
         }
-        lines.push(Line::from(format!(
-            "Source: {}",
-            job.source_dir.display()
-        )));
+        lines.push(Line::from(format!("Source: {}", job.source_dir.display())));
         if let Some(err) = &job.error {
             lines.push(Line::from(""));
-            lines.push(Line::from(vec![
-                Span::styled("Error", Style::default().fg(Color::LightRed)),
-            ]));
+            lines.push(Line::from(vec![Span::styled(
+                "Error",
+                Style::default().fg(Color::LightRed),
+            )]));
             lines.push(Line::from(err.clone()));
         }
     } else {
@@ -211,10 +211,22 @@ fn legend_lines() -> Vec<Line<'static>> {
         Line::from(vec![styled_key("q", Color::Red), Span::raw(" Quit")]),
         Line::from(vec![styled_key("w", Color::Cyan), Span::raw(" Work queue")]),
         Line::from(vec![styled_key("j/k", Color::Yellow), Span::raw(" Scroll")]),
-        Line::from(vec![styled_key("f/b", Color::Yellow), Span::raw(" Page scroll")]),
-        Line::from(vec![styled_key("h/l", Color::Yellow), Span::raw(" Horizontal")]),
-        Line::from(vec![styled_key("esc", Color::Magenta), Span::raw(" Back to list")]),
-        Line::from(vec![styled_key("a", Color::Green), Span::raw(" Toggle all")]),
+        Line::from(vec![
+            styled_key("f/b", Color::Yellow),
+            Span::raw(" Page scroll"),
+        ]),
+        Line::from(vec![
+            styled_key("h/l", Color::Yellow),
+            Span::raw(" Horizontal"),
+        ]),
+        Line::from(vec![
+            styled_key("esc", Color::Magenta),
+            Span::raw(" Back to list"),
+        ]),
+        Line::from(vec![
+            styled_key("a", Color::Green),
+            Span::raw(" Toggle all"),
+        ]),
     ]
 }
 
@@ -250,7 +262,11 @@ fn draw_work_queue(frame: &mut Frame, full_area: Rect, app: &App, selected_idx: 
         .iter()
         .enumerate()
         .map(|(idx, job)| {
-            let prefix = if idx == rebuild.active_idx { "▶" } else { " " };
+            let prefix = if idx == rebuild.active_idx {
+                "▶"
+            } else {
+                " "
+            };
             let container = job
                 .container
                 .as_ref()
@@ -365,7 +381,10 @@ fn help_overlay_lines() -> Vec<Line<'static>> {
 }
 
 fn styled_key(content: &'static str, color: Color) -> Span<'static> {
-    Span::styled(content, Style::default().fg(color).add_modifier(Modifier::BOLD))
+    Span::styled(
+        content,
+        Style::default().fg(color).add_modifier(Modifier::BOLD),
+    )
 }
 
 fn help_overlay_area(full_area: Rect) -> Rect {

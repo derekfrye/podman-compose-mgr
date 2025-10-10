@@ -1,17 +1,19 @@
+use super::rebuild_worker::spawn_rebuild_thread;
 use crate::tui::app::state::{
     App, ModalState, Msg, OutputStream, RebuildJob, RebuildJobSpec, RebuildResult, RebuildState,
     RebuildStatus, Services, UiState,
 };
-use super::rebuild_worker::spawn_rebuild_thread;
 
 pub fn handle_rebuild_message(app: &mut App, msg: Msg, services: Option<&Services>) {
     match msg {
         Msg::StartRebuild => handle_start_rebuild(app, services),
         Msg::RebuildSessionCreated { jobs } => handle_session_created(app, jobs),
         Msg::RebuildJobStarted { job_idx } => handle_job_started(app, job_idx),
-        Msg::RebuildJobOutput { job_idx, chunk, stream } => {
-            handle_job_output(app, job_idx, chunk, stream)
-        }
+        Msg::RebuildJobOutput {
+            job_idx,
+            chunk,
+            stream,
+        } => handle_job_output(app, job_idx, chunk, stream),
         Msg::RebuildJobFinished { job_idx, result } => handle_job_finished(app, job_idx, result),
         Msg::RebuildAdvance => handle_rebuild_advance(app, services),
         Msg::RebuildAborted(reason) => handle_rebuild_aborted(app, reason),
@@ -138,7 +140,9 @@ fn handle_exit_rebuild(app: &mut App) {
 fn handle_open_work_queue(app: &mut App) {
     if let Some(rebuild) = app.rebuild.as_ref() {
         app.modal = Some(ModalState::WorkQueue {
-            selected_idx: rebuild.work_queue_selected.min(rebuild.jobs.len().saturating_sub(1)),
+            selected_idx: rebuild
+                .work_queue_selected
+                .min(rebuild.jobs.len().saturating_sub(1)),
         });
     }
 }

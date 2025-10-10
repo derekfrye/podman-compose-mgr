@@ -14,6 +14,7 @@ fn keys_overlay_is_drawn_with_labels() {
         image: "img".into(),
         container: Some("c".into()),
         source_dir: std::path::PathBuf::from("."),
+        entry_path: Some(std::path::PathBuf::from("tests/test1/docker-compose.yml")),
         expanded: false,
         details: Vec::new(),
         is_dir: false,

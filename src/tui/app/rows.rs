@@ -76,17 +76,17 @@ impl App {
         let mut rows: Vec<ItemRow> = Vec::new();
         for discovered in &self.all_items {
             if seen.insert(discovered.image.clone()) {
-            rows.push(ItemRow {
-                checked: false,
-                image: discovered.image.clone(),
-                container: None,
-                source_dir: discovered.source_dir.clone(),
-                entry_path: Some(discovered.entry_path.clone()),
-                expanded: false,
-                details: Vec::new(),
-                is_dir: false,
-                dir_name: None,
-            });
+                rows.push(ItemRow {
+                    checked: false,
+                    image: discovered.image.clone(),
+                    container: None,
+                    source_dir: discovered.source_dir.clone(),
+                    entry_path: Some(discovered.entry_path.clone()),
+                    expanded: false,
+                    details: Vec::new(),
+                    is_dir: false,
+                    dir_name: None,
+                });
             }
         }
         rows

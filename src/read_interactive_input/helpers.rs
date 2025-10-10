@@ -90,12 +90,7 @@ pub fn read_val_from_cmd_line_and_proceed_with_deps<C: CommandHelper>(
     let stdin_wrapper = resolve_stdin_wrapper(stdin_helper, &default_stdin_wrapper);
     let mut editor = create_reedline_editor(stdin_helper);
 
-    read_input_loop(
-        &prompt_data,
-        &print_fn,
-        stdin_wrapper,
-        editor.as_mut(),
-    )
+    read_input_loop(&prompt_data, &print_fn, stdin_wrapper, editor.as_mut())
 }
 
 struct PromptData {

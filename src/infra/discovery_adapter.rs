@@ -56,13 +56,11 @@ fn walk_entries(root: &Path) -> impl Iterator<Item = walkdir::DirEntry> {
     WalkDir::new(root).into_iter().filter_map(Result::ok)
 }
 
-fn should_keep_path(
-    path: &str,
-    exclude_patterns: &[Regex],
-    include_patterns: &[Regex],
-) -> bool {
+fn should_keep_path(path: &str, exclude_patterns: &[Regex], include_patterns: &[Regex]) -> bool {
     if !exclude_patterns.is_empty()
-        && exclude_patterns.iter().any(|pattern| pattern.is_match(path))
+        && exclude_patterns
+            .iter()
+            .any(|pattern| pattern.is_match(path))
     {
         return false;
     }

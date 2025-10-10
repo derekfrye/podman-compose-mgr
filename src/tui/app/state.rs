@@ -66,10 +66,17 @@ pub enum Msg {
     Interrupt,
     Tick,
     ScanResults(Vec<DiscoveredImage>),
-    DetailsReady { row: usize, details: Vec<String> },
+    DetailsReady {
+        row: usize,
+        details: Vec<String>,
+    },
     StartRebuild,
-    RebuildSessionCreated { jobs: Vec<RebuildJobSpec> },
-    RebuildJobStarted { job_idx: usize },
+    RebuildSessionCreated {
+        jobs: Vec<RebuildJobSpec>,
+    },
+    RebuildJobStarted {
+        job_idx: usize,
+    },
     RebuildJobOutput {
         job_idx: usize,
         chunk: String,
@@ -176,7 +183,12 @@ pub struct RebuildJob {
 }
 
 impl RebuildJob {
-    pub fn new(image: String, container: Option<String>, entry_path: PathBuf, source_dir: PathBuf) -> Self {
+    pub fn new(
+        image: String,
+        container: Option<String>,
+        entry_path: PathBuf,
+        source_dir: PathBuf,
+    ) -> Self {
         Self {
             image,
             container,
@@ -199,7 +211,14 @@ impl RebuildJob {
 
     pub fn push_output(&mut self, stream: OutputStream, chunk: String) {
         const MAX_LINES: usize = 4_096;
-        push_with_limit(&mut self.output, RebuildOutputLine { stream, text: chunk }, MAX_LINES);
+        push_with_limit(
+            &mut self.output,
+            RebuildOutputLine {
+                stream,
+                text: chunk,
+            },
+            MAX_LINES,
+        );
     }
 }
 
