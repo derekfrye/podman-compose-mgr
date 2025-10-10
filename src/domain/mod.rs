@@ -5,6 +5,7 @@ pub struct DiscoveredImage {
     pub image: String,
     pub container: Option<String>,
     pub source_dir: PathBuf,
+    pub entry_path: PathBuf,
 }
 
 // Data returned when asking for details about an image.

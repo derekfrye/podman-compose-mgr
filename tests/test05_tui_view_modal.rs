@@ -17,11 +17,13 @@ fn view_modal_shows_three_options_and_selects_folder_view() {
             image: "imgA".into(),
             container: Some("cA".into()),
             source_dir: app.root_path.join("image1"),
+            entry_path: app.root_path.join("image1/docker-compose.yml"),
         },
         DiscoveredImage {
             image: "imgB".into(),
             container: Some("cB".into()),
             source_dir: app.root_path.join("image2"),
+            entry_path: app.root_path.join("image2/docker-compose.yml"),
         },
     ];
     // rows get built after selection; no-op here

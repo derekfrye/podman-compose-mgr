@@ -4,6 +4,7 @@ use crate::app::AppCore;
 use crate::domain::DiscoveredImage;
 use crate::utils::log_utils::Logger;
 use crossbeam_channel as xchan;
+use std::collections::VecDeque;
 use std::path::PathBuf;
 
 pub const SPINNER_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -14,6 +15,7 @@ pub struct ItemRow {
     pub image: String,
     pub container: Option<String>,
     pub source_dir: PathBuf,
+    pub entry_path: Option<PathBuf>,
     pub expanded: bool,
     pub details: Vec<String>,
     pub is_dir: bool,
@@ -24,6 +26,7 @@ pub struct ItemRow {
 pub enum UiState {
     Scanning,
     Ready,
+    Rebuilding,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -36,6 +39,7 @@ pub enum ViewMode {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ModalState {
     ViewPicker { selected_idx: usize },
+    WorkQueue { selected_idx: usize },
 }
 
 #[derive(Clone, Debug)]
@@ -46,6 +50,7 @@ pub enum Msg {
     MoveUp,
     MoveDown,
     ToggleCheck,
+    ToggleCheckAll,
     ExpandOrEnter,
     CollapseOrBack,
     OpenViewPicker,
@@ -53,10 +58,39 @@ pub enum Msg {
     ViewPickerDown,
     ViewPickerAccept,
     ViewPickerCancel,
+    WorkQueueUp,
+    WorkQueueDown,
+    WorkQueueSelect,
+    OpenWorkQueue,
+    CloseModal,
     Interrupt,
     Tick,
     ScanResults(Vec<DiscoveredImage>),
     DetailsReady { row: usize, details: Vec<String> },
+    StartRebuild,
+    RebuildSessionCreated { jobs: Vec<RebuildJobSpec> },
+    RebuildJobStarted { job_idx: usize },
+    RebuildJobOutput {
+        job_idx: usize,
+        chunk: String,
+        stream: OutputStream,
+    },
+    RebuildJobFinished {
+        job_idx: usize,
+        result: RebuildResult,
+    },
+    RebuildAdvance,
+    RebuildAborted(String),
+    RebuildAllDone,
+    ScrollOutputUp,
+    ScrollOutputDown,
+    ScrollOutputPageUp,
+    ScrollOutputPageDown,
+    ScrollOutputTop,
+    ScrollOutputBottom,
+    ScrollOutputLeft,
+    ScrollOutputRight,
+    ExitRebuild,
 }
 
 pub struct Services {
@@ -65,6 +99,7 @@ pub struct Services {
     pub include: Vec<String>,
     pub exclude: Vec<String>,
     pub tx: xchan::Sender<Msg>,
+    pub args: Args,
 }
 
 pub type LoopChans<'a> = crate::mvu::LoopChans<'a, Msg>;
@@ -83,6 +118,7 @@ pub struct App {
     pub all_items: Vec<DiscoveredImage>,
     pub root_path: PathBuf,
     pub current_path: Vec<String>,
+    pub rebuild: Option<RebuildState>,
 }
 
 impl Default for App {
@@ -99,8 +135,117 @@ impl Default for App {
             all_items: Vec::new(),
             root_path: PathBuf::new(),
             current_path: Vec::new(),
+            rebuild: None,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct RebuildState {
+    pub jobs: Vec<RebuildJob>,
+    pub active_idx: usize,
+    pub scroll_y: u16,
+    pub scroll_x: u16,
+    pub work_queue_selected: usize,
+    pub finished: bool,
+}
+
+impl RebuildState {
+    #[must_use]
+    pub fn new(jobs: Vec<RebuildJob>) -> Self {
+        Self {
+            jobs,
+            active_idx: 0,
+            scroll_y: 0,
+            scroll_x: 0,
+            work_queue_selected: 0,
+            finished: false,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RebuildJob {
+    pub image: String,
+    pub container: Option<String>,
+    pub entry_path: PathBuf,
+    pub source_dir: PathBuf,
+    pub status: RebuildStatus,
+    pub output: VecDeque<RebuildOutputLine>,
+    pub error: Option<String>,
+}
+
+impl RebuildJob {
+    pub fn new(image: String, container: Option<String>, entry_path: PathBuf, source_dir: PathBuf) -> Self {
+        Self {
+            image,
+            container,
+            entry_path,
+            source_dir,
+            status: RebuildStatus::Pending,
+            output: VecDeque::new(),
+            error: None,
+        }
+    }
+
+    pub fn from_spec(spec: &RebuildJobSpec) -> Self {
+        Self::new(
+            spec.image.clone(),
+            spec.container.clone(),
+            spec.entry_path.clone(),
+            spec.source_dir.clone(),
+        )
+    }
+
+    pub fn push_output(&mut self, stream: OutputStream, chunk: String) {
+        const MAX_LINES: usize = 4_096;
+        push_with_limit(&mut self.output, RebuildOutputLine { stream, text: chunk }, MAX_LINES);
+    }
+}
+
+fn push_with_limit<T>(buf: &mut VecDeque<T>, line: T, limit: usize) {
+    buf.push_back(line);
+    if buf.len() > limit {
+        let overflow = buf.len() - limit;
+        for _ in 0..overflow {
+            buf.pop_front();
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RebuildOutputLine {
+    pub stream: OutputStream,
+    pub text: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct RebuildJobSpec {
+    pub image: String,
+    pub container: Option<String>,
+    pub entry_path: PathBuf,
+    pub source_dir: PathBuf,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RebuildStatus {
+    Pending,
+    Running,
+    Succeeded,
+    Failed,
+}
+
+#[derive(Clone, Debug)]
+pub enum RebuildResult {
+    Success,
+    Failure(String),
+    Cancelled,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OutputStream {
+    Stdout,
+    Stderr,
 }
 
 impl App {

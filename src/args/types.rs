@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use super::validators::validate;
 use crate::utils::path_utils::{check_readable_dir, check_writable_dir};
 
-#[derive(Parser, Debug, serde::Serialize)]
+#[derive(Parser, Debug, Clone, serde::Serialize)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     /// Search path for docker-compose files

@@ -1,11 +1,12 @@
 use super::expansion::{handle_collapse_or_back, handle_expand_or_enter};
+use super::rebuild::handle_rebuild_message;
 use super::scan::{handle_details_ready, handle_scan_results, handle_tick};
 use super::view_picker::{
     handle_open_view_picker, handle_view_picker_accept, handle_view_picker_cancel,
     handle_view_picker_down, handle_view_picker_up,
 };
 use crate::tui::app::keymap::map_key_event_to_msg;
-use crate::tui::app::state::{App, Msg, Services};
+use crate::tui::app::state::{App, Msg, Services, UiState};
 use crossterm::event::KeyEvent;
 
 pub fn handle_message(app: &mut App, msg: Msg, services: Option<&Services>) {
@@ -26,6 +27,29 @@ pub fn handle_message(app: &mut App, msg: Msg, services: Option<&Services>) {
         Msg::Tick => handle_tick(app),
         Msg::ScanResults(discovered) => handle_scan_results(app, discovered),
         Msg::DetailsReady { row, details } => handle_details_ready(app, row, details),
+        Msg::StartRebuild
+        | Msg::WorkQueueUp
+        | Msg::WorkQueueDown
+        | Msg::WorkQueueSelect
+        | Msg::RebuildSessionCreated { .. }
+        | Msg::RebuildJobStarted { .. }
+        | Msg::RebuildJobOutput { .. }
+        | Msg::RebuildJobFinished { .. }
+        | Msg::RebuildAdvance
+        | Msg::RebuildAborted(..)
+        | Msg::RebuildAllDone
+        | Msg::OpenWorkQueue
+        | Msg::CloseModal
+        | Msg::ScrollOutputUp
+        | Msg::ScrollOutputDown
+        | Msg::ScrollOutputPageUp
+        | Msg::ScrollOutputPageDown
+        | Msg::ScrollOutputTop
+        | Msg::ScrollOutputBottom
+        | Msg::ScrollOutputLeft
+        | Msg::ScrollOutputRight
+        | Msg::ExitRebuild
+        | Msg::ToggleCheckAll => handle_rebuild_message(app, msg, services),
     }
 }
 
@@ -50,18 +74,27 @@ fn handle_init(services: Option<&Services>) {
 }
 
 fn handle_move_up(app: &mut App) {
+    if app.state != UiState::Ready {
+        return;
+    }
     if app.selected > 0 {
         app.selected -= 1;
     }
 }
 
 fn handle_move_down(app: &mut App) {
+    if app.state != UiState::Ready {
+        return;
+    }
     if app.selected + 1 < app.rows.len() {
         app.selected += 1;
     }
 }
 
 fn handle_toggle_check(app: &mut App) {
+    if app.state != UiState::Ready {
+        return;
+    }
     if let Some(row) = app.rows.get_mut(app.selected) {
         row.checked = !row.checked;
     }

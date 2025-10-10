@@ -39,6 +39,7 @@ impl App {
                 image: d.image.clone(),
                 container: d.container.clone(),
                 source_dir: d.source_dir.clone(),
+                entry_path: Some(d.entry_path.clone()),
                 expanded: false,
                 details: Vec::new(),
                 is_dir: false,
@@ -75,16 +76,17 @@ impl App {
         let mut rows: Vec<ItemRow> = Vec::new();
         for discovered in &self.all_items {
             if seen.insert(discovered.image.clone()) {
-                rows.push(ItemRow {
-                    checked: false,
-                    image: discovered.image.clone(),
-                    container: None,
-                    source_dir: discovered.source_dir.clone(),
-                    expanded: false,
-                    details: Vec::new(),
-                    is_dir: false,
-                    dir_name: None,
-                });
+            rows.push(ItemRow {
+                checked: false,
+                image: discovered.image.clone(),
+                container: None,
+                source_dir: discovered.source_dir.clone(),
+                entry_path: Some(discovered.entry_path.clone()),
+                expanded: false,
+                details: Vec::new(),
+                is_dir: false,
+                dir_name: None,
+            });
             }
         }
         rows
@@ -111,6 +113,7 @@ impl App {
                 image: String::new(),
                 container: None,
                 source_dir: current_root.join(&dir),
+                entry_path: None,
                 expanded: false,
                 details: Vec::new(),
                 is_dir: true,
@@ -118,11 +121,17 @@ impl App {
             });
         }
         for image in images {
+            let entry_path = self
+                .all_items
+                .iter()
+                .find(|item| item.image == image)
+                .map(|item| item.entry_path.clone());
             rows.push(ItemRow {
                 checked: false,
                 image,
                 container: None,
                 source_dir: current_root.clone(),
+                entry_path,
                 expanded: false,
                 details: Vec::new(),
                 is_dir: false,
@@ -150,6 +159,7 @@ impl App {
             all_items: self.all_items.clone(),
             root_path: self.root_path.clone(),
             current_path: self.current_path.clone(),
+            rebuild: None,
         }
     }
 }

@@ -1,6 +1,8 @@
 mod events;
 mod expansion;
 mod scan;
+mod rebuild;
+mod rebuild_worker;
 mod update;
 mod view_picker;
 

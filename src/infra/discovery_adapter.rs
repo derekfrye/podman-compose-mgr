@@ -143,12 +143,14 @@ fn add_row(
         .unwrap_or_else(|| Path::new("/"))
         .to_path_buf();
 
+    let entry_path = entry.path().to_path_buf();
     let key = (image.clone(), container.clone(), source_dir.clone());
     if seen.insert(key) {
         rows.push(DiscoveredImage {
             image,
             container,
             source_dir,
+            entry_path,
         });
     }
 }

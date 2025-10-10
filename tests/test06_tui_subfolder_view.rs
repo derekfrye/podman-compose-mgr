@@ -14,11 +14,13 @@ fn folder_view_lists_subfolders_even_with_duplicate_images() {
             image: "djf/rusty-golf".into(),
             container: Some("golf".into()),
             source_dir: app.root_path.join("image1"),
+            entry_path: app.root_path.join("image1/docker-compose.yml"),
         },
         DiscoveredImage {
             image: "djf/rusty-golf".into(),
             container: Some("golf".into()),
             source_dir: app.root_path.join("a"),
+            entry_path: app.root_path.join("a/docker-compose.yml"),
         },
     ];
 

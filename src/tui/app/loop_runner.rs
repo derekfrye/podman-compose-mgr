@@ -73,6 +73,7 @@ fn build_services(args: &Args, tx: xchan::Sender<Msg>) -> Services {
         include: args.include_path_patterns.clone(),
         exclude: args.exclude_path_patterns.clone(),
         tx,
+        args: args.clone(),
     }
 }
 

@@ -4,10 +4,15 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table, TableState},
+    widgets::{
+        Block, Borders, Cell, Clear, List, ListItem, ListState, Paragraph, Row, Table, TableState,
+        Wrap,
+    },
 };
 
-use super::app::{App, ItemRow, ModalState, UiState, ViewMode};
+use crate::tui::app::{
+    App, ItemRow, ModalState, OutputStream, RebuildState, RebuildStatus, UiState, ViewMode,
+};
 
 pub fn draw(frame: &mut Frame, app: &App, args: &Args) {
     // Layout: title | main (draw help as overlay later)
@@ -39,15 +44,20 @@ pub fn draw(frame: &mut Frame, app: &App, args: &Args) {
     // Main
     match app.state {
         UiState::Scanning => draw_scanning(frame, chunks[1], app, args),
-        UiState::Ready => draw_table(frame, chunks[1], app),
+        UiState::Ready => {
+            draw_table(frame, chunks[1], app);
+            draw_help_overlay(frame, frame.area());
+        }
+        UiState::Rebuilding => draw_rebuild(frame, chunks[1], app),
     }
 
-    // Help overlay (always on top)
-    draw_help_overlay(frame, frame.area());
-
     // Modal overlays (draw last)
-    if let Some(ModalState::ViewPicker { selected_idx }) = app.modal.clone() {
-        draw_view_picker(frame, frame.area(), selected_idx, app.view_mode);
+    match app.modal.clone() {
+        Some(ModalState::ViewPicker { selected_idx }) => {
+            draw_view_picker(frame, frame.area(), selected_idx, app.view_mode);
+        }
+        Some(ModalState::WorkQueue { selected_idx }) => draw_work_queue(frame, frame.area(), app, selected_idx),
+        None => {}
     }
 }
 
@@ -108,6 +118,171 @@ fn draw_table(frame: &mut Frame, area: ratatui::prelude::Rect, app: &App) {
         state.select(Some(selected_visual_idx));
     }
     frame.render_stateful_widget(table, area, &mut state);
+}
+
+fn draw_rebuild(frame: &mut Frame, area: ratatui::prelude::Rect, app: &App) {
+    let Some(rebuild) = &app.rebuild else {
+        let empty = Paragraph::new("No rebuild jobs queued")
+            .block(Block::default().title("Rebuild").borders(Borders::ALL));
+        frame.render_widget(empty, area);
+        return;
+    };
+
+    let pane = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(40), Constraint::Length(24)])
+        .split(area);
+
+    draw_rebuild_output(frame, pane[0], rebuild);
+    draw_rebuild_sidebar(frame, pane[1], rebuild);
+}
+
+fn draw_rebuild_output(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild: &RebuildState) {
+    let Some(job) = rebuild.jobs.get(rebuild.active_idx) else {
+        let empty = Paragraph::new("Waiting for jobs...")
+            .block(Block::default().title("Output").borders(Borders::ALL));
+        frame.render_widget(empty, area);
+        return;
+    };
+
+    let header = match &job.container {
+        Some(container) => format!("{} ({container})", job.image),
+        None => job.image.clone(),
+    };
+
+    let lines: Vec<Line> = job
+        .output
+        .iter()
+        .map(|entry| match entry.stream {
+            OutputStream::Stdout => Line::from(vec![Span::raw(entry.text.clone())]),
+            OutputStream::Stderr => Line::from(vec![Span::styled(
+                entry.text.clone(),
+                Style::default().fg(Color::LightRed),
+            )]),
+        })
+        .collect();
+
+    let paragraph = Paragraph::new(lines)
+        .block(Block::default().title(header).borders(Borders::ALL))
+        .wrap(Wrap { trim: false })
+        .scroll((rebuild.scroll_y, rebuild.scroll_x));
+
+    frame.render_widget(paragraph, area);
+}
+
+fn draw_rebuild_sidebar(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild: &RebuildState) {
+    let total = rebuild.jobs.len();
+    let active = rebuild.active_idx + 1;
+    let mut lines: Vec<Line> = Vec::new();
+
+    lines.push(Line::from(format!("Job: {active}/{total}")));
+    if let Some(job) = rebuild.jobs.get(rebuild.active_idx) {
+        lines.push(Line::from(format!("Status: {}", format_status(job.status))));
+        lines.push(Line::from(format!("Image: {}", job.image)));
+        if let Some(container) = &job.container {
+            lines.push(Line::from(format!("Container: {container}")));
+        }
+        lines.push(Line::from(format!(
+            "Source: {}",
+            job.source_dir.display()
+        )));
+        if let Some(err) = &job.error {
+            lines.push(Line::from(""));
+            lines.push(Line::from(vec![
+                Span::styled("Error", Style::default().fg(Color::LightRed)),
+            ]));
+            lines.push(Line::from(err.clone()));
+        }
+    } else {
+        lines.push(Line::from("Status: —"));
+    }
+    lines.push(Line::from(""));
+    lines.extend(legend_lines());
+
+    let sidebar = Paragraph::new(lines)
+        .block(Block::default().title("Legend").borders(Borders::ALL))
+        .wrap(Wrap { trim: false });
+
+    frame.render_widget(sidebar, area);
+}
+
+fn legend_lines() -> Vec<Line<'static>> {
+    vec![
+        Line::from(vec![styled_key("q", Color::Red), Span::raw(" Quit")]),
+        Line::from(vec![styled_key("w", Color::Cyan), Span::raw(" Work queue")]),
+        Line::from(vec![styled_key("j/k", Color::Yellow), Span::raw(" Scroll")]),
+        Line::from(vec![styled_key("f/b", Color::Yellow), Span::raw(" Page scroll")]),
+        Line::from(vec![styled_key("h/l", Color::Yellow), Span::raw(" Horizontal")]),
+        Line::from(vec![styled_key("esc", Color::Magenta), Span::raw(" Back to list")]),
+        Line::from(vec![styled_key("a", Color::Green), Span::raw(" Toggle all")]),
+    ]
+}
+
+fn format_status(status: RebuildStatus) -> &'static str {
+    match status {
+        RebuildStatus::Pending => "Pending",
+        RebuildStatus::Running => "Running",
+        RebuildStatus::Succeeded => "Done",
+        RebuildStatus::Failed => "Failed",
+    }
+}
+
+fn draw_work_queue(frame: &mut Frame, full_area: Rect, app: &App, selected_idx: usize) {
+    let Some(rebuild) = &app.rebuild else {
+        return;
+    };
+
+    let height: u16 = (rebuild.jobs.len().min(12) as u16).saturating_add(4);
+    let width: u16 = 48;
+    let width_final = width.min(full_area.width);
+    let height_final = height.min(full_area.height);
+    let left = full_area.x + (full_area.width.saturating_sub(width_final)) / 2;
+    let top = full_area.y + (full_area.height.saturating_sub(height_final)) / 2;
+    let area = Rect {
+        x: left,
+        y: top,
+        width: width_final,
+        height: height_final,
+    };
+
+    let items: Vec<ListItem> = rebuild
+        .jobs
+        .iter()
+        .enumerate()
+        .map(|(idx, job)| {
+            let prefix = if idx == rebuild.active_idx { "▶" } else { " " };
+            let container = job
+                .container
+                .as_ref()
+                .map_or(String::new(), |c| format!(" ({c})"));
+            let line = format!("{prefix} {}{}", job.image, container);
+            let style = match job.status {
+                RebuildStatus::Pending => Style::default(),
+                RebuildStatus::Running => Style::default().fg(Color::Yellow),
+                RebuildStatus::Succeeded => Style::default().fg(Color::Green),
+                RebuildStatus::Failed => Style::default().fg(Color::Red),
+            };
+            ListItem::new(line).style(style)
+        })
+        .collect();
+
+    let list = List::new(items)
+        .block(
+            Block::default()
+                .title("Work Queue (Esc=close)")
+                .borders(Borders::ALL),
+        )
+        .highlight_style(
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        );
+
+    let mut state = ListState::default();
+    state.select(Some(selected_idx));
+
+    frame.render_widget(Clear, area);
+    frame.render_stateful_widget(list, area, &mut state);
 }
 
 fn row_for_item<'a>(app: &'a App, it: &'a ItemRow) -> Row<'a> {
