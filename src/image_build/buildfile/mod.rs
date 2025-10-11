@@ -53,10 +53,10 @@ pub fn start<C: CommandHelper>(
             .iter()
             .all(|file| file.filepath.is_none())
     {
-        eprintln!(
+        return Err(BuildfileError::RebuildError(format!(
             "No Dockerfile or Makefile found at '{}'",
             dir.path().display()
-        );
+        )));
     } else if let Some(found_buildfiles) = buildfiles {
         let build_config = crate::image_build::buildfile_helpers::read_val_loop(&found_buildfiles);
 
