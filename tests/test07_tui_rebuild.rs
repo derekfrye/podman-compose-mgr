@@ -100,6 +100,8 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
 
     let mut app = App::new();
     app.set_root_path(args.path.clone());
+    // Flip on the same "rebuild everything" flag the real CLI uses so the scanner response
+    // immediately queues the rebuild jobs below.
     app.auto_rebuild_all = args.tui_rebuild_all;
 
     let discovered = services
@@ -111,6 +113,8 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
         )
         .expect("scan images for test data");
 
+    // Feeding ScanResults into the state machine triggers the auto rebuild logic and enqueues
+    // jobs on the worker thread via the channel wiring stored in `services`.
     app::update_with_services(&mut app, Msg::ScanResults(discovered), Some(&services));
 
     let width: u16 = 120;
@@ -118,6 +122,8 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
     let backend = TestBackend::new(width, height);
     let mut terminal = Terminal::new(backend).expect("terminal");
 
+    // Helpers below treat the TestBackend buffer like a bare terminal grid to keep assertions
+    // readable.
     let buffer_to_string = |buffer: &Buffer| {
         let mut rendered = String::new();
         for y in 0..height {
@@ -144,6 +150,8 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
         "fixtures should include a second table row for rclone"
     );
 
+    // Pump the message channel until the rebuild worker reports completion so the UI state is
+    // identical to what a user would see after hitting `r` in the live TUI.
     wait_for_rebuild(&mut app, &services, &rx);
 
     assert_eq!(
@@ -275,9 +283,9 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
         (active_header, job_images)
     };
 
-    // Simulate repainting the left pane without clearing existing table rows.
-    let mut stale_buffer = list_buffer.clone();
     let root_area = ratatui::layout::Rect::new(0, 0, width, height);
+    // Recreate the same nested layout used by the production draw call so the manual rendering
+    // below hits the identical rectangles as the real widget tree.
     let chunks = ratatui::layout::Layout::default()
         .direction(ratatui::layout::Direction::Vertical)
         .margin(1)
@@ -313,15 +321,36 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
         })
         .collect();
 
-    let trimmed_paragraph = ratatui::widgets::Paragraph::new(trimmed_lines)
-        .block(ratatui::widgets::Block::default().title(header).borders(ratatui::widgets::Borders::ALL))
-        .wrap(ratatui::widgets::Wrap { trim: false })
-        .scroll((rebuild_state.scroll_y, rebuild_state.scroll_x));
-    trimmed_paragraph.render(rebuild_chunks[0], &mut stale_buffer);
+    // Build the rebuild output widget on demand; cloning lets us render it twice with and without
+    // clearing just like the buggy vs fixed paint paths.
+    let make_paragraph = || {
+        ratatui::widgets::Paragraph::new(trimmed_lines.clone())
+            .block(
+                ratatui::widgets::Block::default()
+                    .title(header.clone())
+                    .borders(ratatui::widgets::Borders::ALL),
+            )
+            .wrap(ratatui::widgets::Wrap { trim: false })
+            .scroll((rebuild_state.scroll_y, rebuild_state.scroll_x))
+    };
+
+    // First render without clearing – this reproduces the UI bug.
+    let mut stale_buffer = list_buffer.clone();
+    make_paragraph().render(rebuild_chunks[0], &mut stale_buffer);
     let stale_view = buffer_to_string(&stale_buffer);
     assert!(
         stale_view.contains("Podman container for rclone"),
         "stale table content should remain visible without clearing"
+    );
+
+    // Now render with a Clear widget to verify the intended fix.
+    let mut cleared_buffer = list_buffer.clone();
+    ratatui::widgets::Clear.render(rebuild_chunks[0], &mut cleared_buffer);
+    make_paragraph().render(rebuild_chunks[0], &mut cleared_buffer);
+    let cleared_view = buffer_to_string(&cleared_buffer);
+    assert!(
+        !cleared_view.contains("Podman container for rclone"),
+        "clearing the pane before rendering should remove stale table text"
     );
 
     terminal
