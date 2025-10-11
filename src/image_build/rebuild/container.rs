@@ -7,7 +7,7 @@ use walkdir::DirEntry;
 
 use super::compose::{invoke_read_loop, should_skip_service};
 use super::errors::RebuildError;
-use super::types::Image;
+use super::types::{Image, RebuildSelection};
 
 /// Process a .container file for rebuilding images
 pub fn process_container_file<C: CommandHelper, R: ReadInteractiveInputHelper>(
@@ -36,8 +36,7 @@ pub fn process_container_file<C: CommandHelper, R: ReadInteractiveInputHelper>(
         images_already_processed,
         entry,
         args,
-        &container_info.image,
-        &container_name,
+        RebuildSelection::new(&container_info.image, &container_name),
         logger,
     )?;
 

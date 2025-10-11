@@ -313,8 +313,8 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
     let trimmed_lines: Vec<_> = job
         .output
         .iter()
-        .cloned()
         .take(2)
+        .cloned()
         .map(|entry| match entry.stream {
             OutputStream::Stdout => {
                 ratatui::text::Line::from(vec![ratatui::text::Span::raw(entry.text)])

@@ -8,13 +8,12 @@ use walkdir::DirEntry;
 
 use super::grammar::build_rebuild_grammars;
 use super::image_ops::pull_image;
-use super::types::Image;
+use super::types::{Image, RebuildSelection};
 
 pub struct UserChoiceContext<'a> {
     pub entry: &'a DirEntry,
-    pub custom_img_nm: &'a str,
+    pub selection: RebuildSelection<'a>,
     pub build_args: &'a [String],
-    pub container_name: &'a str,
     pub grammars: &'a [GrammarFragment],
     pub logger: &'a dyn BuildLogger,
 }
@@ -55,7 +54,7 @@ pub fn handle_user_choice<C: CommandHelper>(
 }
 
 fn pull_selected_image<C: CommandHelper>(cmd_helper: &C, context: &UserChoiceContext<'_>) {
-    if let Err(e) = pull_image(cmd_helper, context.custom_img_nm) {
+    if let Err(e) = pull_image(cmd_helper, context.selection.image) {
         context
             .logger
             .log(BuildLogLevel::Error, &format!("Error pulling image: {e}"));
@@ -65,8 +64,8 @@ fn pull_selected_image<C: CommandHelper>(cmd_helper: &C, context: &UserChoiceCon
 fn display_image_details<C: CommandHelper>(cmd_helper: &C, context: &UserChoiceContext<'_>) {
     ui::display_image_info(
         cmd_helper,
-        context.custom_img_nm,
-        context.container_name,
+        context.selection.image,
+        context.selection.container,
         context.entry,
         context.grammars,
     );
@@ -80,7 +79,7 @@ fn start_selected_build<C: CommandHelper>(
     start(
         cmd_helper,
         context.entry,
-        context.custom_img_nm,
+        context.selection.image,
         &build_args,
         context.logger,
     )
@@ -90,8 +89,8 @@ fn start_selected_build<C: CommandHelper>(
 
 fn mark_image_as_skipped(images: &mut Vec<Image>, context: &UserChoiceContext<'_>) {
     images.push(Image {
-        name: Some(context.custom_img_nm.to_string()),
-        container: Some(context.container_name.to_string()),
+        name: Some(context.selection.image.to_string()),
+        container: Some(context.selection.container.to_string()),
         skipall_by_this_name: true,
     });
 }
@@ -112,13 +111,12 @@ pub fn read_val_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
     read_val_helper: &R,
     images_already_processed: &mut Vec<Image>,
     entry: &DirEntry,
-    custom_img_nm: &str,
+    selection: RebuildSelection<'_>,
     build_args: &[String],
-    container_name: &str,
     logger: &dyn BuildLogger,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // use extracted helper to build grammars
-    let mut grammars = build_rebuild_grammars(entry, custom_img_nm, container_name);
+    let mut grammars = build_rebuild_grammars(entry, selection.image, selection.container);
 
     loop {
         // Get the terminal width from the command helper instead of passing None
@@ -138,9 +136,8 @@ pub fn read_val_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
             Some(user_entered_val) => {
                 let context = UserChoiceContext {
                     entry,
-                    custom_img_nm,
+                    selection,
                     build_args,
-                    container_name,
                     grammars: &grammars,
                     logger,
                 };

@@ -6,7 +6,7 @@ use walkdir::DirEntry;
 
 use super::errors::RebuildError;
 use super::interaction::read_val_loop;
-use super::types::Image;
+use super::types::{Image, RebuildSelection};
 use super::utils::read_yaml_file;
 
 /// Process a docker-compose.yml file for rebuilding images
@@ -37,8 +37,7 @@ pub fn process_compose_file<C: CommandHelper, R: ReadInteractiveInputHelper>(
             images_already_processed,
             entry,
             args,
-            &image,
-            &container,
+            RebuildSelection::new(&image, &container),
             logger,
         )?;
 
@@ -113,8 +112,7 @@ pub(super) fn invoke_read_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
     images_already_processed: &mut Vec<Image>,
     entry: &DirEntry,
     args: &Args,
-    image: &str,
-    container: &str,
+    selection: RebuildSelection<'_>,
     logger: &dyn BuildLogger,
 ) -> Result<(), RebuildError> {
     read_val_loop(
@@ -122,9 +120,8 @@ pub(super) fn invoke_read_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
         read_val_helper,
         images_already_processed,
         entry,
-        image,
+        selection,
         &args.build_args,
-        container,
         logger,
     )
     .map_err(|e| RebuildError::Other(e.to_string()))

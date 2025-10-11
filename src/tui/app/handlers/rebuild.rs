@@ -70,14 +70,14 @@ fn handle_session_created(app: &mut App, jobs: Vec<RebuildJobSpec>) {
 }
 
 fn handle_job_started(app: &mut App, job_idx: usize) {
-    if let Some(rebuild) = app.rebuild.as_mut() {
-        if let Some(job) = rebuild.jobs.get_mut(job_idx) {
-            job.status = RebuildStatus::Running;
-            rebuild.active_idx = job_idx;
-            rebuild.work_queue_selected = job_idx;
-            rebuild.scroll_y = 0;
-            rebuild.scroll_x = 0;
-        }
+    if let Some(rebuild) = app.rebuild.as_mut()
+        && let Some(job) = rebuild.jobs.get_mut(job_idx)
+    {
+        job.status = RebuildStatus::Running;
+        rebuild.active_idx = job_idx;
+        rebuild.work_queue_selected = job_idx;
+        rebuild.scroll_y = 0;
+        rebuild.scroll_x = 0;
     }
 }
 
@@ -165,26 +165,24 @@ fn handle_work_queue_up(app: &mut App) {
 fn handle_work_queue_down(app: &mut App) {
     if let Some(rebuild) = app.rebuild.as_ref()
         && let Some(ModalState::WorkQueue { selected_idx }) = app.modal.as_mut()
+        && *selected_idx + 1 < rebuild.jobs.len()
     {
-        if *selected_idx + 1 < rebuild.jobs.len() {
-            *selected_idx += 1;
-            if let Some(rebuild) = app.rebuild.as_mut() {
-                rebuild.work_queue_selected = *selected_idx;
-            }
+        *selected_idx += 1;
+        if let Some(rebuild) = app.rebuild.as_mut() {
+            rebuild.work_queue_selected = *selected_idx;
         }
     }
 }
 
 fn handle_work_queue_select(app: &mut App) {
-    if let Some(ModalState::WorkQueue { selected_idx }) = app.modal {
-        if let Some(rebuild) = app.rebuild.as_mut() {
-            if selected_idx < rebuild.jobs.len() {
-                rebuild.active_idx = selected_idx;
-                rebuild.work_queue_selected = selected_idx;
-                rebuild.scroll_y = 0;
-                rebuild.scroll_x = 0;
-            }
-        }
+    if let Some(ModalState::WorkQueue { selected_idx }) = app.modal
+        && let Some(rebuild) = app.rebuild.as_mut()
+        && selected_idx < rebuild.jobs.len()
+    {
+        rebuild.active_idx = selected_idx;
+        rebuild.work_queue_selected = selected_idx;
+        rebuild.scroll_y = 0;
+        rebuild.scroll_x = 0;
     }
     app.modal = None;
 }

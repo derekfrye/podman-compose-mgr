@@ -136,7 +136,7 @@ impl CommandHelper for TuiCommandHelper {
         let stdout_handle = stdout.map(|pipe| {
             std::thread::spawn(move || {
                 let reader = BufReader::new(pipe);
-                for line in reader.lines().flatten() {
+                for line in reader.lines().map_while(Result::ok) {
                     let _ = tx_out.send(Msg::RebuildJobOutput {
                         job_idx,
                         chunk: line,
@@ -149,7 +149,7 @@ impl CommandHelper for TuiCommandHelper {
         let stderr_handle = stderr.map(|pipe| {
             std::thread::spawn(move || {
                 let reader = BufReader::new(pipe);
-                for line in reader.lines().flatten() {
+                for line in reader.lines().map_while(Result::ok) {
                     let _ = tx_err.send(Msg::RebuildJobOutput {
                         job_idx,
                         chunk: line,
