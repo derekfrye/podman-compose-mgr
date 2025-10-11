@@ -8,6 +8,10 @@ use podman_compose_mgr::app::AppCore;
 use podman_compose_mgr::infra::discovery_adapter::FsDiscovery;
 use podman_compose_mgr::infra::podman_adapter::PodmanCli;
 use podman_compose_mgr::tui::app::{self, App, Msg, RebuildStatus, Services, UiState};
+use podman_compose_mgr::tui::ui;
+use ratatui::Terminal;
+use ratatui::backend::TestBackend;
+use ratatui::buffer::Buffer;
 
 fn build_mock_podman(manifest_dir: &Path) {
     let mock_manifest = manifest_dir.join("mock_podman").join("Cargo.toml");
@@ -127,26 +131,51 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
     );
 
     let ddns = &rebuild.jobs[0];
-    let ddns_output = ddns
+    assert!(
+        !ddns.output.is_empty(),
+        "ddns job should record at least the prompt output"
+    );
+    let ddns_prompt = ddns
         .output
-        .iter()
-        .map(|line| line.text.as_str())
-        .collect::<Vec<_>>()
-        .join("\n");
-    eprintln!("first_ddns_line={:?}", ddns.output.front().map(|l| l.text.clone()));
-    eprintln!("ddns_output_snippet={:?}", &ddns_output[..ddns_output.len().min(120)]);
-    assert!(ddns_output.contains("STEP 1/10: FROM alpine:latest"));
-    assert!(ddns_output.contains("Successfully tagged localhost/djf/ddns:latest"));
+        .front()
+        .expect("ddns job output should include prompt");
+    assert!(
+        ddns_prompt.text.starts_with("Refresh djf/ddns"),
+        "ddns prompt should be visible at start of output"
+    );
+    assert!(
+        ddns_prompt.text.contains("p/N/d/b/s/?:"),
+        "ddns prompt should include action shortcuts"
+    );
+    assert!(
+        ddns.output
+            .iter()
+            .any(|line| line.text.contains("Auto-selecting 'b' (build)")),
+        "ddns job should automatically select build"
+    );
 
     let rclone = &rebuild.jobs[1];
-    let rclone_output = rclone
-        .output
-        .iter()
-        .map(|line| line.text.as_str())
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert!(rclone_output.contains("STEP 1/8: FROM fedora:42"));
-    assert!(rclone_output.contains("Successfully tagged localhost/djf/rclone:latest"));
+    assert!(
+        rclone
+            .output
+            .iter()
+            .any(|line| line.text.starts_with("Refresh djf/rclone")),
+        "rclone job should display rebuild prompt"
+    );
+    assert!(
+        rclone
+            .output
+            .iter()
+            .any(|line| line.text.contains("Auto-selecting 'b' (build)")),
+        "rclone job should automatically select build"
+    );
+    assert!(
+        rclone
+            .output
+            .iter()
+            .any(|line| line.text.contains("Rebuild queue completed")),
+        "final job should report queue completion"
+    );
 
     // Ensure scrolling to top resets the viewport to the first line
     {
@@ -156,16 +185,98 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
     app::update_with_services(&mut app, Msg::ScrollOutputBottom, Some(&services));
     app::update_with_services(&mut app, Msg::ScrollOutputTop, Some(&services));
 
-    let rebuild_after_scroll = app.rebuild.as_ref().expect("rebuild state after scroll");
-    assert_eq!(
-        rebuild_after_scroll.scroll_y, 0,
-        "scroll should point to first line"
+    let (active_header, job_images) = {
+        let rebuild_after_scroll = app.rebuild.as_ref().expect("rebuild state after scroll");
+        assert_eq!(
+            rebuild_after_scroll.scroll_y, 0,
+            "scroll should point to first line"
+        );
+        let first_line = rebuild_after_scroll.jobs[0]
+            .output
+            .front()
+            .expect("ddns job should have output");
+        assert!(
+            first_line.text.starts_with("Refresh djf/ddns"),
+            "scroll to top should reveal prompt line"
+        );
+
+        let active_header = {
+            let job = &rebuild_after_scroll.jobs[0];
+            match &job.container {
+                Some(container) => format!("{} ({container})", job.image),
+                None => job.image.clone(),
+            }
+        };
+
+        let job_images: Vec<String> = rebuild_after_scroll
+            .jobs
+            .iter()
+            .map(|job| job.image.clone())
+            .collect();
+
+        (active_header, job_images)
+    };
+
+    let width: u16 = 120;
+    let height: u16 = 32;
+    let backend = TestBackend::new(width, height);
+    let mut terminal = Terminal::new(backend).expect("terminal");
+
+    terminal
+        .draw(|f| ui::draw(f, &app, &args))
+        .expect("draw rebuild view");
+    let base_buffer = terminal.backend().buffer().clone();
+
+    let buffer_to_string = |buffer: &Buffer| {
+        let mut rendered = String::new();
+        for y in 0..height {
+            for x in 0..width {
+                if let Some(cell) = buffer.cell((x, y)) {
+                    rendered.push_str(cell.symbol());
+                }
+            }
+            rendered.push('\n');
+        }
+        rendered
+    };
+
+    let base_view = buffer_to_string(&base_buffer);
+    assert!(
+        base_view.contains(&active_header),
+        "output pane should render active job header"
     );
-    let first_line = rebuild_after_scroll.jobs[0]
-        .output
-        .front()
-        .expect("ddns job should have output");
-    assert_eq!(first_line.text, "STEP 1/10: FROM alpine:latest");
+    assert!(base_view.contains("Legend"), "legend pane should render");
+    assert!(
+        base_view.contains("Job: 1/2"),
+        "sidebar should show job position"
+    );
+    assert!(
+        base_view.contains("Status: Done"),
+        "sidebar should show completed status"
+    );
+    assert!(
+        base_view.contains("Refresh djf/ddns"),
+        "output pane should include prompt text"
+    );
+
+    app::update_with_services(&mut app, Msg::OpenWorkQueue, Some(&services));
+    terminal
+        .draw(|f| ui::draw(f, &app, &args))
+        .expect("draw work queue modal");
+    let modal_buffer = terminal.backend().buffer().clone();
+    let modal_view = buffer_to_string(&modal_buffer);
+    assert!(
+        modal_view.contains("Work Queue (Esc=close)"),
+        "work queue modal title should render"
+    );
+    assert!(
+        modal_view.contains(&format!("▶ {}", job_images[0])),
+        "work queue should highlight ddns job"
+    );
+    assert!(
+        modal_view.contains(&job_images[1]),
+        "work queue should list rclone job"
+    );
 
     unsafe { std::env::remove_var("PODMGR_PODMAN_BIN") };
 }
