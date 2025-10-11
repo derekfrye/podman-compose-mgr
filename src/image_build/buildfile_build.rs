@@ -1,7 +1,6 @@
 use crate::errors::PodmanComposeMgrError;
 use crate::image_build::buildfile_types::{BuildChoice, WhatWereBuilding};
-use crate::utils::cmd_utils as cmd;
-use crate::utils::podman_utils;
+use crate::interfaces::CommandHelper;
 
 /// Build an image from a dockerfile
 ///
@@ -20,10 +19,13 @@ use crate::utils::podman_utils;
 /// # Panics
 ///
 /// Panics if build configuration contains invalid paths or if `unwrap()` fails on expected values.
-pub fn build_dockerfile_image(
+pub fn build_dockerfile_image<C: CommandHelper>(
+    cmd_helper: &C,
     build_config: &WhatWereBuilding,
 ) -> Result<(), PodmanComposeMgrError> {
-    let _ = podman_utils::pull_base_image(build_config.file.filepath.as_ref().unwrap());
+    if let Some(path) = build_config.file.filepath.as_ref() {
+        let _ = cmd_helper.pull_base_image(path);
+    }
 
     let dockerfile_path = build_config
         .file
@@ -34,22 +36,23 @@ pub fn build_dockerfile_image(
         .unwrap();
 
     let mut podman_args = vec![
-        "build",
-        "-t",
-        build_config.file.custom_img_nm.as_ref().unwrap(),
-        "-f",
-        dockerfile_path,
+        "build".to_string(),
+        "-t".to_string(),
+        build_config.file.custom_img_nm.as_ref().unwrap().clone(),
+        "-f".to_string(),
+        dockerfile_path.to_string(),
     ];
 
-    // Add build args
     for arg in &build_config.file.build_args {
-        podman_args.push("--build-arg");
-        podman_args.push(arg);
+        podman_args.push("--build-arg".to_string());
+        podman_args.push(arg.clone());
     }
 
-    podman_args.push(build_config.file.parent_dir.to_str().unwrap());
+    podman_args.push(build_config.file.parent_dir.to_str().unwrap().to_string());
 
-    cmd::exec_cmd("podman", &podman_args[..]).map_err(PodmanComposeMgrError::from)
+    cmd_helper
+        .exec_cmd("podman", podman_args)
+        .map_err(PodmanComposeMgrError::from)
 }
 
 /// Build an image using a makefile
@@ -69,7 +72,10 @@ pub fn build_dockerfile_image(
 /// # Panics
 ///
 /// Panics if build configuration contains invalid paths or if `unwrap()` fails on expected values.
-pub fn build_makefile_image(build_config: &WhatWereBuilding) -> Result<(), PodmanComposeMgrError> {
+pub fn build_makefile_image<C: CommandHelper>(
+    cmd_helper: &C,
+    build_config: &WhatWereBuilding,
+) -> Result<(), PodmanComposeMgrError> {
     let chg_dir = if build_config.follow_link {
         build_config
             .file
@@ -80,12 +86,21 @@ pub fn build_makefile_image(build_config: &WhatWereBuilding) -> Result<(), Podma
             .unwrap()
             .to_str()
             .unwrap()
+            .to_string()
     } else {
-        build_config.file.parent_dir.to_str().unwrap()
+        build_config.file.parent_dir.to_str().unwrap().to_string()
     };
 
-    cmd::exec_cmd("make", &["-C", chg_dir, "clean"])?;
-    Ok(cmd::exec_cmd("make", &["-C", chg_dir])?)
+    cmd_helper
+        .exec_cmd(
+            "make",
+            vec!["-C".to_string(), chg_dir.clone(), "clean".to_string()],
+        )
+        .map_err(PodmanComposeMgrError::from)?;
+
+    cmd_helper
+        .exec_cmd("make", vec!["-C".to_string(), chg_dir])
+        .map_err(PodmanComposeMgrError::from)
 }
 
 /// Build an image from the specified configuration
@@ -101,9 +116,12 @@ pub fn build_makefile_image(build_config: &WhatWereBuilding) -> Result<(), Podma
 /// # Errors
 ///
 /// Returns an error if the build process fails, depending on the build type (Dockerfile or Makefile).
-pub fn build_image_from_spec(build_config: &WhatWereBuilding) -> Result<(), PodmanComposeMgrError> {
+pub fn build_image_from_spec<C: CommandHelper>(
+    cmd_helper: &C,
+    build_config: &WhatWereBuilding,
+) -> Result<(), PodmanComposeMgrError> {
     match build_config.file.filetype {
-        BuildChoice::Dockerfile => build_dockerfile_image(build_config),
-        BuildChoice::Makefile => build_makefile_image(build_config),
+        BuildChoice::Dockerfile => build_dockerfile_image(cmd_helper, build_config),
+        BuildChoice::Makefile => build_makefile_image(cmd_helper, build_config),
     }
 }

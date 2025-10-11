@@ -153,6 +153,18 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
             .any(|line| line.text.contains("Auto-selecting 'b' (build)")),
         "ddns job should automatically select build"
     );
+    assert!(
+        ddns.output
+            .iter()
+            .any(|line| line.text.contains("STEP 1/10: FROM alpine:latest")),
+        "ddns job should capture podman STEP output"
+    );
+    assert!(
+        ddns.output
+            .iter()
+            .any(|line| line.text.contains("apk add jq curl bind-tools tini")),
+        "ddns job should include representative build command output"
+    );
 
     let rclone = &rebuild.jobs[1];
     assert!(
@@ -175,6 +187,20 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
             .iter()
             .any(|line| line.text.contains("Rebuild queue completed")),
         "final job should report queue completion"
+    );
+    assert!(
+        rclone
+            .output
+            .iter()
+            .any(|line| line.text.contains("STEP 1/8: FROM fedora:42")),
+        "rclone job should capture podman STEP output"
+    );
+    assert!(
+        rclone
+            .output
+            .iter()
+            .any(|line| line.text.contains("Updating and loading repositories")),
+        "rclone job should stream repository update output"
     );
 
     // Ensure scrolling to top resets the viewport to the first line
@@ -257,6 +283,10 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
     assert!(
         base_view.contains("Refresh djf/ddns"),
         "output pane should include prompt text"
+    );
+    assert!(
+        base_view.contains("STEP 1/10: FROM alpine:latest"),
+        "output pane should render streamed podman output"
     );
 
     app::update_with_services(&mut app, Msg::OpenWorkQueue, Some(&services));

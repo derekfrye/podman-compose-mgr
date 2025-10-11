@@ -38,7 +38,7 @@ pub fn handle_user_choice<C: CommandHelper>(
             Ok(false)
         }
         "b" => {
-            start_selected_build(context)?;
+            start_selected_build(cmd_helper, context)?;
             Ok(true)
         }
         "s" => {
@@ -67,10 +67,18 @@ fn display_image_details<C: CommandHelper>(cmd_helper: &C, context: &UserChoiceC
     );
 }
 
-fn start_selected_build(context: &UserChoiceContext<'_>) -> Result<(), Box<dyn std::error::Error>> {
+fn start_selected_build<C: CommandHelper>(
+    cmd_helper: &C,
+    context: &UserChoiceContext<'_>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let build_args: Vec<&str> = context.build_args.iter().map(String::as_str).collect();
-    start(context.entry, context.custom_img_nm, &build_args)
-        .map_err(Box::<dyn std::error::Error>::from)?;
+    start(
+        cmd_helper,
+        context.entry,
+        context.custom_img_nm,
+        &build_args,
+    )
+    .map_err(Box::<dyn std::error::Error>::from)?;
     Ok(())
 }
 

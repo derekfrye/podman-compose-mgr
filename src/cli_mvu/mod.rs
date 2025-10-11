@@ -352,7 +352,13 @@ fn spawn_build_prompt(services: &Services, item: PromptItem) {
     std::thread::spawn(move || {
         let entry = find_entry(&item.entry);
         let build_args_refs: Vec<&str> = build_args.iter().map(String::as_str).collect();
-        let _ = crate::image_build::buildfile::start(&entry, &item.image, &build_args_refs);
+        let cmd_helper = DefaultCommandHelper;
+        let _ = crate::image_build::buildfile::start(
+            &cmd_helper,
+            &entry,
+            &item.image,
+            &build_args_refs,
+        );
         let _ = tx.send(Msg::ActionDone);
     });
 }

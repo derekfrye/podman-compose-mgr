@@ -1,5 +1,6 @@
 use crate::image_build::buildfile_build;
 use crate::image_build::buildfile_helpers;
+use crate::interfaces::CommandHelper;
 use thiserror::Error;
 use walkdir::DirEntry;
 
@@ -37,7 +38,8 @@ pub enum BuildfileError {
 /// # Panics
 ///
 /// Panics if build files cannot be processed or if internal state is invalid.
-pub fn start(
+pub fn start<C: CommandHelper>(
+    cmd_helper: &C,
     dir: &DirEntry,
     custom_img_nm: &str,
     build_args: &[&str],
@@ -59,7 +61,7 @@ pub fn start(
         let build_config = crate::image_build::buildfile_helpers::read_val_loop(&found_buildfiles);
 
         if build_config.file.filepath.is_some() {
-            buildfile_build::build_image_from_spec(&build_config)
+            buildfile_build::build_image_from_spec(cmd_helper, &build_config)
                 .map_err(|e| BuildfileError::CommandExecution(Box::new(e)))?;
         }
     }
