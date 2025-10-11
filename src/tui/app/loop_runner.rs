@@ -24,6 +24,7 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     let mut terminal = setup_terminal()?;
     let mut app = App::new();
     app.set_root_path(args.path.clone());
+    app.auto_rebuild_all = args.tui_rebuild_all;
 
     let (tx, rx) = xchan::unbounded::<Msg>();
     let services = build_services(args, tx.clone());

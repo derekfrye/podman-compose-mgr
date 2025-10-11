@@ -39,7 +39,7 @@ pub enum ImageError {
 /// - Failed to parse the output
 /// - Failed to parse the date
 pub fn get_podman_image_upstream_create_time(img: &str) -> Result<DateTime<Local>, ImageError> {
-    let output = Command::new("podman")
+    let output = Command::new(super::resolve_podman_binary())
         .args(["image", "inspect", "--format", "{{.Created}}", img])
         .output()
         .map_err(|e| ImageError::CommandExecution(format!("Failed to execute podman: {e}")))?;
@@ -98,7 +98,7 @@ pub fn get_podman_ondisk_modify_time(img: &str) -> Result<DateTime<Local>, Image
 }
 
 fn inspect_image_id(img: &str) -> Result<Option<String>, ImageError> {
-    let output = Command::new("podman")
+    let output = Command::new(super::resolve_podman_binary())
         .args(["image", "inspect", "--format", "{{.Id}}", img])
         .output()
         .map_err(|e| ImageError::CommandExecution(format!("Failed to execute podman: {e}")))?;

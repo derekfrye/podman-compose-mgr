@@ -1,0 +1,52 @@
+STEP 1/10: FROM alpine:latest
+STEP 2/10: RUN apk add jq curl bind-tools tini
+fetch https://dl-cdn.alpinelinux.org/alpine/v3.22/main/x86_64/APKINDEX.tar.gz
+fetch https://dl-cdn.alpinelinux.org/alpine/v3.22/community/x86_64/APKINDEX.tar.gz
+(1/26) Installing fstrm (0.6.1-r4)
+(2/26) Installing krb5-conf (1.0-r2)
+(3/26) Installing libcom_err (1.47.2-r2)
+(4/26) Installing keyutils-libs (1.6.3-r4)
+(5/26) Installing libverto (0.3.2-r2)
+(6/26) Installing krb5-libs (1.21.3-r0)
+(7/26) Installing json-c (0.18-r1)
+(8/26) Installing nghttp2-libs (1.65.0-r0)
+(9/26) Installing protobuf-c (1.5.2-r0)
+(10/26) Installing userspace-rcu (0.15.2-r0)
+(11/26) Installing libuv (1.51.0-r0)
+(12/26) Installing xz-libs (5.8.1-r0)
+(13/26) Installing libxml2 (2.13.8-r0)
+(14/26) Installing bind-libs (9.20.13-r0)
+(15/26) Installing bind-tools (9.20.13-r0)
+(16/26) Installing brotli-libs (1.1.0-r2)
+(17/26) Installing c-ares (1.34.5-r0)
+(18/26) Installing libunistring (1.3-r0)
+(19/26) Installing libidn2 (2.3.7-r0)
+(20/26) Installing libpsl (0.21.5-r3)
+(21/26) Installing zstd-libs (1.5.7-r0)
+(22/26) Installing libcurl (8.14.1-r2)
+(23/26) Installing curl (8.14.1-r2)
+(24/26) Installing oniguruma (6.9.10-r0)
+(25/26) Installing jq (1.8.0-r0)
+(26/26) Installing tini (0.19.0-r3)
+Executing busybox-1.37.0-r18.trigger
+OK: 20 MiB in 42 packages
+--> c00a9964988b
+STEP 3/10: ENV CF_API=https://api.cloudflare.com/client/v4 
+--> fa1cae82f694
+STEP 4/10: ENV RRTYPE=A 
+--> d326b94245a0
+STEP 5/10: RUN echo "@reboot /etc/cont-init.d/30-cloudflare-setup" > /etc/crontabs/root
+--> a0d5e9e18d31
+STEP 6/10: RUN echo "*/5 * * * * /etc/cont-init.d/30-cloudflare-setup" >> /etc/crontabs/root
+--> c3907fc83109
+STEP 7/10: RUN mkdir /config
+--> bd5fbd5cd969
+STEP 8/10: COPY root /
+--> 31089062aec0
+STEP 9/10: ENTRYPOINT ["/sbin/tini", "--"]
+--> 1a97aa4b681e
+STEP 10/10: CMD ["crond", "-f", "-l", "8", "-d", "6"]
+COMMIT djf/ddns
+--> ee5eae4df11e
+Successfully tagged localhost/djf/ddns:latest
+ee5eae4df11e8750acc6cf058898c956bbe387129045ad804d2f51a8d9dc2150

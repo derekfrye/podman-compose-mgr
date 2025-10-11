@@ -160,6 +160,8 @@ impl App {
             root_path: self.root_path.clone(),
             current_path: self.current_path.clone(),
             rebuild: None,
+            auto_rebuild_all: self.auto_rebuild_all,
+            auto_rebuild_triggered: self.auto_rebuild_triggered,
         }
     }
 }

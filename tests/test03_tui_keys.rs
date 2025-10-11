@@ -30,6 +30,7 @@ fn keys_overlay_is_drawn_with_labels() {
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
         tui: true,
+        tui_rebuild_all: false,
     };
 
     // Render at a reasonable size

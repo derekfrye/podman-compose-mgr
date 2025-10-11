@@ -1,0 +1,20 @@
+[Unit]
+Description=Cloudflare DDNS Container
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=djf/ddns_pdm_cmp_mgr:latest
+ContainerName=ddns
+Environment=SKIP_CHECK_AUTH=Y
+Environment=ZONE=domain.com
+Environment=RRTYPE=A
+
+
+# [Service]
+# Restart=always
+# TimeoutStartSec=900
+# TimeoutStopSec=70
+
+[Install]
+WantedBy=default.target

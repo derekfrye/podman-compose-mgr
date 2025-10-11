@@ -126,6 +126,8 @@ pub struct App {
     pub root_path: PathBuf,
     pub current_path: Vec<String>,
     pub rebuild: Option<RebuildState>,
+    pub auto_rebuild_all: bool,
+    pub auto_rebuild_triggered: bool,
 }
 
 impl Default for App {
@@ -143,6 +145,8 @@ impl Default for App {
             root_path: PathBuf::new(),
             current_path: Vec::new(),
             rebuild: None,
+            auto_rebuild_all: false,
+            auto_rebuild_triggered: false,
         }
     }
 }

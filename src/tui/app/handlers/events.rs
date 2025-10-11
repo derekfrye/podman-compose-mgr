@@ -25,7 +25,7 @@ pub fn handle_message(app: &mut App, msg: Msg, services: Option<&Services>) {
         Msg::ViewPickerAccept => handle_view_picker_accept(app),
         Msg::ViewPickerCancel => handle_view_picker_cancel(app),
         Msg::Tick => handle_tick(app),
-        Msg::ScanResults(discovered) => handle_scan_results(app, discovered),
+        Msg::ScanResults(discovered) => handle_scan_results(app, discovered, services),
         Msg::DetailsReady { row, details } => handle_details_ready(app, row, details),
         Msg::StartRebuild
         | Msg::WorkQueueUp

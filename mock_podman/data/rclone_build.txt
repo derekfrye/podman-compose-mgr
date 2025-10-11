@@ -1,0 +1,862 @@
+STEP 1/8: FROM fedora:42
+STEP 2/8: ARG USERNAME=default_usr
+--> Using cache 0ea41f4053137268300020a5f54b37a046444c84015c10be37a89c67b1c0d92f
+--> 0ea41f405313
+STEP 3/8: RUN sed -i '/tsflags=nodocs/s/^/#/' /etc/dnf/dnf.conf
+--> Using cache b51ce63259fdd5899495fcb715a8e7d30ca0b7361fd2fb051deb3ead4494b57b
+--> b51ce63259fd
+STEP 4/8: RUN dnf install -y cronie par2cmdline rclone coreutils man-pages man-db zsh tar gzip  dialog iputils     vim passwd      jq time tini openssh-clients azure-cli rsync sqlite git sqlite-devel curl glibc libicu
+Updating and loading repositories:
+ Fedora 42 - x86_64 - Updates           100% |  14.6 MiB/s |  23.8 MiB |  00m02s
+ Fedora 42 openh264 (From Cisco) - x86_ 100% |   3.8 KiB/s |   5.8 KiB |  00m02s
+ Fedora 42 - x86_64                     100% |  12.9 MiB/s |  35.4 MiB |  00m03s
+Repositories loaded.
+Package "coreutils-9.6-6.fc42.x86_64" is already installed.
+Package "tar-2:1.35-5.fc42.x86_64" is already installed.
+Package "gzip-1.13-3.fc42.x86_64" is already installed.
+Package "shadow-utils-2:4.17.4-1.fc42.x86_64" is already installed.
+Package "curl-8.11.1-6.fc42.x86_64" is already installed.
+Package "glibc-2.41-11.fc42.x86_64" is already installed.
+
+Package                                             Arch   Version                          Repository      Size
+Installing:
+ azure-cli                                          noarch 2.68.0-1.fc42                    fedora     200.1 MiB
+ cronie                                             x86_64 1.7.2-6.fc42                     fedora     301.4 KiB
+ dialog                                             x86_64 1.3-53.20240619.fc42             fedora     593.0 KiB
+ git                                                x86_64 2.51.0-2.fc42                    updates     56.4 KiB
+ iputils                                            x86_64 20250605-1.fc42                  updates    828.4 KiB
+ jq                                                 x86_64 1.7.1-11.fc42                    fedora     435.1 KiB
+ libicu                                             x86_64 76.1-4.fc42                      fedora      36.3 MiB
+ man-db                                             x86_64 2.13.0-2.fc42                    fedora       2.8 MiB
+ man-pages                                          noarch 6.9.1-3.fc42                     fedora       2.9 MiB
+ openssh-clients                                    x86_64 9.9p1-11.fc42                    updates      2.7 MiB
+ par2cmdline                                        x86_64 0.8.1-14.fc42                    fedora     265.0 KiB
+ rclone                                             x86_64 1.71.0-1.fc42                    updates     98.8 MiB
+ rsync                                              x86_64 3.4.1-3.fc42                     fedora     777.0 KiB
+ sqlite                                             x86_64 3.47.2-5.fc42                    updates      1.8 MiB
+ sqlite-devel                                       x86_64 3.47.2-5.fc42                    updates    673.4 KiB
+ time                                               x86_64 1.9-26.fc42                      fedora      82.6 KiB
+ tini                                               x86_64 0.19.0-10.fc42                   fedora      38.6 KiB
+ vim-enhanced                                       x86_64 2:9.1.1818-1.fc42                updates      4.2 MiB
+ zsh                                                x86_64 5.9-16.fc42                      fedora       7.9 MiB
+Installing dependencies:
+ cronie-anacron                                     x86_64 1.7.2-6.fc42                     fedora      49.7 KiB
+ crontabs                                           noarch 1.11^20190603git9e74f2d-5.fc42   fedora      20.8 KiB
+ expat                                              x86_64 2.7.2-1.fc42                     updates    298.6 KiB
+ git-core                                           x86_64 2.51.0-2.fc42                    updates     23.6 MiB
+ git-core-doc                                       noarch 2.51.0-2.fc42                    updates     17.7 MiB
+ glibc                                              i686   2.41-11.fc42                     updates      5.5 MiB
+ glibc-gconv-extra                                  x86_64 2.41-11.fc42                     updates      7.2 MiB
+ gobject-introspection                              x86_64 1.84.0-1.fc42                    fedora     392.8 KiB
+ gpm-libs                                           x86_64 1.20.7-51.fc42                   fedora      31.6 KiB
+ groff-base                                         x86_64 1.23.0-8.fc42                    fedora       3.9 MiB
+ less                                               x86_64 679-1.fc42                       updates    406.1 KiB
+ libb2                                              x86_64 0.98.1-13.fc42                   fedora      46.1 KiB
+ libcbor                                            x86_64 0.11.0-3.fc42                    fedora      77.8 KiB
+ libedit                                            x86_64 3.1-55.20250104cvs.fc42          fedora     244.1 KiB
+ libfdisk                                           x86_64 2.40.4-7.fc42                    fedora     372.3 KiB
+ libfido2                                           x86_64 1.15.0-3.fc42                     fedora     242.1 KiB
+ libgcc                                             i686   15.2.1-1.fc42                    updates    297.6 KiB
+ libpipeline                                        x86_64 1.5.8-2.fc42                     fedora     145.1 KiB
+ libpkgconf                                         x86_64 2.3.0-2.fc42                     fedora      78.1 KiB
+ libsodium                                          x86_64 1.0.20-4.fc42                    fedora     389.1 KiB
+ mpdecimal                                          x86_64 4.0.1-1.fc42                     updates    217.2 KiB
+ ncurses                                            x86_64 6.5-5.20250125.fc42              fedora     608.1 KiB
+ oniguruma                                          x86_64 6.9.10-2.fc42                    fedora     763.1 KiB
+ openssh                                            x86_64 9.9p1-11.fc42                    updates      1.4 MiB
+ perl-AutoLoader                                    noarch 5.74-519.fc42                    updates     20.5 KiB
+ perl-B                                             x86_64 1.89-519.fc42                    updates    498.0 KiB
+ perl-Carp                                          noarch 1.54-512.fc42                    fedora      46.6 KiB
+ perl-Class-Struct                                  noarch 0.68-519.fc42                    updates     25.4 KiB
+ perl-Data-Dumper                                   x86_64 2.189-513.fc42                   fedora     115.6 KiB
+ perl-Digest                                        noarch 1.20-512.fc42                    fedora      35.3 KiB
+ perl-Digest-MD5                                    x86_64 2.59-6.fc42                      fedora      59.7 KiB
+ perl-DynaLoader                                    x86_64 1.56-519.fc42                    updates     32.1 KiB
+ perl-Encode                                        x86_64 4:3.21-512.fc42                  fedora       4.7 MiB
+ perl-Errno                                         x86_64 1.38-519.fc42                    updates      8.3 KiB
+ perl-Error                                         noarch 1:0.17030-1.fc42                 fedora      76.7 KiB
+ perl-Exporter                                      noarch 5.78-512.fc42                    fedora      54.3 KiB
+ perl-Fcntl                                         x86_64 1.18-519.fc42                    updates     48.9 KiB
+ perl-File-Basename                                 noarch 2.86-519.fc42                    updates     14.0 KiB
+ perl-File-Path                                     noarch 2.18-512.fc42                    fedora      63.5 KiB
+ perl-File-Temp                                     noarch 1:0.231.100-512.fc42             fedora     162.3 KiB
+ perl-File-stat                                     noarch 1.14-519.fc42                    updates     12.5 KiB
+ perl-FileHandle                                    noarch 2.05-519.fc42                    updates      9.3 KiB
+ perl-Getopt-Long                                   noarch 1:2.58-3.fc42                    fedora     144.5 KiB
+ perl-Getopt-Std                                    noarch 1.14-519.fc42                    updates     11.2 KiB
+ perl-Git                                           noarch 2.51.0-2.fc42                    updates     64.4 KiB
+ perl-HTTP-Tiny                                     noarch 0.090-2.fc42                     fedora     154.4 KiB
+ perl-IO                                            x86_64 1.55-519.fc42                    updates    147.0 KiB
+ perl-IO-Socket-IP                                  noarch 0.43-2.fc42                      fedora     100.3 KiB
+ perl-IO-Socket-SSL                                 noarch 2.089-2.fc42                     fedora     703.3 KiB
+ perl-IPC-Open3                                     noarch 1.22-519.fc42                    updates     22.5 KiB
+ perl-MIME-Base32                                   noarch 1.303-23.fc42                    fedora      30.7 KiB
+ perl-MIME-Base64                                   x86_64 3.16-512.fc42                    fedora      42.0 KiB
+ perl-Net-SSLeay                                    x86_64 1.94-8.fc42                      fedora       1.3 MiB
+ perl-POSIX                                         x86_64 2.20-519.fc42                    updates    231.0 KiB
+ perl-PathTools                                     x86_64 3.91-513.fc42                    fedora     180.0 KiB
+ perl-Pod-Escapes                                   noarch 1:1.07-512.fc42                  fedora      24.9 KiB
+ perl-Pod-Perldoc                                   noarch 3.28.01-513.fc42                 fedora     163.7 KiB
+ perl-Pod-Simple                                    noarch 1:3.45-512.fc42                  fedora     560.8 KiB
+ perl-Pod-Usage                                     noarch 4:2.05-1.fc42                    fedora      86.3 KiB
+ perl-Scalar-List-Utils                             x86_64 5:1.70-1.fc42                    updates    144.9 KiB
+ perl-SelectSaver                                   noarch 1.02-519.fc42                    updates      2.2 KiB
+ perl-Socket                                        x86_64 4:2.038-512.fc42                 fedora     119.9 KiB
+ perl-Storable                                      x86_64 1:3.32-512.fc42                  fedora     232.3 KiB
+ perl-Symbol                                        noarch 1.09-519.fc42                    updates      6.8 KiB
+ perl-Term-ANSIColor                                noarch 5.01-513.fc42                    fedora      97.5 KiB
+ perl-Term-Cap                                      noarch 1.18-512.fc42                    fedora      29.3 KiB
+ perl-TermReadKey                                   x86_64 2.38-24.fc42                     fedora      64.0 KiB
+ perl-Text-ParseWords                               noarch 3.31-512.fc42                    fedora      13.6 KiB
+ perl-Text-Tabs+Wrap                                noarch 2024.001-512.fc42                fedora      22.6 KiB
+ perl-Time-Local                                    noarch 2:1.350-512.fc42                 fedora      68.9 KiB
+ perl-URI                                           noarch 5.31-2.fc42                      fedora     257.0 KiB
+ perl-base                                          noarch 2.27-519.fc42                    updates     12.5 KiB
+ perl-constant                                      noarch 1.33-513.fc42                    fedora      26.2 KiB
+ perl-if                                            noarch 0.61.000-519.fc42                updates      5.8 KiB
+ perl-interpreter                                   x86_64 4:5.40.3-519.fc42                updates    118.4 KiB
+ perl-lib                                           x86_64 0.65-519.fc42                    updates      8.5 KiB
+ perl-libnet                                        noarch 3.15-513.fc42                    fedora     289.4 KiB
+ perl-libs                                          x86_64 4:5.40.3-519.fc42                updates      9.8 MiB
+ perl-locale                                        noarch 1.12-519.fc42                    updates      6.5 KiB
+ perl-mro                                           x86_64 1.29-519.fc42                    updates     41.5 KiB
+ perl-overload                                      noarch 1.37-519.fc42                    updates     71.5 KiB
+ perl-overloading                                   noarch 0.02-519.fc42                    updates      4.8 KiB
+ perl-parent                                        noarch 1:0.244-2.fc42                   fedora      10.3 KiB
+ perl-podlators                                     noarch 1:6.0.2-3.fc42                   fedora     317.5 KiB
+ perl-vars                                          noarch 1.05-519.fc42                    updates      3.9 KiB
+ pkgconf                                            x86_64 2.3.0-2.fc42                     fedora      88.5 KiB
+ pkgconf-m4                                         noarch 2.3.0-2.fc42                     fedora      14.4 KiB
+ pkgconf-pkg-config                                 x86_64 2.3.0-2.fc42                     fedora     989.0   B
+ python-pip-wheel                                   noarch 24.3.1-5.fc42                    updates      1.2 MiB
+ python3                                            x86_64 3.13.7-1.fc42                    updates     28.7 KiB
+ python3-adal                                       noarch 1.2.7-18.fc42                    fedora     323.7 KiB
+ python3-applicationinsights                        noarch 1:0.11.9-16.fc42                 fedora     411.6 KiB
+ python3-argcomplete                                noarch 3.6.2-2.fc42                     updates    316.8 KiB
+ python3-azure-appconfiguration                     noarch 1.7.1-2.fc42                     fedora       1.0 MiB
+ python3-azure-batch                                noarch 14.2.0-4.fc42                    fedora       2.9 MiB
+ python3-azure-cli-core                             noarch 2.68.0-1.fc42                    fedora       2.3 MiB
+ python3-azure-cli-telemetry                        noarch 2.68.0-1.fc42                    fedora      59.7 KiB
+ python3-azure-common                               noarch 1:1.1.28-11.fc42                 fedora      79.7 KiB
+ python3-azure-core                                 noarch 2:1.30.2-2.fc42                  fedora       1.2 MiB
+ python3-azure-cosmos                               noarch 1:3.2.0-18.fc42                  fedora     801.5 KiB
+ python3-azure-data-tables                          noarch 12.4.0-14.fc42                   fedora       1.1 MiB
+ python3-azure-datalake-store                       noarch 1:0.0.53-2.fc42                  fedora     362.9 KiB
+ python3-azure-keyvault-administration              noarch 4.4.0~b2-6.fc42                  fedora     953.0 KiB
+ python3-azure-keyvault-certificates                noarch 4.7.0-8.fc42                     fedora       7.3 MiB
+ python3-azure-keyvault-keys                        noarch 4.9.0~b3-6.fc42                  fedora       1.5 MiB
+ python3-azure-keyvault-secrets                     noarch 4.7.0-8.fc42                     fedora       5.6 MiB
+ python3-azure-mgmt-advisor                         noarch 9.0.0-19.fc42                    fedora     375.9 KiB
+ python3-azure-mgmt-apimanagement                   noarch 1:4.0.0-7.fc42                   fedora      11.9 MiB
+ python3-azure-mgmt-appconfiguration                noarch 3.1.0-2.fc42                     fedora       3.7 MiB
+ python3-azure-mgmt-appcontainers                   noarch 2.0.0-9.fc42                     fedora       2.6 MiB
+ python3-azure-mgmt-applicationinsights             noarch 1.0.0-17.fc42                    fedora       2.7 MiB
+ python3-azure-mgmt-authorization                   noarch 1:4.0.0-6.fc42                   fedora      10.5 MiB
+ python3-azure-mgmt-batch                           noarch 17.3.0-4.fc42                    fedora       1.9 MiB
+ python3-azure-mgmt-batchai                         noarch 1:7.0.0b1-17.fc42                fedora       1.1 MiB
+ python3-azure-mgmt-billing                         noarch 6.0.0-19.fc42                    fedora       1.9 MiB
+ python3-azure-mgmt-botservice                      noarch 1:2.0.0~b3-12.fc42               fedora     869.3 KiB
+ python3-azure-mgmt-cdn                             noarch 12.0.0-13.fc42                   fedora       3.4 MiB
+ python3-azure-mgmt-cognitiveservices               noarch 13.5.0-6.fc42                    fedora       1.7 MiB
+ python3-azure-mgmt-compute                         noarch 1:33.0.0-2.fc42                  fedora     128.7 MiB
+ python3-azure-mgmt-containerinstance               noarch 1:10.2.0~b1-2.fc42               fedora       1.1 MiB
+ python3-azure-mgmt-containerregistry               noarch 1:10.3.0-4.fc42                  fedora      34.3 MiB
+ python3-azure-mgmt-containerservice                noarch 33.0.0-2.fc42                    fedora     141.0 MiB
+ python3-azure-mgmt-core                            noarch 1:1.3.2-15.fc42                  fedora      96.2 KiB
+ python3-azure-mgmt-cosmosdb                        noarch 9.7.0-1.fc42                     fedora       6.0 MiB
+ python3-azure-mgmt-databoxedge                     noarch 1:1.0.0-18.fc42                  fedora      15.0 MiB
+ python3-azure-mgmt-datalake-store                  noarch 1:1.1.0~b1-2.fc42                fedora       1.0 MiB
+ python3-azure-mgmt-datamigration                   noarch 1:10.0.0-16.fc42                 fedora       2.8 MiB
+ python3-azure-mgmt-devtestlabs                     noarch 1:4.0.0-18.fc42                  fedora       2.0 MiB
+ python3-azure-mgmt-dns                             noarch 8.0.0-19.fc42                    fedora       1.1 MiB
+ python3-azure-mgmt-eventgrid                       noarch 10.2.0~b2-10.fc42                fedora       3.3 MiB
+ python3-azure-mgmt-eventhub                        noarch 1:10.1.0-11.fc42                 fedora       7.4 MiB
+ python3-azure-mgmt-extendedlocation                noarch 1.0.0b2-18.fc42                  fedora     328.4 KiB
+ python3-azure-mgmt-hdinsight                       noarch 9.1.0~b1-2.fc42                  fedora       1.9 MiB
+ python3-azure-mgmt-imagebuilder                    noarch 1.3.0-4.fc42                     fedora     846.1 KiB
+ python3-azure-mgmt-iotcentral                      noarch 2:10.0.0~b1-13.fc42              fedora     467.6 KiB
+ python3-azure-mgmt-iothub                          noarch 3.0.0-6.fc42                     fedora      18.7 MiB
+ python3-azure-mgmt-iothubprovisioningservices      noarch 1.1.0-14.fc42                    fedora     615.2 KiB
+ python3-azure-mgmt-keyvault                        noarch 10.3.0-6.fc42                    fedora      11.6 MiB
+ python3-azure-mgmt-loganalytics                    noarch 1:13.0.0~b4-13.fc42              fedora       1.6 MiB
+ python3-azure-mgmt-managementgroups                noarch 1:1.0.0-13.fc42                  fedora     595.4 KiB
+ python3-azure-mgmt-maps                            noarch 1:2.0.0-18.fc42                  fedora     385.6 KiB
+ python3-azure-mgmt-marketplaceordering             noarch 1.1.0-19.fc42                    fedora     186.4 KiB
+ python3-azure-mgmt-media                           noarch 1:9.0.0-13.fc42                  fedora       2.6 MiB
+ python3-azure-mgmt-monitor                         noarch 5.0.0-10.fc42                    fedora      10.5 MiB
+ python3-azure-mgmt-msi                             noarch 1:7.0.0-9.fc42                   fedora       1.5 MiB
+ python3-azure-mgmt-mysqlflexibleservers            noarch 1.0.0~b3-1.fc42                  fedora       2.1 MiB
+ python3-azure-mgmt-netapp                          noarch 10.1.0-6.fc42                    fedora       3.2 MiB
+ python3-azure-mgmt-policyinsights                  noarch 1:1.1.0~b4-6.fc42                fedora       2.2 MiB
+ python3-azure-mgmt-postgresqlflexibleservers       noarch 1.1.0~b1-3.fc42                  fedora       2.5 MiB
+ python3-azure-mgmt-privatedns                      noarch 1.0.0-18.fc42                    fedora     502.3 KiB
+ python3-azure-mgmt-rdbms                           noarch 1:10.2.0~b17-3.fc42              fedora      10.3 MiB
+ python3-azure-mgmt-recoveryservices                noarch 1:3.0.0-4.fc42                   fedora       1.0 MiB
+ python3-azure-mgmt-recoveryservicesbackup          noarch 1:9.1.0-4.fc42                   fedora       6.0 MiB
+ python3-azure-mgmt-redhatopenshift                 noarch 1:1.5.0-2.fc42                   fedora       4.5 MiB
+ python3-azure-mgmt-redis                           noarch 1:14.4.0-2.fc42                  fedora       1.5 MiB
+ python3-azure-mgmt-resource                        noarch 1:23.1.1-4.fc42                  fedora      41.2 MiB
+ python3-azure-mgmt-search                          noarch 9.0.0-9.fc42                     fedora       1.0 MiB
+ python3-azure-mgmt-security                        noarch 1:6.0.0-4.fc42                   fedora      10.1 MiB
+ python3-azure-mgmt-servicebus                      noarch 8.2.0-9.fc42                     fedora      13.9 MiB
+ python3-azure-mgmt-servicefabric                   noarch 1:2.1.0-4.fc42                   fedora       1.6 MiB
+ python3-azure-mgmt-servicefabricmanagedclusters    noarch 2.0.0~b6-4.fc42                  fedora       2.5 MiB
+ python3-azure-mgmt-servicelinker                   noarch 1:1.2.0~b3-2.fc42                fedora       1.1 MiB
+ python3-azure-mgmt-signalr                         noarch 2.0.0~b2-2.fc42                  fedora       1.5 MiB
+ python3-azure-mgmt-sql                             noarch 1:4.0.0~b20-2.fc42               fedora      15.1 MiB
+ python3-azure-mgmt-sqlvirtualmachine               noarch 1.0.0~b5-9.fc42                  fedora       1.1 MiB
+ python3-azure-mgmt-storage                         noarch 21.2.0-3.fc42                    fedora      42.5 MiB
+ python3-azure-mgmt-synapse                         noarch 1:2.1.0~b5-11.fc42               fedora       6.0 MiB
+ python3-azure-mgmt-trafficmanager                  noarch 1.0.0-14.fc42                    fedora     407.8 KiB
+ python3-azure-mgmt-web                             noarch 1:7.2.0-4.fc42                   fedora     147.5 MiB
+ python3-azure-monitor-query                        noarch 1.4.0-2.fc42                     fedora       1.5 MiB
+ python3-azure-multiapi-storage                     noarch 1.3.0-2.fc42                     fedora      31.4 MiB
+ python3-azure-storage-common                       noarch 1:1.4.2-18.fc42                  fedora     319.9 KiB
+ python3-azure-synapse-accesscontrol                noarch 1:0.5.0-18.fc42                  fedora     280.0 KiB
+ python3-azure-synapse-artifacts                    noarch 1:0.19.0-3.fc42                  fedora       8.2 MiB
+ python3-azure-synapse-managedprivateendpoints      noarch 0.4.0-10.fc42                    fedora     288.5 KiB
+ python3-azure-synapse-spark                        noarch 1:0.2.0-18.fc42                  fedora     324.8 KiB
+ python3-bcrypt                                     x86_64 4.3.0-3.fc42                     updates    524.2 KiB
+ python3-certifi                                    noarch 2025.07.09-1.fc42                updates      6.8 KiB
+ python3-cffi                                       x86_64 1.17.1-2.fc42                    fedora       1.3 MiB
+ python3-chardet                                    noarch 5.2.0-16.fc42                    fedora       2.1 MiB
+ python3-charset-normalizer                         noarch 3.4.1-3.fc42                     fedora     319.6 KiB
+ python3-colorama                                   noarch 0.4.6-10.fc42                    fedora     187.6 KiB
+ python3-cryptography                               x86_64 44.0.0-3.fc42                    fedora       5.0 MiB
+ python3-dateutil                                   noarch 1:2.8.2-17.fc42                  fedora     876.2 KiB
+ python3-decorator                                  noarch 5.1.1-14.fc42                    fedora      78.5 KiB
+ python3-deprecated                                 noarch 1.2.18-1.fc42                    fedora      53.0 KiB
+ python3-distro                                     noarch 1.9.0-6.fc42                     fedora     196.4 KiB
+ python3-fabric                                     noarch 3.2.2-6.fc42                     fedora     316.6 KiB
+ python3-fluidity-sm                                noarch 0.2.0-36.fc42                    fedora      30.4 KiB
+ python3-gobject-base                               x86_64 3.50.0-3.fc42                    fedora       1.5 MiB
+ python3-humanfriendly                              noarch 10.0-14.fc42                     fedora     542.5 KiB
+ python3-idna                                       noarch 3.10-2.fc42                      fedora     629.0 KiB
+ python3-invoke                                     noarch 2.2.0-7.fc42                     fedora     637.0 KiB
+ python3-isodate                                    noarch 0.7.2-2.fc42                     fedora     121.3 KiB
+ python3-javaproperties                             noarch 0.8.2-2.fc42                     fedora     196.8 KiB
+ python3-jmespath                                   noarch 1.0.1-9.fc42                     fedora     148.0 KiB
+ python3-jsondiff                                   noarch 2.2.1-2.fc42                     fedora     108.1 KiB
+ python3-jwt                                        noarch 2.8.0-3.fc42                     fedora     163.8 KiB
+ python3-jwt+crypto                                 noarch 2.8.0-3.fc42                     fedora       5.4 KiB
+ python3-knack                                      noarch 1:0.12.0-2.fc42                  fedora     455.9 KiB
+ python3-lexicon                                    noarch 2.0.1-15.fc42                    fedora      26.0 KiB
+ python3-libs                                       x86_64 3.13.7-1.fc42                    updates     40.1 MiB
+ python3-microsoft-security-utilities-secret-masker noarch 1.0.0~b4-1.fc42                  updates     82.2 KiB
+ python3-msal                                       noarch 1.32.3-1.fc42                    updates    899.1 KiB
+ python3-msal+broker                                noarch 1.32.3-1.fc42                    updates     12.4 KiB
+ python3-msal-extensions                            noarch 1.3.1-1.fc42                     fedora     116.3 KiB
+ python3-msrest                                     noarch 0.7.1-14.20221014git2d8fd04.fc42 fedora     546.7 KiB
+ python3-msrestazure                                noarch 0.6.4-23.fc42                    fedora     264.5 KiB
+ python3-oauthlib                                   noarch 3.2.2-6.fc42                     fedora     987.3 KiB
+ python3-packaging                                  noarch 24.2-3.fc42                      fedora     555.7 KiB
+ python3-paramiko                                   noarch 3.5.1-1.fc42                     fedora       1.7 MiB
+ python3-pkginfo                                    noarch 1.12.0-2.fc42                    fedora     100.0 KiB
+ python3-ply                                        noarch 3.11-26.fc42                     fedora     565.1 KiB
+ python3-portalocker                                noarch 3.1.1-2.fc42                     fedora     147.2 KiB
+ python3-psutil                                     x86_64 6.1.1-2.fc42                     fedora       1.4 MiB
+ python3-pyOpenSSL                                  noarch 25.0.0-1.fc42                    fedora     685.6 KiB
+ python3-pycomposefile                              noarch 0.0.32-4.fc42                    fedora     104.5 KiB
+ python3-pycparser                                  noarch 2.20-19.fc42                     fedora     800.6 KiB
+ python3-pygithub                                   noarch 2.5.0-2.fc42                     fedora       3.7 MiB
+ python3-pygments                                   noarch 2.18.0-4.fc42                    fedora      10.6 MiB
+ python3-pynacl                                     x86_64 1.5.0-14.fc42                    fedora     584.3 KiB
+ python3-pysocks                                    noarch 1.7.1-26.fc42                    fedora     100.9 KiB
+ python3-pyyaml                                     x86_64 6.0.2-2.fc42                     fedora     781.0 KiB
+ python3-requests                                   noarch 2.32.4-1.fc42                    updates    473.8 KiB
+ python3-requests+socks                             noarch 2.32.4-1.fc42                    updates     14.5 KiB
+ python3-requests-oauthlib                          noarch 1.3.1-11.fc42                    fedora     133.1 KiB
+ python3-scp                                        noarch 0.15.0-1.fc42                    fedora      86.2 KiB
+ python3-semver                                     noarch 3.0.2-3.fc42                     fedora     117.9 KiB
+ python3-setuptools                                 noarch 74.1.3-7.fc42                    updates      8.4 MiB
+ python3-six                                        noarch 1.17.0-2.fc42                    fedora     116.9 KiB
+ python3-sshtunnel                                  noarch 0.4.0-15.fc42                    fedora     251.9 KiB
+ python3-tabulate                                   noarch 0.9.0-11.fc42                    fedora     341.1 KiB
+ python3-typing-extensions                          noarch 4.12.2-4.fc42                    fedora     458.2 KiB
+ python3-urllib3                                    noarch 2.3.0-2.fc42                     fedora       1.0 MiB
+ python3-wcwidth                                    noarch 0.2.13-6.fc42                    fedora     559.7 KiB
+ python3-websocket-client                           noarch 1.8.0-3.fc42                     fedora     442.6 KiB
+ python3-wrapt                                      x86_64 1.17.1-2.fc42                    fedora     197.4 KiB
+ python3-xmltodict                                  noarch 0.13.0-6.fc42                    fedora      55.2 KiB
+ util-linux                                         x86_64 2.40.4-7.fc42                    fedora       3.4 MiB
+ vim-common                                         x86_64 2:9.1.1818-1.fc42                updates     36.9 MiB
+ vim-filesystem                                     noarch 2:9.1.1818-1.fc42                updates     40.0   B
+ which                                              x86_64 2.23-2.fc42                      updates     83.5 KiB
+ xxd                                                x86_64 2:9.1.1818-1.fc42                updates     37.2 KiB
+ xxhash-libs                                        x86_64 0.8.3-2.fc42                     fedora      90.2 KiB
+Installing weak dependencies:
+ glibc-gconv-extra                                  i686   2.41-11.fc42                     updates      6.7 MiB
+ perl-NDBM_File                                     x86_64 1.17-519.fc42                    updates     28.4 KiB
+ python-unversioned-command                         noarch 3.13.7-1.fc42                    updates     23.0   B
+ python3-antlr4-runtime                             noarch 4.13.2-4.fc42                     fedora     896.9 KiB
+ python3-pyasn1                                     noarch 0.6.1-3.fc42                     fedora     863.7 KiB
+ python3-tabulate+widechars                         noarch 0.9.0-11.fc42                     fedora      34.5 KiB
+ python3-urllib3+socks                              noarch 2.3.0-2.fc42                     fedora       7.5 KiB
+
+Transaction Summary:
+ Installing:       270 packages
+
+Total size of inbound packages is 161 MiB. Need to download 161 MiB.
+After this operation, 1 GiB extra will be used (install 1 GiB, remove 0 B).
+[  1/270] cronie-0:1.7.2-6.fc42.x86_64  100% | 280.1 KiB/s | 120.4 KiB |  00m00s
+[  2/270] par2cmdline-0:0.8.1-14.fc42.x 100% | 291.9 KiB/s | 127.9 KiB |  00m00s
+[  3/270] man-db-0:2.13.0-2.fc42.x86_64 100% |   2.9 MiB/s |   1.3 MiB |  00m00s
+[  4/270] time-0:1.9-26.fc42.x86_64     100% | 687.9 KiB/s |  46.8 KiB |  00m00s
+[  5/270] tini-0:0.19.0-10.fc42.x86_64  100% | 351.6 KiB/s |  22.5 KiB |  00m00s
+[  6/270] man-pages-0:6.9.1-3.fc42.noar 100% |   3.6 MiB/s |   3.7 MiB |  00m01s
+[  7/270] zsh-0:5.9-16.fc42.x86_64      100% |   5.4 MiB/s |   3.3 MiB |  00m01s
+[  8/270] rsync-0:3.4.1-3.fc42.x86_64   100% |   5.6 MiB/s | 425.8 KiB |  00m00s
+[  9/270] groff-base-0:1.23.0-8.fc42.x8 100% |  14.0 MiB/s |   1.1 MiB |  00m00s
+[ 10/270] libpipeline-0:1.5.8-2.fc42.x8 100% |   1.1 MiB/s |  60.0 KiB |  00m00s
+[ 11/270] python3-azure-appconfiguratio 100% |   2.7 MiB/s | 174.5 KiB |  00m00s
+[ 12/270] python3-azure-batch-0:14.2.0- 100% |   3.3 MiB/s | 244.9 KiB |  00m00s
+[ 13/270] python3-azure-cli-core-0:2.68 100% |   7.7 MiB/s | 619.0 KiB |  00m00s
+[ 14/270] python3-azure-cosmos-1:3.2.0- 100% |   2.9 MiB/s | 201.4 KiB |  00m00s
+[ 15/270] python3-azure-data-tables-0:1 100% |   3.0 MiB/s | 206.8 KiB |  00m00s
+[ 16/270] python3-azure-datalake-store- 100% |   1.7 MiB/s | 110.5 KiB |  00m00s
+[ 17/270] python3-azure-keyvault-admini 100% |   2.7 MiB/s | 187.5 KiB |  00m00s
+[ 18/270] python3-azure-keyvault-certif 100% |   6.0 MiB/s | 440.3 KiB |  00m00s
+[ 19/270] python3-azure-keyvault-keys-0 100% |   3.9 MiB/s | 279.1 KiB |  00m00s
+[ 20/270] azure-cli-0:2.68.0-1.fc42.noa 100% |  27.8 MiB/s |  13.5 MiB |  00m00s
+[ 21/270] python3-azure-keyvault-secret 100% |   5.7 MiB/s | 398.1 KiB |  00m00s
+[ 22/270] python3-azure-mgmt-advisor-0: 100% |   1.2 MiB/s |  74.6 KiB |  00m00s
+[ 23/270] python3-azure-mgmt-apimanagem 100% |  10.0 MiB/s | 688.1 KiB |  00m00s
+[ 24/270] python3-azure-mgmt-appconfigu 100% |   4.1 MiB/s | 289.2 KiB |  00m00s
+[ 25/270] python3-azure-mgmt-appcontain 100% |   3.8 MiB/s | 266.5 KiB |  00m00s
+[ 26/270] python3-azure-mgmt-applicatio 100% |   5.0 MiB/s | 319.5 KiB |  00m00s
+[ 27/270] python3-azure-mgmt-authorizat 100% |  11.6 MiB/s | 927.8 KiB |  00m00s
+[ 28/270] python3-azure-mgmt-batch-0:17 100% |   3.3 MiB/s | 233.9 KiB |  00m00s
+[ 29/270] python3-azure-mgmt-batchai-1: 100% |   1.8 MiB/s | 128.5 KiB |  00m00s
+[ 30/270] python3-azure-mgmt-billing-0: 100% |   2.9 MiB/s | 186.1 KiB |  00m00s
+[ 31/270] python3-azure-mgmt-botservice 100% |   1.8 MiB/s | 124.9 KiB |  00m00s
+[ 32/270] python3-azure-mgmt-cdn-0:12.0 100% |   4.3 MiB/s | 276.0 KiB |  00m00s
+[ 33/270] python3-azure-mgmt-cognitives 100% |   3.3 MiB/s | 208.6 KiB |  00m00s
+[ 34/270] python3-azure-mgmt-containeri 100% |   2.7 MiB/s | 170.5 KiB |  00m00s
+[ 35/270] python3-azure-mgmt-containerr 100% |  13.3 MiB/s |   1.3 MiB |  00m00s
+[ 36/270] python3-azure-mgmt-compute-1: 100% |  20.8 MiB/s |   3.1 MiB |  00m00s
+[ 37/270] python3-azure-mgmt-containers 100% |  39.0 MiB/s |   4.2 MiB |  00m00s
+[ 38/270] python3-azure-mgmt-cosmosdb-0 100% |   6.7 MiB/s | 421.4 KiB |  00m00s
+[ 39/270] python3-azure-mgmt-databoxedg 100% |   9.3 MiB/s | 636.5 KiB |  00m00s
+[ 40/270] python3-azure-mgmt-datalake-s 100% |   2.2 MiB/s | 149.9 KiB |  00m00s
+[ 41/270] python3-azure-mgmt-datamigrat 100% |   3.4 MiB/s | 223.7 KiB |  00m00s
+[ 42/270] python3-azure-mgmt-devtestlab 100% |   2.6 MiB/s | 170.0 KiB |  00m00s
+[ 43/270] python3-azure-mgmt-dns-0:8.0. 100% |   2.1 MiB/s | 138.1 KiB |  00m00s
+[ 44/270] python3-azure-mgmt-eventgrid- 100% |   3.2 MiB/s | 238.6 KiB |  00m00s
+[ 45/270] python3-azure-mgmt-eventhub-1 100% |   6.5 MiB/s | 451.8 KiB |  00m00s
+[ 46/270] python3-azure-mgmt-extendedlo 100% |   1.2 MiB/s |  71.3 KiB |  00m00s
+[ 47/270] python3-azure-mgmt-hdinsight- 100% |   3.3 MiB/s | 219.8 KiB |  00m00s
+[ 48/270] python3-azure-mgmt-imagebuild 100% |   2.2 MiB/s | 146.8 KiB |  00m00s
+[ 49/270] python3-azure-mgmt-iotcentral 100% |   1.3 MiB/s |  84.9 KiB |  00m00s
+[ 50/270] python3-azure-mgmt-iothubprov 100% |   1.5 MiB/s |  95.1 KiB |  00m00s
+[ 51/270] python3-azure-mgmt-iothub-0:3 100% |   9.8 MiB/s | 831.3 KiB |  00m00s
+[ 52/270] python3-azure-mgmt-keyvault-0 100% |   8.6 MiB/s | 614.3 KiB |  00m00s
+[ 53/270] python3-azure-mgmt-management 100% |   1.4 MiB/s |  90.1 KiB |  00m00s
+[ 54/270] python3-azure-mgmt-loganalyti 100% |   2.6 MiB/s | 194.9 KiB |  00m00s
+[ 55/270] python3-azure-mgmt-maps-1:2.0 100% |   1.0 MiB/s |  69.2 KiB |  00m00s
+[ 56/270] python3-azure-mgmt-marketplac 100% | 839.6 KiB/s |  53.7 KiB |  00m00s
+[ 57/270] python3-azure-mgmt-media-1:9. 100% |   3.6 MiB/s | 259.1 KiB |  00m00s
+[ 58/270] python3-azure-mgmt-monitor-0: 100% |  13.9 MiB/s |   1.0 MiB |  00m00s
+[ 59/270] python3-azure-mgmt-msi-1:7.0. 100% |   3.2 MiB/s | 222.9 KiB |  00m00s
+[ 60/270] python3-azure-mgmt-mysqlflexi 100% |   3.6 MiB/s | 241.4 KiB |  00m00s
+[ 61/270] python3-azure-mgmt-netapp-0:1 100% |   4.1 MiB/s | 264.7 KiB |  00m00s
+[ 62/270] python3-azure-mgmt-policyinsi 100% |   3.2 MiB/s | 208.6 KiB |  00m00s
+[ 63/270] python3-azure-mgmt-postgresql 100% |   4.3 MiB/s | 279.4 KiB |  00m00s
+[ 64/270] python3-azure-mgmt-privatedns 100% |   1.2 MiB/s |  73.6 KiB |  00m00s
+[ 65/270] python3-azure-mgmt-recoveryse 100% |   2.5 MiB/s | 176.8 KiB |  00m00s
+[ 66/270] python3-azure-mgmt-rdbms-1:10 100% |   9.4 MiB/s | 780.1 KiB |  00m00s
+[ 67/270] python3-azure-mgmt-recoveryse 100% |   7.4 MiB/s | 536.4 KiB |  00m00s
+[ 68/270] python3-azure-mgmt-redhatopen 100% |   5.3 MiB/s | 347.9 KiB |  00m00s
+[ 69/270] python3-azure-mgmt-redis-1:14 100% |   3.0 MiB/s | 187.3 KiB |  00m00s
+[ 70/270] python3-azure-mgmt-resource-1 100% |  26.1 MiB/s |   2.1 MiB |  00m00s
+[ 71/270] python3-azure-mgmt-search-0:9 100% |   2.3 MiB/s | 155.9 KiB |  00m00s
+[ 72/270] python3-azure-mgmt-security-1 100% |  14.5 MiB/s |   1.2 MiB |  00m00s
+[ 73/270] python3-azure-mgmt-servicebus 100% |   9.0 MiB/s | 609.7 KiB |  00m00s
+[ 74/270] python3-azure-mgmt-servicefab 100% |   3.0 MiB/s | 194.3 KiB |  00m00s
+[ 75/270] python3-azure-mgmt-servicefab 100% |   3.8 MiB/s | 268.1 KiB |  00m00s
+[ 76/270] python3-azure-mgmt-servicelin 100% |   2.2 MiB/s | 161.1 KiB |  00m00s
+[ 77/270] python3-azure-mgmt-signalr-0: 100% |   2.7 MiB/s | 179.4 KiB |  00m00s
+[ 78/270] python3-azure-mgmt-sql-1:4.0. 100% |  11.3 MiB/s | 972.2 KiB |  00m00s
+[ 79/270] python3-azure-mgmt-sqlvirtual 100% |   2.4 MiB/s | 159.7 KiB |  00m00s
+[ 80/270] python3-azure-mgmt-storage-0: 100% |  20.1 MiB/s |   1.6 MiB |  00m00s
+[ 81/270] python3-azure-mgmt-synapse-1: 100% |   6.8 MiB/s | 494.0 KiB |  00m00s
+[ 82/270] python3-azure-mgmt-trafficman 100% |   1.3 MiB/s |  83.4 KiB |  00m00s
+[ 83/270] python3-azure-mgmt-web-1:7.2. 100% |  32.7 MiB/s |   3.2 MiB |  00m00s
+[ 84/270] python3-azure-monitor-query-0 100% |   2.8 MiB/s | 192.8 KiB |  00m00s
+[ 85/270] python3-azure-multiapi-storag 100% |  26.6 MiB/s |   2.3 MiB |  00m00s
+[ 86/270] python3-azure-storage-common- 100% |   1.6 MiB/s | 100.6 KiB |  00m00s
+[ 87/270] python3-azure-synapse-accessc 100% | 977.2 KiB/s |  58.6 KiB |  00m00s
+[ 88/270] python3-azure-synapse-artifac 100% |   9.0 MiB/s | 592.9 KiB |  00m00s
+[ 89/270] python3-azure-synapse-managed 100% |   1.2 MiB/s |  75.1 KiB |  00m00s
+[ 90/270] python3-azure-synapse-spark-1 100% | 977.6 KiB/s |  60.6 KiB |  00m00s
+[ 91/270] python3-chardet-0:5.2.0-16.fc 100% |   4.5 MiB/s | 298.6 KiB |  00m00s
+[ 92/270] python3-colorama-0:0.4.6-10.f 100% |   1.1 MiB/s |  71.0 KiB |  00m00s
+[ 93/270] python3-distro-0:1.9.0-6.fc42 100% | 776.1 KiB/s |  46.6 KiB |  00m00s
+[ 94/270] python3-fabric-0:3.2.2-6.fc42 100% |   1.7 MiB/s | 110.0 KiB |  00m00s
+[ 95/270] python3-javaproperties-0:0.8. 100% | 923.7 KiB/s |  56.3 KiB |  00m00s
+[ 96/270] python3-jsondiff-0:2.2.1-2.fc 100% | 569.8 KiB/s |  35.9 KiB |  00m00s
+[ 97/270] python3-packaging-0:24.2-3.fc 100% |   2.4 MiB/s | 154.0 KiB |  00m00s
+[ 98/270] python3-paramiko-0:3.5.1-1.fc 100% |   6.0 MiB/s | 412.7 KiB |  00m00s
+[ 99/270] python3-pycomposefile-0:0.0.3 100% | 930.5 KiB/s |  59.5 KiB |  00m00s
+[100/270] python3-pygithub-0:2.5.0-2.fc 100% |   8.1 MiB/s | 557.1 KiB |  00m00s
+[101/270] python3-pynacl-0:1.5.0-14.fc4 100% |   1.8 MiB/s | 141.7 KiB |  00m00s
+[102/270] python3-scp-0:0.15.0-1.fc42.n 100% | 389.7 KiB/s |  27.7 KiB |  00m00s
+[103/270] python3-semver-0:3.0.2-3.fc42 100% | 864.5 KiB/s |  51.0 KiB |  00m00s
+[104/270] python3-six-0:1.17.0-2.fc42.n 100% | 677.0 KiB/s |  41.3 KiB |  00m00s
+[105/270] python3-sshtunnel-0:0.4.0-15. 100% | 842.7 KiB/s |  56.5 KiB |  00m00s
+[106/270] python3-tabulate-0:0.9.0-11.f 100% |   1.1 MiB/s |  71.5 KiB |  00m00s
+[107/270] python3-urllib3-0:2.3.0-2.fc4 100% |   4.4 MiB/s | 283.3 KiB |  00m00s
+[108/270] python3-websocket-client-0:1. 100% |   2.2 MiB/s | 139.7 KiB |  00m00s
+[109/270] python3-xmltodict-0:0.13.0-6. 100% | 431.3 KiB/s |  26.3 KiB |  00m00s
+[110/270] xxhash-libs-0:0.8.3-2.fc42.x8 100% | 662.1 KiB/s |  39.1 KiB |  00m00s
+[111/270] python3-azure-core-2:1.30.2-2 100% |   4.7 MiB/s | 316.2 KiB |  00m00s
+[112/270] python3-isodate-0:0.7.2-2.fc4 100% | 890.0 KiB/s |  53.4 KiB |  00m00s
+[113/270] python3-azure-common-1:1.1.28 100% | 550.9 KiB/s |  38.6 KiB |  00m00s
+[114/270] python3-msrestazure-0:0.6.4-2 100% |   1.2 MiB/s |  79.1 KiB |  00m00s
+[115/270] python3-azure-cli-telemetry-0 100% | 662.7 KiB/s |  42.4 KiB |  00m00s
+[116/270] python3-azure-mgmt-core-1:1.3 100% | 740.5 KiB/s |  47.4 KiB |  00m00s
+[117/270] python3-humanfriendly-0:10.0- 100% |   2.2 MiB/s | 147.2 KiB |  00m00s
+[118/270] python3-cryptography-0:44.0.0 100% |  16.1 MiB/s |   1.4 MiB |  00m00s
+[119/270] python3-jmespath-0:1.0.1-9.fc 100% | 960.9 KiB/s |  58.6 KiB |  00m00s
+[120/270] python3-jwt-0:2.8.0-3.fc42.no 100% |   1.1 MiB/s |  67.0 KiB |  00m00s
+[121/270] python3-knack-1:0.12.0-2.fc42 100% |   2.5 MiB/s | 157.2 KiB |  00m00s
+[122/270] python3-msal-extensions-0:1.3 100% | 774.7 KiB/s |  49.6 KiB |  00m00s
+[123/270] python3-pkginfo-0:1.12.0-2.fc 100% | 828.9 KiB/s |  52.2 KiB |  00m00s
+[124/270] python3-psutil-0:6.1.1-2.fc42 100% |   4.1 MiB/s | 275.3 KiB |  00m00s
+[125/270] python3-pyOpenSSL-0:25.0.0-1. 100% |   1.9 MiB/s | 122.2 KiB |  00m00s
+[126/270] python3-msrest-0:0.7.1-14.202 100% |   2.4 MiB/s | 154.3 KiB |  00m00s
+[127/270] python3-cffi-0:1.17.1-2.fc42. 100% |   4.4 MiB/s | 308.9 KiB |  00m00s
+[128/270] python3-typing-extensions-0:4 100% |   1.5 MiB/s |  93.4 KiB |  00m00s
+[129/270] python3-dateutil-1:2.8.2-17.f 100% |   5.4 MiB/s | 359.9 KiB |  00m00s
+[130/270] python3-decorator-0:5.1.1-14. 100% | 486.0 KiB/s |  31.1 KiB |  00m00s
+[131/270] python3-deprecated-0:1.2.18-1 100% | 404.9 KiB/s |  25.5 KiB |  00m00s
+[132/270] python3-invoke-0:2.2.0-7.fc42 100% |   3.3 MiB/s | 204.6 KiB |  00m00s
+[133/270] python3-pyyaml-0:6.0.2-2.fc42 100% |   3.5 MiB/s | 230.4 KiB |  00m00s
+[134/270] python3-jwt+crypto-0:2.8.0-3. 100% | 137.2 KiB/s |   8.6 KiB |  00m00s
+[135/270] libsodium-0:1.0.20-4.fc42.x86 100% |   2.7 MiB/s | 175.6 KiB |  00m00s
+[136/270] python3-idna-0:3.10-2.fc42.no 100% |   1.9 MiB/s | 117.3 KiB |  00m00s
+[137/270] python3-adal-0:1.2.7-18.fc42. 100% |   1.7 MiB/s | 105.7 KiB |  00m00s
+[138/270] python3-applicationinsights-1 100% |   2.0 MiB/s | 124.8 KiB |  00m00s
+[139/270] python3-portalocker-0:3.1.1-2 100% | 923.7 KiB/s |  54.5 KiB |  00m00s
+[140/270] python3-requests-oauthlib-0:1 100% | 919.7 KiB/s |  57.9 KiB |  00m00s
+[141/270] python3-pygments-0:2.18.0-4.f 100% |  29.1 MiB/s |   2.5 MiB |  00m00s
+[142/270] python3-pycparser-0:2.20-19.f 100% |   2.4 MiB/s | 159.7 KiB |  00m00s
+[143/270] python3-fluidity-sm-0:0.2.0-3 100% | 339.7 KiB/s |  20.7 KiB |  00m00s
+[144/270] python3-wrapt-0:1.17.1-2.fc42 100% |   1.1 MiB/s |  74.6 KiB |  00m00s
+[145/270] python3-lexicon-0:2.0.1-15.fc 100% | 328.7 KiB/s |  19.7 KiB |  00m00s
+[146/270] python3-ply-0:3.11-26.fc42.no 100% |   2.1 MiB/s | 136.3 KiB |  00m00s
+[147/270] python3-oauthlib-0:3.2.2-6.fc 100% |   3.7 MiB/s | 252.9 KiB |  00m00s
+[148/270] dialog-0:1.3-53.20240619.fc42 100% |   4.4 MiB/s | 286.5 KiB |  00m00s
+[149/270] iputils-0:20250605-1.fc42.x86 100% | 915.1 KiB/s | 209.6 KiB |  00m00s
+[150/270] vim-enhanced-2:9.1.1818-1.fc4 100% |   4.3 MiB/s |   2.0 MiB |  00m00s
+[151/270] gpm-libs-0:1.20.7-51.fc42.x86 100% | 311.8 KiB/s |  20.3 KiB |  00m00s
+[152/270] vim-common-2:9.1.1818-1.fc42. 100% |  16.1 MiB/s |   8.1 MiB |  00m01s
+[153/270] oniguruma-0:6.9.10-2.fc42.x86 100% |   3.5 MiB/s | 217.4 KiB |  00m00s
+[154/270] jq-0:1.7.1-11.fc42.x86_64     100% | 950.8 KiB/s | 200.6 KiB |  00m00s
+[155/270] rclone-0:1.71.0-1.fc42.x86_64 100% |  28.5 MiB/s |  26.2 MiB |  00m01s
+[156/270] openssh-0:9.9p1-11.fc42.x86_6 100% |   5.3 MiB/s | 353.6 KiB |  00m00s
+[157/270] openssh-clients-0:9.9p1-11.fc 100% |  10.0 MiB/s | 767.0 KiB |  00m00s
+[158/270] libedit-0:3.1-55.20250104cvs. 100% |   1.7 MiB/s | 105.3 KiB |  00m00s
+[159/270] libcbor-0:0.11.0-3.fc42.x86_6 100% | 545.5 KiB/s |  33.3 KiB |  00m00s
+[160/270] libfido2-0:1.15.0-3.fc42.x86_ 100% |   1.5 MiB/s |  98.4 KiB |  00m00s
+[161/270] git-0:2.51.0-2.fc42.x86_64    100% |   1.1 MiB/s |  40.8 KiB |  00m00s
+[162/270] sqlite-0:3.47.2-5.fc42.x86_64 100% |  16.9 MiB/s | 918.0 KiB |  00m00s
+[163/270] perl-Git-0:2.51.0-2.fc42.noar 100% |   1.0 MiB/s |  37.9 KiB |  00m00s
+[164/270] git-core-doc-0:2.51.0-2.fc42. 100% |  41.5 MiB/s |   3.0 MiB |  00m00s
+[165/270] perl-Getopt-Long-1:2.58-3.fc4 100% |   1.0 MiB/s |  63.7 KiB |  00m00s
+[166/270] git-core-0:2.51.0-2.fc42.x86_ 100% |  28.8 MiB/s |   5.0 MiB |  00m00s
+[167/270] perl-PathTools-0:3.91-513.fc4 100% |   1.4 MiB/s |  87.3 KiB |  00m00s
+[168/270] perl-TermReadKey-0:2.38-24.fc 100% | 590.2 KiB/s |  35.4 KiB |  00m00s
+[169/270] perl-Exporter-0:5.78-512.fc42 100% | 525.2 KiB/s |  31.0 KiB |  00m00s
+[170/270] perl-Error-1:0.17030-1.fc42.n 100% | 672.9 KiB/s |  40.4 KiB |  00m00s
+[171/270] perl-constant-0:1.33-513.fc42 100% | 396.3 KiB/s |  23.0 KiB |  00m00s
+[172/270] perl-Text-ParseWords-0:3.31-5 100% | 270.1 KiB/s |  16.5 KiB |  00m00s
+[173/270] perl-Pod-Usage-4:2.05-1.fc42. 100% | 653.4 KiB/s |  40.5 KiB |  00m00s
+[174/270] perl-Carp-0:1.54-512.fc42.noa 100% | 444.0 KiB/s |  28.9 KiB |  00m00s
+[175/270] perl-Pod-Perldoc-0:3.28.01-51 100% |   1.3 MiB/s |  85.8 KiB |  00m00s
+[176/270] perl-podlators-1:6.0.2-3.fc42 100% |   1.9 MiB/s | 128.6 KiB |  00m00s
+[177/270] perl-File-Temp-1:0.231.100-51 100% | 969.9 KiB/s |  59.2 KiB |  00m00s
+[178/270] perl-Pod-Simple-1:3.45-512.fc 100% |   3.4 MiB/s | 219.0 KiB |  00m00s
+[179/270] perl-HTTP-Tiny-0:0.090-2.fc42 100% | 897.3 KiB/s |  56.5 KiB |  00m00s
+[180/270] perl-parent-1:0.244-2.fc42.no 100% | 253.7 KiB/s |  15.2 KiB |  00m00s
+[181/270] perl-Term-ANSIColor-0:5.01-51 100% | 808.3 KiB/s |  47.7 KiB |  00m00s
+[182/270] perl-Term-Cap-0:1.18-512.fc42 100% | 375.5 KiB/s |  22.2 KiB |  00m00s
+[183/270] perl-File-Path-0:2.18-512.fc4 100% | 558.3 KiB/s |  35.2 KiB |  00m00s
+[184/270] perl-MIME-Base64-0:3.16-512.f 100% | 481.5 KiB/s |  29.9 KiB |  00m00s
+[185/270] perl-IO-Socket-SSL-0:2.089-2. 100% |   3.5 MiB/s | 230.2 KiB |  00m00s
+[186/270] perl-Net-SSLeay-0:1.94-8.fc42 100% |   5.6 MiB/s | 376.0 KiB |  00m00s
+[187/270] perl-Socket-4:2.038-512.fc42. 100% | 842.4 KiB/s |  54.8 KiB |  00m00s
+[188/270] perl-Time-Local-2:1.350-512.f 100% | 547.0 KiB/s |  34.5 KiB |  00m00s
+[189/270] perl-Pod-Escapes-1:1.07-512.f 100% | 309.6 KiB/s |  19.8 KiB |  00m00s
+[190/270] perl-Text-Tabs+Wrap-0:2024.00 100% | 340.6 KiB/s |  21.8 KiB |  00m00s
+[191/270] ncurses-0:6.5-5.20250125.fc42 100% |   6.1 MiB/s | 424.5 KiB |  00m00s
+[192/270] perl-IO-Socket-IP-0:0.43-2.fc 100% | 672.4 KiB/s |  42.4 KiB |  00m00s
+[193/270] perl-Data-Dumper-0:2.189-513. 100% | 976.7 KiB/s |  56.7 KiB |  00m00s
+[194/270] perl-URI-0:5.31-2.fc42.noarch 100% |   2.2 MiB/s | 140.7 KiB |  00m00s
+[195/270] perl-MIME-Base32-0:1.303-23.f 100% | 325.6 KiB/s |  20.5 KiB |  00m00s
+[196/270] perl-libnet-0:3.15-513.fc42.n 100% |   2.0 MiB/s | 128.4 KiB |  00m00s
+[197/270] perl-Digest-MD5-0:2.59-6.fc42 100% | 571.2 KiB/s |  36.0 KiB |  00m00s
+[198/270] perl-Digest-0:1.20-512.fc42.n 100% | 389.6 KiB/s |  24.9 KiB |  00m00s
+[199/270] sqlite-devel-0:3.47.2-5.fc42. 100% |   3.8 MiB/s | 146.3 KiB |  00m00s
+[200/270] python3-0:3.13.7-1.fc42.x86_6 100% | 681.0 KiB/s |  30.6 KiB |  00m00s
+[201/270] libb2-0:0.98.1-13.fc42.x86_64 100% | 251.3 KiB/s |  25.4 KiB |  00m00s
+[202/270] python3-requests-0:2.32.4-1.f 100% |   4.7 MiB/s | 158.9 KiB |  00m00s
+[203/270] python3-libs-0:3.13.7-1.fc42. 100% |  43.6 MiB/s |   9.2 MiB |  00m00s
+[204/270] libicu-0:76.1-4.fc42.x86_64   100% |  38.8 MiB/s |  10.7 MiB |  00m00s
+[205/270] python3-charset-normalizer-0: 100% |   1.9 MiB/s | 108.4 KiB |  00m00s
+[206/270] python3-requests+socks-0:2.32 100% | 326.5 KiB/s |   9.8 KiB |  00m00s
+[207/270] python3-bcrypt-0:4.3.0-3.fc42 100% |   5.8 MiB/s | 237.7 KiB |  00m00s
+[208/270] python3-setuptools-0:74.1.3-7 100% |  33.2 MiB/s |   2.0 MiB |  00m00s
+[209/270] python3-pysocks-0:1.7.1-26.fc 100% | 616.0 KiB/s |  39.4 KiB |  00m00s
+[210/270] python3-certifi-0:2025.07.09- 100% | 400.5 KiB/s |  14.4 KiB |  00m00s
+[211/270] python3-msal+broker-0:1.32.3- 100% | 264.6 KiB/s |  10.6 KiB |  00m00s
+[212/270] python3-msal-0:1.32.3-1.fc42. 100% |   4.7 MiB/s | 214.8 KiB |  00m00s
+[213/270] python3-argcomplete-0:3.6.2-2 100% |   2.7 MiB/s |  97.8 KiB |  00m00s
+[214/270] python3-gobject-base-0:3.50.0 100% |   5.8 MiB/s | 400.1 KiB |  00m00s
+[215/270] gobject-introspection-0:1.84. 100% |   1.9 MiB/s | 119.9 KiB |  00m00s
+[216/270] python3-microsoft-security-ut 100% | 957.9 KiB/s |  35.4 KiB |  00m00s
+[217/270] perl-File-Basename-0:2.86-519 100% | 447.0 KiB/s |  17.0 KiB |  00m00s
+[218/270] perl-POSIX-0:2.20-519.fc42.x8 100% |   2.6 MiB/s |  97.4 KiB |  00m00s
+[219/270] perl-interpreter-4:5.40.3-519 100% |   1.4 MiB/s |  72.0 KiB |  00m00s
+[220/270] perl-Errno-0:1.38-519.fc42.x8 100% | 410.4 KiB/s |  14.8 KiB |  00m00s
+[221/270] perl-libs-4:5.40.3-519.fc42.x 100% |  35.9 MiB/s |   2.3 MiB |  00m00s
+[222/270] perl-Fcntl-0:1.18-519.fc42.x8 100% | 741.4 KiB/s |  29.7 KiB |  00m00s
+[223/270] perl-Encode-4:3.21-512.fc42.x 100% |  14.0 MiB/s |   1.1 MiB |  00m00s
+[224/270] perl-Storable-1:3.32-512.fc42 100% |   1.5 MiB/s |  99.6 KiB |  00m00s
+[225/270] perl-FileHandle-0:2.05-519.fc 100% | 464.5 KiB/s |  15.3 KiB |  00m00s
+[226/270] perl-Symbol-0:1.09-519.fc42.n 100% | 401.1 KiB/s |  14.0 KiB |  00m00s
+[227/270] perl-IO-0:1.55-519.fc42.x86_6 100% |   2.2 MiB/s |  81.6 KiB |  00m00s
+[228/270] perl-Scalar-List-Utils-5:1.70 100% |   1.9 MiB/s |  74.6 KiB |  00m00s
+[229/270] perl-base-0:2.27-519.fc42.noa 100% | 501.3 KiB/s |  16.0 KiB |  00m00s
+[230/270] perl-overload-0:1.37-519.fc42 100% |   1.2 MiB/s |  45.4 KiB |  00m00s
+[231/270] perl-DynaLoader-0:1.56-519.fc 100% | 663.7 KiB/s |  25.9 KiB |  00m00s
+[232/270] perl-vars-0:1.05-519.fc42.noa 100% | 337.7 KiB/s |  12.8 KiB |  00m00s
+[233/270] perl-if-0:0.61.000-519.fc42.n 100% | 373.9 KiB/s |  13.8 KiB |  00m00s
+[234/270] perl-IPC-Open3-0:1.22-519.fc4 100% | 516.3 KiB/s |  21.7 KiB |  00m00s
+[235/270] perl-AutoLoader-0:5.74-519.fc 100% | 554.2 KiB/s |  21.1 KiB |  00m00s
+[236/270] perl-Getopt-Std-0:1.14-519.fc 100% | 470.2 KiB/s |  15.5 KiB |  00m00s
+[237/270] perl-B-0:1.89-519.fc42.x86_64 100% |   4.7 MiB/s | 176.5 KiB |  00m00s
+[238/270] which-0:2.23-2.fc42.x86_64    100% |   1.2 MiB/s |  41.7 KiB |  00m00s
+[239/270] less-0:679-1.fc42.x86_64      100% |   5.0 MiB/s | 195.3 KiB |  00m00s
+[240/270] vim-filesystem-2:9.1.1818-1.f 100% | 468.5 KiB/s |  15.5 KiB |  00m00s
+[241/270] xxd-2:9.1.1818-1.fc42.x86_64  100% | 897.4 KiB/s |  31.4 KiB |  00m00s
+[242/270] pkgconf-pkg-config-0:2.3.0-2. 100% | 155.1 KiB/s |   9.9 KiB |  00m00s
+[243/270] pkgconf-0:2.3.0-2.fc42.x86_64 100% | 735.8 KiB/s |  44.9 KiB |  00m00s
+[244/270] pkgconf-m4-0:2.3.0-2.fc42.noa 100% | 233.4 KiB/s |  14.2 KiB |  00m00s
+[245/270] expat-0:2.7.2-1.fc42.x86_64   100% |   3.2 MiB/s | 119.0 KiB |  00m00s
+[246/270] libpkgconf-0:2.3.0-2.fc42.x86 100% | 609.0 KiB/s |  38.4 KiB |  00m00s
+[247/270] mpdecimal-0:4.0.1-1.fc42.x86_ 100% |   2.2 MiB/s |  97.1 KiB |  00m00s
+[248/270] perl-mro-0:1.29-519.fc42.x86_ 100% | 874.1 KiB/s |  29.7 KiB |  00m00s
+[249/270] python-pip-wheel-0:24.3.1-5.f 100% |  25.1 MiB/s |   1.2 MiB |  00m00s
+[250/270] perl-overloading-0:0.02-519.f 100% | 344.2 KiB/s |  12.7 KiB |  00m00s
+[251/270] perl-locale-0:1.12-519.fc42.n 100% | 373.8 KiB/s |  13.5 KiB |  00m00s
+[252/270] perl-SelectSaver-0:1.02-519.f 100% | 330.1 KiB/s |  11.6 KiB |  00m00s
+[253/270] perl-File-stat-0:1.14-519.fc4 100% | 456.2 KiB/s |  16.9 KiB |  00m00s
+[254/270] perl-Class-Struct-0:0.68-519. 100% | 521.5 KiB/s |  21.9 KiB |  00m00s
+[255/270] libfdisk-0:2.40.4-7.fc42.x86_ 100% |   2.5 MiB/s | 158.5 KiB |  00m00s
+[256/270] perl-lib-0:0.65-519.fc42.x86_ 100% | 360.5 KiB/s |  14.8 KiB |  00m00s
+[257/270] util-linux-0:2.40.4-7.fc42.x8 100% |  15.8 MiB/s |   1.2 MiB |  00m00s
+[258/270] cronie-anacron-0:1.7.2-6.fc42 100% | 530.6 KiB/s |  32.9 KiB |  00m00s
+[259/270] crontabs-0:1.11^20190603git9e 100% | 286.4 KiB/s |  18.3 KiB |  00m00s
+[260/270] python3-antlr4-runtime-0:4.13 100% |   4.1 MiB/s | 291.0 KiB |  00m00s
+[261/270] python3-pyasn1-0:0.6.1-3.fc42 100% |   3.0 MiB/s | 197.4 KiB |  00m00s
+[262/270] python3-tabulate+widechars-0: 100% | 128.9 KiB/s |   8.9 KiB |  00m00s
+[263/270] python3-wcwidth-0:0.2.13-6.fc 100% | 819.2 KiB/s |  52.4 KiB |  00m00s
+[264/270] python3-urllib3+socks-0:2.3.0 100% | 192.9 KiB/s |  11.4 KiB |  00m00s
+[265/270] python-unversioned-command-0: 100% | 279.3 KiB/s |  12.8 KiB |  00m00s
+[266/270] perl-NDBM_File-0:1.17-519.fc4 100% | 488.1 KiB/s |  22.5 KiB |  00m00s
+[267/270] glibc-gconv-extra-0:2.41-11.f 100% |  22.4 MiB/s |   1.7 MiB |  00m00s
+[268/270] glibc-0:2.41-11.fc42.i686     100% |  27.2 MiB/s |   2.0 MiB |  00m00s
+[269/270] glibc-gconv-extra-0:2.41-11.f 100% |  18.2 MiB/s |   1.6 MiB |  00m00s
+[270/270] libgcc-0:15.2.1-1.fc42.i686   100% |   3.9 MiB/s | 149.2 KiB |  00m00s
+--------------------------------------------------------------------------------
+[270/270] Total                         100% |  21.5 MiB/s | 160.7 MiB |  00m07s
+Running transaction
+[  1/272] Verify package files          100% | 996.0   B/s | 270.0   B |  00m00s
+[  2/272] Prepare transaction           100% |   1.5 KiB/s | 270.0   B |  00m00s
+[  3/272] Installing python-pip-wheel-0 100% |   1.2 GiB/s |   1.2 MiB |  00m00s
+[  4/272] Installing pkgconf-m4-0:2.3.0 100% |   0.0   B/s |  14.8 KiB |  00m00s
+[  5/272] Installing vim-filesystem-2:9 100% |   4.6 MiB/s |   4.7 KiB |  00m00s
+[  6/272] Installing glibc-gconv-extra- 100% | 152.3 MiB/s |   7.3 MiB |  00m00s
+[  7/272] Installing man-pages-0:6.9.1- 100% |  40.7 MiB/s |   3.3 MiB |  00m00s
+[  8/272] Installing libgcc-0:15.2.1-1. 100% |  48.7 MiB/s | 299.2 KiB |  00m00s
+[  9/272] Installing glibc-0:2.41-11.fc 100% | 161.5 MiB/s |   5.5 MiB |  00m00s
+[ 10/272] Installing glibc-gconv-extra- 100% | 170.3 MiB/s |   6.8 MiB |  00m00s
+[ 11/272] Installing cronie-anacron-0:1 100% |   2.5 MiB/s |  51.0 KiB |  00m00s
+[ 12/272] Installing cronie-0:1.7.2-6.f 100% |  13.0 MiB/s | 305.4 KiB |  00m00s
+[ 13/272] Installing crontabs-0:1.11^20 100% |   1.5 MiB/s |  22.4 KiB |  00m00s
+[ 14/272] Installing groff-base-0:1.23. 100% | 139.0 MiB/s |   3.9 MiB |  00m00s
+[ 15/272] Installing libsodium-0:1.0.20 100% | 381.0 MiB/s | 390.2 KiB |  00m00s
+[ 16/272] Installing less-0:679-1.fc42. 100% |  44.4 MiB/s | 409.4 KiB |  00m00s
+[ 17/272] Installing expat-0:2.7.2-1.fc 100% |  32.6 MiB/s | 300.7 KiB |  00m00s
+[ 18/272] Installing libpipeline-0:1.5. 100% |   0.0   B/s | 146.6 KiB |  00m00s
+[ 19/272] Installing xxhash-libs-0:0.8. 100% |   0.0   B/s |  91.6 KiB |  00m00s
+[ 20/272] Installing gpm-libs-0:1.20.7- 100% |   0.0   B/s |  32.4 KiB |  00m00s
+[ 21/272] Installing oniguruma-0:6.9.10 100% | 747.3 MiB/s | 765.2 KiB |  00m00s
+[ 22/272] Installing libedit-0:3.1-55.2 100% | 240.0 MiB/s | 245.8 KiB |  00m00s
+[ 23/272] Installing libcbor-0:0.11.0-3 100% |   0.0   B/s |  79.2 KiB |  00m00s
+[ 24/272] Installing libfido2-0:1.15.0- 100% | 237.9 MiB/s | 243.6 KiB |  00m00s
+[ 25/272] Installing sqlite-0:3.47.2-5. 100% | 167.1 MiB/s |   1.8 MiB |  00m00s
+[ 26/272] Installing ncurses-0:6.5-5.20 100% |  66.7 MiB/s | 614.7 KiB |  00m00s
+[ 27/272] Installing perl-Digest-0:1.20 100% |   0.0   B/s |  37.1 KiB |  00m00s
+[ 28/272] Installing perl-Digest-MD5-0: 100% |   0.0   B/s |  61.6 KiB |  00m00s
+[ 29/272] Installing perl-B-0:1.89-519. 100% | 489.6 MiB/s | 501.3 KiB |  00m00s
+[ 30/272] Installing perl-FileHandle-0: 100% |   0.0   B/s |   9.8 KiB |  00m00s
+[ 31/272] Installing perl-MIME-Base32-0 100% |   0.0   B/s |  32.2 KiB |  00m00s
+[ 32/272] Installing perl-Data-Dumper-0 100% |   0.0   B/s | 117.5 KiB |  00m00s
+[ 33/272] Installing perl-libnet-0:3.15 100% | 287.8 MiB/s | 294.7 KiB |  00m00s
+[ 34/272] Installing perl-AutoLoader-0: 100% |   0.0   B/s |  20.9 KiB |  00m00s
+[ 35/272] Installing perl-IO-Socket-IP- 100% |   0.0   B/s | 102.2 KiB |  00m00s
+[ 36/272] Installing perl-URI-0:5.31-2. 100% | 131.7 MiB/s | 269.6 KiB |  00m00s
+[ 37/272] Installing perl-Time-Local-2: 100% |   0.0   B/s |  70.6 KiB |  00m00s
+[ 38/272] Installing perl-Text-Tabs+Wra 100% |   0.0   B/s |  23.9 KiB |  00m00s
+[ 39/272] Installing perl-File-Path-0:2 100% |   0.0   B/s |  64.5 KiB |  00m00s
+[ 40/272] Installing perl-Pod-Escapes-1 100% |   0.0   B/s |  25.9 KiB |  00m00s
+[ 41/272] Installing perl-if-0:0.61.000 100% |   0.0   B/s |   6.2 KiB |  00m00s
+[ 42/272] Installing perl-Net-SSLeay-0: 100% | 339.7 MiB/s |   1.4 MiB |  00m00s
+[ 43/272] Installing perl-locale-0:1.12 100% |   0.0   B/s |   6.9 KiB |  00m00s
+[ 44/272] Installing perl-IO-Socket-SSL 100% | 690.8 MiB/s | 707.4 KiB |  00m00s
+[ 45/272] Installing perl-Term-ANSIColo 100% |   0.0   B/s |  99.2 KiB |  00m00s
+[ 46/272] Installing perl-Term-Cap-0:1. 100% |   0.0   B/s |  30.6 KiB |  00m00s
+[ 47/272] Installing perl-Pod-Simple-1: 100% | 278.5 MiB/s | 570.4 KiB |  00m00s
+[ 48/272] Installing perl-POSIX-0:2.20- 100% |   0.0   B/s | 232.3 KiB |  00m00s
+[ 49/272] Installing perl-File-Temp-1:0 100% |   0.0   B/s | 164.1 KiB |  00m00s
+[ 50/272] Installing perl-HTTP-Tiny-0:0 100% |   0.0   B/s | 156.4 KiB |  00m00s
+[ 51/272] Installing perl-IPC-Open3-0:1 100% |   0.0   B/s |  23.3 KiB |  00m00s
+[ 52/272] Installing perl-Class-Struct- 100% |   0.0   B/s |  25.9 KiB |  00m00s
+[ 53/272] Installing perl-Socket-4:2.03 100% |   0.0   B/s | 122.0 KiB |  00m00s
+[ 54/272] Installing perl-Symbol-0:1.09 100% |   0.0   B/s |   7.2 KiB |  00m00s
+[ 55/272] Installing perl-SelectSaver-0 100% |   0.0   B/s |   2.6 KiB |  00m00s
+[ 56/272] Installing perl-File-stat-0:1 100% |   0.0   B/s |  13.1 KiB |  00m00s
+[ 57/272] Installing perl-podlators-1:6 100% |  34.9 MiB/s | 321.4 KiB |  00m00s
+[ 58/272] Installing perl-Pod-Perldoc-0 100% |  18.4 MiB/s | 169.2 KiB |  00m00s
+[ 59/272] Installing perl-Text-ParseWor 100% |   0.0   B/s |  14.6 KiB |  00m00s
+[ 60/272] Installing perl-Fcntl-0:1.18- 100% |   0.0   B/s |  50.0 KiB |  00m00s
+[ 61/272] Installing perl-base-0:2.27-5 100% |   0.0   B/s |  12.9 KiB |  00m00s
+[ 62/272] Installing perl-mro-0:1.29-51 100% |   0.0   B/s |  42.6 KiB |  00m00s
+[ 63/272] Installing perl-overloading-0 100% |   0.0   B/s |   5.5 KiB |  00m00s
+[ 64/272] Installing perl-IO-0:1.55-519 100% | 147.7 MiB/s | 151.3 KiB |  00m00s
+[ 65/272] Installing perl-Pod-Usage-4:2 100% |  10.7 MiB/s |  87.9 KiB |  00m00s
+[ 66/272] Installing perl-constant-0:1. 100% |   0.0   B/s |  27.4 KiB |  00m00s
+[ 67/272] Installing perl-parent-1:0.24 100% |   0.0   B/s |  11.0 KiB |  00m00s
+[ 68/272] Installing perl-MIME-Base64-0 100% |   0.0   B/s |  44.3 KiB |  00m00s
+[ 69/272] Installing perl-File-Basename 100% |   0.0   B/s |  14.6 KiB |  00m00s
+[ 70/272] Installing perl-Errno-0:1.38- 100% |   0.0   B/s |   8.7 KiB |  00m00s
+[ 71/272] Installing perl-Scalar-List-U 100% | 145.2 MiB/s | 148.6 KiB |  00m00s
+[ 72/272] Installing perl-vars-0:1.05-5 100% |   0.0   B/s |   4.3 KiB |  00m00s
+[ 73/272] Installing perl-Getopt-Std-0: 100% |   0.0   B/s |  11.7 KiB |  00m00s
+[ 74/272] Installing perl-overload-0:1. 100% |   0.0   B/s |  71.9 KiB |  00m00s
+[ 75/272] Installing perl-Storable-1:3. 100% |   0.0   B/s | 233.9 KiB |  00m00s
+[ 76/272] Installing perl-Getopt-Long-1 100% |   0.0   B/s | 147.2 KiB |  00m00s
+[ 77/272] Installing perl-Exporter-0:5. 100% |   0.0   B/s |  55.6 KiB |  00m00s
+[ 78/272] Installing perl-Carp-0:1.54-5 100% |   0.0   B/s |  47.7 KiB |  00m00s
+[ 79/272] Installing perl-PathTools-0:3 100% | 180.2 MiB/s | 184.5 KiB |  00m00s
+[ 80/272] Installing perl-DynaLoader-0: 100% |   0.0   B/s |  32.5 KiB |  00m00s
+[ 81/272] Installing perl-Encode-4:3.21 100% | 293.4 MiB/s |   4.7 MiB |  00m00s
+[ 82/272] Installing perl-libs-4:5.40.3 100% | 366.3 MiB/s |   9.9 MiB |  00m00s
+[ 83/272] Installing perl-interpreter-4 100% |  14.7 MiB/s | 120.1 KiB |  00m00s
+[ 84/272] Installing perl-TermReadKey-0 100% |  64.6 MiB/s |  66.2 KiB |  00m00s
+[ 85/272] Installing perl-Error-1:0.170 100% |  78.1 MiB/s |  80.0 KiB |  00m00s
+[ 86/272] Installing perl-lib-0:0.65-51 100% |   0.0   B/s |   8.9 KiB |  00m00s
+[ 87/272] Installing libb2-0:0.98.1-13. 100% |   0.0   B/s |  47.2 KiB |  00m00s
+[ 88/272] Installing gobject-introspect 100% | 387.7 MiB/s | 397.1 KiB |  00m00s
+[ 89/272] Installing which-0:2.23-2.fc4 100% |  10.5 MiB/s |  85.7 KiB |  00m00s
+[ 90/272] Installing xxd-2:9.1.1818-1.f 100% |   3.4 MiB/s |  38.3 KiB |  00m00s
+[ 91/272] Installing vim-common-2:9.1.1 100% | 454.4 MiB/s |  37.3 MiB |  00m00s
+[ 92/272] Installing libpkgconf-0:2.3.0 100% |   0.0   B/s |  79.2 KiB |  00m00s
+[ 93/272] Installing pkgconf-0:2.3.0-2. 100% |   9.9 MiB/s |  91.0 KiB |  00m00s
+[ 94/272] Installing pkgconf-pkg-config 100% | 221.7 KiB/s |   1.8 KiB |  00m00s
+[ 95/272] Installing mpdecimal-0:4.0.1- 100% |  71.2 MiB/s | 218.8 KiB |  00m00s
+[ 96/272] Installing python3-libs-0:3.1 100% | 364.3 MiB/s |  40.4 MiB |  00m00s
+[ 97/272] Installing python3-0:3.13.7-1 100% |   3.3 MiB/s |  30.5 KiB |  00m00s
+[ 98/272] Installing python3-azure-comm 100% |  84.6 MiB/s |  86.7 KiB |  00m00s
+[ 99/272] Installing python3-isodate-0: 100% | 126.4 MiB/s | 129.4 KiB |  00m00s
+[100/272] Installing python3-typing-ext 100% | 449.8 MiB/s | 460.6 KiB |  00m00s
+[101/272] Installing python3-six-0:1.17 100% |   0.0   B/s | 119.0 KiB |  00m00s
+[102/272] Installing python3-jwt-0:2.8. 100% | 168.3 MiB/s | 172.3 KiB |  00m00s
+[103/272] Installing python3-pyyaml-0:6 100% | 258.7 MiB/s | 794.8 KiB |  00m00s
+[104/272] Installing python3-dateutil-1 100% | 289.7 MiB/s | 889.9 KiB |  00m00s
+[105/272] Installing python3-packaging- 100% | 277.4 MiB/s | 568.0 KiB |  00m00s
+[106/272] Installing python3-tabulate-0 100% |  37.4 MiB/s | 344.6 KiB |  00m00s
+[107/272] Installing python3-distro-0:1 100% |  21.8 MiB/s | 200.9 KiB |  00m00s
+[108/272] Installing python3-jmespath-0 100% |  16.8 MiB/s | 154.4 KiB |  00m00s
+[109/272] Installing python3-idna-0:3.1 100% | 309.7 MiB/s | 634.3 KiB |  00m00s
+[110/272] Installing python3-urllib3-0: 100% | 254.5 MiB/s |   1.0 MiB |  00m00s
+[111/272] Installing python3-pysocks-0: 100% |  50.6 MiB/s | 103.6 KiB |  00m00s
+[112/272] Installing python3-setuptools 100% | 285.3 MiB/s |   8.6 MiB |  00m00s
+[113/272] Installing python3-argcomplet 100% |  29.3 MiB/s | 330.6 KiB |  00m00s
+[114/272] Installing python3-pkginfo-0: 100% |  11.9 MiB/s | 110.0 KiB |  00m00s
+[115/272] Installing python3-jsondiff-0 100% |  13.7 MiB/s | 112.5 KiB |  00m00s
+[116/272] Installing python3-pycomposef 100% |  59.6 MiB/s | 122.1 KiB |  00m00s
+[117/272] Installing python3-chardet-0: 100% | 161.0 MiB/s |   2.1 MiB |  00m00s
+[118/272] Installing python3-colorama-0 100% | 192.9 MiB/s | 197.5 KiB |  00m00s
+[119/272] Installing python3-javaproper 100% | 198.0 MiB/s | 202.8 KiB |  00m00s
+[120/272] Installing python3-semver-0:3 100% |  13.5 MiB/s | 124.4 KiB |  00m00s
+[121/272] Installing python3-websocket- 100% |  44.8 MiB/s | 458.4 KiB |  00m00s
+[122/272] Installing python3-xmltodict- 100% |   0.0   B/s |  57.4 KiB |  00m00s
+[123/272] Installing python3-humanfrien 100% |  54.1 MiB/s | 554.0 KiB |  00m00s
+[124/272] Installing python3-psutil-0:6 100% | 478.8 MiB/s |   1.4 MiB |  00m00s
+[125/272] Installing python3-decorator- 100% |  79.2 MiB/s |  81.1 KiB |  00m00s
+[126/272] Installing python3-applicatio 100% | 109.6 MiB/s | 448.8 KiB |  00m00s
+[127/272] Installing python3-portalocke 100% |  75.5 MiB/s | 154.5 KiB |  00m00s
+[128/272] Installing python3-pygments-0 100% | 284.8 MiB/s |  10.8 MiB |  00m00s
+[129/272] Installing python3-knack-1:0. 100% | 154.7 MiB/s | 475.2 KiB |  00m00s
+[130/272] Installing python3-wrapt-0:1. 100% | 199.3 MiB/s | 204.1 KiB |  00m00s
+[131/272] Installing python3-deprecated 100% |   0.0   B/s |  56.5 KiB |  00m00s
+[132/272] Installing python3-fluidity-s 100% |   0.0   B/s |  34.2 KiB |  00m00s
+[133/272] Installing python3-lexicon-0: 100% |  29.6 MiB/s |  30.3 KiB |  00m00s
+[134/272] Installing python3-invoke-0:2 100% |  58.0 MiB/s | 653.7 KiB |  00m00s
+[135/272] Installing python3-oauthlib-0 100% | 168.7 MiB/s |   1.0 MiB |  00m00s
+[136/272] Installing python3-ply-0:3.11 100% | 556.9 MiB/s | 570.3 KiB |  00m00s
+[137/272] Installing python3-pycparser- 100% | 396.5 MiB/s | 812.0 KiB |  00m00s
+[138/272] Installing python3-cffi-0:1.1 100% | 441.7 MiB/s |   1.3 MiB |  00m00s
+[139/272] Installing python3-cryptograp 100% | 341.7 MiB/s |   5.1 MiB |  00m00s
+[140/272] Installing python3-pynacl-0:1 100% | 196.7 MiB/s | 604.4 KiB |  00m00s
+[141/272] Installing python3-jwt+crypto 100% |   0.0   B/s | 124.0   B |  00m00s
+[142/272] Installing python3-pyOpenSSL- 100% | 675.4 MiB/s | 691.6 KiB |  00m00s
+[143/272] Installing python3-charset-no 100% |  32.2 MiB/s | 329.5 KiB |  00m00s
+[144/272] Installing python3-requests-0 100% |  27.9 MiB/s | 485.6 KiB |  00m00s
+[145/272] Installing python3-azure-core 100% |  73.8 MiB/s |   1.3 MiB |  00m00s
+[146/272] Installing python3-azure-mgmt 100% |  26.3 MiB/s | 107.6 KiB |  00m00s
+[147/272] Installing python3-msal-0:1.3 100% | 223.2 MiB/s | 914.4 KiB |  00m00s
+[148/272] Installing python3-azure-data 100% | 181.6 MiB/s | 371.8 KiB |  00m00s
+[149/272] Installing python3-msal+broke 100% | 121.1 KiB/s | 124.0   B |  00m00s
+[150/272] Installing python3-azure-mgmt 100% | 631.4 MiB/s |  12.0 MiB |  00m00s
+[151/272] Installing python3-azure-mgmt 100% | 269.0 MiB/s |   3.8 MiB |  00m00s
+[152/272] Installing python3-azure-mgmt 100% | 237.3 MiB/s |  10.9 MiB |  00m00s
+[153/272] Installing python3-azure-mgmt 100% | 484.4 MiB/s |   1.9 MiB |  00m00s
+[154/272] Installing python3-azure-mgmt 100% | 210.8 MiB/s |   1.7 MiB |  00m00s
+[155/272] Installing python3-azure-mgmt 100% | 834.5 MiB/s | 129.4 MiB |  00m00s
+[156/272] Installing python3-azure-mgmt 100% | 155.2 MiB/s |   1.1 MiB |  00m00s
+[157/272] Installing python3-azure-mgmt 100% | 435.6 MiB/s |  34.8 MiB |  00m00s
+[158/272] Installing python3-azure-mgmt 100% | 506.0 MiB/s | 143.2 MiB |  00m00s
+[159/272] Installing python3-azure-mgmt 100% | 611.4 MiB/s |   6.1 MiB |  00m00s
+[160/272] Installing python3-azure-mgmt 100% | 473.2 MiB/s |   1.9 MiB |  00m00s
+[161/272] Installing python3-azure-mgmt 100% | 169.1 MiB/s | 865.7 KiB |  00m00s
+[162/272] Installing python3-azure-mgmt 100% | 352.2 MiB/s |  19.0 MiB |  00m00s
+[163/272] Installing python3-azure-mgmt 100% | 393.7 MiB/s |  11.8 MiB |  00m00s
+[164/272] Installing python3-azure-mgmt 100% | 352.1 MiB/s |   2.1 MiB |  00m00s
+[165/272] Installing python3-azure-mgmt 100% | 533.3 MiB/s |   3.2 MiB |  00m00s
+[166/272] Installing python3-azure-mgmt 100% | 319.8 MiB/s |   2.6 MiB |  00m00s
+[167/272] Installing python3-azure-mgmt 100% | 388.9 MiB/s |  10.5 MiB |  00m00s
+[168/272] Installing python3-azure-mgmt 100% | 202.9 MiB/s |   1.0 MiB |  00m00s
+[169/272] Installing python3-azure-mgmt 100% | 411.5 MiB/s |   6.2 MiB |  00m00s
+[170/272] Installing python3-azure-mgmt 100% | 260.7 MiB/s |   4.7 MiB |  00m00s
+[171/272] Installing python3-azure-mgmt 100% | 172.2 MiB/s |   1.5 MiB |  00m00s
+[172/272] Installing python3-azure-mgmt 100% | 354.1 MiB/s |  42.1 MiB |  00m00s
+[173/272] Installing python3-azure-mgmt 100% | 175.2 MiB/s |  10.7 MiB |  00m00s
+[174/272] Installing python3-azure-mgmt 100% | 401.3 MiB/s |   1.6 MiB |  00m00s
+[175/272] Installing python3-azure-mgmt 100% | 503.3 MiB/s |   2.5 MiB |  00m00s
+[176/272] Installing python3-azure-mgmt 100% | 382.8 MiB/s |   1.1 MiB |  00m00s
+[177/272] Installing python3-azure-mgmt 100% | 295.9 MiB/s |   1.5 MiB |  00m00s
+[178/272] Installing python3-azure-mgmt 100% | 495.2 MiB/s |  15.4 MiB |  00m00s
+[179/272] Installing python3-azure-mgmt 100% | 382.0 MiB/s |  43.2 MiB |  00m00s
+[180/272] Installing python3-azure-mgmt 100% |   1.2 GiB/s | 148.1 MiB |  00m00s
+[181/272] Installing python3-azure-syna 100% | 819.8 MiB/s |   8.2 MiB |  00m00s
+[182/272] Installing python3-azure-appc 100% | 258.2 MiB/s |   1.0 MiB |  00m00s
+[183/272] Installing python3-azure-keyv 100% | 193.1 MiB/s | 988.8 KiB |  00m00s
+[184/272] Installing python3-azure-keyv 100% | 438.0 MiB/s |   7.4 MiB |  00m00s
+[185/272] Installing python3-azure-keyv 100% | 222.3 MiB/s |   1.6 MiB |  00m00s
+[186/272] Installing python3-azure-keyv 100% | 357.8 MiB/s |   5.7 MiB |  00m00s
+[187/272] Installing python3-azure-moni 100% | 256.1 MiB/s |   1.5 MiB |  00m00s
+[188/272] Installing python3-azure-cosm 100% | 203.3 MiB/s | 832.6 KiB |  00m00s
+[189/272] Installing python3-azure-stor 100% | 162.5 MiB/s | 332.9 KiB |  00m00s
+[190/272] Installing python3-pygithub-0 100% | 344.9 MiB/s |   3.8 MiB |  00m00s
+[191/272] Installing python3-adal-0:1.2 100% |  14.9 MiB/s | 336.7 KiB |  00m00s
+[192/272] Installing python3-requests-o 100% |  28.4 MiB/s | 145.5 KiB |  00m00s
+[193/272] Installing python3-requests+s 100% | 121.1 KiB/s | 124.0   B |  00m00s
+[194/272] Installing python3-bcrypt-0:4 100% | 103.1 MiB/s | 527.6 KiB |  00m00s
+[195/272] Installing python3-paramiko-0 100% | 152.5 MiB/s |   1.7 MiB |  00m00s
+[196/272] Installing python3-fabric-0:3 100% |  29.2 MiB/s | 329.1 KiB |  00m00s
+[197/272] Installing python3-scp-0:0.15 100% |   0.0   B/s |  88.5 KiB |  00m00s
+[198/272] Installing python3-sshtunnel- 100% |  31.0 MiB/s | 254.3 KiB |  00m00s
+[199/272] Installing python3-certifi-0: 100% |  10.1 MiB/s |  10.4 KiB |  00m00s
+[200/272] Installing python3-msrest-0:0 100% | 183.5 MiB/s | 563.8 KiB |  00m00s
+[201/272] Installing python3-msrestazur 100% | 267.0 MiB/s | 273.4 KiB |  00m00s
+[202/272] Installing python3-azure-batc 100% | 727.2 MiB/s |   2.9 MiB |  00m00s
+[203/272] Installing python3-azure-mgmt 100% | 507.0 MiB/s |   2.0 MiB |  00m00s
+[204/272] Installing python3-azure-data 100% | 224.9 MiB/s |   1.1 MiB |  00m00s
+[205/272] Installing python3-azure-mgmt 100% | 128.3 MiB/s | 394.0 KiB |  00m00s
+[206/272] Installing python3-azure-mgmt 100% | 440.0 MiB/s |   2.6 MiB |  00m00s
+[207/272] Installing python3-azure-mgmt 100% | 190.7 MiB/s |   2.9 MiB |  00m00s
+[208/272] Installing python3-azure-mgmt 100% | 380.1 MiB/s |   1.1 MiB |  00m00s
+[209/272] Installing python3-azure-mgmt 100% | 396.1 MiB/s |   2.0 MiB |  00m00s
+[210/272] Installing python3-azure-mgmt 100% | 291.1 MiB/s | 894.3 KiB |  00m00s
+[211/272] Installing python3-azure-mgmt 100% | 425.7 MiB/s |   3.4 MiB |  00m00s
+[212/272] Installing python3-azure-mgmt 100% | 476.2 MiB/s |  15.2 MiB |  00m00s
+[213/272] Installing python3-azure-mgmt 100% | 259.5 MiB/s |   1.0 MiB |  00m00s
+[214/272] Installing python3-azure-mgmt 100% | 697.4 MiB/s |   2.8 MiB |  00m00s
+[215/272] Installing python3-azure-mgmt 100% | 194.5 MiB/s |   1.2 MiB |  00m00s
+[216/272] Installing python3-azure-mgmt 100% | 482.8 MiB/s |   3.4 MiB |  00m00s
+[217/272] Installing python3-azure-mgmt 100% | 360.3 MiB/s |   7.6 MiB |  00m00s
+[218/272] Installing python3-azure-mgmt 100% | 113.4 MiB/s | 348.3 KiB |  00m00s
+[219/272] Installing python3-azure-mgmt 100% | 158.2 MiB/s | 485.9 KiB |  00m00s
+[220/272] Installing python3-azure-mgmt 100% | 206.2 MiB/s | 633.4 KiB |  00m00s
+[221/272] Installing python3-azure-mgmt 100% | 334.8 MiB/s |   1.7 MiB |  00m00s
+[222/272] Installing python3-azure-mgmt 100% | 200.4 MiB/s | 615.7 KiB |  00m00s
+[223/272] Installing python3-azure-mgmt 100% | 195.7 MiB/s | 400.8 KiB |  00m00s
+[224/272] Installing python3-azure-mgmt 100% |  98.3 MiB/s | 201.2 KiB |  00m00s
+[225/272] Installing python3-azure-mgmt 100% | 331.0 MiB/s |   2.6 MiB |  00m00s
+[226/272] Installing python3-azure-mgmt 100% | 195.2 MiB/s |  10.9 MiB |  00m00s
+[227/272] Installing python3-azure-mgmt 100% | 161.9 MiB/s |   1.6 MiB |  00m00s
+[228/272] Installing python3-azure-mgmt 100% | 560.2 MiB/s |   2.2 MiB |  00m00s
+[229/272] Installing python3-azure-mgmt 100% | 252.9 MiB/s | 518.0 KiB |  00m00s
+[230/272] Installing python3-azure-mgmt 100% | 203.0 MiB/s |   1.0 MiB |  00m00s
+[231/272] Installing python3-azure-mgmt 100% | 485.5 MiB/s |  14.1 MiB |  00m00s
+[232/272] Installing python3-azure-mgmt 100% | 269.0 MiB/s |   1.1 MiB |  00m00s
+[233/272] Installing python3-azure-mgmt 100% | 473.8 MiB/s |   6.2 MiB |  00m00s
+[234/272] Installing python3-azure-mgmt 100% |  69.7 MiB/s | 428.1 KiB |  00m00s
+[235/272] Installing python3-azure-mult 100% | 351.3 MiB/s |  32.0 MiB |  00m00s
+[236/272] Installing python3-azure-syna 100% |  96.1 MiB/s | 295.3 KiB |  00m00s
+[237/272] Installing python3-azure-syna 100% |  78.4 MiB/s | 321.3 KiB |  00m00s
+[238/272] Installing python3-azure-syna 100% | 165.5 MiB/s | 338.9 KiB |  00m00s
+[239/272] Installing python3-gobject-ba 100% | 381.0 MiB/s |   1.5 MiB |  00m00s
+[240/272] Installing python3-msal-exten 100% | 119.9 MiB/s | 122.7 KiB |  00m00s
+[241/272] Installing python3-microsoft- 100% |  89.0 MiB/s |  91.1 KiB |  00m00s
+[242/272] Installing python3-azure-cli- 100% |  88.0 MiB/s |   2.4 MiB |  00m00s
+[243/272] Installing azure-cli-0:2.68.0 100% | 371.2 MiB/s | 203.8 MiB |  00m01s
+[244/272] Installing python3-azure-cli- 100% |  65.3 MiB/s |  66.9 KiB |  00m00s
+[245/272] Installing python3-wcwidth-0: 100% | 552.1 MiB/s | 565.4 KiB |  00m00s
+[246/272] Installing libfdisk-0:2.40.4- 100% | 364.7 MiB/s | 373.4 KiB |  00m00s
+[247/272] Installing util-linux-0:2.40. 100% |  93.6 MiB/s |   3.5 MiB |  00m00s
+[248/272] Installing openssh-0:9.9p1-11 100% |  62.8 MiB/s |   1.4 MiB |  00m00s
+[249/272] Installing openssh-clients-0: 100% | 108.2 MiB/s |   2.7 MiB |  00m00s
+[250/272] Installing git-core-0:2.51.0- 100% | 492.8 MiB/s |  23.7 MiB |  00m00s
+[251/272] Installing git-core-doc-0:2.5 100% | 308.4 MiB/s |  17.9 MiB |  00m00s
+[252/272] Installing perl-Git-0:2.51.0- 100% |  63.8 MiB/s |  65.4 KiB |  00m00s
+[253/272] Installing git-0:2.51.0-2.fc4 100% |  56.4 MiB/s |  57.7 KiB |  00m00s
+[254/272] Installing python3-tabulate+w 100% |   0.0   B/s | 124.0   B |  00m00s
+[255/272] Installing python3-urllib3+so 100% | 121.1 KiB/s | 124.0   B |  00m00s
+[256/272] Installing python3-antlr4-run 100% |  38.0 MiB/s | 933.6 KiB |  00m00s
+[257/272] Installing python3-pyasn1-0:0 100% | 216.3 MiB/s | 886.2 KiB |  00m00s
+[258/272] Installing python-unversioned 100% |  51.8 KiB/s | 424.0   B |  00m00s
+[259/272] Installing sqlite-devel-0:3.4 100% | 658.3 MiB/s | 674.1 KiB |  00m00s
+[260/272] Installing vim-enhanced-2:9.1 100% | 299.9 MiB/s |   4.2 MiB |  00m00s
+[261/272] Installing perl-NDBM_File-0:1 100% |   0.0   B/s |  29.6 KiB |  00m00s
+[262/272] Installing jq-0:1.7.1-11.fc42 100% |  47.5 MiB/s | 437.5 KiB |  00m00s
+[263/272] Installing rsync-0:3.4.1-3.fc 100% |  36.4 MiB/s | 782.6 KiB |  00m00s
+[264/272] Installing man-db-0:2.13.0-2. 100% |  64.7 MiB/s |   2.8 MiB |  00m00s
+[265/272] Installing par2cmdline-0:0.8. 100% |  11.9 MiB/s | 267.0 KiB |  00m00s
+[266/272] Installing zsh-0:5.9-16.fc42. 100% | 109.3 MiB/s |   8.1 MiB |  00m00s
+[267/272] Installing time-0:1.9-26.fc42 100% |   4.1 MiB/s |  84.4 KiB |  00m00s
+[268/272] Installing tini-0:0.19.0-10.f 100% |   4.3 MiB/s |  39.8 KiB |  00m00s
+[269/272] Installing rclone-0:1.71.0-1. 100% | 677.8 MiB/s |  99.0 MiB |  00m00s
+[270/272] Installing dialog-0:1.3-53.20 100% |  47.7 MiB/s | 634.4 KiB |  00m00s
+[271/272] Installing iputils-0:20250605 100% |  81.6 MiB/s | 835.2 KiB |  00m00s
+[272/272] Installing libicu-0:76.1-4.fc 100% |  16.3 MiB/s |  36.3 MiB |  00m02s
+Complete!
+--> 24f06b8dfe72
+STEP 5/8: RUN LATEST_VERSION=$(curl -s https://api.github.com/repos/PowerShell/PowerShell/releases/latest | jq -r '.tag_name') &&     UNAME_M=$(uname -m) &&     if [ "$UNAME_M" = "x86_64" ]; then ARCH=linux-x64;     elif [ "$UNAME_M" = "aarch64" ]; then ARCH=linux-arm64;     else echo "Unsupported architecture: $UNAME_M" >&2; exit 1; fi &&     curl -L -o /tmp/powershell.tar.gz "https://github.com/PowerShell/PowerShell/releases/download/${LATEST_VERSION}/powershell-${LATEST_VERSION#v}-${ARCH}.tar.gz" &&     mkdir -p /opt/microsoft/powershell/${LATEST_VERSION} &&     tar -xzf /tmp/powershell.tar.gz -C /opt/microsoft/powershell/${LATEST_VERSION} &&     ln -s /opt/microsoft/powershell/${LATEST_VERSION}/pwsh /usr/bin/pwsh &&     rm -f /tmp/powershell.tar.gz
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 71.9M  100 71.9M    0     0  59.5M      0  0:00:01  0:00:01 --:--:--  108M
+--> a509da636bff
+STEP 6/8: USER root
+--> 95c5bfeac412
+STEP 7/8: ENTRYPOINT ["/usr/bin/tini", "--"]
+--> 3f2bca7887da
+STEP 8/8: CMD ["crond", "-f"]
+COMMIT djf/rclone
+--> 8be579f7b3c7
+Successfully tagged localhost/djf/rclone:latest
+8be579f7b3c7f368d41b8ceec8fbb16ee83d822c5e76aff29b971b3514cf5c97

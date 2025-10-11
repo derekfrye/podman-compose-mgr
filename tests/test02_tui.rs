@@ -12,6 +12,7 @@ fn discovery_finds_expected_images_in_test1() {
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
         tui: true,
+        tui_rebuild_all: false,
     };
     let discovery = std::sync::Arc::new(podman_compose_mgr::infra::discovery_adapter::FsDiscovery);
     let podman = std::sync::Arc::new(podman_compose_mgr::infra::podman_adapter::PodmanCli);
@@ -98,6 +99,7 @@ fn ui_snapshot_renders_table_with_rows() {
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
         tui: true,
+        tui_rebuild_all: false,
     };
 
     let width: u16 = 60;

@@ -8,7 +8,7 @@ use crate::read_interactive_input::{
     format::{do_prompt_formatting, unroll_grammar_into_string},
 };
 use crate::tui::app::state::{Msg, OutputStream, RebuildJobSpec, RebuildResult, Services};
-use crate::utils::error_utils;
+use crate::utils::{error_utils, podman_utils};
 use crossbeam_channel::Sender;
 use std::error::Error;
 use std::io::{BufRead, BufReader};
@@ -113,7 +113,13 @@ impl CommandHelper for TuiCommandHelper {
             self.send_line(OutputStream::Stdout, format!("$ {cmd}"));
         }
 
-        let mut child = Command::new(cmd)
+        let resolved_cmd = if cmd == "podman" {
+            podman_utils::resolve_podman_binary()
+        } else {
+            std::ffi::OsString::from(cmd)
+        };
+
+        let mut child = Command::new(resolved_cmd)
             .args(&args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

@@ -1,7 +1,20 @@
 use std::error::Error;
+use std::ffi::OsString;
 use std::process::{Command, Output};
 
 use crate::utils::error_utils;
+
+fn resolve_program(program: &str) -> OsString {
+    if program == "podman" {
+        crate::utils::podman_utils::resolve_podman_binary()
+    } else {
+        OsString::from(program)
+    }
+}
+
+fn build_command(program: &str) -> Command {
+    Command::new(resolve_program(program))
+}
 
 /// Execute a command and return its output as a Result
 ///
@@ -18,7 +31,7 @@ use crate::utils::error_utils;
 ///
 /// Returns an error if the command fails to execute.
 pub fn run_command(program: &str, args: &[&str]) -> Result<Output, Box<dyn Error>> {
-    Command::new(program)
+    build_command(program)
         .args(args)
         .output()
         .map_err(|e| error_utils::into_boxed_error(e, &format!("Failed to execute '{program}'")))
@@ -110,7 +123,7 @@ pub fn run_command_checked(program: &str, args: &[&str]) -> Result<(), Box<dyn E
 ///
 /// Returns an error if the command fails to execute or returns non-zero exit code.
 pub fn exec_cmd(program: &str, args: &[&str]) -> Result<(), Box<dyn Error>> {
-    let status = Command::new(program)
+    let status = build_command(program)
         .args(args)
         .status()
         .map_err(|e| error_utils::into_boxed_error(e, &format!("Failed to execute '{program}'")))?;
@@ -139,7 +152,7 @@ pub fn exec_cmd(program: &str, args: &[&str]) -> Result<(), Box<dyn Error>> {
 ///
 /// Returns an error if the command fails to execute.
 pub fn exec_cmd_with_status(program: &str, args: &[&str]) -> Result<i32, Box<dyn Error>> {
-    let status = Command::new(program)
+    let status = build_command(program)
         .args(args)
         .status()
         .map_err(|e| error_utils::into_boxed_error(e, &format!("Failed to execute '{program}'")))?;

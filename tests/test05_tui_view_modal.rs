@@ -36,6 +36,7 @@ fn view_modal_shows_three_options_and_selects_folder_view() {
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
         tui: true,
+        tui_rebuild_all: false,
     };
 
     let backend = TestBackend::new(80, 18);

@@ -36,6 +36,10 @@ pub struct Args {
     /// Use terminal UI mode
     #[arg(long)]
     pub tui: bool,
+
+    /// Automatically start rebuild for all discovered images in TUI mode
+    #[arg(long)]
+    pub tui_rebuild_all: bool,
 }
 
 impl Default for Args {
@@ -54,6 +58,7 @@ impl Default for Args {
             build_args: Vec::new(),
             temp_file_path: default_temp_path,
             tui: false,
+            tui_rebuild_all: false,
         }
     }
 }

@@ -2,6 +2,8 @@ pub mod datetime;
 pub mod image;
 pub mod terminal;
 
+use std::env;
+use std::ffi::OsString;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -43,3 +45,14 @@ pub use image::{
     get_podman_image_upstream_create_time, get_podman_ondisk_modify_time, pull_base_image,
 };
 pub use terminal::{file_exists_and_readable, get_terminal_display_width};
+
+/// Resolve the executable name used for invoking podman commands.
+///
+/// This allows tests to inject a mock implementation by setting the
+/// `PODMGR_PODMAN_BIN` environment variable to an absolute executable path.
+#[must_use]
+pub fn resolve_podman_binary() -> OsString {
+    env::var_os("PODMGR_PODMAN_BIN")
+        .filter(|val| !val.is_empty())
+        .unwrap_or_else(|| OsString::from("podman"))
+}

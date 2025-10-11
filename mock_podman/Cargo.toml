@@ -1,0 +1,11 @@
+[package]
+name = "mock-podman"
+version = "0.1.0"
+edition = "2024"
+authors = ["Podman Compose Mgr Test Harness"]
+
+[[bin]]
+name = "podman"
+path = "src/main.rs"
+
+[dependencies]

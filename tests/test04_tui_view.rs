@@ -15,6 +15,7 @@ fn change_view_to_by_image_dedupes_images() {
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
         tui: true,
+        tui_rebuild_all: false,
     };
     let discovery = std::sync::Arc::new(podman_compose_mgr::infra::discovery_adapter::FsDiscovery);
     let podman = std::sync::Arc::new(podman_compose_mgr::infra::podman_adapter::PodmanCli);

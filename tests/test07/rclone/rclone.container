@@ -1,0 +1,11 @@
+[Unit]
+Description=Podman container for rclone
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=djf/rclone_pdm_cmp_mgr:latest
+
+
+[Install]
+WantedBy=default.target
