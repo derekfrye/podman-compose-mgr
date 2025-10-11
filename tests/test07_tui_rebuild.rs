@@ -7,11 +7,12 @@ use podman_compose_mgr::Args;
 use podman_compose_mgr::app::AppCore;
 use podman_compose_mgr::infra::discovery_adapter::FsDiscovery;
 use podman_compose_mgr::infra::podman_adapter::PodmanCli;
-use podman_compose_mgr::tui::app::{self, App, Msg, RebuildStatus, Services, UiState};
+use podman_compose_mgr::tui::app::{self, App, Msg, OutputStream, RebuildStatus, Services, UiState};
 use podman_compose_mgr::tui::ui;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 use ratatui::buffer::Buffer;
+use ratatui::widgets::Widget;
 
 fn build_mock_podman(manifest_dir: &Path) {
     let mock_manifest = manifest_dir.join("mock_podman").join("Cargo.toml");
@@ -111,6 +112,37 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
         .expect("scan images for test data");
 
     app::update_with_services(&mut app, Msg::ScanResults(discovered), Some(&services));
+
+    let width: u16 = 120;
+    let height: u16 = 32;
+    let backend = TestBackend::new(width, height);
+    let mut terminal = Terminal::new(backend).expect("terminal");
+
+    let buffer_to_string = |buffer: &Buffer| {
+        let mut rendered = String::new();
+        for y in 0..height {
+            for x in 0..width {
+                if let Some(cell) = buffer.cell((x, y)) {
+                    rendered.push_str(cell.symbol());
+                }
+            }
+            rendered.push('\n');
+        }
+        rendered
+    };
+
+    // Render the initial list view to populate the buffer with table text.
+    terminal
+        .draw(|f| ui::draw(f, &app, &args))
+        .expect("draw list view");
+    let list_buffer = terminal.backend().buffer().clone();
+    let list_view = buffer_to_string(&list_buffer);
+    // `Podman container for rclone` comes from the table view row; it should remain in the
+    // buffer after we repaint only the rebuild pane unless we clear the area first.
+    assert!(
+        list_view.contains("Podman container for rclone"),
+        "fixtures should include a second table row for rclone"
+    );
 
     wait_for_rebuild(&mut app, &services, &rx);
 
@@ -243,28 +275,59 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
         (active_header, job_images)
     };
 
-    let width: u16 = 120;
-    let height: u16 = 32;
-    let backend = TestBackend::new(width, height);
-    let mut terminal = Terminal::new(backend).expect("terminal");
+    // Simulate repainting the left pane without clearing existing table rows.
+    let mut stale_buffer = list_buffer.clone();
+    let root_area = ratatui::layout::Rect::new(0, 0, width, height);
+    let chunks = ratatui::layout::Layout::default()
+        .direction(ratatui::layout::Direction::Vertical)
+        .margin(1)
+        .constraints([ratatui::layout::Constraint::Length(3), ratatui::layout::Constraint::Min(3)])
+        .split(root_area);
+    let rebuild_chunks = ratatui::layout::Layout::default()
+        .direction(ratatui::layout::Direction::Horizontal)
+        .constraints([
+            ratatui::layout::Constraint::Min(40),
+            ratatui::layout::Constraint::Length(24),
+        ])
+        .split(chunks[1]);
+
+    let rebuild_state = app.rebuild.as_ref().expect("rebuild state for stale view");
+    let job = &rebuild_state.jobs[rebuild_state.active_idx];
+    let header = match &job.container {
+        Some(container) => format!("{} ({container})", job.image),
+        None => job.image.clone(),
+    };
+    let trimmed_lines: Vec<_> = job
+        .output
+        .iter()
+        .cloned()
+        .take(2)
+        .map(|entry| match entry.stream {
+            OutputStream::Stdout => ratatui::text::Line::from(vec![ratatui::text::Span::raw(
+                entry.text,
+            )]),
+            OutputStream::Stderr => ratatui::text::Line::from(vec![ratatui::text::Span::styled(
+                entry.text,
+                ratatui::style::Style::default().fg(ratatui::style::Color::LightRed),
+            )]),
+        })
+        .collect();
+
+    let trimmed_paragraph = ratatui::widgets::Paragraph::new(trimmed_lines)
+        .block(ratatui::widgets::Block::default().title(header).borders(ratatui::widgets::Borders::ALL))
+        .wrap(ratatui::widgets::Wrap { trim: false })
+        .scroll((rebuild_state.scroll_y, rebuild_state.scroll_x));
+    trimmed_paragraph.render(rebuild_chunks[0], &mut stale_buffer);
+    let stale_view = buffer_to_string(&stale_buffer);
+    assert!(
+        stale_view.contains("Podman container for rclone"),
+        "stale table content should remain visible without clearing"
+    );
 
     terminal
         .draw(|f| ui::draw(f, &app, &args))
         .expect("draw rebuild view");
     let base_buffer = terminal.backend().buffer().clone();
-
-    let buffer_to_string = |buffer: &Buffer| {
-        let mut rendered = String::new();
-        for y in 0..height {
-            for x in 0..width {
-                if let Some(cell) = buffer.cell((x, y)) {
-                    rendered.push_str(cell.symbol());
-                }
-            }
-            rendered.push('\n');
-        }
-        rendered
-    };
 
     let base_view = buffer_to_string(&base_buffer);
     println!("\n===== Rebuild View (Top) =====\n{base_view}");
@@ -289,7 +352,6 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
         base_view.contains("STEP 1/10: FROM alpine:latest"),
         "output pane should render streamed podman output"
     );
-
     // Simulate scrolling to the bottom repeatedly
     for _ in 0..90 {
         app::update_with_services(&mut app, Msg::ScrollOutputDown, Some(&services));
