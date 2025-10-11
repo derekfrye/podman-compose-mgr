@@ -267,6 +267,7 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
     };
 
     let base_view = buffer_to_string(&base_buffer);
+    println!("\n===== Rebuild View (Top) =====\n{base_view}");
     assert!(
         base_view.contains(&active_header),
         "output pane should render active job header"
@@ -289,12 +290,25 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
         "output pane should render streamed podman output"
     );
 
+    // Simulate scrolling to the bottom repeatedly
+    for _ in 0..90 {
+        app::update_with_services(&mut app, Msg::ScrollOutputDown, Some(&services));
+    }
+
+    terminal
+        .draw(|f| ui::draw(f, &app, &args))
+        .expect("draw rebuild view bottom");
+    let bottom_buffer = terminal.backend().buffer().clone();
+    let bottom_view = buffer_to_string(&bottom_buffer);
+    println!("===== Rebuild View (90 Down Arrows) =====\n{bottom_view}");
+
     app::update_with_services(&mut app, Msg::OpenWorkQueue, Some(&services));
     terminal
         .draw(|f| ui::draw(f, &app, &args))
         .expect("draw work queue modal");
     let modal_buffer = terminal.backend().buffer().clone();
     let modal_view = buffer_to_string(&modal_buffer);
+    println!("===== Work Queue Modal =====\n{modal_view}");
     assert!(
         modal_view.contains("Work Queue (Esc=close)"),
         "work queue modal title should render"
