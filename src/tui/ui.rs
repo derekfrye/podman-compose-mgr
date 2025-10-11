@@ -152,6 +152,9 @@ fn draw_rebuild_output(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild:
         None => job.image.clone(),
     };
 
+    // Ensure no stale table rows remain when switching from the list view into the rebuild pane.
+    frame.render_widget(Clear, area);
+
     let lines: Vec<Line> = job
         .output
         .iter()
@@ -176,6 +179,9 @@ fn draw_rebuild_sidebar(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild
     let total = rebuild.jobs.len();
     let active = rebuild.active_idx + 1;
     let mut lines: Vec<Line> = Vec::new();
+
+    // Clearing keeps the sidebar from inheriting leftovers if the rebuild view resizes.
+    frame.render_widget(Clear, area);
 
     lines.push(Line::from(format!("Job: {active}/{total}")));
     if let Some(job) = rebuild.jobs.get(rebuild.active_idx) {
