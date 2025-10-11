@@ -1,6 +1,7 @@
 use crate::image_build::buildfile_build;
 use crate::image_build::buildfile_helpers;
 use crate::interfaces::CommandHelper;
+use crate::utils::build_logger::{BuildLogLevel, BuildLogger};
 use thiserror::Error;
 use walkdir::DirEntry;
 
@@ -43,6 +44,7 @@ pub fn start<C: CommandHelper>(
     dir: &DirEntry,
     custom_img_nm: &str,
     build_args: &[&str],
+    logger: &dyn BuildLogger,
 ) -> Result<(), BuildfileError> {
     let buildfiles = buildfile_helpers::find_buildfile(dir, custom_img_nm, build_args);
     if buildfiles.is_none()
@@ -53,10 +55,12 @@ pub fn start<C: CommandHelper>(
             .iter()
             .all(|file| file.filepath.is_none())
     {
-        return Err(BuildfileError::RebuildError(format!(
+        let msg = format!(
             "No Dockerfile or Makefile found at '{}'",
             dir.path().display()
-        )));
+        );
+        logger.log(BuildLogLevel::Warn, &msg);
+        return Err(BuildfileError::RebuildError(msg));
     } else if let Some(found_buildfiles) = buildfiles {
         let build_config = crate::image_build::buildfile_helpers::read_val_loop(&found_buildfiles);
 

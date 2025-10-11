@@ -12,6 +12,7 @@ pub enum LogLevel {
 }
 
 /// Logger for application messages
+#[derive(Clone)]
 pub struct Logger {
     /// Current verbosity level
     verbosity: u8,

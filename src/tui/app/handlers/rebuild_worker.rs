@@ -8,7 +8,7 @@ use crate::read_interactive_input::{
     format::{do_prompt_formatting, unroll_grammar_into_string},
 };
 use crate::tui::app::state::{Msg, OutputStream, RebuildJobSpec, RebuildResult, Services};
-use crate::utils::{error_utils, podman_utils};
+use crate::utils::{build_logger::TuiBuildLogger, error_utils, podman_utils};
 use crossbeam_channel::Sender;
 use std::error::Error;
 use std::io::{BufRead, BufReader};
@@ -73,7 +73,8 @@ fn run_job(
 
     let cmd_helper = TuiCommandHelper::new(tx.clone(), job_idx);
     let read_helper = NonInteractiveReadHelper::new(tx.clone(), job_idx);
-    let mut manager = RebuildManager::new(&cmd_helper, &read_helper);
+    let build_logger = TuiBuildLogger::new(tx.clone(), job_idx);
+    let mut manager = RebuildManager::new(&cmd_helper, &read_helper, &build_logger);
 
     manager.rebuild(&entry, args).map_err(|e| e.to_string())
 }

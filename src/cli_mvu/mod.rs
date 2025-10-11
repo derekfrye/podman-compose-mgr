@@ -3,7 +3,7 @@ use crate::image_build::container_file::parse_container_file;
 use crate::image_build::rebuild::{Image, build_rebuild_grammars, read_yaml_file};
 use crate::interfaces::DefaultCommandHelper;
 use crate::ports::InterruptPort;
-use crate::utils::log_utils::Logger;
+use crate::utils::{build_logger::CliBuildLogger, log_utils::Logger};
 use crossbeam_channel as xchan;
 use std::path::{Path, PathBuf};
 
@@ -349,6 +349,8 @@ fn spawn_help_prompt(services: &Services) {
 fn spawn_build_prompt(services: &Services, item: PromptItem) {
     let tx = services.tx.clone();
     let build_args = services.args.build_args.clone();
+    let build_logger = CliBuildLogger::new(services.logger);
+    let logger = services.logger.clone();
     std::thread::spawn(move || {
         let entry = find_entry(&item.entry);
         let build_args_refs: Vec<&str> = build_args.iter().map(String::as_str).collect();
@@ -358,8 +360,9 @@ fn spawn_build_prompt(services: &Services, item: PromptItem) {
             &entry,
             &item.image,
             &build_args_refs,
+            &build_logger,
         ) {
-            eprintln!("{err}");
+            logger.warn(&err.to_string());
         }
         let _ = tx.send(Msg::ActionDone);
     });
@@ -375,7 +378,9 @@ fn mark_skip_and_advance(model: &mut Model, services: &Services, item: &PromptIt
 }
 
 fn handle_invalid_choice(services: &Services) {
-    eprintln!("Invalid input. Please enter p/N/d/b/s/?: ");
+    services
+        .logger
+        .warn("Invalid input. Please enter p/N/d/b/s/?: ");
     let _ = services.tx.send(Msg::PromptStart);
 }
 

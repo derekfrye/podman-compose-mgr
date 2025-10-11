@@ -7,7 +7,9 @@ use podman_compose_mgr::Args;
 use podman_compose_mgr::app::AppCore;
 use podman_compose_mgr::infra::discovery_adapter::FsDiscovery;
 use podman_compose_mgr::infra::podman_adapter::PodmanCli;
-use podman_compose_mgr::tui::app::{self, App, Msg, OutputStream, RebuildStatus, Services, UiState};
+use podman_compose_mgr::tui::app::{
+    self, App, Msg, OutputStream, RebuildStatus, Services, UiState,
+};
 use podman_compose_mgr::tui::ui;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
@@ -289,7 +291,10 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
     let chunks = ratatui::layout::Layout::default()
         .direction(ratatui::layout::Direction::Vertical)
         .margin(1)
-        .constraints([ratatui::layout::Constraint::Length(3), ratatui::layout::Constraint::Min(3)])
+        .constraints([
+            ratatui::layout::Constraint::Length(3),
+            ratatui::layout::Constraint::Min(3),
+        ])
         .split(root_area);
     let rebuild_chunks = ratatui::layout::Layout::default()
         .direction(ratatui::layout::Direction::Horizontal)
@@ -311,9 +316,9 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
         .cloned()
         .take(2)
         .map(|entry| match entry.stream {
-            OutputStream::Stdout => ratatui::text::Line::from(vec![ratatui::text::Span::raw(
-                entry.text,
-            )]),
+            OutputStream::Stdout => {
+                ratatui::text::Line::from(vec![ratatui::text::Span::raw(entry.text)])
+            }
             OutputStream::Stderr => ratatui::text::Line::from(vec![ratatui::text::Span::styled(
                 entry.text,
                 ratatui::style::Style::default().fg(ratatui::style::Color::LightRed),

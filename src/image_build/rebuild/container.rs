@@ -1,6 +1,7 @@
 use crate::args::Args;
 use crate::image_build::container_file::parse_container_file;
 use crate::interfaces::{CommandHelper, ReadInteractiveInputHelper};
+use crate::utils::build_logger::BuildLogger;
 
 use walkdir::DirEntry;
 
@@ -15,6 +16,7 @@ pub fn process_container_file<C: CommandHelper, R: ReadInteractiveInputHelper>(
     images_already_processed: &mut Vec<Image>,
     entry: &DirEntry,
     args: &Args,
+    logger: &dyn BuildLogger,
 ) -> Result<(), RebuildError> {
     let file_path = container_path(entry)?;
     let container_info = parse_container_file(file_path)?;
@@ -36,6 +38,7 @@ pub fn process_container_file<C: CommandHelper, R: ReadInteractiveInputHelper>(
         args,
         &container_info.image,
         &container_name,
+        logger,
     )?;
 
     images_already_processed.push(Image {

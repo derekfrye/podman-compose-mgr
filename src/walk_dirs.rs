@@ -10,7 +10,7 @@ use crate::{
         ReadInteractiveInputHelper,
     },
     tui,
-    utils::log_utils::Logger,
+    utils::{build_logger::CliBuildLogger, log_utils::Logger},
 };
 use std::sync::mpsc::Receiver;
 
@@ -26,14 +26,14 @@ pub fn walk_dirs(args: &Args, logger: &Logger, tui_mode: bool) {
     if let Err(e) =
         walk_dirs_with_helpers_and_interrupt(args, &cmd_helper, &read_val_helper, logger, None)
     {
-        eprintln!("Error processing directories: {e}");
+        logger.warn(&format!("Error processing directories: {e}"));
     }
 
     // If TUI mode is enabled, launch the TUI
     if tui_mode {
         logger.info("Starting TUI mode...");
         if let Err(e) = tui::run(args, logger) {
-            eprintln!("Error starting TUI: {e}");
+            logger.warn(&format!("Error starting TUI: {e}"));
         }
     }
 }
@@ -82,9 +82,11 @@ pub fn walk_dirs_with_helpers_and_interrupt<C: CommandHelper, R: ReadInteractive
 
     logger.info(&format!("Rebuild images in path: {}", args.path.display()));
 
+    let build_logger = CliBuildLogger::new(logger);
     let mut manager = Some(build::rebuild::RebuildManager::new(
         cmd_helper,
         read_val_helper,
+        &build_logger,
     ));
 
     for entry in walk_target_entries(&args.path) {
@@ -97,7 +99,7 @@ pub fn walk_dirs_with_helpers_and_interrupt<C: CommandHelper, R: ReadInteractive
         }
 
         let Some(entry_path) = entry.path().to_str() else {
-            log_invalid_path(&entry);
+            log_invalid_path(&entry, logger);
             continue;
         };
 
@@ -108,7 +110,7 @@ pub fn walk_dirs_with_helpers_and_interrupt<C: CommandHelper, R: ReadInteractive
         if let Some(ref mut mgr) = manager
             && let Err(e) = mgr.rebuild(&entry, args)
         {
-            eprintln!("Error rebuilding from {entry_path}: {e}");
+            logger.warn(&format!("Error rebuilding from {entry_path}: {e}"));
         }
     }
 
@@ -166,11 +168,11 @@ fn is_target_entry(entry: &walkdir::DirEntry) -> bool {
             .is_some_and(|name| name.ends_with(".container"))
 }
 
-fn log_invalid_path(entry: &walkdir::DirEntry) {
-    eprintln!(
+fn log_invalid_path(entry: &walkdir::DirEntry, logger: &Logger) {
+    logger.warn(&format!(
         "Skipping path with invalid UTF-8: {}",
         entry.path().display()
-    );
+    ));
 }
 
 fn should_skip_entry(

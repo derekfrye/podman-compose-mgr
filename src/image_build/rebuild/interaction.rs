@@ -2,6 +2,7 @@ use crate::image_build::buildfile::start;
 use crate::image_build::ui;
 use crate::interfaces::{CommandHelper, ReadInteractiveInputHelper};
 use crate::read_interactive_input::GrammarFragment;
+use crate::utils::build_logger::{BuildLogLevel, BuildLogger};
 
 use walkdir::DirEntry;
 
@@ -15,6 +16,7 @@ pub struct UserChoiceContext<'a> {
     pub build_args: &'a [String],
     pub container_name: &'a str,
     pub grammars: &'a [GrammarFragment],
+    pub logger: &'a dyn BuildLogger,
 }
 
 pub fn handle_user_choice<C: CommandHelper>(
@@ -46,15 +48,18 @@ pub fn handle_user_choice<C: CommandHelper>(
             Ok(true)
         }
         _ => {
-            notify_invalid_choice();
+            notify_invalid_choice(context.logger);
             Ok(false)
         }
     }
 }
 
 fn pull_selected_image<C: CommandHelper>(cmd_helper: &C, context: &UserChoiceContext<'_>) {
-    pull_image(cmd_helper, context.custom_img_nm)
-        .unwrap_or_else(|e| eprintln!("Error pulling image: {e}"));
+    if let Err(e) = pull_image(cmd_helper, context.custom_img_nm) {
+        context
+            .logger
+            .log(BuildLogLevel::Error, &format!("Error pulling image: {e}"));
+    }
 }
 
 fn display_image_details<C: CommandHelper>(cmd_helper: &C, context: &UserChoiceContext<'_>) {
@@ -77,6 +82,7 @@ fn start_selected_build<C: CommandHelper>(
         context.entry,
         context.custom_img_nm,
         &build_args,
+        context.logger,
     )
     .map_err(Box::<dyn std::error::Error>::from)?;
     Ok(())
@@ -90,8 +96,11 @@ fn mark_image_as_skipped(images: &mut Vec<Image>, context: &UserChoiceContext<'_
     });
 }
 
-fn notify_invalid_choice() {
-    eprintln!("Invalid input. Please enter p/N/d/b/s/?: ");
+fn notify_invalid_choice(logger: &dyn BuildLogger) {
+    logger.log(
+        BuildLogLevel::Warn,
+        "Invalid input. Please enter p/N/d/b/s/?: ",
+    );
 }
 
 /// Read a value from the user and handle the action loop for rebuild.
@@ -106,6 +115,7 @@ pub fn read_val_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
     custom_img_nm: &str,
     build_args: &[String],
     container_name: &str,
+    logger: &dyn BuildLogger,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // use extracted helper to build grammars
     let mut grammars = build_rebuild_grammars(entry, custom_img_nm, container_name);
@@ -120,7 +130,7 @@ pub fn read_val_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
             None => {
                 // Check if it's a Ctrl+C signal
                 if result.was_interrupted {
-                    println!("\nOperation cancelled by user");
+                    logger.log(BuildLogLevel::Warn, "Operation cancelled by user");
                     std::process::exit(0);
                 }
                 break;
@@ -132,6 +142,7 @@ pub fn read_val_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
                     build_args,
                     container_name,
                     grammars: &grammars,
+                    logger,
                 };
                 if handle_user_choice(
                     cmd_helper,

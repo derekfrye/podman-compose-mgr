@@ -1,5 +1,6 @@
 use crate::args::Args;
 use crate::interfaces::{CommandHelper, ReadInteractiveInputHelper};
+use crate::utils::build_logger::BuildLogger;
 
 use walkdir::DirEntry;
 
@@ -15,6 +16,7 @@ pub fn process_compose_file<C: CommandHelper, R: ReadInteractiveInputHelper>(
     images_already_processed: &mut Vec<Image>,
     entry: &DirEntry,
     args: &Args,
+    logger: &dyn BuildLogger,
 ) -> Result<(), RebuildError> {
     let file_path = compose_path(entry)?;
     let yaml = read_yaml_file(file_path)?;
@@ -37,6 +39,7 @@ pub fn process_compose_file<C: CommandHelper, R: ReadInteractiveInputHelper>(
             args,
             &image,
             &container,
+            logger,
         )?;
 
         images_already_processed.push(Image {
@@ -112,6 +115,7 @@ pub(super) fn invoke_read_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
     args: &Args,
     image: &str,
     container: &str,
+    logger: &dyn BuildLogger,
 ) -> Result<(), RebuildError> {
     read_val_loop(
         cmd_helper,
@@ -121,6 +125,7 @@ pub(super) fn invoke_read_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
         image,
         &args.build_args,
         container,
+        logger,
     )
     .map_err(|e| RebuildError::Other(e.to_string()))
 }

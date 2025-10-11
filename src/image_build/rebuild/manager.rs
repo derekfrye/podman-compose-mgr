@@ -1,5 +1,6 @@
 use crate::args::Args;
 use crate::interfaces::{CommandHelper, ReadInteractiveInputHelper};
+use crate::utils::build_logger::BuildLogger;
 
 use walkdir::DirEntry;
 
@@ -12,14 +13,16 @@ pub struct RebuildManager<'a, C: CommandHelper, R: ReadInteractiveInputHelper> {
     images_already_processed: Vec<Image>,
     cmd_helper: &'a C,
     read_val_helper: &'a R,
+    logger: &'a dyn BuildLogger,
 }
 
 impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, R> {
-    pub fn new(cmd_helper: &'a C, read_val_helper: &'a R) -> Self {
+    pub fn new(cmd_helper: &'a C, read_val_helper: &'a R, logger: &'a dyn BuildLogger) -> Self {
         Self {
             images_already_processed: Vec::new(),
             cmd_helper,
             read_val_helper,
+            logger,
         }
     }
 
@@ -45,6 +48,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                 &mut self.images_already_processed,
                 entry,
                 args,
+                self.logger,
             )
         } else if file_path.ends_with("docker-compose.yml") {
             process_compose_file(
@@ -53,6 +57,7 @@ impl<'a, C: CommandHelper, R: ReadInteractiveInputHelper> RebuildManager<'a, C, 
                 &mut self.images_already_processed,
                 entry,
                 args,
+                self.logger,
             )
         } else {
             Err(RebuildError::InvalidConfig(format!(

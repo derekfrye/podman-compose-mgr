@@ -1,3 +1,4 @@
+pub mod build_logger;
 pub mod cmd_utils;
 pub mod error_utils;
 pub mod json_utils;
