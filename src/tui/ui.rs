@@ -265,12 +265,20 @@ fn legend_lines() -> Vec<Line<'static>> {
         Line::from(vec![styled_key("w", Color::Cyan), Span::raw(" Work queue")]),
         Line::from(vec![styled_key("↑/↓", Color::Yellow), Span::raw(" Scroll")]),
         Line::from(vec![
+            styled_key("←/→", Color::Yellow),
+            Span::raw(" Pan/Tilt"),
+        ]),
+        Line::from(vec![
             styled_key("PgUp/PgDn", Color::Yellow),
             Span::raw(" Page scroll"),
         ]),
         Line::from(vec![
-            styled_key("←/→", Color::Yellow),
-            Span::raw(" Pan/Tilt"),
+            styled_key("Home", Color::Yellow),
+            Span::raw(" Goto top"),
+        ]),
+        Line::from(vec![
+            styled_key("End", Color::Yellow),
+            Span::raw(" Goto end"),
         ]),
         Line::from(vec![
             styled_key("esc", Color::Magenta),
