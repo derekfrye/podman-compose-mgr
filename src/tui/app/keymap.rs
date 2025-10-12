@@ -41,31 +41,28 @@ pub fn map_keycode_to_msg(app: &App, key: KeyCode) -> Option<Msg> {
             KeyCode::Home => Msg::ScrollOutputTop,
             KeyCode::End => Msg::ScrollOutputBottom,
             KeyCode::Char('w') => Msg::OpenWorkQueue,
+            KeyCode::Char('q') | KeyCode::Char('Q') => Msg::Quit,
             KeyCode::Esc => Msg::ExitRebuild,
             _ => return None,
         });
     }
 
     Some(match key {
-        KeyCode::Char('q') => Msg::Quit,
+        KeyCode::Char('q') | KeyCode::Char('Q') => Msg::Quit,
         KeyCode::Up => Msg::MoveUp,
         KeyCode::Down => Msg::MoveDown,
+        KeyCode::PageUp => Msg::MovePageUp,
+        KeyCode::PageDown => Msg::MovePageDown,
         KeyCode::Char(' ') | KeyCode::Enter => Msg::ToggleCheck,
         KeyCode::Right => Msg::ExpandOrEnter,
         KeyCode::Left => Msg::CollapseOrBack,
         KeyCode::Char('v') => Msg::OpenViewPicker,
         KeyCode::Char('r') => Msg::StartRebuild,
         KeyCode::Char('w') => Msg::OpenWorkQueue,
+        KeyCode::Char('b') => Msg::MovePageUp,
+        KeyCode::Char('f') => Msg::MovePageDown,
         KeyCode::Char('a') => Msg::ToggleCheckAll,
-        KeyCode::Char('k') => Msg::ScrollOutputUp,
-        KeyCode::Char('j') => Msg::ScrollOutputDown,
-        KeyCode::Char('b') => Msg::ScrollOutputPageUp,
-        KeyCode::Char('f') => Msg::ScrollOutputPageDown,
-        KeyCode::Home => Msg::ScrollOutputTop,
-        KeyCode::End => Msg::ScrollOutputBottom,
-        KeyCode::Char('h') => Msg::ScrollOutputLeft,
-        KeyCode::Char('l') => Msg::ScrollOutputRight,
-        KeyCode::Esc => Msg::ExitRebuild,
+        KeyCode::Esc => Msg::Quit,
         _ => return None,
     })
 }

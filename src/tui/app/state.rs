@@ -49,6 +49,8 @@ pub enum Msg {
     Quit,
     MoveUp,
     MoveDown,
+    MovePageUp,
+    MovePageDown,
     ToggleCheck,
     ToggleCheckAll,
     ExpandOrEnter,
@@ -139,7 +141,7 @@ impl Default for App {
             rows: Vec::new(),
             selected: 0,
             spinner_idx: 0,
-            view_mode: ViewMode::ByContainer,
+            view_mode: ViewMode::ByImage,
             modal: None,
             all_items: Vec::new(),
             root_path: PathBuf::new(),
@@ -159,6 +161,7 @@ pub struct RebuildState {
     pub scroll_x: u16,
     pub work_queue_selected: usize,
     pub finished: bool,
+    pub auto_scroll: bool,
 }
 
 impl RebuildState {
@@ -171,6 +174,7 @@ impl RebuildState {
             scroll_x: 0,
             work_queue_selected: 0,
             finished: false,
+            auto_scroll: true,
         }
     }
 }

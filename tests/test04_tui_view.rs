@@ -3,6 +3,9 @@ use std::collections::HashSet;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use podman_compose_mgr::Args;
 use podman_compose_mgr::tui::app::{self, App, Msg, ViewMode};
+use podman_compose_mgr::tui::ui;
+use ratatui::Terminal;
+use ratatui::backend::TestBackend;
 
 #[test]
 fn change_view_to_by_image_dedupes_images() {
@@ -67,4 +70,27 @@ fn change_view_to_by_image_dedupes_images() {
     assert_eq!(app.rows.len(), images_after.len());
     assert_eq!(images_after.len(), unique_images.len());
     assert!(app.rows.iter().all(|r| r.container.is_none()));
+
+    let backend = TestBackend::new(100, 24);
+    let mut terminal = Terminal::new(backend).expect("terminal");
+    terminal
+        .draw(|f| ui::draw(f, &app, &args))
+        .expect("draw by-image view");
+    let buffer = terminal.backend_mut().buffer().clone();
+    let mut rendered = String::new();
+    for y in 0..buffer.area.height {
+        for x in 0..buffer.area.width {
+            let cell = buffer.cell((x, y)).unwrap();
+            rendered.push_str(cell.symbol());
+        }
+        rendered.push('\n');
+    }
+    assert!(
+        rendered.contains("Container(s)"),
+        "header should include container column"
+    );
+    assert!(
+        rendered.contains("duplicate-container"),
+        "aggregated container list should include all container names"
+    );
 }

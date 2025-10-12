@@ -16,6 +16,8 @@ pub fn handle_message(app: &mut App, msg: Msg, services: Option<&Services>) {
         Msg::Quit | Msg::Interrupt => app.should_quit = true,
         Msg::MoveUp => handle_move_up(app),
         Msg::MoveDown => handle_move_down(app),
+        Msg::MovePageUp => handle_move_page_up(app),
+        Msg::MovePageDown => handle_move_page_down(app),
         Msg::ToggleCheck => handle_toggle_check(app),
         Msg::ExpandOrEnter => handle_expand_or_enter(app, services),
         Msg::CollapseOrBack => handle_collapse_or_back(app),
@@ -89,6 +91,31 @@ fn handle_move_down(app: &mut App) {
     if app.selected + 1 < app.rows.len() {
         app.selected += 1;
     }
+}
+
+fn handle_move_page_up(app: &mut App) {
+    if app.state != UiState::Ready || app.rows.is_empty() {
+        return;
+    }
+
+    let step = page_step(app);
+    app.selected = app.selected.saturating_sub(step);
+}
+
+fn handle_move_page_down(app: &mut App) {
+    if app.state != UiState::Ready || app.rows.is_empty() {
+        return;
+    }
+
+    let step = page_step(app);
+    let max_index = app.rows.len().saturating_sub(1);
+    app.selected = (app.selected + step).min(max_index);
+}
+
+fn page_step(app: &App) -> usize {
+    const DEFAULT_PAGE_STEP: usize = 12;
+    let capped = DEFAULT_PAGE_STEP.min(app.rows.len());
+    capped.max(1)
 }
 
 fn handle_toggle_check(app: &mut App) {

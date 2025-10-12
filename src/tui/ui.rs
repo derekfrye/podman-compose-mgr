@@ -95,9 +95,17 @@ fn draw_table(frame: &mut Frame, area: ratatui::prelude::Rect, app: &App) {
             ],
         ),
         ViewMode::ByImage => (
-            Row::new([Cell::from("Select"), Cell::from("Image")])
-                .style(Style::default().add_modifier(Modifier::BOLD)),
-            vec![Constraint::Length(6), Constraint::Percentage(94)],
+            Row::new([
+                Cell::from("Select"),
+                Cell::from("Image"),
+                Cell::from("Container(s)"),
+            ])
+            .style(Style::default().add_modifier(Modifier::BOLD)),
+            vec![
+                Constraint::Length(6),
+                Constraint::Percentage(50),
+                Constraint::Percentage(44),
+            ],
         ),
         ViewMode::ByFolderThenImage => (
             Row::new([Cell::from("Select"), Cell::from("Name")])
@@ -320,7 +328,14 @@ fn row_for_item<'a>(app: &'a App, it: &'a ItemRow) -> Row<'a> {
                 Cell::from(it.image.clone()),
             ])
         }
-        ViewMode::ByImage => Row::new([Cell::from(checkbox), Cell::from(it.image.clone())]),
+        ViewMode::ByImage => {
+            let containers = containers_for_image(app, &it.image);
+            Row::new([
+                Cell::from(checkbox),
+                Cell::from(it.image.clone()),
+                Cell::from(containers),
+            ])
+        }
         ViewMode::ByFolderThenImage => {
             if it.is_dir {
                 let name: String = it.dir_name.clone().unwrap_or_default();
@@ -352,7 +367,12 @@ fn build_rows_with_expansion(app: &App) -> (Vec<Row<'_>>, usize) {
                         Cell::from(indented),
                         Cell::from(""),
                     ])),
-                    ViewMode::ByImage | ViewMode::ByFolderThenImage => {
+                    ViewMode::ByImage => rows.push(Row::new([
+                        Cell::from(""),
+                        Cell::from(indented.clone()),
+                        Cell::from(""),
+                    ])),
+                    ViewMode::ByFolderThenImage => {
                         rows.push(Row::new([Cell::from(""), Cell::from(indented)]));
                     }
                 }
@@ -382,10 +402,32 @@ fn help_overlay_lines() -> Vec<Line<'static>> {
             styled_key("[space]", Color::Green),
             Span::raw(" select   "),
             styled_key("q", Color::Red),
+            Span::raw("/"),
+            styled_key("Esc", Color::Red),
             Span::raw(" quit"),
         ]),
         Line::from(vec![styled_key("v", Color::Cyan), Span::raw(" View")]),
     ]
+}
+
+fn containers_for_image(app: &App, image: &str) -> String {
+    let mut containers: Vec<String> = app
+        .all_items
+        .iter()
+        .filter_map(|item| {
+            if item.image == image {
+                item.container.clone()
+            } else {
+                None
+            }
+        })
+        .collect();
+    if containers.is_empty() {
+        return "—".to_string();
+    }
+    containers.sort();
+    containers.dedup();
+    containers.join(", ")
 }
 
 fn styled_key(content: &'static str, color: Color) -> Span<'static> {

@@ -78,6 +78,7 @@ fn handle_job_started(app: &mut App, job_idx: usize) {
         rebuild.work_queue_selected = job_idx;
         rebuild.scroll_y = 0;
         rebuild.scroll_x = 0;
+        rebuild.auto_scroll = true;
     }
 }
 
@@ -89,8 +90,9 @@ fn handle_job_output(app: &mut App, job_idx: usize, chunk: String, stream: Outpu
         match stream {
             OutputStream::Stdout | OutputStream::Stderr => job.push_output(stream, chunk),
         }
-        if was_at_bottom {
+        if rebuild.auto_scroll || was_at_bottom {
             rebuild.scroll_y = clamp_usize_to_u16(job.output.len().saturating_sub(1));
+            rebuild.auto_scroll = true;
         }
     }
 }
@@ -126,6 +128,7 @@ fn handle_rebuild_aborted(app: &mut App, reason: String) {
 fn handle_rebuild_complete(app: &mut App) {
     if let Some(rebuild) = app.rebuild.as_mut() {
         rebuild.finished = true;
+        rebuild.auto_scroll = true;
     }
 }
 
@@ -158,6 +161,7 @@ fn handle_work_queue_up(app: &mut App) {
         *selected_idx -= 1;
         if let Some(rebuild) = app.rebuild.as_mut() {
             rebuild.work_queue_selected = *selected_idx;
+            rebuild.auto_scroll = true;
         }
     }
 }
@@ -170,6 +174,7 @@ fn handle_work_queue_down(app: &mut App) {
         *selected_idx += 1;
         if let Some(rebuild) = app.rebuild.as_mut() {
             rebuild.work_queue_selected = *selected_idx;
+            rebuild.auto_scroll = true;
         }
     }
 }
@@ -183,6 +188,7 @@ fn handle_work_queue_select(app: &mut App) {
         rebuild.work_queue_selected = selected_idx;
         rebuild.scroll_y = 0;
         rebuild.scroll_x = 0;
+        rebuild.auto_scroll = true;
     }
     app.modal = None;
 }
@@ -239,6 +245,7 @@ fn adjust_vertical_scroll(app: &mut App, delta: i32) {
     if let Some(rebuild) = app.rebuild.as_mut()
         && let Some(job) = rebuild.jobs.get(rebuild.active_idx)
     {
+        rebuild.auto_scroll = false;
         let current = i32::from(rebuild.scroll_y);
         let mut next = current + delta;
         if next < 0 {
@@ -255,6 +262,7 @@ fn adjust_vertical_scroll(app: &mut App, delta: i32) {
 fn set_vertical_scroll(app: &mut App, value: u16) {
     if let Some(rebuild) = app.rebuild.as_mut() {
         rebuild.scroll_y = value;
+        rebuild.auto_scroll = false;
     }
 }
 
@@ -264,11 +272,13 @@ fn set_vertical_to_bottom(app: &mut App) {
     {
         let bottom = clamp_usize_to_u16(job.output.len().saturating_sub(1));
         rebuild.scroll_y = bottom;
+        rebuild.auto_scroll = true;
     }
 }
 
 fn adjust_horizontal_scroll(app: &mut App, delta: i32) {
     if let Some(rebuild) = app.rebuild.as_mut() {
+        rebuild.auto_scroll = false;
         let current = i32::from(rebuild.scroll_x);
         let mut next = current + delta;
         if next < 0 {
