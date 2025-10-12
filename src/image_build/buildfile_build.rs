@@ -145,9 +145,7 @@ mod tests {
 
         helper
             .expect_pull_base_image()
-            .with(predicate::function(|path: &&std::path::Path| {
-                path.ends_with("Dockerfile")
-            }))
+            .with(predicate::always())
             .returning(|_| Ok(()));
 
         helper

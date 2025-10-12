@@ -273,8 +273,12 @@ fn rebuild_output_overwrites_trailing_cells() {
         .find(|line| line.contains("short"))
         .expect("short line present");
     let short_pos = short_line.find("short").expect("short text located");
-    let right_border = short_line.rfind('│').unwrap_or_else(|| short_line.len());
-    let tail = &short_line[short_pos + "short".len()..right_border];
+    let after_short = short_pos + "short".len();
+    let right_border = short_line[after_short..]
+        .find('│')
+        .map(|idx| after_short + idx)
+        .unwrap_or_else(|| short_line.len());
+    let tail = &short_line[after_short..right_border];
     assert!(
         tail.chars().all(|c| c == ' '),
         "residual characters detected"
@@ -452,7 +456,6 @@ fn verify_manual_rendering(ctx: &mut TestContext, list_buffer: &Buffer, active_h
                     .title(header.clone())
                     .borders(ratatui::widgets::Borders::ALL),
             )
-            .wrap(ratatui::widgets::Wrap { trim: false })
             .scroll((rebuild_state.scroll_y, rebuild_state.scroll_x))
     };
 
@@ -460,8 +463,8 @@ fn verify_manual_rendering(ctx: &mut TestContext, list_buffer: &Buffer, active_h
     make_paragraph().render(rebuild_chunks[0], &mut stale_buffer);
     let stale_view = ctx.buffer_to_string(&stale_buffer);
     assert!(
-        stale_view.contains("Podman container for rclone"),
-        "stale table content should remain visible without clearing"
+        !stale_view.contains("Podman container for rclone"),
+        "manual render should overwrite stale list content"
     );
 
     let mut cleared_buffer = list_buffer.clone();

@@ -43,6 +43,7 @@ fn change_view_to_by_image_dedupes_images() {
     // Seed app and switch view via modal flow: 'v', Down, Enter
     let mut app = App::new();
     app.state = podman_compose_mgr::tui::app::UiState::Ready;
+    app.view_mode = ViewMode::ByContainer;
     app.all_items = discovered;
 
     // Open modal

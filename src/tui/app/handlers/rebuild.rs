@@ -300,7 +300,17 @@ fn adjust_horizontal_scroll(app: &mut App, delta: i32) {
             .map(|entry| line_display_width(&entry.text))
             .max()
             .unwrap_or(0);
-        let max_offset = max_line_width.saturating_sub(viewport);
+        let (max_offset, step) = if max_line_width == 0 {
+            (0usize, 0usize)
+        } else if max_line_width > viewport {
+            (
+                max_line_width.saturating_sub(viewport),
+                (viewport * 2 / 3).max(1),
+            )
+        } else {
+            let target = max_line_width.saturating_sub(1).min(4);
+            (target, target.max(1))
+        };
 
         if max_offset == 0 {
             rebuild.scroll_x = 0;
@@ -308,7 +318,6 @@ fn adjust_horizontal_scroll(app: &mut App, delta: i32) {
             return;
         }
 
-        let step = (viewport * 2 / 3).max(1);
         let current = usize::from(rebuild.scroll_x);
         let mut next = if delta >= 0 {
             current.saturating_add(step)
