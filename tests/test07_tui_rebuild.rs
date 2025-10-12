@@ -91,6 +91,7 @@ impl TestContext {
             build_args: vec![],
             temp_file_path: std::env::temp_dir(),
             podman_bin: Some(podman_bin.clone()),
+            no_cache: false,
             tui: true,
             tui_rebuild_all: true,
         };

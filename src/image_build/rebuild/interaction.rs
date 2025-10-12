@@ -16,6 +16,7 @@ pub struct UserChoiceContext<'a> {
     pub build_args: &'a [String],
     pub grammars: &'a [GrammarFragment],
     pub logger: &'a dyn BuildLogger,
+    pub no_cache: bool,
 }
 
 pub fn handle_user_choice<C: CommandHelper>(
@@ -82,6 +83,7 @@ fn start_selected_build<C: CommandHelper>(
         context.selection.image,
         &build_args,
         context.logger,
+        context.no_cache,
     )
     .map_err(Box::<dyn std::error::Error>::from)?;
     Ok(())
@@ -113,6 +115,7 @@ pub fn read_val_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
     entry: &DirEntry,
     selection: RebuildSelection<'_>,
     build_args: &[String],
+    no_cache: bool,
     logger: &dyn BuildLogger,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // use extracted helper to build grammars
@@ -140,6 +143,7 @@ pub fn read_val_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
                     build_args,
                     grammars: &grammars,
                     logger,
+                    no_cache,
                 };
                 if handle_user_choice(
                     cmd_helper,

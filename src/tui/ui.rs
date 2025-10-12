@@ -9,7 +9,7 @@ use ratatui::{
         Wrap,
     },
 };
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+use unicode_width::UnicodeWidthChar;
 
 use crate::tui::app::{
     App, ItemRow, ModalState, OutputStream, RebuildState, RebuildStatus, UiState, ViewMode,
@@ -148,7 +148,11 @@ fn draw_rebuild(frame: &mut Frame, area: ratatui::prelude::Rect, app: &mut App) 
     draw_rebuild_sidebar(frame, pane[1], rebuild);
 }
 
-fn draw_rebuild_output(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild: &mut RebuildState) {
+fn draw_rebuild_output(
+    frame: &mut Frame,
+    area: ratatui::prelude::Rect,
+    rebuild: &mut RebuildState,
+) {
     let Some(job) = rebuild.jobs.get(rebuild.active_idx) else {
         let empty = Paragraph::new("Waiting for jobs...")
             .block(Block::default().title("Output").borders(Borders::ALL));

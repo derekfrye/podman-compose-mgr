@@ -36,6 +36,7 @@ fn view_modal_shows_three_options_and_selects_folder_view() {
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
         podman_bin: None,
+        no_cache: false,
         tui: true,
         tui_rebuild_all: false,
     };
@@ -49,9 +50,7 @@ fn view_modal_shows_three_options_and_selects_folder_view() {
         Msg::Key(KeyEvent::new(KeyCode::Char('v'), KeyModifiers::NONE)),
         None,
     );
-    terminal
-        .draw(|f| ui::draw(f, &mut app, &args))
-        .unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app, &args)).unwrap();
 
     // Buffer should include the third option line
     let buf = terminal.backend_mut().buffer().clone();
@@ -85,9 +84,7 @@ fn view_modal_shows_three_options_and_selects_folder_view() {
     assert_eq!(app.view_mode, ViewMode::ByFolderThenImage);
 
     // Draw and ensure the header uses Name and title shows Folder:
-    terminal
-        .draw(|f| ui::draw(f, &mut app, &args))
-        .unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app, &args)).unwrap();
     let buf2 = terminal.backend_mut().buffer().clone();
     let mut all2 = String::new();
     for y in 0..buf2.area.height {

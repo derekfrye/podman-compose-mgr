@@ -45,8 +45,9 @@ pub fn start<C: CommandHelper>(
     custom_img_nm: &str,
     build_args: &[&str],
     logger: &dyn BuildLogger,
+    no_cache: bool,
 ) -> Result<(), BuildfileError> {
-    let buildfiles = buildfile_helpers::find_buildfile(dir, custom_img_nm, build_args);
+    let buildfiles = buildfile_helpers::find_buildfile(dir, custom_img_nm, build_args, no_cache);
     if buildfiles.is_none()
         || buildfiles.as_ref().unwrap().is_empty()
         || buildfiles

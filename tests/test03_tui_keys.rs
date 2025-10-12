@@ -31,6 +31,7 @@ fn keys_overlay_is_drawn_with_labels() {
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
         podman_bin: None,
+        no_cache: false,
         tui: true,
         tui_rebuild_all: false,
     };

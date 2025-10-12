@@ -10,6 +10,7 @@ pub fn find_buildfile(
     dir: &DirEntry,
     custom_img_nm: &str,
     build_args: &[&str],
+    no_cache: bool,
 ) -> Option<Vec<BuildFile>> {
     let parent_dir = dir.path().to_path_buf().parent().unwrap().to_path_buf();
     let dockerfile = parent_dir.join("Dockerfile");
@@ -42,6 +43,7 @@ pub fn find_buildfile(
             base_image: Some(custom_img_nm.to_string()),
             custom_img_nm: Some(custom_img_nm.to_string()),
             build_args: build_args.iter().map(|arg| (*arg).to_string()).collect(),
+            no_cache,
         };
 
         match &mut buildfiles {

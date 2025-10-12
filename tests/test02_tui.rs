@@ -12,6 +12,7 @@ fn discovery_finds_expected_images_in_test1() {
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
         podman_bin: None,
+        no_cache: false,
         tui: true,
         tui_rebuild_all: false,
     };
@@ -100,6 +101,7 @@ fn ui_snapshot_renders_table_with_rows() {
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
         podman_bin: None,
+        no_cache: false,
         tui: true,
         tui_rebuild_all: false,
     };

@@ -18,6 +18,7 @@ fn change_view_to_by_image_dedupes_images() {
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
         podman_bin: None,
+        no_cache: false,
         tui: true,
         tui_rebuild_all: false,
     };

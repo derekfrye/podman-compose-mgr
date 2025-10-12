@@ -43,6 +43,10 @@ pub fn build_dockerfile_image<C: CommandHelper>(
         dockerfile_path.to_string(),
     ];
 
+    if build_config.file.no_cache {
+        podman_args.push("--no-cache".to_string());
+    }
+
     for arg in &build_config.file.build_args {
         podman_args.push("--build-arg".to_string());
         podman_args.push(arg.clone());
@@ -123,5 +127,55 @@ pub fn build_image_from_spec<C: CommandHelper>(
     match build_config.file.filetype {
         BuildChoice::Dockerfile => build_dockerfile_image(cmd_helper, build_config),
         BuildChoice::Makefile => build_makefile_image(cmd_helper, build_config),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::image_build::buildfile_types::{BuildChoice, BuildFile, WhatWereBuilding};
+    use crate::interfaces::MockCommandHelper;
+    use mockall::predicate;
+    use std::path::PathBuf;
+
+    #[test]
+    fn dockerfile_build_passes_no_cache_flag_when_requested() {
+        let mut helper = MockCommandHelper::new();
+        let dockerfile_path = PathBuf::from("Dockerfile");
+
+        helper
+            .expect_pull_base_image()
+            .with(predicate::function(|path: &&std::path::Path| {
+                path.ends_with("Dockerfile")
+            }))
+            .returning(|_| Ok(()));
+
+        helper
+            .expect_exec_cmd()
+            .with(
+                predicate::eq("podman"),
+                predicate::function(|args: &Vec<String>| {
+                    args.iter().any(|arg| arg == "--no-cache")
+                }),
+            )
+            .returning(|_, _| Ok(()));
+
+        let build_file = BuildFile {
+            filetype: BuildChoice::Dockerfile,
+            filepath: Some(dockerfile_path),
+            parent_dir: PathBuf::from("."),
+            link_target_dir: None,
+            base_image: Some("example".to_string()),
+            custom_img_nm: Some("example".to_string()),
+            build_args: Vec::new(),
+            no_cache: true,
+        };
+
+        let config = WhatWereBuilding {
+            file: build_file,
+            follow_link: false,
+        };
+
+        build_dockerfile_image(&helper, &config).expect("build should succeed");
     }
 }

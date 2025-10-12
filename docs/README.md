@@ -41,6 +41,7 @@ For each image found, you will be prompted with the following options:
 -   `--build-args <ARG>`: A build argument to pass to `podman build` (e.g., `USERNAME=myuser`). Can be specified multiple times.
 -   `--temp-file-path <PATH>`: The directory to use for temporary files. Defaults to `/tmp`.
 -   `--podman-bin <PATH>`: Override the `podman` executable used for discovery and rebuild commands.
+-   `--no-cache`: Pass `--no-cache` to `podman build` to disable the build cache.
 -   `--tui`: Use the terminal UI mode.
 -   `--tui-rebuild-all`: Automatically select and rebuild every discovered image when the TUI opens.
 

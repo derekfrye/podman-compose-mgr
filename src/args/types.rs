@@ -38,6 +38,10 @@ pub struct Args {
     #[arg(long, value_name = "PATH")]
     pub podman_bin: Option<PathBuf>,
 
+    /// Disable podman build cache
+    #[arg(long)]
+    pub no_cache: bool,
+
     /// Use terminal UI mode
     #[arg(long)]
     pub tui: bool,
@@ -63,6 +67,7 @@ impl Default for Args {
             build_args: Vec::new(),
             temp_file_path: default_temp_path,
             podman_bin: None,
+            no_cache: false,
             tui: false,
             tui_rebuild_all: false,
         }

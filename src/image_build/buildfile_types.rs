@@ -9,6 +9,7 @@ pub struct BuildFile {
     pub base_image: Option<String>,
     pub custom_img_nm: Option<String>,
     pub build_args: Vec<String>,
+    pub no_cache: bool,
 }
 
 #[derive(Debug, PartialEq, Clone)]

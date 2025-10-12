@@ -122,6 +122,7 @@ pub(super) fn invoke_read_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
         entry,
         selection,
         &args.build_args,
+        args.no_cache,
         logger,
     )
     .map_err(|e| RebuildError::Other(e.to_string()))
