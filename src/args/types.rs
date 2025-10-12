@@ -26,6 +26,7 @@ pub struct Args {
     /// Regex pattern(s) to include paths. If both incl. and excl. are specified, excl. is applied first.
     #[arg(short, long)]
     pub include_path_patterns: Vec<String>,
+    /// Build args to pass to podman build commands. Can be used multiple times.
     #[arg(short, long)]
     pub build_args: Vec<String>,
 

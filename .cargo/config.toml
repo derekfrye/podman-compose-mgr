@@ -1,3 +1,0 @@
-[alias]
-# Use conditional alias by creating a Rust build script
-t = "run --manifest-path scripts/cpu_test_runner/Cargo.toml"
