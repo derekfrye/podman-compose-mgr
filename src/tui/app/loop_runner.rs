@@ -124,7 +124,6 @@ pub fn run_loop<B: Backend>(
             recv(chans.interrupt_rx) -> _ => update_with_services(app, Msg::Interrupt, Some(env.services)),
             recv(chans.rx) -> msg => if let Ok(msg) = msg { update_with_services(app, msg, Some(env.services)); },
             recv(chans.tick_rx.expect("tick channel must be provided")) -> _ => update_with_services(app, Msg::Tick, Some(env.services)),
-            default => {}
         }
 
         terminal.draw(|frame| crate::tui::ui::draw(frame, app, env.args))?;
