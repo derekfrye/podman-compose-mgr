@@ -29,6 +29,7 @@ fn keys_overlay_is_drawn_with_labels() {
         include_path_patterns: vec![],
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
+        podman_bin: None,
         tui: true,
         tui_rebuild_all: false,
     };

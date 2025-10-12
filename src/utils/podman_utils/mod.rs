@@ -2,8 +2,8 @@ pub mod datetime;
 pub mod image;
 pub mod terminal;
 
-use std::env;
 use std::ffi::OsString;
+use std::sync::{Mutex, OnceLock};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -49,10 +49,34 @@ pub use terminal::{file_exists_and_readable, get_terminal_display_width};
 /// Resolve the executable name used for invoking podman commands.
 ///
 /// This allows tests to inject a mock implementation by setting the
-/// `PODMGR_PODMAN_BIN` environment variable to an absolute executable path.
+/// override via the CLI or helper functions.
 #[must_use]
 pub fn resolve_podman_binary() -> OsString {
-    env::var_os("PODMGR_PODMAN_BIN")
-        .filter(|val| !val.is_empty())
-        .unwrap_or_else(|| OsString::from("podman"))
+    let mutex = PODMAN_BIN_OVERRIDE.get_or_init(|| Mutex::new(None));
+    let guard = mutex
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let override_path = guard.clone();
+
+    override_path.unwrap_or_else(|| OsString::from("podman"))
 }
+
+/// Override the podman executable path for the current process.
+pub fn set_podman_binary_override(path: OsString) {
+    let mutex = PODMAN_BIN_OVERRIDE.get_or_init(|| Mutex::new(None));
+    let mut guard = mutex
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    *guard = Some(path);
+}
+
+/// Clear any configured podman executable override.
+pub fn clear_podman_binary_override() {
+    let mutex = PODMAN_BIN_OVERRIDE.get_or_init(|| Mutex::new(None));
+    let mut guard = mutex
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    *guard = None;
+}
+
+static PODMAN_BIN_OVERRIDE: OnceLock<Mutex<Option<OsString>>> = OnceLock::new();

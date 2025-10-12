@@ -51,6 +51,13 @@ use std::io;
 pub fn run_app(args: &args::Args) -> io::Result<()> {
     use crate::utils::log_utils::Logger;
 
+    match args.podman_bin.as_ref() {
+        Some(path) => {
+            crate::utils::podman_utils::set_podman_binary_override(path.clone().into_os_string())
+        }
+        None => crate::utils::podman_utils::clear_podman_binary_override(),
+    }
+
     let logger = Logger::new(args.verbose);
     log_command_line(args, &logger);
 

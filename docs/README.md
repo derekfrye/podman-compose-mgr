@@ -9,6 +9,7 @@ This program helps manage a directory tree containing `docker-compose.yml` and `
 -   **Custom Build Arguments**: Pass build arguments to `podman build`.
 -   **TUI Mode**: An optional terminal UI for a more visual experience.
 -   **Queue Rebuilds**: Manage rebuild jobs from the TUI, including an option to auto-queue everything on launch.
+-   **Custom Podman Path**: Point the tool at an alternate Podman binary when needed.
 
 ## Documentation
 
@@ -39,6 +40,7 @@ For each image found, you will be prompted with the following options:
 -   `-i, --include-path-patterns <PATTERN>`: A regex pattern to include paths. If both include and exclude patterns are provided, exclusion is applied first. Can be specified multiple times.
 -   `--build-args <ARG>`: A build argument to pass to `podman build` (e.g., `USERNAME=myuser`). Can be specified multiple times.
 -   `--temp-file-path <PATH>`: The directory to use for temporary files. Defaults to `/tmp`.
+-   `--podman-bin <PATH>`: Override the `podman` executable used for discovery and rebuild commands.
 -   `--tui`: Use the terminal UI mode.
 -   `--tui-rebuild-all`: Automatically select and rebuild every discovered image when the TUI opens.
 

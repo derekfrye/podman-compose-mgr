@@ -33,6 +33,10 @@ pub struct Args {
     #[arg(long, default_value = "/tmp", value_parser = check_writable_dir)]
     pub temp_file_path: PathBuf,
 
+    /// Override the podman executable path
+    #[arg(long, value_name = "PATH")]
+    pub podman_bin: Option<PathBuf>,
+
     /// Use terminal UI mode
     #[arg(long)]
     pub tui: bool,
@@ -57,6 +61,7 @@ impl Default for Args {
             include_path_patterns: Vec::new(),
             build_args: Vec::new(),
             temp_file_path: default_temp_path,
+            podman_bin: None,
             tui: false,
             tui_rebuild_all: false,
         }

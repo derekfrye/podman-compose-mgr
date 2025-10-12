@@ -11,6 +11,7 @@ fn discovery_finds_expected_images_in_test1() {
         include_path_patterns: vec![],
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
+        podman_bin: None,
         tui: true,
         tui_rebuild_all: false,
     };
@@ -98,6 +99,7 @@ fn ui_snapshot_renders_table_with_rows() {
         include_path_patterns: vec![],
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
+        podman_bin: None,
         tui: true,
         tui_rebuild_all: false,
     };

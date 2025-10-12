@@ -14,6 +14,7 @@ fn change_view_to_by_image_dedupes_images() {
         include_path_patterns: vec![],
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
+        podman_bin: None,
         tui: true,
         tui_rebuild_all: false,
     };

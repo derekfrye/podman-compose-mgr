@@ -83,8 +83,6 @@ impl TestContext {
             "mock podman binary missing at {}",
             podman_bin.display()
         );
-        unsafe { std::env::set_var("PODMGR_PODMAN_BIN", &podman_bin) };
-
         let args = Args {
             path: manifest_dir.join("tests").join("test07"),
             verbose: 0,
@@ -92,9 +90,14 @@ impl TestContext {
             include_path_patterns: vec![],
             build_args: vec![],
             temp_file_path: std::env::temp_dir(),
+            podman_bin: Some(podman_bin.clone()),
             tui: true,
             tui_rebuild_all: true,
         };
+
+        podman_compose_mgr::utils::podman_utils::set_podman_binary_override(
+            podman_bin.into_os_string(),
+        );
 
         let (tx, rx) = crossbeam_channel::unbounded();
         let discovery = Arc::new(FsDiscovery);
@@ -173,7 +176,7 @@ impl TestContext {
 
 impl Drop for TestContext {
     fn drop(&mut self) {
-        unsafe { std::env::remove_var("PODMGR_PODMAN_BIN") };
+        podman_compose_mgr::utils::podman_utils::clear_podman_binary_override();
     }
 }
 

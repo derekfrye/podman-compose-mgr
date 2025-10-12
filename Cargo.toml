@@ -3,6 +3,8 @@ name = "podman-compose-mgr"
 version = "0.1.6"
 edition = "2024"
 
+[lints.rust]
+unsafe_code = "deny"
 
 [dependencies]
 reedline = "0"

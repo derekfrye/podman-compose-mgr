@@ -35,6 +35,7 @@ fn view_modal_shows_three_options_and_selects_folder_view() {
         include_path_patterns: vec![],
         build_args: vec![],
         temp_file_path: std::env::temp_dir(),
+        podman_bin: None,
         tui: true,
         tui_rebuild_all: false,
     };
