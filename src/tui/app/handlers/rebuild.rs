@@ -291,8 +291,11 @@ fn set_vertical_to_bottom(app: &mut App) {
 fn adjust_horizontal_scroll(app: &mut App, delta: i32) {
     if let Some(rebuild) = app.rebuild.as_mut() {
         rebuild.auto_scroll = false;
+        let step = (usize::from(rebuild.viewport_height.max(1)) * 2 / 3)
+            .max(1)
+            .min(usize::from(u16::MAX)) as i32;
         let current = i32::from(rebuild.scroll_x);
-        let mut next = current + delta;
+        let mut next = current + delta.signum() * step;
         if next < 0 {
             next = 0;
         }
