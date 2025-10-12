@@ -21,6 +21,7 @@ impl App {
         }
     }
 
+    #[must_use]
     pub fn build_rows_for_view_mode(&self, mode: ViewMode) -> Vec<ItemRow> {
         let mut clone = self.clone_for_build();
         clone.view_mode = mode;
@@ -31,6 +32,7 @@ impl App {
         }
     }
 
+    #[must_use]
     pub fn build_rows_for_container_view(&self) -> Vec<ItemRow> {
         self.all_items
             .iter()
@@ -48,6 +50,7 @@ impl App {
             .collect()
     }
 
+    #[must_use]
     pub fn build_rows_for_folder_view(&self) -> Vec<ItemRow> {
         let mut subdirs: BTreeSet<String> = BTreeSet::new();
         let mut images: BTreeSet<String> = BTreeSet::new();

@@ -34,6 +34,7 @@ pub struct CliBuildLogger {
 }
 
 impl CliBuildLogger {
+    #[must_use]
     pub fn new(logger: &Logger) -> Self {
         Self {
             logger: logger.clone(),
@@ -45,8 +46,7 @@ impl BuildLogger for CliBuildLogger {
     fn log(&self, level: BuildLogLevel, message: &str) {
         match level {
             BuildLogLevel::Info => self.logger.info(message),
-            BuildLogLevel::Warn => self.logger.warn(message),
-            BuildLogLevel::Error => self.logger.warn(message),
+            BuildLogLevel::Warn | BuildLogLevel::Error => self.logger.warn(message),
         }
     }
 }
@@ -58,6 +58,7 @@ pub struct TuiBuildLogger {
 }
 
 impl TuiBuildLogger {
+    #[must_use]
     pub fn new(tx: Sender<Msg>, job_idx: usize) -> Self {
         Self { tx, job_idx }
     }

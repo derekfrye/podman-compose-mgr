@@ -23,8 +23,7 @@ pub fn make_choice_grammar(
             can_shorten: false,
             display_at_all: true,
             is_default_choice: default_choice
-                .map(|default| default.eq_ignore_ascii_case(user_choices[i]))
-                .unwrap_or(false),
+                .is_some_and(|default| default.eq_ignore_ascii_case(user_choices[i])),
         };
         new_prompt_grammars.push(choice_grammar);
     }

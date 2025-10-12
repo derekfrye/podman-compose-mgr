@@ -57,7 +57,7 @@ pub fn draw(frame: &mut Frame, app: &App, args: &Args) {
             draw_view_picker(frame, frame.area(), selected_idx, app.view_mode);
         }
         Some(ModalState::WorkQueue { selected_idx }) => {
-            draw_work_queue(frame, frame.area(), app, selected_idx)
+            draw_work_queue(frame, frame.area(), app, selected_idx);
         }
         None => {}
     }
@@ -250,7 +250,9 @@ fn draw_work_queue(frame: &mut Frame, full_area: Rect, app: &App, selected_idx: 
         return;
     };
 
-    let height: u16 = (rebuild.jobs.len().min(12) as u16).saturating_add(4);
+    let height = u16::try_from(rebuild.jobs.len().min(12))
+        .unwrap_or(u16::MAX)
+        .saturating_add(4);
     let width: u16 = 48;
     let width_final = width.min(full_area.width);
     let height_final = height.min(full_area.height);

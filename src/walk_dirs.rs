@@ -150,8 +150,9 @@ fn interrupt_triggered(interrupt: Option<&Receiver<()>>, logger: &Logger) -> boo
             logger.info("Interrupt received; stopping traversal.");
             true
         }
-        Err(std::sync::mpsc::TryRecvError::Empty) => false,
-        Err(std::sync::mpsc::TryRecvError::Disconnected) => false,
+        Err(std::sync::mpsc::TryRecvError::Empty | std::sync::mpsc::TryRecvError::Disconnected) => {
+            false
+        }
     }
 }
 

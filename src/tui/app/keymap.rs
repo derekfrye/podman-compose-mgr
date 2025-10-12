@@ -1,6 +1,7 @@
 use super::state::{App, ModalState, Msg};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
+#[must_use]
 pub fn map_key_event_to_msg(app: &App, ev: KeyEvent) -> Option<Msg> {
     if ev.modifiers.contains(KeyModifiers::CONTROL) && matches!(ev.code, KeyCode::Char('c' | 'C')) {
         return Some(Msg::Interrupt);
@@ -8,6 +9,7 @@ pub fn map_key_event_to_msg(app: &App, ev: KeyEvent) -> Option<Msg> {
     map_keycode_to_msg(app, ev.code)
 }
 
+#[must_use]
 pub fn map_keycode_to_msg(app: &App, key: KeyCode) -> Option<Msg> {
     if let Some(modal) = &app.modal {
         return match modal {

@@ -187,6 +187,7 @@ pub struct RebuildJob {
 }
 
 impl RebuildJob {
+    #[must_use]
     pub fn new(
         image: String,
         container: Option<String>,
@@ -204,6 +205,7 @@ impl RebuildJob {
         }
     }
 
+    #[must_use]
     pub fn from_spec(spec: &RebuildJobSpec) -> Self {
         Self::new(
             spec.image.clone(),

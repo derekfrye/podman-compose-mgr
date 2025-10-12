@@ -159,7 +159,9 @@ fn read_input_loop(
                 break;
             }
             InputProcessResult::Empty => {
-                result.user_entered_val = prompt_data.default_choice.clone();
+                result
+                    .user_entered_val
+                    .clone_from(&prompt_data.default_choice);
                 break;
             }
             InputProcessResult::Invalid => {}

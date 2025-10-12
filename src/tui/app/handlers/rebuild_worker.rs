@@ -27,7 +27,7 @@ pub fn spawn_rebuild_thread(specs: Vec<RebuildJobSpec>, services: &Services) {
         let mut last_idx = 0usize;
         for (idx, spec) in specs.into_iter().enumerate() {
             let _ = tx.send(Msg::RebuildJobStarted { job_idx: idx });
-            match run_job(idx, &spec, &args, tx.clone()) {
+            match run_job(idx, &spec, &args, &tx) {
                 Ok(()) => {
                     let _ = tx.send(Msg::RebuildJobFinished {
                         job_idx: idx,
@@ -62,7 +62,7 @@ fn run_job(
     job_idx: usize,
     spec: &RebuildJobSpec,
     args: &Args,
-    tx: Sender<Msg>,
+    tx: &Sender<Msg>,
 ) -> Result<(), String> {
     let entry = WalkDir::new(&spec.entry_path)
         .max_depth(0)
@@ -105,13 +105,13 @@ impl TuiCommandHelper {
 
 impl CommandHelper for TuiCommandHelper {
     fn exec_cmd(&self, cmd: &str, args: Vec<String>) -> Result<(), Box<dyn Error>> {
-        if !args.is_empty() {
+        if args.is_empty() {
+            self.send_line(OutputStream::Stdout, format!("$ {cmd}"));
+        } else {
             self.send_line(
                 OutputStream::Stdout,
                 format!("$ {} {}", cmd, args.join(" ")),
             );
-        } else {
-            self.send_line(OutputStream::Stdout, format!("$ {cmd}"));
         }
 
         let resolved_cmd = if cmd == "podman" {

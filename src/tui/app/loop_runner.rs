@@ -20,6 +20,11 @@ use std::time::Duration;
 
 const TICK_RATE_MS: u64 = 250;
 
+/// Launch the TUI application loop and block until the user exits.
+///
+/// # Errors
+/// Returns an error if setting up the terminal, running the UI loop, or cleaning up the
+/// terminal I/O resources fails.
 pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     let mut terminal = setup_terminal()?;
     let mut app = App::new();
@@ -99,6 +104,13 @@ fn spawn_interrupt_listener() -> xchan::Receiver<()> {
     rx
 }
 
+/// Drive the TUI event loop until the application requests shutdown.
+///
+/// # Errors
+/// Returns an error if drawing to the terminal fails or if terminal cleanup encounters an I/O error.
+///
+/// # Panics
+/// Panics if the environment omits the tick channel required to drive periodic updates.
 pub fn run_loop<B: Backend>(
     terminal: &mut Terminal<B>,
     app: &mut App,

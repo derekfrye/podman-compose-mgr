@@ -7,7 +7,7 @@ use crate::tui::app::state::{
 pub fn handle_rebuild_message(app: &mut App, msg: Msg, services: Option<&Services>) {
     match msg {
         Msg::StartRebuild => handle_start_rebuild(app, services),
-        Msg::RebuildSessionCreated { jobs } => handle_session_created(app, jobs),
+        Msg::RebuildSessionCreated { jobs } => handle_session_created(app, &jobs),
         Msg::RebuildJobStarted { job_idx } => handle_job_started(app, job_idx),
         Msg::RebuildJobOutput {
             job_idx,
@@ -31,7 +31,7 @@ pub fn handle_rebuild_message(app: &mut App, msg: Msg, services: Option<&Service
         | Msg::ScrollOutputTop
         | Msg::ScrollOutputBottom
         | Msg::ScrollOutputLeft
-        | Msg::ScrollOutputRight => handle_scroll_message(app, msg),
+        | Msg::ScrollOutputRight => handle_scroll_message(app, &msg),
         Msg::ExitRebuild => handle_exit_rebuild(app),
         _ => {}
     }
@@ -55,12 +55,12 @@ fn handle_start_rebuild(app: &mut App, services: Option<&Services>) {
     }
 
     if let Some(svc) = services {
-        handle_session_created(app, specs.clone());
+        handle_session_created(app, &specs);
         spawn_rebuild_thread(specs, svc);
     }
 }
 
-fn handle_session_created(app: &mut App, jobs: Vec<RebuildJobSpec>) {
+fn handle_session_created(app: &mut App, jobs: &[RebuildJobSpec]) {
     if jobs.is_empty() {
         return;
     }
@@ -90,7 +90,7 @@ fn handle_job_output(app: &mut App, job_idx: usize, chunk: String, stream: Outpu
             OutputStream::Stdout | OutputStream::Stderr => job.push_output(stream, chunk),
         }
         if was_at_bottom {
-            rebuild.scroll_y = job.output.len().saturating_sub(1) as u16;
+            rebuild.scroll_y = clamp_usize_to_u16(job.output.len().saturating_sub(1));
         }
     }
 }
@@ -221,7 +221,7 @@ fn collect_selected_specs(app: &App) -> Vec<RebuildJobSpec> {
         .collect()
 }
 
-fn handle_scroll_message(app: &mut App, msg: Msg) {
+fn handle_scroll_message(app: &mut App, msg: &Msg) {
     match msg {
         Msg::ScrollOutputUp => adjust_vertical_scroll(app, -1),
         Msg::ScrollOutputDown => adjust_vertical_scroll(app, 1),
@@ -244,11 +244,11 @@ fn adjust_vertical_scroll(app: &mut App, delta: i32) {
         if next < 0 {
             next = 0;
         }
-        let max_scroll = job.output.len().saturating_sub(1) as i32;
+        let max_scroll = clamp_usize_to_i32(job.output.len().saturating_sub(1));
         if max_scroll >= 0 {
             next = next.min(max_scroll);
         }
-        rebuild.scroll_y = next.max(0) as u16;
+        rebuild.scroll_y = clamp_i32_to_u16(next);
     }
 }
 
@@ -262,7 +262,7 @@ fn set_vertical_to_bottom(app: &mut App) {
     if let Some(rebuild) = app.rebuild.as_mut()
         && let Some(job) = rebuild.jobs.get(rebuild.active_idx)
     {
-        let bottom = job.output.len().saturating_sub(1) as u16;
+        let bottom = clamp_usize_to_u16(job.output.len().saturating_sub(1));
         rebuild.scroll_y = bottom;
     }
 }
@@ -274,6 +274,19 @@ fn adjust_horizontal_scroll(app: &mut App, delta: i32) {
         if next < 0 {
             next = 0;
         }
-        rebuild.scroll_x = next.min(5000) as u16;
+        rebuild.scroll_x = clamp_i32_to_u16(next.min(5000));
     }
+}
+
+fn clamp_usize_to_u16(value: usize) -> u16 {
+    u16::try_from(value).unwrap_or(u16::MAX)
+}
+
+fn clamp_usize_to_i32(value: usize) -> i32 {
+    i32::try_from(value).unwrap_or(i32::MAX)
+}
+
+fn clamp_i32_to_u16(value: i32) -> u16 {
+    let non_negative = value.max(0);
+    u16::try_from(non_negative).unwrap_or(u16::MAX)
 }
