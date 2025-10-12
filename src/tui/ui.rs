@@ -119,7 +119,7 @@ fn draw_table(frame: &mut Frame, area: ratatui::prelude::Rect, app: &App) {
     let table = Table::new(rows, widths)
         .header(header)
         .block(Block::default().title("Images").borders(Borders::ALL))
-        .row_highlight_style(Style::default().bg(Color::Blue).fg(Color::Black))
+        .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
         .highlight_symbol("▶ ");
 
     // Render table with selection highlight
