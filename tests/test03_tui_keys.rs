@@ -207,6 +207,9 @@ fn rebuild_home_and_end_keys_adjust_scroll_and_auto_follow() {
     assert!(lines.iter().any(|line| line.contains("abcdefghij")));
 
     app::update_with_services(&mut app, Msg::ScrollOutputRight, None);
+    assert!(lines.iter().any(|line| line.contains("abcdefghij")));
+
+    app::update_with_services(&mut app, Msg::ScrollOutputRight, None);
     terminal
         .draw(|f| ui::draw(f, &mut app, &args))
         .expect("draw after right scroll");

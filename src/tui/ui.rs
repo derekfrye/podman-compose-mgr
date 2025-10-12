@@ -294,16 +294,15 @@ fn normalize_line(text: &str, content_width: u16, offset: u16) -> String {
 
 fn legend_lines() -> Vec<Line<'static>> {
     vec![
-        Line::from(vec![styled_key("q", Color::Red), Span::raw(" Quit")]),
         Line::from(vec![styled_key("w", Color::Cyan), Span::raw(" Work queue")]),
-        Line::from(vec![styled_key("j/k", Color::Yellow), Span::raw(" Scroll")]),
+        Line::from(vec![styled_key("↑/↓", Color::Yellow), Span::raw(" Scroll")]),
         Line::from(vec![
-            styled_key("f/b", Color::Yellow),
+            styled_key("PgUp/PgDn", Color::Yellow),
             Span::raw(" Page scroll"),
         ]),
         Line::from(vec![
-            styled_key("h/l", Color::Yellow),
-            Span::raw(" Horizontal"),
+            styled_key("←/→", Color::Yellow),
+            Span::raw(" Pan/Tilt"),
         ]),
         Line::from(vec![
             styled_key("esc", Color::Magenta),
@@ -313,6 +312,7 @@ fn legend_lines() -> Vec<Line<'static>> {
             styled_key("a", Color::Green),
             Span::raw(" Toggle all"),
         ]),
+        Line::from(vec![styled_key("q", Color::Red), Span::raw(" Quit")]),
     ]
 }
 
