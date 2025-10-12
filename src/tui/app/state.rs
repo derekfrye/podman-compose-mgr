@@ -4,6 +4,7 @@ use crate::app::AppCore;
 use crate::domain::DiscoveredImage;
 use crate::utils::log_utils::Logger;
 use crossbeam_channel as xchan;
+use std::cell::Cell;
 use std::collections::VecDeque;
 use std::path::PathBuf;
 
@@ -162,6 +163,7 @@ pub struct RebuildState {
     pub work_queue_selected: usize,
     pub finished: bool,
     pub auto_scroll: bool,
+    pub viewport_height: Cell<u16>,
 }
 
 impl RebuildState {
@@ -175,6 +177,7 @@ impl RebuildState {
             work_queue_selected: 0,
             finished: false,
             auto_scroll: true,
+            viewport_height: Cell::new(0),
         }
     }
 }

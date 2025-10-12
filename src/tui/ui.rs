@@ -163,7 +163,19 @@ fn draw_rebuild_output(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild:
     // Ensure no stale table rows remain when switching from the list view into the rebuild pane.
     frame.render_widget(Clear, area);
 
-    let lines: Vec<Line> = job
+    let content_height = area.height.saturating_sub(2).max(1);
+    rebuild.viewport_height.set(content_height);
+
+    let viewport = usize::from(content_height);
+    let max_start = job.output.len().saturating_sub(viewport);
+    let mut scroll_top = rebuild.scroll_y as usize;
+    if rebuild.auto_scroll {
+        scroll_top = max_start;
+    } else {
+        scroll_top = scroll_top.min(max_start);
+    }
+
+    let mut lines: Vec<Line> = job
         .output
         .iter()
         .map(|entry| match entry.stream {
@@ -175,10 +187,17 @@ fn draw_rebuild_output(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild:
         })
         .collect();
 
-    let paragraph = Paragraph::new(lines)
+    if lines.len() < viewport {
+        lines.resize(viewport, Line::from(""));
+    }
+
+    let start_index = scroll_top.min(max_start);
+    let visible: Vec<Line> = lines.into_iter().skip(start_index).take(viewport).collect();
+
+    let paragraph = Paragraph::new(visible)
         .block(Block::default().title(header).borders(Borders::ALL))
         .wrap(Wrap { trim: false })
-        .scroll((rebuild.scroll_y, rebuild.scroll_x));
+        .scroll((0, rebuild.scroll_x));
 
     frame.render_widget(paragraph, area);
 }

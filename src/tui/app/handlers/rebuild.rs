@@ -86,12 +86,14 @@ fn handle_job_output(app: &mut App, job_idx: usize, chunk: String, stream: Outpu
     if let Some(rebuild) = app.rebuild.as_mut()
         && let Some(job) = rebuild.jobs.get_mut(job_idx)
     {
-        let was_at_bottom = rebuild.scroll_y as usize >= job.output.len().saturating_sub(1);
+        let viewport = usize::from(rebuild.viewport_height.get().max(1));
+        let bottom_threshold = job.output.len().saturating_sub(viewport);
+        let was_at_bottom = (rebuild.scroll_y as usize) >= bottom_threshold;
         match stream {
             OutputStream::Stdout | OutputStream::Stderr => job.push_output(stream, chunk),
         }
         if rebuild.auto_scroll || was_at_bottom {
-            rebuild.scroll_y = clamp_usize_to_u16(job.output.len().saturating_sub(1));
+            rebuild.scroll_y = clamp_usize_to_u16(job.output.len().saturating_sub(viewport));
             rebuild.auto_scroll = true;
         }
     }
@@ -251,7 +253,8 @@ fn adjust_vertical_scroll(app: &mut App, delta: i32) {
         if next < 0 {
             next = 0;
         }
-        let max_scroll = clamp_usize_to_i32(job.output.len().saturating_sub(1));
+        let viewport = usize::from(rebuild.viewport_height.get().max(1));
+        let max_scroll = clamp_usize_to_i32(job.output.len().saturating_sub(viewport));
         if max_scroll >= 0 {
             next = next.min(max_scroll);
         }
@@ -261,7 +264,15 @@ fn adjust_vertical_scroll(app: &mut App, delta: i32) {
 
 fn set_vertical_scroll(app: &mut App, value: u16) {
     if let Some(rebuild) = app.rebuild.as_mut() {
-        rebuild.scroll_y = value;
+        let viewport = usize::from(rebuild.viewport_height.get().max(1));
+        let max_scroll = clamp_usize_to_u16(
+            rebuild
+                .jobs
+                .get(rebuild.active_idx)
+                .map(|job| job.output.len().saturating_sub(viewport))
+                .unwrap_or(0),
+        );
+        rebuild.scroll_y = value.min(max_scroll);
         rebuild.auto_scroll = false;
     }
 }
@@ -270,7 +281,8 @@ fn set_vertical_to_bottom(app: &mut App) {
     if let Some(rebuild) = app.rebuild.as_mut()
         && let Some(job) = rebuild.jobs.get(rebuild.active_idx)
     {
-        let bottom = clamp_usize_to_u16(job.output.len().saturating_sub(1));
+        let viewport = usize::from(rebuild.viewport_height.get().max(1));
+        let bottom = clamp_usize_to_u16(job.output.len().saturating_sub(viewport));
         rebuild.scroll_y = bottom;
         rebuild.auto_scroll = true;
     }
