@@ -8,7 +8,7 @@ use podman_compose_mgr::app::AppCore;
 use podman_compose_mgr::infra::discovery_adapter::FsDiscovery;
 use podman_compose_mgr::infra::podman_adapter::PodmanCli;
 use podman_compose_mgr::tui::app::{
-    self, App, Msg, OutputStream, RebuildJob, RebuildStatus, Services, UiState,
+    self, App, Msg, OutputStream, RebuildJob, RebuildState, RebuildStatus, Services, UiState,
 };
 use podman_compose_mgr::tui::ui;
 use ratatui::Terminal;
@@ -209,6 +209,75 @@ fn tui_rebuild_all_streams_output_and_scrolls_to_top() {
     verify_rebuild_view(&mut ctx, &active_header);
     verify_scroll_down(&mut ctx);
     verify_work_queue_modal(&mut ctx, &job_images);
+}
+
+#[test]
+fn rebuild_output_overwrites_trailing_cells() {
+    let args = Args::default();
+    let mut app = App::new();
+    app.state = UiState::Rebuilding;
+    let mut rebuild = RebuildState::new(vec![RebuildJob::new(
+        "img".into(),
+        Some("container".into()),
+        std::path::PathBuf::from("."),
+        std::path::PathBuf::from("."),
+    )]);
+    rebuild.jobs[0].status = RebuildStatus::Running;
+    app.rebuild = Some(rebuild);
+
+    let backend = TestBackend::new(80, 20);
+    let mut terminal = Terminal::new(backend).expect("terminal");
+
+    let long_chunk = "X".repeat(60);
+    app::update_with_services(
+        &mut app,
+        Msg::RebuildJobOutput {
+            job_idx: 0,
+            chunk: long_chunk,
+            stream: OutputStream::Stdout,
+        },
+        None,
+    );
+    terminal
+        .draw(|f| ui::draw(f, &app, &args))
+        .expect("first draw");
+
+    app::update_with_services(
+        &mut app,
+        Msg::RebuildJobOutput {
+            job_idx: 0,
+            chunk: "short".to_string(),
+            stream: OutputStream::Stdout,
+        },
+        None,
+    );
+    terminal
+        .draw(|f| ui::draw(f, &app, &args))
+        .expect("second draw");
+
+    let buffer = terminal.backend().buffer().clone();
+    let mut rendered_lines = Vec::new();
+    for y in 0..buffer.area.height {
+        let mut line = String::new();
+        for x in 0..buffer.area.width {
+            if let Some(cell) = buffer.cell((x, y)) {
+                line.push_str(cell.symbol());
+            }
+        }
+        rendered_lines.push(line);
+    }
+
+    let short_line = rendered_lines
+        .into_iter()
+        .find(|line| line.contains("short"))
+        .expect("short line present");
+    let short_pos = short_line.find("short").expect("short text located");
+    let right_border = short_line.rfind('│').unwrap_or_else(|| short_line.len());
+    let tail = &short_line[short_pos + "short".len()..right_border];
+    assert!(
+        tail.chars().all(|c| c == ' '),
+        "residual characters detected"
+    );
 }
 
 fn assert_initial_list_view(list_view: &str) {

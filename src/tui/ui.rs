@@ -9,6 +9,7 @@ use ratatui::{
         Wrap,
     },
 };
+use unicode_width::UnicodeWidthStr;
 
 use crate::tui::app::{
     App, ItemRow, ModalState, OutputStream, RebuildState, RebuildStatus, UiState, ViewMode,
@@ -164,6 +165,7 @@ fn draw_rebuild_output(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild:
     frame.render_widget(Clear, area);
 
     let content_height = area.height.saturating_sub(2).max(1);
+    let content_width = area.width.saturating_sub(2);
     rebuild.viewport_height.set(content_height);
 
     let viewport = usize::from(content_height);
@@ -179,9 +181,11 @@ fn draw_rebuild_output(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild:
         .output
         .iter()
         .map(|entry| match entry.stream {
-            OutputStream::Stdout => Line::from(vec![Span::raw(entry.text.clone())]),
+            OutputStream::Stdout => {
+                Line::from(vec![Span::raw(normalize_line(&entry.text, content_width))])
+            }
             OutputStream::Stderr => Line::from(vec![Span::styled(
-                entry.text.clone(),
+                normalize_line(&entry.text, content_width),
                 Style::default().fg(Color::LightRed),
             )]),
         })
@@ -237,6 +241,21 @@ fn draw_rebuild_sidebar(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild
         .wrap(Wrap { trim: false });
 
     frame.render_widget(sidebar, area);
+}
+
+fn normalize_line(text: &str, content_width: u16) -> String {
+    if content_width == 0 {
+        return String::new();
+    }
+
+    let width = content_width as usize;
+    let segment = text.rsplit('\r').next().unwrap_or(text);
+    let mut sanitized = segment.replace('\t', "    ");
+    let display_width = UnicodeWidthStr::width(sanitized.as_str());
+    if display_width < width {
+        sanitized.push_str(&" ".repeat(width - display_width));
+    }
+    sanitized
 }
 
 fn legend_lines() -> Vec<Line<'static>> {
