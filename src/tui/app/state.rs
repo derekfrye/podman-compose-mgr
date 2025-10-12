@@ -163,6 +163,7 @@ pub struct RebuildState {
     pub finished: bool,
     pub auto_scroll: bool,
     pub viewport_height: u16,
+    pub viewport_width: u16,
 }
 
 impl RebuildState {
@@ -177,6 +178,7 @@ impl RebuildState {
             finished: false,
             auto_scroll: true,
             viewport_height: 0,
+            viewport_width: 0,
         }
     }
 }

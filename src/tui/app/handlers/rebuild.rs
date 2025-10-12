@@ -3,6 +3,7 @@ use crate::tui::app::state::{
     App, ModalState, Msg, OutputStream, RebuildJob, RebuildJobSpec, RebuildResult, RebuildState,
     RebuildStatus, Services, UiState,
 };
+use unicode_width::UnicodeWidthChar;
 
 pub fn handle_rebuild_message(app: &mut App, msg: Msg, services: Option<&Services>) {
     match msg {
@@ -289,17 +290,36 @@ fn set_vertical_to_bottom(app: &mut App) {
 }
 
 fn adjust_horizontal_scroll(app: &mut App, delta: i32) {
-    if let Some(rebuild) = app.rebuild.as_mut() {
-        rebuild.auto_scroll = false;
-        let step = (usize::from(rebuild.viewport_height.max(1)) * 2 / 3)
-            .max(1)
-            .min(usize::from(u16::MAX)) as i32;
-        let current = i32::from(rebuild.scroll_x);
-        let mut next = current + delta.signum() * step;
-        if next < 0 {
-            next = 0;
+    if let Some(rebuild) = app.rebuild.as_mut()
+        && let Some(job) = rebuild.jobs.get(rebuild.active_idx)
+    {
+        let viewport = usize::from(rebuild.viewport_width.max(1));
+        let max_line_width = job
+            .output
+            .iter()
+            .map(|entry| line_display_width(&entry.text))
+            .max()
+            .unwrap_or(0);
+        let max_offset = max_line_width.saturating_sub(viewport);
+
+        if max_offset == 0 {
+            rebuild.scroll_x = 0;
+            rebuild.auto_scroll = false;
+            return;
         }
-        rebuild.scroll_x = clamp_i32_to_u16(next.min(5000));
+
+        let step = (viewport * 2 / 3).max(1);
+        let current = usize::from(rebuild.scroll_x);
+        let mut next = if delta >= 0 {
+            current.saturating_add(step)
+        } else {
+            current.saturating_sub(step)
+        };
+        if delta >= 0 {
+            next = next.min(max_offset);
+        }
+        rebuild.scroll_x = clamp_usize_to_u16(next);
+        rebuild.auto_scroll = false;
     }
 }
 
@@ -314,4 +334,13 @@ fn clamp_usize_to_i32(value: usize) -> i32 {
 fn clamp_i32_to_u16(value: i32) -> u16 {
     let non_negative = value.max(0);
     u16::try_from(non_negative).unwrap_or(u16::MAX)
+}
+
+fn line_display_width(text: &str) -> usize {
+    let segment = text.rsplit('\r').next().unwrap_or(text);
+    segment
+        .replace('\t', "    ")
+        .chars()
+        .map(|ch| UnicodeWidthChar::width(ch).unwrap_or(0))
+        .sum()
 }

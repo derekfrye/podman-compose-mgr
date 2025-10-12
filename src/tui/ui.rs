@@ -171,6 +171,7 @@ fn draw_rebuild_output(
     let content_height = area.height.saturating_sub(2).max(1);
     let content_width = area.width.saturating_sub(2);
     rebuild.viewport_height = content_height;
+    rebuild.viewport_width = content_width;
 
     let viewport = usize::from(content_height);
     let max_start = job.output.len().saturating_sub(viewport);
