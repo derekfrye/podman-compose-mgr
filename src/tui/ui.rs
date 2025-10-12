@@ -9,13 +9,13 @@ use ratatui::{
         Wrap,
     },
 };
-use unicode_width::UnicodeWidthStr;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::tui::app::{
     App, ItemRow, ModalState, OutputStream, RebuildState, RebuildStatus, UiState, ViewMode,
 };
 
-pub fn draw(frame: &mut Frame, app: &App, args: &Args) {
+pub fn draw(frame: &mut Frame, app: &mut App, args: &Args) {
     // Layout: title | main (draw help as overlay later)
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -131,8 +131,8 @@ fn draw_table(frame: &mut Frame, area: ratatui::prelude::Rect, app: &App) {
     frame.render_stateful_widget(table, area, &mut state);
 }
 
-fn draw_rebuild(frame: &mut Frame, area: ratatui::prelude::Rect, app: &App) {
-    let Some(rebuild) = &app.rebuild else {
+fn draw_rebuild(frame: &mut Frame, area: ratatui::prelude::Rect, app: &mut App) {
+    let Some(rebuild) = app.rebuild.as_mut() else {
         let empty = Paragraph::new("No rebuild jobs queued")
             .block(Block::default().title("Rebuild").borders(Borders::ALL));
         frame.render_widget(empty, area);
@@ -148,7 +148,7 @@ fn draw_rebuild(frame: &mut Frame, area: ratatui::prelude::Rect, app: &App) {
     draw_rebuild_sidebar(frame, pane[1], rebuild);
 }
 
-fn draw_rebuild_output(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild: &RebuildState) {
+fn draw_rebuild_output(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild: &mut RebuildState) {
     let Some(job) = rebuild.jobs.get(rebuild.active_idx) else {
         let empty = Paragraph::new("Waiting for jobs...")
             .block(Block::default().title("Output").borders(Borders::ALL));
@@ -166,7 +166,7 @@ fn draw_rebuild_output(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild:
 
     let content_height = area.height.saturating_sub(2).max(1);
     let content_width = area.width.saturating_sub(2);
-    rebuild.viewport_height.set(content_height);
+    rebuild.viewport_height = content_height;
 
     let viewport = usize::from(content_height);
     let max_start = job.output.len().saturating_sub(viewport);
@@ -176,6 +176,7 @@ fn draw_rebuild_output(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild:
     } else {
         scroll_top = scroll_top.min(max_start);
     }
+    rebuild.scroll_y = u16::try_from(scroll_top).unwrap_or(u16::MAX);
 
     let mut lines: Vec<Line> = job
         .output
@@ -192,7 +193,12 @@ fn draw_rebuild_output(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild:
         .collect();
 
     if lines.len() < viewport {
-        lines.resize(viewport, Line::from(""));
+        let pad = if content_width == 0 {
+            String::new()
+        } else {
+            " ".repeat(content_width as usize)
+        };
+        lines.resize_with(viewport, || Line::from(pad.clone()));
     }
 
     let start_index = scroll_top.min(max_start);
@@ -243,6 +249,8 @@ fn draw_rebuild_sidebar(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild
     frame.render_widget(sidebar, area);
 }
 
+// TODO: i don't love that we have to strip chars to fix screen tear
+//       but i couldn't find a way to get rid of them in the source output
 fn normalize_line(text: &str, content_width: u16) -> String {
     if content_width == 0 {
         return String::new();
@@ -250,12 +258,21 @@ fn normalize_line(text: &str, content_width: u16) -> String {
 
     let width = content_width as usize;
     let segment = text.rsplit('\r').next().unwrap_or(text);
-    let mut sanitized = segment.replace('\t', "    ");
-    let display_width = UnicodeWidthStr::width(sanitized.as_str());
-    if display_width < width {
-        sanitized.push_str(&" ".repeat(width - display_width));
+    let expanded = segment.replace('\t', "    ");
+    let mut truncated = String::new();
+    let mut current_width = 0usize;
+    for ch in expanded.chars() {
+        let ch_width = UnicodeWidthChar::width(ch).unwrap_or(0);
+        if current_width + ch_width > width {
+            break;
+        }
+        truncated.push(ch);
+        current_width += ch_width;
     }
-    sanitized
+    if current_width < width {
+        truncated.push_str(&" ".repeat(width - current_width));
+    }
+    truncated
 }
 
 fn legend_lines() -> Vec<Line<'static>> {

@@ -38,7 +38,9 @@ fn keys_overlay_is_drawn_with_labels() {
     // Render at a reasonable size
     let backend = TestBackend::new(100, 12);
     let mut terminal = Terminal::new(backend).expect("terminal");
-    terminal.draw(|f| ui::draw(f, &app, &args)).expect("draw");
+    terminal
+        .draw(|f| ui::draw(f, &mut app, &args))
+        .expect("draw");
 
     // Flatten buffer
     let buf = terminal.backend_mut().buffer().clone();

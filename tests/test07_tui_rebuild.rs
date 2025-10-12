@@ -153,7 +153,7 @@ impl TestContext {
 
     fn capture_view(&mut self) -> (Buffer, String) {
         self.terminal
-            .draw(|f| ui::draw(f, &self.app, &self.args))
+            .draw(|f| ui::draw(f, &mut self.app, &self.args))
             .expect("draw view");
         let buffer = self.terminal.backend().buffer().clone();
         let view = self.buffer_to_string(&buffer);
@@ -239,7 +239,7 @@ fn rebuild_output_overwrites_trailing_cells() {
         None,
     );
     terminal
-        .draw(|f| ui::draw(f, &app, &args))
+        .draw(|f| ui::draw(f, &mut app, &args))
         .expect("first draw");
 
     app::update_with_services(
@@ -252,7 +252,7 @@ fn rebuild_output_overwrites_trailing_cells() {
         None,
     );
     terminal
-        .draw(|f| ui::draw(f, &app, &args))
+        .draw(|f| ui::draw(f, &mut app, &args))
         .expect("second draw");
 
     let buffer = terminal.backend().buffer().clone();

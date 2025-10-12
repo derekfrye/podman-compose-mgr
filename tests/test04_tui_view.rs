@@ -74,7 +74,7 @@ fn change_view_to_by_image_dedupes_images() {
     let backend = TestBackend::new(100, 24);
     let mut terminal = Terminal::new(backend).expect("terminal");
     terminal
-        .draw(|f| ui::draw(f, &app, &args))
+        .draw(|f| ui::draw(f, &mut app, &args))
         .expect("draw by-image view");
     let buffer = terminal.backend_mut().buffer().clone();
     let mut rendered = String::new();

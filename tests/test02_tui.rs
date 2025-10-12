@@ -108,7 +108,9 @@ fn ui_snapshot_renders_table_with_rows() {
     let height: u16 = 10;
     let backend = TestBackend::new(width, height);
     let mut terminal = Terminal::new(backend).expect("terminal");
-    terminal.draw(|f| ui::draw(f, &app, &args)).expect("draw");
+    terminal
+        .draw(|f| ui::draw(f, &mut app, &args))
+        .expect("draw");
 
     // Access buffer
     let buf = terminal.backend_mut().buffer().clone();
