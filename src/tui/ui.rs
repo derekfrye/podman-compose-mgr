@@ -186,11 +186,13 @@ fn draw_rebuild_output(
         .output
         .iter()
         .map(|entry| match entry.stream {
-            OutputStream::Stdout => {
-                Line::from(vec![Span::raw(normalize_line(&entry.text, content_width))])
-            }
+            OutputStream::Stdout => Line::from(vec![Span::raw(normalize_line(
+                &entry.text,
+                content_width,
+                rebuild.scroll_x,
+            ))]),
             OutputStream::Stderr => Line::from(vec![Span::styled(
-                normalize_line(&entry.text, content_width),
+                normalize_line(&entry.text, content_width, rebuild.scroll_x),
                 Style::default().fg(Color::LightRed),
             )]),
         })
@@ -211,7 +213,7 @@ fn draw_rebuild_output(
     let paragraph = Paragraph::new(visible)
         .block(Block::default().title(header).borders(Borders::ALL))
         .wrap(Wrap { trim: false })
-        .scroll((0, rebuild.scroll_x));
+        .scroll((0, 0));
 
     frame.render_widget(paragraph, area);
 }
@@ -255,7 +257,7 @@ fn draw_rebuild_sidebar(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild
 
 // TODO: i don't love that we have to strip chars to fix screen tear
 //       but i couldn't find a way to get rid of them in the source output
-fn normalize_line(text: &str, content_width: u16) -> String {
+fn normalize_line(text: &str, content_width: u16, offset: u16) -> String {
     if content_width == 0 {
         return String::new();
     }
@@ -265,8 +267,19 @@ fn normalize_line(text: &str, content_width: u16) -> String {
     let expanded = segment.replace('\t', "    ");
     let mut truncated = String::new();
     let mut current_width = 0usize;
+    let mut skipped = 0usize;
+    let target_skip = offset as usize;
+
     for ch in expanded.chars() {
         let ch_width = UnicodeWidthChar::width(ch).unwrap_or(0);
+        if skipped + ch_width <= target_skip {
+            skipped += ch_width;
+            continue;
+        }
+        if skipped < target_skip {
+            skipped = target_skip;
+            continue;
+        }
         if current_width + ch_width > width {
             break;
         }

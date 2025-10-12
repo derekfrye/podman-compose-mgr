@@ -1,9 +1,12 @@
 use crossterm::event::KeyCode;
 use podman_compose_mgr::Args;
-use podman_compose_mgr::tui::app::{App, ItemRow, Msg, UiState};
+use podman_compose_mgr::tui::app::{
+    self, App, ItemRow, Msg, OutputStream, RebuildJob, RebuildState, RebuildStatus, UiState,
+};
 use podman_compose_mgr::tui::ui;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
+use std::path::PathBuf;
 
 #[test]
 fn keys_overlay_is_drawn_with_labels() {
@@ -139,4 +142,89 @@ fn page_navigation_moves_by_screenful() {
         app.rows.len() - 1,
         "page down at end clamps to final row"
     );
+}
+
+#[test]
+fn rebuild_home_and_end_keys_adjust_scroll_and_auto_follow() {
+    let args = Args::default();
+    let mut app = App::new();
+    app.state = UiState::Rebuilding;
+
+    let mut job = RebuildJob::new(
+        "img".into(),
+        Some("container".into()),
+        PathBuf::from("."),
+        PathBuf::from("."),
+    );
+    for _ in 0..20 {
+        job.push_output(OutputStream::Stdout, "abcdefghij".into());
+    }
+    job.status = RebuildStatus::Running;
+
+    let mut rebuild = RebuildState::new(vec![job]);
+    rebuild.auto_scroll = false;
+    rebuild.scroll_y = 0;
+    rebuild.viewport_height = 0;
+    app.rebuild = Some(rebuild);
+
+    let backend = TestBackend::new(60, 20);
+    let mut terminal = Terminal::new(backend).expect("terminal");
+    terminal
+        .draw(|f| ui::draw(f, &mut app, &args))
+        .expect("initial draw");
+
+    let rebuild = app.rebuild.as_mut().expect("rebuild state");
+    rebuild.auto_scroll = false;
+    rebuild.scroll_y = 0;
+
+    app::update_with_services(&mut app, Msg::ScrollOutputTop, None);
+    let rebuild = app.rebuild.as_ref().expect("rebuild state");
+    assert_eq!(rebuild.scroll_y, 0);
+    assert!(!rebuild.auto_scroll, "home should disable auto-follow");
+
+    app::update_with_services(&mut app, Msg::ScrollOutputBottom, None);
+    let rebuild = app.rebuild.as_ref().expect("rebuild state");
+    let viewport = rebuild.viewport_height as usize;
+    let expected = rebuild.jobs[0].output.len().saturating_sub(viewport);
+    assert_eq!(rebuild.scroll_y as usize, expected);
+    assert!(rebuild.auto_scroll, "end should re-enable auto-follow");
+
+    terminal
+        .draw(|f| ui::draw(f, &mut app, &args))
+        .expect("draw after end");
+
+    let buffer = terminal.backend().buffer().clone();
+    let mut lines: Vec<String> = Vec::new();
+    for y in 0..buffer.area.height {
+        let mut line = String::new();
+        for x in 0..buffer.area.width {
+            if let Some(cell) = buffer.cell((x, y)) {
+                line.push_str(cell.symbol());
+            }
+        }
+        lines.push(line);
+    }
+    assert!(lines.iter().any(|line| line.contains("abcdefghij")));
+
+    app::update_with_services(&mut app, Msg::ScrollOutputRight, None);
+    terminal
+        .draw(|f| ui::draw(f, &mut app, &args))
+        .expect("draw after right scroll");
+
+    let buffer = terminal.backend().buffer().clone();
+    let mut lines_after = Vec::new();
+    for y in 0..buffer.area.height {
+        let mut line = String::new();
+        for x in 0..buffer.area.width {
+            if let Some(cell) = buffer.cell((x, y)) {
+                line.push_str(cell.symbol());
+            }
+        }
+        lines_after.push(line);
+    }
+    let content_line = lines_after
+        .iter()
+        .find(|line| line.contains("efghij"))
+        .expect("scrolled line present");
+    assert!(!content_line.contains("abcd"));
 }
