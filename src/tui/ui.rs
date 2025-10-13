@@ -166,9 +166,41 @@ fn draw_rebuild_output(
 
     // Ensure no stale table rows remain when switching from the list view into the rebuild pane.
     frame.render_widget(Clear, area);
+    let block = Block::default().title(header).borders(Borders::ALL);
+    let inner_area = block.inner(area);
+    frame.render_widget(block, area);
 
-    let content_height = area.height.saturating_sub(2).max(1);
-    let content_width = area.width.saturating_sub(2);
+    if inner_area.width == 0 || inner_area.height == 0 {
+        return;
+    }
+
+    let total_lines = job.output.len().max(1);
+    let line_digits = count_digits(total_lines).max(3);
+    let mut gutter_width = (line_digits + 1) as u16;
+    if gutter_width >= inner_area.width {
+        gutter_width = line_digits as u16;
+        if gutter_width >= inner_area.width {
+            gutter_width = 0;
+        }
+    }
+
+    let mut text_area = inner_area;
+    let mut number_area = None;
+    if gutter_width > 0 {
+        let split = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Length(gutter_width), Constraint::Min(1)])
+            .split(inner_area);
+        number_area = Some(split[0]);
+        text_area = split[1];
+    }
+
+    if text_area.width == 0 || text_area.height == 0 {
+        return;
+    }
+
+    let content_height = text_area.height.max(1);
+    let content_width = text_area.width;
     rebuild.viewport_height = content_height;
     rebuild.viewport_width = content_width;
 
@@ -208,11 +240,43 @@ fn draw_rebuild_output(
     let start_index = scroll_top.min(max_start);
     let visible: Vec<Line> = lines.into_iter().skip(start_index).take(viewport).collect();
 
-    let paragraph = Paragraph::new(visible)
-        .block(Block::default().title(header).borders(Borders::ALL))
-        .scroll((0, rebuild.scroll_x));
+    if let Some(number_area) = number_area {
+        let separator = if gutter_width > line_digits as u16 {
+            " "
+        } else {
+            ""
+        };
+        let blank_label = format!(
+            "{:>width$}{separator}",
+            "",
+            width = line_digits,
+            separator = separator
+        );
+        let mut number_lines: Vec<Line> = Vec::with_capacity(visible.len());
+        for (offset, _) in visible.iter().enumerate() {
+            let idx = start_index + offset;
+            let label = if idx < job.output.len() {
+                format!(
+                    "{:>width$}{separator}",
+                    idx + 1,
+                    width = line_digits,
+                    separator = separator
+                )
+            } else {
+                blank_label.clone()
+            };
+            number_lines.push(Line::from(vec![Span::styled(
+                label,
+                Style::default().fg(Color::DarkGray),
+            )]));
+        }
+        let gutter = Paragraph::new(number_lines);
+        frame.render_widget(gutter, number_area);
+    }
 
-    frame.render_widget(paragraph, area);
+    let paragraph = Paragraph::new(visible).scroll((0, rebuild.scroll_x));
+
+    frame.render_widget(paragraph, text_area);
 }
 
 fn draw_rebuild_sidebar(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild: &RebuildState) {
@@ -260,6 +324,15 @@ fn normalize_line(text: &str, _content_width: u16) -> String {
     expanded
 }
 
+fn count_digits(mut n: usize) -> usize {
+    let mut digits = 1;
+    while n >= 10 {
+        n /= 10;
+        digits += 1;
+    }
+    digits
+}
+
 fn legend_lines() -> Vec<Line<'static>> {
     vec![
         Line::from(vec![styled_key("w", Color::Cyan), Span::raw(" Work queue")]),
@@ -283,10 +356,6 @@ fn legend_lines() -> Vec<Line<'static>> {
         Line::from(vec![
             styled_key("esc", Color::Magenta),
             Span::raw(" Back to list"),
-        ]),
-        Line::from(vec![
-            styled_key("a", Color::Green),
-            Span::raw(" Toggle all"),
         ]),
         Line::from(vec![styled_key("q", Color::Red), Span::raw(" Quit")]),
     ]
