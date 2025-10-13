@@ -336,10 +336,9 @@ fn count_digits(mut n: usize) -> usize {
 fn legend_lines() -> Vec<Line<'static>> {
     vec![
         Line::from(vec![styled_key("w", Color::Cyan), Span::raw(" Work queue")]),
-        Line::from(vec![styled_key("↑/↓", Color::Yellow), Span::raw(" Scroll")]),
         Line::from(vec![
-            styled_key("←/→", Color::Yellow),
-            Span::raw(" Pan/Tilt"),
+            styled_key("↑/↓/←/→", Color::Yellow),
+            Span::raw(" Scroll"),
         ]),
         Line::from(vec![
             styled_key("PgUp/PgDn", Color::Yellow),
