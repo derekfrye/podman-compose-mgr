@@ -3,6 +3,11 @@
 ## selectable text in the rebuild view
 Using a mouse and trying to highlight lines within rebuild view doesn't seem to work. We don't need line numbers to be copyable, just the visible text within the buffer log that a user selects with their mouse. Should be able to select any number of lines currently viewable (we don't have to support "mouse up" or "mouse down" to scroll the buffer, we just need to highlight lines selected based on the mouse getting dragged over the visisble lines). If we can ideally let it select for copy *all* the text lines selected, including the text that might not be visibile to user because it's to the right and user can't see it unless scrolling over, that would be excellent. I am not sure if that last sentence will be possible. 
 
+### Notes (2025-02-14)
+- Quick win: drop the global `EnableMouseCapture` in the TUI runner so terminals regain native text selection. That immediately lets users drag-copy anything on screen, at the cost of picking up the gutter line numbers and legend when they sit on the same terminal rows.
+- Custom solution: keep mouse capture, plumb pointer events through `App` state, add selection rendering for the rebuild pane and legend, and push the chosen text to the clipboard with a crate like `arboard`/`copypasta`. This limits selection to the relevant panes but is a sizeable feature (new state machine, rendering tweaks, clipboard integration, platform quirks).
+- Decision: pursue the disable-mouse-capture approach first to unblock copying with minimal work, and revisit custom selection only if mixed-pane copies become a real pain point.
+
 ## greppable text in the rebuild view
 We should support `/` and `?` to search through the buffer, highlighting matches. And it should support regex.
 

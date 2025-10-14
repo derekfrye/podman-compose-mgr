@@ -6,7 +6,7 @@ use crate::ports::InterruptPort;
 use crate::utils::log_utils::Logger;
 use crossbeam_channel as xchan;
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture, Event},
+    event::Event,
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -64,7 +64,7 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
 fn setup_terminal() -> io::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     Terminal::new(backend)
 }
@@ -134,11 +134,7 @@ pub fn run_loop<B: Backend>(
 
 fn cleanup_terminal<B: Backend + std::io::Write>(terminal: &mut Terminal<B>) -> io::Result<()> {
     disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
     Ok(())
 }
