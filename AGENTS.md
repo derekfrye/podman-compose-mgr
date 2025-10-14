@@ -1,31 +1,39 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `src/` — Rust sources. Entrypoint `main.rs`; library in `lib.rs`.
-  - `args/` (CLI parsing/validation), `utils/` (logging, paths, podman helpers), `walk_dirs.rs`, `image_build/`, `tui/`.
-- `tests/` — integration tests (spawn the binary, OS‑specific behavior). Example: `tests/test1_walk_dirs_varying_term_size.rs`.
-- `doc/README.md` — user docs; `scripts/` — utility scripts; `.trunk/` — lint/format config.
+- `src/` — Rust sources. Entrypoint `main.rs`; reusable library items in `lib.rs`.
+  - `app/`, `cli_mvu/`, and `mvu/` — MVU state machine, CLI-specific shell, and shared MVU primitives.
+  - `args/` — CLI argument parsing and validation helpers.
+  - `domain/`, `infra/`, `ports.rs`, `interfaces.rs` — Domain abstractions plus adapters for Podman, filesystem, and time services.
+  - `image_build/` — Build command orchestration and job queue logic.
+  - `read_interactive_input/` — Facilities for prompting the user outside the TUI.
+  - `testing/` — Test fixtures and utilities reusable across unit and integration tests.
+  - `tui/` — Terminal UI components.
+  - `utils/` and `walk_dirs.rs` — Logging, path helpers, Podman command wrappers, and directory traversal.
+- `tests/` — Integration tests that spawn the binary. Current focus is on TUI flows (`tests/test02_tui.rs`–`tests/test20_cli_prompt_format.rs`) with supporting fixtures in sibling directories (e.g., `tests/test07/`, `tests/test9/`).
+- `docs/` — User and architecture documentation (`docs/README.md`, `docs/MVU.md`, `docs/TODO.md`).
+- `mock_podman/` — Test doubles for Podman interactions.
+- `target/` — Cargo build output (ignored by git).
 
 ## Build, Test, and Development Commands
 - Build: `cargo build` (debug) or `cargo build --release`.
 - Run: `cargo run -- --help` or e.g. `cargo run -- --path ~/docker -e "docker/archive" --build-args USERNAME=$(id -un)`.
-- Test: `cargo test` (use `-- --nocapture` to see stdout). CI/PRs should pass build, tests, clippy, and fmt.
-- Lint/Format: `cargo fmt --all` and `cargo clippy -- -D warnings`. If you use Trunk, `trunk check` matches `.trunk/trunk.yaml`.
+- Test: `cargo test` or `cargo nextest run` (use `-- --nocapture` to see stdout). CI/PRs must pass build, tests, `cargo clippy -- -D warnings`, and `cargo fmt --all`.
 
 ## Coding Style & Naming Conventions
-- Rust 2024 edition. Use rustfmt defaults (4‑space indent). Run `cargo fmt --all` before committing.
+- Rust 2024 edition. Use rustfmt defaults (4-space indent). Always run `cargo fmt --all` before committing.
 - Naming: modules/files `snake_case`; types/traits `UpperCamelCase`; functions/vars `snake_case`; constants `SCREAMING_SNAKE_CASE`.
-- Keep modules cohesive (follow existing layout under `src/`); prefer `Result<T, E>` and error types in `errors.rs`/`thiserror`.
+- Keep modules cohesive and prefer expressing cross-module contracts via traits in `interfaces.rs`/`ports.rs`. Use `Result<T, E>` with error types from `errors.rs` or `thiserror`.
 
 ## Testing Guidelines
-- Framework: standard Cargo tests. Prefer integration tests in `tests/` for CLI flows; unit tests inline with `#[cfg(test)]` when practical.
-- Naming: descriptive filenames like `testNN_description.rs` (see existing `test11_ctrlc.rs`).
-- Platform notes: some tests simulate Ctrl+C and spawn the binary; ensure they run non‑interactively. Windows paths are gated via dev‑deps.
+- Use standard Cargo tests. Integration tests in `tests/` exercise CLI/TUI behavior by spawning the binary and simulating user input. Add unit tests inline with `#[cfg(test)]` when practical.
+- Follow existing naming (`testNN_description.rs`) and reuse fixtures in `tests/` subdirectories or `src/testing/`.
+- Tests should run non-interactively on Linux/macOS; gate Windows-specific paths with conditional compilation if needed.
 
 ## Commit & Pull Request Guidelines
-- Commits: small, focused, imperative subject (e.g., "split up a large file", "fmt", "bump version").
-- PRs: include what/why, notable design choices, and any behavioral changes. Link issues. Include sample commands/output or screenshots for TUI changes.
+- Commits: small, focused, imperative subject lines (e.g., "refine tui rebuild queue", "fmt").
+- PRs: describe what/why, highlight notable design choices or behavioral changes, and link issues. Include sample commands/output or screenshots for TUI changes.
 - Required: build, tests, clippy, and fmt must pass; avoid introducing new warnings.
 
 ## Security & Configuration Tips
-- Runtime expects Podman available on PATH; commands shell out to `podman`. Developing on Linux/macOS is recommended; Windows is supported via conditional deps.
+- Runtime expects Podman on the `PATH`; commands shell out to `podman`. Developing on Linux/macOS is recommended; Windows support exists via conditional dependencies.
