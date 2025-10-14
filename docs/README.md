@@ -9,6 +9,7 @@ This program helps manage a directory tree containing `docker-compose.yml` and `
 -   **Custom Build Arguments**: Pass build arguments to `podman build`.
 -   **TUI Mode**: An optional terminal UI for a more visual experience.
 -   **Queue Rebuilds**: Manage rebuild jobs from the TUI, including an option to auto-queue everything on launch.
+-   **Regex Search in Rebuild Output**: Hit `/` or `?` to launch live regex search and use `n/N` to jump between matches while the build runs.
 -   **Custom Podman Path**: Point the tool at an alternate Podman binary when needed.
 
 ## Documentation

@@ -27,10 +27,29 @@ pub fn map_keycode_to_msg(app: &App, key: KeyCode) -> Option<Msg> {
                 KeyCode::Enter => Msg::WorkQueueSelect,
                 _ => return None,
             }),
+            ModalState::ExportLog { .. } => Some(match key {
+                KeyCode::Esc => Msg::ExportCancel,
+                KeyCode::Enter => Msg::ExportSubmit,
+                KeyCode::Backspace => Msg::ExportBackspace,
+                KeyCode::Char(ch) if !ch.is_control() => Msg::ExportInput(ch),
+                _ => return None,
+            }),
         };
     }
 
     if matches!(app.state, super::state::UiState::Rebuilding) {
+        if let Some(rebuild) = app.rebuild.as_ref()
+            && let Some(search) = rebuild.search.as_ref()
+            && search.editing
+        {
+            return Some(match key {
+                KeyCode::Esc => Msg::SearchCancel,
+                KeyCode::Enter => Msg::SearchSubmit,
+                KeyCode::Backspace => Msg::SearchBackspace,
+                KeyCode::Char(ch) => Msg::SearchInput(ch),
+                _ => return None,
+            });
+        }
         return Some(match key {
             KeyCode::Up => Msg::ScrollOutputUp,
             KeyCode::Down => Msg::ScrollOutputDown,
@@ -43,7 +62,12 @@ pub fn map_keycode_to_msg(app: &App, key: KeyCode) -> Option<Msg> {
             KeyCode::Char('g') => Msg::ScrollOutputTop,
             KeyCode::End => Msg::ScrollOutputBottom,
             KeyCode::Char('G') => Msg::ScrollOutputBottom,
+            KeyCode::Char('/') => Msg::StartSearchForward,
+            KeyCode::Char('?') => Msg::StartSearchBackward,
+            KeyCode::Char('n') => Msg::SearchNext,
+            KeyCode::Char('N') => Msg::SearchPrev,
             KeyCode::Char('w') => Msg::OpenWorkQueue,
+            KeyCode::Char('e') | KeyCode::Char('E') => Msg::OpenExportLog,
             KeyCode::Char('q') | KeyCode::Char('Q') => Msg::Quit,
             KeyCode::Esc => Msg::ExitRebuild,
             _ => return None,

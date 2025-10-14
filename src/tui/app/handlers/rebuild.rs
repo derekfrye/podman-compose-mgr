@@ -1,9 +1,14 @@
 use super::rebuild_worker::spawn_rebuild_thread;
 use crate::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT;
+use crate::tui::app::search::{SearchDirection, SearchState};
 use crate::tui::app::state::{
     App, ModalState, Msg, OutputStream, RebuildJob, RebuildJobSpec, RebuildResult, RebuildState,
     RebuildStatus, Services, UiState,
 };
+use chrono::Local;
+use std::fs::File;
+use std::io::Write;
+use std::path::{Component, Path};
 use unicode_width::UnicodeWidthChar;
 
 pub fn handle_rebuild_message(app: &mut App, msg: Msg, services: Option<&Services>) {
@@ -34,6 +39,19 @@ pub fn handle_rebuild_message(app: &mut App, msg: Msg, services: Option<&Service
         | Msg::ScrollOutputBottom
         | Msg::ScrollOutputLeft
         | Msg::ScrollOutputRight => handle_scroll_message(app, &msg),
+        Msg::OpenExportLog => handle_open_export_log(app),
+        Msg::ExportInput(ch) => handle_export_input(app, ch),
+        Msg::ExportBackspace => handle_export_backspace(app),
+        Msg::ExportCancel => handle_export_cancel(app),
+        Msg::ExportSubmit => handle_export_submit(app, services),
+        Msg::StartSearchForward => handle_search_start(app, SearchDirection::Forward),
+        Msg::StartSearchBackward => handle_search_start(app, SearchDirection::Backward),
+        Msg::SearchInput(ch) => handle_search_input(app, ch),
+        Msg::SearchBackspace => handle_search_backspace(app),
+        Msg::SearchSubmit => handle_search_submit(app),
+        Msg::SearchCancel => handle_search_cancel(app),
+        Msg::SearchNext => handle_search_next(app),
+        Msg::SearchPrev => handle_search_prev(app),
         Msg::ExitRebuild => handle_exit_rebuild(app),
         _ => {}
     }
@@ -84,6 +102,7 @@ fn handle_job_started(app: &mut App, job_idx: usize) {
         rebuild.scroll_y = 0;
         rebuild.scroll_x = 0;
         rebuild.auto_scroll = true;
+        refresh_search_for_active_job(rebuild);
     }
 }
 
@@ -103,6 +122,7 @@ fn handle_job_output(app: &mut App, job_idx: usize, chunk: String, stream: Outpu
             rebuild.scroll_y = clamp_usize_to_u16(job.output.len().saturating_sub(viewport));
             rebuild.auto_scroll = true;
         }
+        refresh_search_for_active_job(rebuild);
     }
 }
 
@@ -118,6 +138,7 @@ fn handle_job_finished(app: &mut App, job_idx: usize, result: RebuildResult) {
             }
             RebuildResult::Cancelled => job.status = RebuildStatus::Failed,
         }
+        refresh_search_for_active_job(rebuild);
     }
 }
 
@@ -198,6 +219,7 @@ fn handle_work_queue_select(app: &mut App) {
         rebuild.scroll_y = 0;
         rebuild.scroll_x = 0;
         rebuild.auto_scroll = true;
+        refresh_search_for_active_job(rebuild);
     }
     app.modal = None;
 }
@@ -248,6 +270,209 @@ fn handle_scroll_message(app: &mut App, msg: &Msg) {
         Msg::ScrollOutputRight => adjust_horizontal_scroll(app, 4),
         _ => {}
     }
+}
+
+fn handle_search_start(app: &mut App, direction: SearchDirection) {
+    if app.state != UiState::Rebuilding {
+        return;
+    }
+    let Some(rebuild) = app.rebuild.as_mut() else {
+        return;
+    };
+    let search = rebuild
+        .search
+        .get_or_insert_with(|| SearchState::new(direction));
+    search.set_direction(direction);
+    search.editing = true;
+    search.error = None;
+    if search.has_query() {
+        if let Some(job) = rebuild.jobs.get(rebuild.active_idx) {
+            let baseline = usize::from(rebuild.scroll_y);
+            search.recompute_matches(job, baseline);
+        }
+    } else {
+        search.clear_results();
+    }
+}
+
+fn handle_search_input(app: &mut App, ch: char) {
+    if app.state != UiState::Rebuilding || ch.is_control() {
+        return;
+    }
+    let Some(rebuild) = app.rebuild.as_mut() else {
+        return;
+    };
+    let Some(search) = rebuild.search.as_mut() else {
+        return;
+    };
+    if !search.editing {
+        return;
+    }
+    search.push_char(ch);
+    search.error = None;
+    if let Some(job) = rebuild.jobs.get(rebuild.active_idx) {
+        let baseline = usize::from(rebuild.scroll_y);
+        search.recompute_matches(job, baseline);
+    }
+}
+
+fn handle_search_backspace(app: &mut App) {
+    if app.state != UiState::Rebuilding {
+        return;
+    }
+    let Some(rebuild) = app.rebuild.as_mut() else {
+        return;
+    };
+    let Some(search) = rebuild.search.as_mut() else {
+        return;
+    };
+    if !search.editing {
+        return;
+    }
+    search.pop_char();
+    search.error = None;
+    if let Some(job) = rebuild.jobs.get(rebuild.active_idx) {
+        let baseline = usize::from(rebuild.scroll_y);
+        search.recompute_matches(job, baseline);
+    } else {
+        search.clear_results();
+    }
+}
+
+fn handle_search_submit(app: &mut App) {
+    if app.state != UiState::Rebuilding {
+        return;
+    }
+    let Some(rebuild) = app.rebuild.as_mut() else {
+        return;
+    };
+    let mut focus_result = false;
+    let mut drop_search = false;
+
+    if let Some(search) = rebuild.search.as_mut() {
+        if !search.editing {
+            focus_result = search.active.is_some();
+        } else if search.query.is_empty() {
+            drop_search = true;
+        } else if let Some(job) = rebuild.jobs.get(rebuild.active_idx) {
+            let baseline = usize::from(rebuild.scroll_y);
+            search.recompute_matches(job, baseline);
+            if search.error.is_none() {
+                search.editing = false;
+                if search.active.is_none() && !search.matches.is_empty() {
+                    search.active = Some(0);
+                }
+                focus_result = true;
+            }
+        }
+    }
+
+    if drop_search {
+        rebuild.search = None;
+    } else if focus_result {
+        focus_on_active_search_match(rebuild);
+    }
+}
+
+fn handle_search_cancel(app: &mut App) {
+    if app.state != UiState::Rebuilding {
+        return;
+    }
+    let Some(rebuild) = app.rebuild.as_mut() else {
+        return;
+    };
+    let mut remove = false;
+    if let Some(search) = rebuild.search.as_mut() {
+        if search.editing {
+            if search.has_query() && search.regex.is_some() {
+                search.editing = false;
+                search.error = None;
+            } else {
+                remove = true;
+            }
+        } else {
+            remove = true;
+        }
+    }
+    if remove {
+        rebuild.search = None;
+    }
+}
+
+fn handle_search_next(app: &mut App) {
+    if app.state != UiState::Rebuilding {
+        return;
+    }
+    let Some(rebuild) = app.rebuild.as_mut() else {
+        return;
+    };
+    let mut focus = false;
+    if let Some(search) = rebuild.search.as_mut() {
+        if search.editing || search.matches.is_empty() {
+            return;
+        }
+        search.set_direction(SearchDirection::Forward);
+        search.advance_next();
+        focus = true;
+    }
+    if focus {
+        focus_on_active_search_match(rebuild);
+    }
+}
+
+fn handle_search_prev(app: &mut App) {
+    if app.state != UiState::Rebuilding {
+        return;
+    }
+    let Some(rebuild) = app.rebuild.as_mut() else {
+        return;
+    };
+    let mut focus = false;
+    if let Some(search) = rebuild.search.as_mut() {
+        if search.editing || search.matches.is_empty() {
+            return;
+        }
+        search.set_direction(SearchDirection::Backward);
+        search.advance_prev();
+        focus = true;
+    }
+    if focus {
+        focus_on_active_search_match(rebuild);
+    }
+}
+
+fn refresh_search_for_active_job(rebuild: &mut RebuildState) {
+    if let Some(search) = rebuild.search.as_mut()
+        && let Some(job) = rebuild.jobs.get(rebuild.active_idx)
+    {
+        if search.has_query() {
+            let baseline = usize::from(rebuild.scroll_y);
+            search.recompute_matches(job, baseline);
+        } else {
+            search.clear_results();
+        }
+    }
+}
+
+fn focus_on_active_search_match(rebuild: &mut RebuildState) {
+    let Some(search) = rebuild.search.as_ref() else {
+        return;
+    };
+    let Some(active_idx) = search.active else {
+        return;
+    };
+    let Some(hit) = search.matches.get(active_idx) else {
+        return;
+    };
+    let Some(job) = rebuild.jobs.get(rebuild.active_idx) else {
+        return;
+    };
+
+    let viewport = usize::from(rebuild.viewport_height.max(1));
+    let max_start = job.output.len().saturating_sub(viewport);
+    let target = hit.line.saturating_sub(viewport / 2);
+    rebuild.scroll_y = clamp_usize_to_u16(target.min(max_start));
+    rebuild.auto_scroll = false;
 }
 
 fn adjust_vertical_scroll(app: &mut App, delta: i32) {
@@ -358,4 +583,216 @@ fn line_display_width(text: &str) -> usize {
         .chars()
         .map(|ch| UnicodeWidthChar::width(ch).unwrap_or(0))
         .sum()
+}
+
+fn handle_open_export_log(app: &mut App) {
+    if !matches!(app.state, UiState::Rebuilding) {
+        return;
+    }
+    let Some(rebuild) = app.rebuild.as_ref() else {
+        return;
+    };
+    let Some(job) = rebuild.jobs.get(rebuild.active_idx) else {
+        return;
+    };
+
+    let default_name = default_export_filename(job);
+    app.modal = Some(ModalState::ExportLog {
+        input: default_name,
+        error: None,
+    });
+}
+
+fn handle_export_input(app: &mut App, ch: char) {
+    if let Some(ModalState::ExportLog { input, error }) = app.modal.as_mut() {
+        input.push(ch);
+        *error = None;
+    }
+}
+
+fn handle_export_backspace(app: &mut App) {
+    if let Some(ModalState::ExportLog { input, error }) = app.modal.as_mut() {
+        input.pop();
+        *error = None;
+    }
+}
+
+fn handle_export_cancel(app: &mut App) {
+    if matches!(app.modal, Some(ModalState::ExportLog { .. })) {
+        app.modal = None;
+    }
+}
+
+fn handle_export_submit(app: &mut App, services: Option<&Services>) {
+    let Some(services) = services else {
+        return;
+    };
+    let Some(rebuild) = app.rebuild.as_ref() else {
+        return;
+    };
+    let Some(job) = rebuild.jobs.get(rebuild.active_idx) else {
+        return;
+    };
+    let filename = match &app.modal {
+        Some(ModalState::ExportLog { input, .. }) => input.clone(),
+        _ => return,
+    };
+    let trimmed = filename.trim();
+    if trimmed.is_empty() {
+        set_export_error(app, Some("File name cannot be empty".to_string()));
+        return;
+    }
+
+    let candidate = Path::new(trimmed);
+    if candidate.is_absolute() {
+        set_export_error(
+            app,
+            Some("Provide a relative filename (absolute paths are not allowed).".to_string()),
+        );
+        return;
+    }
+
+    if contains_forbidden_path_segments(candidate) {
+        set_export_error(
+            app,
+            Some("File name cannot traverse parent directories.".to_string()),
+        );
+        return;
+    }
+
+    let mut destination = services.working_dir.clone();
+    destination.push(candidate);
+
+    let lines: Vec<String> = job.output.iter().map(|entry| entry.text.clone()).collect();
+    let active_idx = rebuild.active_idx;
+
+    match write_lines(&destination, &lines) {
+        Ok(()) => {
+            if let Some(rebuild_mut) = app.rebuild.as_mut()
+                && let Some(job_mut) = rebuild_mut.jobs.get_mut(active_idx)
+            {
+                job_mut.push_output(
+                    OutputStream::Stdout,
+                    format!("Exported rebuild log to {}", destination.display()),
+                    rebuild_mut.output_limit,
+                );
+                rebuild_mut.auto_scroll = true;
+            }
+            app.modal = None;
+        }
+        Err(err) => {
+            set_export_error(app, Some(err));
+        }
+    }
+}
+
+fn set_export_error(app: &mut App, message: Option<String>) {
+    if let Some(ModalState::ExportLog { error, .. }) = app.modal.as_mut() {
+        *error = message;
+    }
+}
+
+fn write_lines(path: &Path, lines: &[String]) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        if let Err(err) = std::fs::create_dir_all(parent) {
+            return Err(format!("Failed creating directory: {err}"));
+        }
+    }
+
+    let mut file = File::create(path).map_err(|err| format!("Could not create file: {err}"))?;
+    for line in lines {
+        writeln!(file, "{line}").map_err(|err| format!("Failed writing file: {err}"))?;
+    }
+    file.flush()
+        .map_err(|err| format!("Failed to flush file: {err}"))
+}
+
+fn default_export_filename(job: &RebuildJob) -> String {
+    let image = job.image.as_str();
+    let (name_raw, tag_raw) = split_image_name_and_tag(image);
+    let name = sanitize_filename_component(name_raw).unwrap_or_else(|| "image".to_string());
+    let tag = sanitize_filename_component(tag_raw).unwrap_or_else(|| "tag".to_string());
+    let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S");
+    format!("{name}-{tag}-{timestamp}.log")
+}
+
+fn split_image_name_and_tag(image: &str) -> (&str, &str) {
+    if let Some(at_pos) = image.rfind('@') {
+        let name = &image[..at_pos];
+        let digest = &image[at_pos + 1..];
+        return (name, digest);
+    }
+
+    let last_slash = image.rfind('/');
+    if let Some(colon_pos) = image.rfind(':') {
+        if last_slash.map_or(true, |slash_pos| slash_pos < colon_pos) {
+            let name = &image[..colon_pos];
+            let tag = &image[colon_pos + 1..];
+            return (name, tag);
+        }
+    }
+
+    (image, "latest")
+}
+
+fn sanitize_filename_component(input: &str) -> Option<String> {
+    let filtered: String = input
+        .chars()
+        .filter(|ch| !matches!(ch, ':' | '/' | '\\' | '?' | '*' | '"' | '<' | '>' | ' '))
+        .collect();
+    let trimmed = filtered.trim_matches('.');
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+fn contains_forbidden_path_segments(path: &Path) -> bool {
+    path.components()
+        .any(|component| matches!(component, Component::ParentDir))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn split_image_with_tag() {
+        let (name, tag) = split_image_name_and_tag("nginx:latest");
+        assert_eq!(name, "nginx");
+        assert_eq!(tag, "latest");
+    }
+
+    #[test]
+    fn split_image_with_registry_port() {
+        let (name, tag) = split_image_name_and_tag("registry.local:5000/foo/bar:dev");
+        assert_eq!(name, "registry.local:5000/foo/bar");
+        assert_eq!(tag, "dev");
+    }
+
+    #[test]
+    fn split_image_with_digest() {
+        let (name, tag) = split_image_name_and_tag("registry.example.com/foo@sha256:abcdef123456");
+        assert_eq!(name, "registry.example.com/foo");
+        assert_eq!(tag, "sha256:abcdef123456");
+    }
+
+    #[test]
+    fn sanitize_component_removes_chars() {
+        let sanitized = sanitize_filename_component("foo/bar:tag name").unwrap();
+        assert_eq!(sanitized, "footagname");
+    }
+
+    #[test]
+    fn sanitize_component_returns_none_when_empty() {
+        assert!(sanitize_filename_component("   ").is_none());
+        assert!(sanitize_filename_component("::").is_none());
+    }
+
+    #[test]
+    fn contains_forbidden_segments_detects_parent_dir() {
+        assert!(contains_forbidden_path_segments(Path::new("../foo")));
+        assert!(!contains_forbidden_path_segments(Path::new("foo/bar.log")));
+    }
 }

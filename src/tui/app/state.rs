@@ -1,4 +1,5 @@
 use super::keymap::map_keycode_to_msg;
+use super::search::SearchState;
 use crate::Args;
 use crate::app::AppCore;
 use crate::domain::DiscoveredImage;
@@ -38,8 +39,16 @@ pub enum ViewMode {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ModalState {
-    ViewPicker { selected_idx: usize },
-    WorkQueue { selected_idx: usize },
+    ViewPicker {
+        selected_idx: usize,
+    },
+    WorkQueue {
+        selected_idx: usize,
+    },
+    ExportLog {
+        input: String,
+        error: Option<String>,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -99,7 +108,20 @@ pub enum Msg {
     ScrollOutputBottom,
     ScrollOutputLeft,
     ScrollOutputRight,
+    StartSearchForward,
+    StartSearchBackward,
+    SearchInput(char),
+    SearchBackspace,
+    SearchSubmit,
+    SearchCancel,
+    SearchNext,
+    SearchPrev,
     ExitRebuild,
+    OpenExportLog,
+    ExportInput(char),
+    ExportBackspace,
+    ExportSubmit,
+    ExportCancel,
 }
 
 pub struct Services {
@@ -109,6 +131,7 @@ pub struct Services {
     pub exclude: Vec<String>,
     pub tx: xchan::Sender<Msg>,
     pub args: Args,
+    pub working_dir: PathBuf,
 }
 
 pub type LoopChans<'a> = crate::mvu::LoopChans<'a, Msg>;
@@ -165,6 +188,7 @@ pub struct RebuildState {
     pub viewport_height: u16,
     pub viewport_width: u16,
     pub output_limit: usize,
+    pub search: Option<SearchState>,
 }
 
 impl RebuildState {
@@ -181,6 +205,7 @@ impl RebuildState {
             viewport_height: 0,
             viewport_width: 0,
             output_limit: output_limit.max(1),
+            search: None,
         }
     }
 }

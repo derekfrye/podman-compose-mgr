@@ -8,8 +8,11 @@ Using a mouse and trying to highlight lines within rebuild view doesn't seem to 
 - Custom solution: keep mouse capture, plumb pointer events through `App` state, add selection rendering for the rebuild pane and legend, and push the chosen text to the clipboard with a crate like `arboard`/`copypasta`. This limits selection to the relevant panes but is a sizeable feature (new state machine, rendering tweaks, clipboard integration, platform quirks).
 - Decision: pursue the disable-mouse-capture approach first to unblock copying with minimal work, and revisit custom selection only if mixed-pane copies become a real pain point.
 
-## greppable text in the rebuild view
-We should support `/` and `?` to search through the buffer, highlighting matches. And it should support regex.
+## greppable text in the rebuild view (done)
+We now support `/` and `?` to search through the buffer with regex, highlighting matches and allowing navigation with `n/N`.
+
+### add an export dialog in rebuild view (done)
+- Added an export dialog in the rebuild view (`e`) that writes the full buffer to a user-specified filename in the caller's working directory. Default filename includes image name, tag/digest, and timestamp. Awaiting regenerated integration test stubs after concurrent feature work lands.
 
 ## main tui screen: document rebuild (done)
 The main tui screen now includes the char `r`, denoting that it'll rebuild any selected images. 

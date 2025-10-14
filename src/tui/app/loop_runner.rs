@@ -73,6 +73,7 @@ fn build_services(args: &Args, tx: xchan::Sender<Msg>) -> Services {
     let discovery = Arc::new(crate::infra::discovery_adapter::FsDiscovery);
     let podman = Arc::new(crate::infra::podman_adapter::PodmanCli);
     let app_core = Arc::new(AppCore::new(discovery, podman));
+    let working_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
     Services {
         core: app_core,
         root: args.path.clone(),
@@ -80,6 +81,7 @@ fn build_services(args: &Args, tx: xchan::Sender<Msg>) -> Services {
         exclude: args.exclude_path_patterns.clone(),
         tx,
         args: args.clone(),
+        working_dir,
     }
 }
 

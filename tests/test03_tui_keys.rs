@@ -2,7 +2,8 @@ use crossterm::event::KeyCode;
 use podman_compose_mgr::Args;
 use podman_compose_mgr::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT;
 use podman_compose_mgr::tui::app::{
-    self, App, ItemRow, Msg, OutputStream, RebuildJob, RebuildState, RebuildStatus, UiState,
+    self, App, ItemRow, Msg, OutputStream, RebuildJob, RebuildState, RebuildStatus,
+    SearchDirection, SearchState, UiState,
 };
 use podman_compose_mgr::tui::ui;
 use ratatui::Terminal;
@@ -145,6 +146,74 @@ fn page_navigation_moves_by_screenful() {
         app.rows.len() - 1,
         "page down at end clamps to final row"
     );
+}
+
+#[test]
+fn rebuild_view_slash_starts_forward_search() {
+    let mut app = App::new();
+    app.state = UiState::Rebuilding;
+    let job = RebuildJob::new(
+        "img".into(),
+        Some("container".into()),
+        PathBuf::from("."),
+        PathBuf::from("."),
+    );
+    app.rebuild = Some(RebuildState::new(
+        vec![job],
+        REBUILD_VIEW_LINE_BUFFER_DEFAULT,
+    ));
+
+    assert!(matches!(
+        podman_compose_mgr::tui::app::map_keycode_to_msg(&app, KeyCode::Char('/')),
+        Some(Msg::StartSearchForward)
+    ));
+}
+
+#[test]
+fn rebuild_view_search_char_routes_to_input_when_editing() {
+    let mut app = App::new();
+    app.state = UiState::Rebuilding;
+    let job = RebuildJob::new(
+        "img".into(),
+        Some("container".into()),
+        PathBuf::from("."),
+        PathBuf::from("."),
+    );
+    let mut rebuild = RebuildState::new(vec![job], REBUILD_VIEW_LINE_BUFFER_DEFAULT);
+    rebuild.search = Some(SearchState::new(SearchDirection::Forward));
+    app.rebuild = Some(rebuild);
+
+    assert!(matches!(
+        podman_compose_mgr::tui::app::map_keycode_to_msg(&app, KeyCode::Char('a')),
+        Some(Msg::SearchInput('a'))
+    ));
+}
+
+#[test]
+fn rebuild_view_navigates_matches_when_not_editing() {
+    let mut app = App::new();
+    app.state = UiState::Rebuilding;
+    let job = RebuildJob::new(
+        "img".into(),
+        Some("container".into()),
+        PathBuf::from("."),
+        PathBuf::from("."),
+    );
+    let mut rebuild = RebuildState::new(vec![job], REBUILD_VIEW_LINE_BUFFER_DEFAULT);
+    let mut search = SearchState::new(SearchDirection::Forward);
+    search.query = "abc".into();
+    search.editing = false;
+    rebuild.search = Some(search);
+    app.rebuild = Some(rebuild);
+
+    assert!(matches!(
+        podman_compose_mgr::tui::app::map_keycode_to_msg(&app, KeyCode::Char('n')),
+        Some(Msg::SearchNext)
+    ));
+    assert!(matches!(
+        podman_compose_mgr::tui::app::map_keycode_to_msg(&app, KeyCode::Char('N')),
+        Some(Msg::SearchPrev)
+    ));
 }
 
 #[test]

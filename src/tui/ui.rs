@@ -12,7 +12,8 @@ use ratatui::{
 use unicode_width::UnicodeWidthStr;
 
 use crate::tui::app::{
-    App, ItemRow, ModalState, OutputStream, RebuildState, RebuildStatus, UiState, ViewMode,
+    App, ItemRow, ModalState, OutputStream, RebuildState, RebuildStatus, SearchDirection,
+    SearchState, UiState, ViewMode,
 };
 
 pub fn draw(frame: &mut Frame, app: &mut App, args: &Args) {
@@ -59,6 +60,9 @@ pub fn draw(frame: &mut Frame, app: &mut App, args: &Args) {
         }
         Some(ModalState::WorkQueue { selected_idx }) => {
             draw_work_queue(frame, frame.area(), app, selected_idx);
+        }
+        Some(ModalState::ExportLog { input, error }) => {
+            draw_export_modal(frame, frame.area(), &input, error.as_deref());
         }
         None => {}
     }
@@ -200,18 +204,37 @@ fn draw_rebuild_output(
         return;
     }
 
+    let mut prompt_area = None;
+    let search_state = rebuild.search.as_ref();
+    let show_prompt = search_state.map(search_prompt_visible).unwrap_or(false);
+    if show_prompt && text_area.height > 1 {
+        let segments = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(1), Constraint::Length(1)])
+            .split(text_area);
+        text_area = segments[0];
+        prompt_area = Some(segments[1]);
+        number_area = number_area.map(|rect| {
+            Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(1), Constraint::Length(1)])
+                .split(rect)[0]
+        });
+    }
+
+    if text_area.width == 0 || text_area.height == 0 {
+        if let Some(prompt_area) = prompt_area {
+            frame.render_widget(Clear, prompt_area);
+        }
+        return;
+    }
+
     let mut lines: Vec<Line> = Vec::with_capacity(job.output.len());
     let mut max_line_width: usize = 0;
-    for entry in &job.output {
+    for (line_idx, entry) in job.output.iter().enumerate() {
         let normalized = normalize_line(&entry.text, text_area.width);
         max_line_width = max_line_width.max(UnicodeWidthStr::width(normalized.as_str()));
-        let line = match entry.stream {
-            OutputStream::Stdout => Line::from(vec![Span::raw(normalized)]),
-            OutputStream::Stderr => Line::from(vec![Span::styled(
-                normalized,
-                Style::default().fg(Color::LightRed),
-            )]),
-        };
+        let line = build_line_with_search(&normalized, entry.stream, search_state, line_idx);
         lines.push(line);
     }
 
@@ -233,6 +256,9 @@ fn draw_rebuild_output(
     }
 
     if text_area.width == 0 || text_area.height == 0 {
+        if let Some(prompt_area) = prompt_area {
+            frame.render_widget(Clear, prompt_area);
+        }
         return;
     }
 
@@ -299,6 +325,14 @@ fn draw_rebuild_output(
 
     let paragraph = Paragraph::new(visible).scroll((0, rebuild.scroll_x));
     frame.render_widget(paragraph, text_area);
+
+    if let Some(prompt_area) = prompt_area {
+        if let Some(search) = search_state {
+            draw_search_prompt(frame, prompt_area, search);
+        } else {
+            frame.render_widget(Clear, prompt_area);
+        }
+    }
 
     if let Some(scrollbar_area) = scrollbar_area {
         if scrollbar_area.width > 0 {
@@ -387,6 +421,10 @@ fn legend_lines() -> Vec<Line<'static>> {
     vec![
         Line::from(vec![styled_key("w", Color::Cyan), Span::raw(" Work queue")]),
         Line::from(vec![
+            styled_key("e", Color::Green),
+            Span::raw(" Export log"),
+        ]),
+        Line::from(vec![
             styled_key("↑/↓/←/→", Color::Yellow),
             Span::raw(" Scroll"),
         ]),
@@ -403,6 +441,14 @@ fn legend_lines() -> Vec<Line<'static>> {
             Span::raw(" Goto end"),
         ]),
         Line::from(vec![
+            styled_key("/ ?", Color::Green),
+            Span::raw(" Search (regex)"),
+        ]),
+        Line::from(vec![
+            styled_key("n/N", Color::Green),
+            Span::raw(" Next/prev match"),
+        ]),
+        Line::from(vec![
             styled_key("esc", Color::Magenta),
             Span::raw(" Back to list"),
         ]),
@@ -417,6 +463,148 @@ fn format_status(status: RebuildStatus) -> &'static str {
         RebuildStatus::Succeeded => "Done",
         RebuildStatus::Failed => "Failed",
     }
+}
+
+fn build_line_with_search(
+    text: &str,
+    stream: OutputStream,
+    search: Option<&SearchState>,
+    line_idx: usize,
+) -> Line<'static> {
+    let base_style = style_for_stream(stream);
+    let mut spans: Vec<Span<'static>> = Vec::new();
+
+    if let Some(search) = search {
+        if let Some(indices) = search.matches_for_line(line_idx) {
+            let mut cursor = 0usize;
+            for idx in indices {
+                if let Some(hit) = search.matches.get(*idx) {
+                    let start = hit.start.min(text.len());
+                    let end = hit.end.min(text.len());
+                    if start > cursor {
+                        spans.push(Span::styled(text[cursor..start].to_string(), base_style));
+                    }
+                    let highlight = highlight_style(base_style, search.active == Some(*idx));
+                    spans.push(Span::styled(text[start..end].to_string(), highlight));
+                    cursor = end;
+                }
+            }
+            if cursor < text.len() {
+                spans.push(Span::styled(text[cursor..].to_string(), base_style));
+            }
+
+            if !spans.is_empty() {
+                return Line::from(spans);
+            }
+        }
+    }
+
+    match stream {
+        OutputStream::Stdout => Line::from(vec![Span::styled(text.to_string(), base_style)]),
+        OutputStream::Stderr => Line::from(vec![Span::styled(text.to_string(), base_style)]),
+    }
+}
+
+fn style_for_stream(stream: OutputStream) -> Style {
+    match stream {
+        OutputStream::Stdout => Style::default(),
+        OutputStream::Stderr => Style::default().fg(Color::LightRed),
+    }
+}
+
+fn highlight_style(base: Style, is_active: bool) -> Style {
+    let highlight = Style::default()
+        .bg(if is_active {
+            Color::Yellow
+        } else {
+            Color::DarkGray
+        })
+        .fg(if is_active {
+            Color::Black
+        } else {
+            Color::White
+        })
+        .add_modifier(Modifier::BOLD);
+    base.patch(highlight)
+}
+
+fn search_prompt_visible(search: &SearchState) -> bool {
+    search.editing || search.error.is_some() || search.has_query()
+}
+
+fn draw_search_prompt(frame: &mut Frame, area: Rect, search: &SearchState) {
+    frame.render_widget(Clear, area);
+    let line = build_search_prompt_line(search);
+    let widget = Paragraph::new(line);
+    frame.render_widget(widget, area);
+}
+
+fn build_search_prompt_line(search: &SearchState) -> Line<'static> {
+    let mut spans: Vec<Span<'static>> = Vec::new();
+    let prefix = match search.direction {
+        SearchDirection::Forward => "/",
+        SearchDirection::Backward => "?",
+    };
+    spans.push(Span::styled(
+        prefix.to_string(),
+        Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD),
+    ));
+
+    if !search.query.is_empty() {
+        spans.push(Span::styled(
+            search.query.clone(),
+            Style::default().fg(Color::Yellow),
+        ));
+    }
+
+    if search.editing {
+        spans.push(Span::styled(
+            "▏".to_string(),
+            Style::default().fg(Color::Yellow),
+        ));
+    }
+
+    if let Some(err) = &search.error {
+        spans.push(Span::raw("  "));
+        spans.push(Span::styled(
+            format!("regex error: {err}"),
+            Style::default()
+                .fg(Color::LightRed)
+                .add_modifier(Modifier::BOLD),
+        ));
+        return Line::from(spans);
+    }
+
+    if search.has_query() {
+        spans.push(Span::raw("  "));
+        if search.matches.is_empty() {
+            spans.push(Span::styled(
+                "0 matches".to_string(),
+                Style::default().fg(Color::DarkGray),
+            ));
+        } else if let Some(active) = search.active {
+            spans.push(Span::styled(
+                format!("match {}/{}", active + 1, search.matches.len()),
+                Style::default().fg(Color::Gray),
+            ));
+            spans.push(Span::raw("  n/N navigate"));
+        } else {
+            spans.push(Span::styled(
+                format!("{} matches", search.matches.len()),
+                Style::default().fg(Color::Gray),
+            ));
+        }
+    } else if search.editing {
+        spans.push(Span::raw("  "));
+        spans.push(Span::styled(
+            "enter regex (Esc to cancel)",
+            Style::default().fg(Color::DarkGray),
+        ));
+    }
+
+    Line::from(spans)
 }
 
 fn draw_work_queue(frame: &mut Frame, full_area: Rect, app: &App, selected_idx: usize) {
@@ -481,6 +669,53 @@ fn draw_work_queue(frame: &mut Frame, full_area: Rect, app: &App, selected_idx: 
 
     frame.render_widget(Clear, area);
     frame.render_stateful_widget(list, area, &mut state);
+}
+
+fn draw_export_modal(frame: &mut Frame, full_area: Rect, input: &str, error: Option<&str>) {
+    let width: u16 = 72;
+    let base_height: u16 = 6;
+    let height = if error.is_some() {
+        base_height + 2
+    } else {
+        base_height
+    };
+    let width_final = width.min(full_area.width);
+    let height_final = height.min(full_area.height);
+    let left = full_area.x + (full_area.width.saturating_sub(width_final)) / 2;
+    let top = full_area.y + (full_area.height.saturating_sub(height_final)) / 2;
+    let area = Rect {
+        x: left,
+        y: top,
+        width: width_final,
+        height: height_final,
+    };
+
+    let mut lines = Vec::new();
+    lines.push(Line::from("Enter a filename to export the rebuild log:"));
+    lines.push(Line::from(vec![
+        Span::styled("> ", Style::default().fg(Color::Cyan)),
+        Span::raw(input),
+    ]));
+    lines.push(Line::from(""));
+    lines.push(Line::from(
+        "Esc cancels. Enter saves in the current working directory.",
+    ));
+    if let Some(err) = error {
+        lines.push(Line::from(""));
+        lines.push(Line::from(vec![Span::styled(
+            err,
+            Style::default().fg(Color::LightRed),
+        )]));
+    }
+
+    let widget = Paragraph::new(lines).block(
+        Block::default()
+            .title("Export Rebuild Output")
+            .borders(Borders::ALL),
+    );
+
+    frame.render_widget(Clear, area);
+    frame.render_widget(widget, area);
 }
 
 fn row_for_item<'a>(app: &'a App, it: &'a ItemRow) -> Row<'a> {

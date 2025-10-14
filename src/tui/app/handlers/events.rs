@@ -50,6 +50,19 @@ pub fn handle_message(app: &mut App, msg: Msg, services: Option<&Services>) {
         | Msg::ScrollOutputBottom
         | Msg::ScrollOutputLeft
         | Msg::ScrollOutputRight
+        | Msg::StartSearchForward
+        | Msg::StartSearchBackward
+        | Msg::SearchInput(_)
+        | Msg::SearchBackspace
+        | Msg::SearchSubmit
+        | Msg::SearchCancel
+        | Msg::SearchNext
+        | Msg::SearchPrev
+        | Msg::OpenExportLog
+        | Msg::ExportInput(_)
+        | Msg::ExportBackspace
+        | Msg::ExportSubmit
+        | Msg::ExportCancel
         | Msg::ExitRebuild
         | Msg::ToggleCheckAll => handle_rebuild_message(app, msg, services),
     }
