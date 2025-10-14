@@ -20,3 +20,27 @@
 - src/tui/app/keymap.rs: map_keycode_to_msg (~57 LOC) — decompose key mapping.
 - src/tui/ui.rs: draw_work_queue (~56 LOC) — split drawing routines.
 - src/tui/app/rows.rs: impl App (~155 LOC) — move row helpers into dedicated module.
+
+## Rebuild queue dedupe gaps
+- Container view emits one row per `DiscoveredImage`, keyed by `(image, container, source_dir)`, so identical tags sourced from different directories remain (`src/infra/discovery_adapter.rs:64`).
+- When users check multiple rows we enqueue a `RebuildJobSpec` for each without deduping (`src/tui/app/handlers/rebuild.rs:223`), so the queue can run the same `podman build -t <image>` repeatedly.
+- Parallelizing the rebuild worker would trigger concurrent builds for the same tag, so we need a pre-queue dedupe (by image/tag) or smarter scheduling in `src/tui/app/handlers/rebuild_worker.rs`.
+
+## Low-hanging perf opportunities
+- `AppCore` stores trait objects (`Arc<dyn DiscoveryPort>`, `Arc<dyn PodmanPort>` at `src/app/mod.rs:18`); replacing with generics would remove the vtable hop in hot discovery/detail paths.
+- `CommandHelper::exec_cmd` returns `Result<(), Box<dyn std::error::Error>>` (`src/interfaces.rs:21`); adopting a concrete error type eliminates heap boxing for command failures.
+- Command utilities expose boxed errors (`src/utils/cmd_utils.rs:33` et al.), which feed production code; rework to return `PodmanComposeMgrError` or another concrete enum.
+- `PrintFunction` is `Box<dyn Fn>` (`src/read_interactive_input/types.rs:22`); if we only register static printers, switching to plain function pointers or generics avoids the allocation per handler.
+- `build_rows_for_image_view` clones strings into a `HashSet<String>` (`src/tui/app/rows.rs:55`); we can dedupe by borrowing `&str` from `DiscoveredImage` to skip transient heap churn when rebuilding the list.
+
+## Error handling follow-ups
+- Standardize error propagation in the rebuild queue; avoid the `Result<(), String>` shim in `src/tui/app/handlers/rebuild_worker.rs:61` so callers can surface structured `PodmanComposeMgrError` values.
+- Replace `unwrap()`/`expect()` usage around file discovery (`src/image_build/buildfile_helpers/discovery_helpers.rs:15`, `src/image_build/buildfile_build.rs:34`) with fallible conversions and contextual errors to prevent panics on missing or non-UTF-8 paths.
+- Remove the direct `std::process::exit(0)` in `src/image_build/rebuild/interaction.rs:135` and return a typed error so the TUI can shut down gracefully on Ctrl+C without terminating the host process.
+- Stop double-wrapping/formatting errors when launching builds (`src/image_build/buildfile/mod.rs:66`, `src/image_build/buildfile_build.rs:57`); rely on a single error enum or `thiserror` chain and let the UI handle user-facing messaging.
+
+## selectable text in the rebuild view
+Using a mouse and trying to highlight lines within rebuild view doesn't seem to work.
+
+## greppable text in the rebuild view
+We should support `/` and `?` to search through the buffer, highlighting matches. And it should support regex.
