@@ -572,6 +572,10 @@ fn help_overlay_lines() -> Vec<Line<'static>> {
             styled_key("Esc", Color::Red),
             Span::raw(" quit"),
         ]),
+        Line::from(vec![
+            styled_key("r", Color::Green),
+            Span::raw(" rebuild selected images"),
+        ]),
         Line::from(vec![styled_key("v", Color::Cyan), Span::raw(" View")]),
     ]
 }

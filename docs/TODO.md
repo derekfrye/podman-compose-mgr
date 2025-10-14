@@ -11,8 +11,8 @@ Using a mouse and trying to highlight lines within rebuild view doesn't seem to 
 ## greppable text in the rebuild view
 We should support `/` and `?` to search through the buffer, highlighting matches. And it should support regex.
 
-## main tui screen: document rebuild
-The main tui screen should include the char `r`, denoting that it'll rebuild any selected images. 
+## main tui screen: document rebuild (done)
+The main tui screen now includes the char `r`, denoting that it'll rebuild any selected images. 
 
 ## main tui screen: rebuild = pull
 For images where a Dockerfile or Makefile was not found, try the `pull` command. 

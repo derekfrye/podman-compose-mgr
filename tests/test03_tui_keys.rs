@@ -68,6 +68,7 @@ fn keys_overlay_is_drawn_with_labels() {
     assert!(all.contains("details"));
     assert!(all.contains("x/<space>"));
     assert!(all.contains("select"));
+    assert!(all.contains("r rebuild selected images"));
     assert!(all.contains("quit"));
 }
 
