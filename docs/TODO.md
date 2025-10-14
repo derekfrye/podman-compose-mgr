@@ -14,8 +14,8 @@ We should support `/` and `?` to search through the buffer, highlighting matches
 ## main tui screen: document rebuild (done)
 The main tui screen now includes the char `r`, denoting that it'll rebuild any selected images. 
 
-## main tui screen: rebuild = pull
-For images where a Dockerfile or Makefile was not found, try the `pull` command. 
+## main tui screen: rebuild = pull (done)
+For images where a Dockerfile or Makefile was not found, the app now tries the `pull` command. 
 
 # Refactoring Targets
 

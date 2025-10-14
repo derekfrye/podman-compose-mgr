@@ -13,6 +13,9 @@ pub enum BuildfileError {
     #[error("Path contains invalid UTF-8: {0}")]
     InvalidPath(String),
 
+    #[error("Missing Dockerfile or Makefile at {0}")]
+    MissingBuildfile(String),
+
     #[error("Rebuild error: {0}")]
     RebuildError(String),
 
@@ -61,7 +64,7 @@ pub fn start<C: CommandHelper>(
             dir.path().display()
         );
         logger.log(BuildLogLevel::Warn, &msg);
-        return Err(BuildfileError::RebuildError(msg));
+        return Err(BuildfileError::MissingBuildfile(msg));
     } else if let Some(found_buildfiles) = buildfiles {
         let build_config = crate::image_build::buildfile_helpers::read_val_loop(&found_buildfiles);
 

@@ -1,4 +1,4 @@
-use crate::image_build::buildfile::start;
+use crate::image_build::buildfile::{BuildfileError, start};
 use crate::image_build::ui;
 use crate::interfaces::{CommandHelper, ReadInteractiveInputHelper};
 use crate::read_interactive_input::GrammarFragment;
@@ -77,16 +77,31 @@ fn start_selected_build<C: CommandHelper>(
     context: &UserChoiceContext<'_>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let build_args: Vec<&str> = context.build_args.iter().map(String::as_str).collect();
-    start(
+    match start(
         cmd_helper,
         context.entry,
         context.selection.image,
         &build_args,
         context.logger,
         context.no_cache,
-    )
-    .map_err(Box::<dyn std::error::Error>::from)?;
-    Ok(())
+    ) {
+        Ok(()) => Ok(()),
+        Err(BuildfileError::MissingBuildfile(msg)) => {
+            context
+                .logger
+                .info("No build instructions found locally; falling back to `podman pull`.");
+            match pull_image(cmd_helper, context.selection.image) {
+                Ok(()) => Ok(()),
+                Err(e) => {
+                    context
+                        .logger
+                        .error(&format!("Fallback `podman pull` failed after {msg}: {e}"));
+                    Err(Box::new(e))
+                }
+            }
+        }
+        Err(err) => Err(Box::new(err)),
+    }
 }
 
 fn mark_image_as_skipped(images: &mut Vec<Image>, context: &UserChoiceContext<'_>) {
@@ -157,4 +172,82 @@ pub fn read_val_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::interfaces::MockCommandHelper;
+    use std::sync::{Arc, Mutex};
+    use tempfile::tempdir;
+    use walkdir::WalkDir;
+
+    #[derive(Clone, Default)]
+    struct RecordingLogger {
+        messages: Arc<Mutex<Vec<(BuildLogLevel, String)>>>,
+    }
+
+    impl BuildLogger for RecordingLogger {
+        fn log(&self, level: BuildLogLevel, message: &str) {
+            self.messages
+                .lock()
+                .unwrap()
+                .push((level, message.to_string()));
+        }
+    }
+
+    impl RecordingLogger {
+        fn logs(&self) -> Vec<(BuildLogLevel, String)> {
+            self.messages.lock().unwrap().clone()
+        }
+    }
+
+    #[test]
+    fn start_selected_build_falls_back_to_pull_when_no_buildfiles_found() {
+        let temp = tempdir().expect("tempdir");
+        let compose_path = temp.path().join("docker-compose.yml");
+        std::fs::write(&compose_path, "version: '3'\nservices: {}\n").expect("write compose");
+
+        let entry = WalkDir::new(&compose_path)
+            .max_depth(0)
+            .into_iter()
+            .next()
+            .expect("walkdir entry")
+            .expect("dir entry");
+
+        let selection = RebuildSelection::new("example:latest", "example");
+        let grammars: Vec<GrammarFragment> = Vec::new();
+        let build_args: Vec<String> = Vec::new();
+        let logger = RecordingLogger::default();
+
+        let mut cmd = MockCommandHelper::new();
+        cmd.expect_exec_cmd()
+            .withf(|cmd, args| {
+                cmd == "podman"
+                    && args.len() == 2
+                    && args[0] == "pull"
+                    && args[1] == "example:latest"
+            })
+            .times(1)
+            .returning(|_, _| Ok(()));
+
+        let context = UserChoiceContext {
+            entry: &entry,
+            selection,
+            build_args: &build_args,
+            grammars: &grammars,
+            logger: &logger,
+            no_cache: false,
+        };
+
+        start_selected_build(&cmd, &context).expect("fallback pull succeeds");
+
+        let logs = logger.logs();
+        assert!(
+            logs.iter().any(|(level, message)| {
+                *level == BuildLogLevel::Info && message.contains("falling back to `podman pull`")
+            }),
+            "expected fallback info log, got {logs:?}"
+        );
+    }
 }
