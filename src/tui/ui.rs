@@ -9,6 +9,7 @@ use ratatui::{
         Wrap,
     },
 };
+use unicode_width::UnicodeWidthStr;
 
 use crate::tui::app::{
     App, ItemRow, ModalState, OutputStream, RebuildState, RebuildStatus, UiState, ViewMode,
@@ -199,6 +200,42 @@ fn draw_rebuild_output(
         return;
     }
 
+    let mut lines: Vec<Line> = Vec::with_capacity(job.output.len());
+    let mut max_line_width: usize = 0;
+    for entry in &job.output {
+        let normalized = normalize_line(&entry.text, text_area.width);
+        max_line_width = max_line_width.max(UnicodeWidthStr::width(normalized.as_str()));
+        let line = match entry.stream {
+            OutputStream::Stdout => Line::from(vec![Span::raw(normalized)]),
+            OutputStream::Stderr => Line::from(vec![Span::styled(
+                normalized,
+                Style::default().fg(Color::LightRed),
+            )]),
+        };
+        lines.push(line);
+    }
+
+    let mut scrollbar_area = None;
+    let needs_scrollbar = max_line_width > usize::from(text_area.width);
+    if needs_scrollbar && text_area.height > 1 {
+        let segments = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(1), Constraint::Length(1)])
+            .split(text_area);
+        text_area = segments[0];
+        scrollbar_area = Some(segments[1]);
+        number_area = number_area.map(|rect| {
+            Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(1), Constraint::Length(1)])
+                .split(rect)[0]
+        });
+    }
+
+    if text_area.width == 0 || text_area.height == 0 {
+        return;
+    }
+
     let content_height = text_area.height.max(1);
     let content_width = text_area.width;
     rebuild.viewport_height = content_height;
@@ -213,20 +250,6 @@ fn draw_rebuild_output(
         scroll_top = scroll_top.min(max_start);
     }
     rebuild.scroll_y = u16::try_from(scroll_top).unwrap_or(u16::MAX);
-
-    let mut lines: Vec<Line> = job
-        .output
-        .iter()
-        .map(|entry| match entry.stream {
-            OutputStream::Stdout => {
-                Line::from(vec![Span::raw(normalize_line(&entry.text, content_width))])
-            }
-            OutputStream::Stderr => Line::from(vec![Span::styled(
-                normalize_line(&entry.text, content_width),
-                Style::default().fg(Color::LightRed),
-            )]),
-        })
-        .collect();
 
     if lines.len() < viewport {
         let pad = if content_width == 0 {
@@ -275,8 +298,35 @@ fn draw_rebuild_output(
     }
 
     let paragraph = Paragraph::new(visible).scroll((0, rebuild.scroll_x));
-
     frame.render_widget(paragraph, text_area);
+
+    if let Some(scrollbar_area) = scrollbar_area {
+        if scrollbar_area.width > 0 {
+            let track_len = usize::from(scrollbar_area.width);
+            let viewport_cols = usize::from(content_width).max(1);
+            let max_offset = max_line_width.saturating_sub(viewport_cols);
+            let total_width = max_line_width.max(viewport_cols);
+            let mut thumb_len = (viewport_cols * track_len) / total_width;
+            thumb_len = thumb_len.clamp(1, track_len);
+            let track_range = track_len.saturating_sub(thumb_len);
+            let scroll_offset = usize::from(rebuild.scroll_x).min(max_offset);
+            let thumb_start = if max_offset == 0 || track_range == 0 {
+                0
+            } else {
+                (scroll_offset * track_range + max_offset / 2) / max_offset
+            };
+            let mut spans = Vec::with_capacity(track_len);
+            for idx in 0..track_len {
+                if idx >= thumb_start && idx < thumb_start + thumb_len {
+                    spans.push(Span::styled("⠶", Style::default().fg(Color::Cyan)));
+                } else {
+                    spans.push(Span::styled("─", Style::default().fg(Color::DarkGray)));
+                }
+            }
+            let bar = Paragraph::new(Line::from(spans));
+            frame.render_widget(bar, scrollbar_area);
+        }
+    }
 }
 
 fn draw_rebuild_sidebar(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild: &RebuildState) {

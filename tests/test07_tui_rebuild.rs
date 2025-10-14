@@ -5,6 +5,7 @@ use std::time::Duration;
 use crossbeam_channel::Receiver;
 use podman_compose_mgr::Args;
 use podman_compose_mgr::app::AppCore;
+use podman_compose_mgr::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT;
 use podman_compose_mgr::infra::discovery_adapter::FsDiscovery;
 use podman_compose_mgr::infra::podman_adapter::PodmanCli;
 use podman_compose_mgr::tui::app::{
@@ -94,6 +95,7 @@ impl TestContext {
             no_cache: false,
             tui: true,
             tui_rebuild_all: true,
+            rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
         };
 
         podman_compose_mgr::utils::podman_utils::set_podman_binary_override(
@@ -217,12 +219,15 @@ fn rebuild_output_overwrites_trailing_cells() {
     let args = Args::default();
     let mut app = App::new();
     app.state = UiState::Rebuilding;
-    let mut rebuild = RebuildState::new(vec![RebuildJob::new(
-        "img".into(),
-        Some("container".into()),
-        std::path::PathBuf::from("."),
-        std::path::PathBuf::from("."),
-    )]);
+    let mut rebuild = RebuildState::new(
+        vec![RebuildJob::new(
+            "img".into(),
+            Some("container".into()),
+            std::path::PathBuf::from("."),
+            std::path::PathBuf::from("."),
+        )],
+        args.rebuild_view_line_buffer_max,
+    );
     rebuild.jobs[0].status = RebuildStatus::Running;
     app.rebuild = Some(rebuild);
 

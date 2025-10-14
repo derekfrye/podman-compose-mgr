@@ -1,4 +1,5 @@
 use super::rebuild_worker::spawn_rebuild_thread;
+use crate::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT;
 use crate::tui::app::state::{
     App, ModalState, Msg, OutputStream, RebuildJob, RebuildJobSpec, RebuildResult, RebuildState,
     RebuildStatus, Services, UiState,
@@ -8,7 +9,7 @@ use unicode_width::UnicodeWidthChar;
 pub fn handle_rebuild_message(app: &mut App, msg: Msg, services: Option<&Services>) {
     match msg {
         Msg::StartRebuild => handle_start_rebuild(app, services),
-        Msg::RebuildSessionCreated { jobs } => handle_session_created(app, &jobs),
+        Msg::RebuildSessionCreated { jobs } => handle_session_created(app, &jobs, services),
         Msg::RebuildJobStarted { job_idx } => handle_job_started(app, job_idx),
         Msg::RebuildJobOutput {
             job_idx,
@@ -56,18 +57,21 @@ fn handle_start_rebuild(app: &mut App, services: Option<&Services>) {
     }
 
     if let Some(svc) = services {
-        handle_session_created(app, &specs);
+        handle_session_created(app, &specs, services);
         spawn_rebuild_thread(specs, svc);
     }
 }
 
-fn handle_session_created(app: &mut App, jobs: &[RebuildJobSpec]) {
+fn handle_session_created(app: &mut App, jobs: &[RebuildJobSpec], services: Option<&Services>) {
     if jobs.is_empty() {
         return;
     }
     let materialized: Vec<RebuildJob> = jobs.iter().map(RebuildJob::from_spec).collect();
     app.state = UiState::Rebuilding;
-    app.rebuild = Some(RebuildState::new(materialized));
+    let limit = services
+        .map(|svc| svc.args.rebuild_view_line_buffer_max)
+        .unwrap_or(REBUILD_VIEW_LINE_BUFFER_DEFAULT);
+    app.rebuild = Some(RebuildState::new(materialized, limit));
 }
 
 fn handle_job_started(app: &mut App, job_idx: usize) {
@@ -91,7 +95,9 @@ fn handle_job_output(app: &mut App, job_idx: usize, chunk: String, stream: Outpu
         let bottom_threshold = job.output.len().saturating_sub(viewport);
         let was_at_bottom = (rebuild.scroll_y as usize) >= bottom_threshold;
         match stream {
-            OutputStream::Stdout | OutputStream::Stderr => job.push_output(stream, chunk),
+            OutputStream::Stdout | OutputStream::Stderr => {
+                job.push_output(stream, chunk, rebuild.output_limit)
+            }
         }
         if rebuild.auto_scroll || was_at_bottom {
             rebuild.scroll_y = clamp_usize_to_u16(job.output.len().saturating_sub(viewport));

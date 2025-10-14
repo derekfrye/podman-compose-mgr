@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use podman_compose_mgr::Args;
+use podman_compose_mgr::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT;
 use podman_compose_mgr::tui::app::{self, App, Msg, ViewMode};
 use podman_compose_mgr::tui::ui;
 use ratatui::Terminal;
@@ -21,6 +22,7 @@ fn change_view_to_by_image_dedupes_images() {
         no_cache: false,
         tui: true,
         tui_rebuild_all: false,
+        rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
     };
     let discovery = std::sync::Arc::new(podman_compose_mgr::infra::discovery_adapter::FsDiscovery);
     let podman = std::sync::Arc::new(podman_compose_mgr::infra::podman_adapter::PodmanCli);

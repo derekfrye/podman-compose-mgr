@@ -1,5 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use podman_compose_mgr::Args;
+use podman_compose_mgr::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT;
 use podman_compose_mgr::domain::DiscoveredImage;
 use podman_compose_mgr::tui::app::{self, App, Msg, UiState, ViewMode};
 use podman_compose_mgr::tui::ui;
@@ -39,6 +40,7 @@ fn view_modal_shows_three_options_and_selects_folder_view() {
         no_cache: false,
         tui: true,
         tui_rebuild_all: false,
+        rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
     };
 
     let backend = TestBackend::new(80, 18);

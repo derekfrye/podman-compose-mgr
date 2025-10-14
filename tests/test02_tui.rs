@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use podman_compose_mgr::Args;
+use podman_compose_mgr::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT;
 
 #[test]
 fn discovery_finds_expected_images_in_test1() {
@@ -15,6 +16,7 @@ fn discovery_finds_expected_images_in_test1() {
         no_cache: false,
         tui: true,
         tui_rebuild_all: false,
+        rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
     };
     let discovery = std::sync::Arc::new(podman_compose_mgr::infra::discovery_adapter::FsDiscovery);
     let podman = std::sync::Arc::new(podman_compose_mgr::infra::podman_adapter::PodmanCli);
@@ -104,6 +106,7 @@ fn ui_snapshot_renders_table_with_rows() {
         no_cache: false,
         tui: true,
         tui_rebuild_all: false,
+        rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
     };
 
     let width: u16 = 60;

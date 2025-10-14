@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use super::validators::validate;
 use crate::utils::path_utils::{check_readable_dir, check_writable_dir};
 
+pub const REBUILD_VIEW_LINE_BUFFER_DEFAULT: usize = 4_096;
+
 #[derive(Parser, Debug, Clone, serde::Serialize)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
@@ -49,6 +51,15 @@ pub struct Args {
     /// Automatically start rebuild for all discovered images in TUI mode
     #[arg(long)]
     pub tui_rebuild_all: bool,
+
+    /// Maximum number of lines retained in the rebuild TUI output
+    #[arg(
+        long = "rebuild-view-line-buffer-max",
+        value_name = "LINES",
+        default_value_t = REBUILD_VIEW_LINE_BUFFER_DEFAULT,
+        value_parser = clap::value_parser!(usize)
+    )]
+    pub rebuild_view_line_buffer_max: usize,
 }
 
 impl Default for Args {
@@ -70,6 +81,7 @@ impl Default for Args {
             no_cache: false,
             tui: false,
             tui_rebuild_all: false,
+            rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
         }
     }
 }

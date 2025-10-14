@@ -164,11 +164,12 @@ pub struct RebuildState {
     pub auto_scroll: bool,
     pub viewport_height: u16,
     pub viewport_width: u16,
+    pub output_limit: usize,
 }
 
 impl RebuildState {
     #[must_use]
-    pub fn new(jobs: Vec<RebuildJob>) -> Self {
+    pub fn new(jobs: Vec<RebuildJob>, output_limit: usize) -> Self {
         Self {
             jobs,
             active_idx: 0,
@@ -179,6 +180,7 @@ impl RebuildState {
             auto_scroll: true,
             viewport_height: 0,
             viewport_width: 0,
+            output_limit: output_limit.max(1),
         }
     }
 }
@@ -223,15 +225,15 @@ impl RebuildJob {
         )
     }
 
-    pub fn push_output(&mut self, stream: OutputStream, chunk: String) {
-        const MAX_LINES: usize = 4_096;
+    pub fn push_output(&mut self, stream: OutputStream, chunk: String, limit: usize) {
+        let max_lines = limit.max(1);
         push_with_limit(
             &mut self.output,
             RebuildOutputLine {
                 stream,
                 text: chunk,
             },
-            MAX_LINES,
+            max_lines,
         );
     }
 }

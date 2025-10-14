@@ -1,5 +1,6 @@
 use crossterm::event::KeyCode;
 use podman_compose_mgr::Args;
+use podman_compose_mgr::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT;
 use podman_compose_mgr::tui::app::{
     self, App, ItemRow, Msg, OutputStream, RebuildJob, RebuildState, RebuildStatus, UiState,
 };
@@ -37,6 +38,7 @@ fn keys_overlay_is_drawn_with_labels() {
         no_cache: false,
         tui: true,
         tui_rebuild_all: false,
+        rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
     };
 
     // Render at a reasonable size
@@ -157,11 +159,15 @@ fn rebuild_home_and_end_keys_adjust_scroll_and_auto_follow() {
         PathBuf::from("."),
     );
     for _ in 0..20 {
-        job.push_output(OutputStream::Stdout, "abcdefghij".into());
+        job.push_output(
+            OutputStream::Stdout,
+            "abcdefghij".into(),
+            args.rebuild_view_line_buffer_max,
+        );
     }
     job.status = RebuildStatus::Running;
 
-    let mut rebuild = RebuildState::new(vec![job]);
+    let mut rebuild = RebuildState::new(vec![job], args.rebuild_view_line_buffer_max);
     rebuild.auto_scroll = false;
     rebuild.scroll_y = 0;
     rebuild.viewport_height = 0;

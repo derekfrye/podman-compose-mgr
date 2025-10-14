@@ -5,8 +5,9 @@ use super::types::Args;
 /// # Errors
 ///
 /// Returns an error if the arguments are invalid for rebuild mode.
-pub fn validate(_args: &Args) -> Result<(), String> {
-    // For rebuild mode, basic validation is handled by clap value_parser
-    // No additional validation needed
+pub fn validate(args: &Args) -> Result<(), String> {
+    if args.rebuild_view_line_buffer_max == 0 {
+        return Err("--rebuild-view-line-buffer-max must be at least 1".to_string());
+    }
     Ok(())
 }
