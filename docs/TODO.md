@@ -1,7 +1,7 @@
 # Feature requests
 
 ## selectable text in the rebuild view
-Using a mouse and trying to highlight lines within rebuild view doesn't seem to work.
+Using a mouse and trying to highlight lines within rebuild view doesn't seem to work. We don't need line numbers to be copyable, just the visible text within the buffer log that a user selects with their mouse. Should be able to select any number of lines currently viewable (we don't have to support "mouse up" or "mouse down" to scroll the buffer, we just need to highlight lines selected based on the mouse getting dragged over the visisble lines). If we can ideally let it select for copy *all* the text lines selected, including the text that might not be visibile to user because it's to the right and user can't see it unless scrolling over, that would be excellent. I am not sure if that last sentence will be possible. 
 
 ## greppable text in the rebuild view
 We should support `/` and `?` to search through the buffer, highlighting matches. And it should support regex.
