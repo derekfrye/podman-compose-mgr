@@ -562,11 +562,11 @@ fn help_overlay_lines() -> Vec<Line<'static>> {
     vec![
         Line::from(vec![
             styled_key("↑/↓", Color::Yellow),
-            Span::raw(" scroll   "),
+            Span::raw(" scroll  "),
             styled_key("←/→", Color::Yellow),
-            Span::raw(" details   "),
-            styled_key("[space]", Color::Green),
-            Span::raw(" select   "),
+            Span::raw(" details  "),
+            styled_key("x/<space>", Color::Green),
+            Span::raw(" select  "),
             styled_key("q", Color::Red),
             Span::raw("/"),
             styled_key("Esc", Color::Red),

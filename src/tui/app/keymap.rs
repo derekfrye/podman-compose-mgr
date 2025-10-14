@@ -56,7 +56,9 @@ pub fn map_keycode_to_msg(app: &App, key: KeyCode) -> Option<Msg> {
         KeyCode::Down => Msg::MoveDown,
         KeyCode::PageUp => Msg::MovePageUp,
         KeyCode::PageDown => Msg::MovePageDown,
-        KeyCode::Char(' ') | KeyCode::Enter => Msg::ToggleCheck,
+        KeyCode::Char(' ') | KeyCode::Char('x') | KeyCode::Char('X') | KeyCode::Enter => {
+            Msg::ToggleCheck
+        }
         KeyCode::Right => Msg::ExpandOrEnter,
         KeyCode::Left => Msg::CollapseOrBack,
         KeyCode::Char('v') => Msg::OpenViewPicker,

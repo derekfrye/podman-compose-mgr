@@ -66,7 +66,7 @@ fn keys_overlay_is_drawn_with_labels() {
     assert!(all.contains("scroll"));
     assert!(all.contains("←/→"));
     assert!(all.contains("details"));
-    assert!(all.contains("[space]"));
+    assert!(all.contains("x/<space>"));
     assert!(all.contains("select"));
     assert!(all.contains("quit"));
 }
