@@ -2,7 +2,7 @@ use crossterm::event::KeyCode;
 use podman_compose_mgr::Args;
 use podman_compose_mgr::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT;
 use podman_compose_mgr::tui::app::{
-    self, App, ItemRow, Msg, OutputStream, RebuildJob, RebuildState, RebuildStatus,
+    self, App, ItemRow, Msg, OutputStream, RebuildJob, RebuildJobSpec, RebuildState, RebuildStatus,
     SearchDirection, SearchState, UiState,
 };
 use podman_compose_mgr::tui::ui;
@@ -261,6 +261,48 @@ fn ready_view_j_reopens_rebuild() {
 
     podman_compose_mgr::tui::app::update_with_services(&mut app, Msg::ShowRebuild, None);
 
+    assert_eq!(app.state, UiState::Rebuilding);
+}
+
+#[test]
+fn rebuild_session_created_appends_jobs() {
+    let mut app = App::new();
+    let job_a = RebuildJobSpec {
+        image: "img-a".into(),
+        container: Some("container-a".into()),
+        entry_path: PathBuf::from("tests/test1/docker-compose.yml"),
+        source_dir: PathBuf::from("tests/test1"),
+    };
+    let job_b = RebuildJobSpec {
+        image: "img-b".into(),
+        container: Some("container-b".into()),
+        entry_path: PathBuf::from("tests/test1/docker-compose.yml"),
+        source_dir: PathBuf::from("tests/test1"),
+    };
+
+    podman_compose_mgr::tui::app::update_with_services(
+        &mut app,
+        Msg::RebuildSessionCreated {
+            jobs: vec![job_a.clone()],
+        },
+        None,
+    );
+
+    let rebuild = app.rebuild.as_ref().expect("rebuild state exists");
+    assert_eq!(rebuild.jobs.len(), 1);
+
+    podman_compose_mgr::tui::app::update_with_services(
+        &mut app,
+        Msg::RebuildSessionCreated {
+            jobs: vec![job_b.clone()],
+        },
+        None,
+    );
+
+    let rebuild = app.rebuild.as_ref().expect("rebuild state exists");
+    assert_eq!(rebuild.jobs.len(), 2);
+    assert_eq!(rebuild.jobs[0].image, job_a.image);
+    assert_eq!(rebuild.jobs[1].image, job_b.image);
     assert_eq!(app.state, UiState::Rebuilding);
 }
 

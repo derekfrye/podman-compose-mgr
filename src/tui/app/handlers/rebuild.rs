@@ -76,8 +76,13 @@ fn handle_start_rebuild(app: &mut App, services: Option<&Services>) {
     }
 
     if let Some(svc) = services {
+        let start_idx = app
+            .rebuild
+            .as_ref()
+            .map(|state| state.jobs.len())
+            .unwrap_or(0);
         handle_session_created(app, &specs, services);
-        spawn_rebuild_thread(specs, svc);
+        spawn_rebuild_thread(specs, svc, start_idx);
     }
 }
 
@@ -85,12 +90,25 @@ fn handle_session_created(app: &mut App, jobs: &[RebuildJobSpec], services: Opti
     if jobs.is_empty() {
         return;
     }
-    let materialized: Vec<RebuildJob> = jobs.iter().map(RebuildJob::from_spec).collect();
-    app.state = UiState::Rebuilding;
     let limit = services
         .map(|svc| svc.args.rebuild_view_line_buffer_max)
         .unwrap_or(REBUILD_VIEW_LINE_BUFFER_DEFAULT);
-    app.rebuild = Some(RebuildState::new(materialized, limit));
+    let materialized: Vec<RebuildJob> = jobs.iter().map(RebuildJob::from_spec).collect();
+
+    match app.rebuild.as_mut() {
+        Some(rebuild) => {
+            rebuild.jobs.extend(materialized);
+            rebuild.finished = false;
+            rebuild.output_limit = limit;
+            if rebuild.work_queue_selected >= rebuild.jobs.len() {
+                rebuild.work_queue_selected = rebuild.jobs.len().saturating_sub(1);
+            }
+        }
+        None => {
+            app.rebuild = Some(RebuildState::new(materialized, limit));
+        }
+    }
+    app.state = UiState::Rebuilding;
 }
 
 fn handle_job_started(app: &mut App, job_idx: usize) {

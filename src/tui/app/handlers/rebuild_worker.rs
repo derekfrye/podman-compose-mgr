@@ -15,7 +15,7 @@ use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use walkdir::WalkDir;
 
-pub fn spawn_rebuild_thread(specs: Vec<RebuildJobSpec>, services: &Services) {
+pub fn spawn_rebuild_thread(specs: Vec<RebuildJobSpec>, services: &Services, start_idx: usize) {
     if specs.is_empty() {
         return;
     }
@@ -24,29 +24,30 @@ pub fn spawn_rebuild_thread(specs: Vec<RebuildJobSpec>, services: &Services) {
     let args = services.args.clone();
 
     std::thread::spawn(move || {
-        let mut last_idx = 0usize;
+        let mut last_idx = start_idx;
         for (idx, spec) in specs.into_iter().enumerate() {
-            let _ = tx.send(Msg::RebuildJobStarted { job_idx: idx });
-            match run_job(idx, &spec, &args, &tx) {
+            let job_idx = start_idx + idx;
+            let _ = tx.send(Msg::RebuildJobStarted { job_idx });
+            match run_job(job_idx, &spec, &args, &tx) {
                 Ok(()) => {
                     let _ = tx.send(Msg::RebuildJobFinished {
-                        job_idx: idx,
+                        job_idx,
                         result: RebuildResult::Success,
                     });
                 }
                 Err(err) => {
                     let _ = tx.send(Msg::RebuildJobOutput {
-                        job_idx: idx,
+                        job_idx,
                         chunk: err.clone(),
                         stream: OutputStream::Stderr,
                     });
                     let _ = tx.send(Msg::RebuildJobFinished {
-                        job_idx: idx,
+                        job_idx,
                         result: RebuildResult::Failure(err),
                     });
                 }
             }
-            last_idx = idx;
+            last_idx = job_idx;
         }
 
         let _ = tx.send(Msg::RebuildJobOutput {
