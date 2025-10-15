@@ -85,6 +85,7 @@ pub fn map_keycode_to_msg(app: &App, key: KeyCode) -> Option<Msg> {
         }
         KeyCode::Right => Msg::ExpandOrEnter,
         KeyCode::Left => Msg::CollapseOrBack,
+        KeyCode::Char('j') | KeyCode::Char('J') if app.rebuild.is_some() => Msg::ShowRebuild,
         KeyCode::Char('v') => Msg::OpenViewPicker,
         KeyCode::Char('r') => Msg::StartRebuild,
         KeyCode::Char('w') => Msg::OpenWorkQueue,

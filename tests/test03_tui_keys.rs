@@ -217,6 +217,54 @@ fn rebuild_view_navigates_matches_when_not_editing() {
 }
 
 #[test]
+fn exit_rebuild_keeps_rebuild_state() {
+    let mut app = App::new();
+    app.state = UiState::Rebuilding;
+    let job = RebuildJob::new(
+        "img".into(),
+        Some("container".into()),
+        PathBuf::from("."),
+        PathBuf::from("."),
+    );
+    app.rebuild = Some(RebuildState::new(
+        vec![job],
+        REBUILD_VIEW_LINE_BUFFER_DEFAULT,
+    ));
+
+    podman_compose_mgr::tui::app::update_with_services(&mut app, Msg::ExitRebuild, None);
+
+    assert_eq!(app.state, UiState::Ready);
+    assert!(
+        app.rebuild.is_some(),
+        "rebuild state should be retained after exiting the view"
+    );
+}
+
+#[test]
+fn ready_view_j_reopens_rebuild() {
+    let mut app = App::new();
+    app.state = UiState::Ready;
+    let job = RebuildJob::new("img".into(), None, PathBuf::from("."), PathBuf::from("."));
+    app.rebuild = Some(RebuildState::new(
+        vec![job],
+        REBUILD_VIEW_LINE_BUFFER_DEFAULT,
+    ));
+
+    assert!(matches!(
+        podman_compose_mgr::tui::app::map_keycode_to_msg(&app, KeyCode::Char('j')),
+        Some(Msg::ShowRebuild)
+    ));
+    assert!(matches!(
+        podman_compose_mgr::tui::app::map_keycode_to_msg(&app, KeyCode::Char('J')),
+        Some(Msg::ShowRebuild)
+    ));
+
+    podman_compose_mgr::tui::app::update_with_services(&mut app, Msg::ShowRebuild, None);
+
+    assert_eq!(app.state, UiState::Rebuilding);
+}
+
+#[test]
 fn rebuild_home_and_end_keys_adjust_scroll_and_auto_follow() {
     let args = Args::default();
     let mut app = App::new();

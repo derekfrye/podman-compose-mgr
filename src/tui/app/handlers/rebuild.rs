@@ -52,6 +52,7 @@ pub fn handle_rebuild_message(app: &mut App, msg: Msg, services: Option<&Service
         Msg::SearchCancel => handle_search_cancel(app),
         Msg::SearchNext => handle_search_next(app),
         Msg::SearchPrev => handle_search_prev(app),
+        Msg::ShowRebuild => handle_show_rebuild(app),
         Msg::ExitRebuild => handle_exit_rebuild(app),
         _ => {}
     }
@@ -165,7 +166,13 @@ fn handle_rebuild_complete(app: &mut App) {
 fn handle_exit_rebuild(app: &mut App) {
     if matches!(app.state, UiState::Rebuilding) {
         app.state = UiState::Ready;
-        app.rebuild = None;
+        app.modal = None;
+    }
+}
+
+fn handle_show_rebuild(app: &mut App) {
+    if app.rebuild.is_some() {
+        app.state = UiState::Rebuilding;
         app.modal = None;
     }
 }

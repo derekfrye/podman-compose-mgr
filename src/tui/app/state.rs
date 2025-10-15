@@ -82,6 +82,7 @@ pub enum Msg {
         details: Vec<String>,
     },
     StartRebuild,
+    ShowRebuild,
     RebuildSessionCreated {
         jobs: Vec<RebuildJobSpec>,
     },

@@ -47,6 +47,7 @@ fn tui_interrupt_exits_quickly() {
         exclude: vec![],
         tx,
         args: args.clone(),
+        working_dir: args.path.clone(),
     };
 
     let chans = app::LoopChans {

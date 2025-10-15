@@ -809,7 +809,9 @@ fn help_overlay_lines() -> Vec<Line<'static>> {
         ]),
         Line::from(vec![
             styled_key("r", Color::Green),
-            Span::raw(" rebuild selected images"),
+            Span::raw(" rebuild selected images  "),
+            styled_key("j", Color::Green),
+            Span::raw(" show rebuild jobs"),
         ]),
         Line::from(vec![styled_key("v", Color::Cyan), Span::raw(" View")]),
     ]

@@ -114,6 +114,7 @@ impl TestContext {
             exclude: args.exclude_path_patterns.clone(),
             tx: tx.clone(),
             args: args.clone(),
+            working_dir: args.path.clone(),
         };
 
         let mut app = App::new();
