@@ -1,27 +1,19 @@
 # podman-compose-mgr
 
-This program helps manage a directory tree containing `docker-compose.yml` and `.container` files. It recursively searches for these files and interactively prompts the user to either pull the upstream image or build it from a local Dockerfile/Makefile.
+This program helps manage a directory tree containing `docker-compose.yml` and/or `.container` files. Interactively show image information, and pull, build, or rebuild the images from Dockerfiles/Makefiles.
 
 ## Features
 
--   **Interactive Image Management**: Interactively choose to pull or build container images.
--   **Flexible Path Filtering**: Use regex patterns to include or exclude specific paths from processing.
--   **Custom Build Arguments**: Pass build arguments to `podman build`.
--   **TUI Mode**: An optional terminal UI for a more visual experience.
--   **Queue Rebuilds**: Manage rebuild jobs from the TUI, including an option to auto-queue everything on launch.
--   **Regex Search in Rebuild Output**: Hit `/` or `?` to launch live regex search and use `n/N` to jump between matches while the build runs.
--   **Custom Podman Path**: Point the tool at an alternate Podman binary when needed.
-
-## Documentation
-
--   [Model-View-Update approach](docs/MVU.md)
+-   **TUI Mode**: An optional terminal UI. Manage rebuild jobs from the TUI.
+-   **Interactive Image Management**: Interactively pull or (re)build container images.
+-   **Regex Search in Rebuild Output**: In job output, `/` or `?` performs a live regex search through `podman build` output. Use `n/N` to jump between matches while the build runs.
 
 ## Example
 
 To find all `docker-compose.yml` and `.container` files in your `~/docker` directory, excluding any in a `docker/archive` path, and pass a build argument for the username:
 
 ```shell
-podman-compose-mgr --path ~/docker -e "docker/archive" --build-args "USERNAME=$(id -un)"
+podman-compose-mgr [--tui] --path ~/docker -e "docker/archive" --build-args "USERNAME=$(id -un)"
 ```
 
 For each image found, you will be prompted with the following options:
@@ -48,7 +40,11 @@ For each image found, you will be prompted with the following options:
 
 ## Why does this exist?
 
-You could do a lot of this with 50 lines of `bash`, `grep`, `tput`, `curl`. *But*...
+You could do a lot of this with 50 lines of `bash`, `grep`, `curl`, etc. *But*...
 
-1. Bash's `getops` is held back maintaining its hx of portability. For me, arg handling is a big part of an interface, and an interface with built-in help, colored output, typed arguments, etc., is nice[^1].
-2. I don't like writing, debugging, or maintaining shell after about 30 lines.
+1. Bash's `getops` is held back maintaining its hx of portability. For me, arg handling is a big part of an interface, and an interface with built-in help, colored output, typed arguments, etc., is nice.
+2. I don't like writing, debugging, or maintaining shell.
+
+## Design documentation
+
+-   [Model-View-Update approach](docs/MVU.md)
