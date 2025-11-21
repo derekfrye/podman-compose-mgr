@@ -61,6 +61,12 @@ pub fn run_app(args: &args::Args) -> io::Result<()> {
     let logger = Logger::new(args.verbose);
     log_command_line(args, &logger);
 
+    if args.one_shot {
+        crate::cli_mvu::run_one_shot(args, &logger);
+        logger.info("Done.");
+        return Ok(());
+    }
+
     if args.tui {
         crate::tui::run(args, &logger)?;
         logger.info("Done.");

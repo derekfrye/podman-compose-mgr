@@ -44,6 +44,14 @@ pub struct Args {
     #[arg(long)]
     pub no_cache: bool,
 
+    /// Run discovery once and automatically build or pull each image
+    #[arg(long = "one-shot")]
+    pub one_shot: bool,
+
+    /// Print which images would be built or pulled when using --one-shot
+    #[arg(long, requires = "one_shot")]
+    pub dry_run: bool,
+
     /// Use terminal UI mode
     #[arg(long)]
     pub tui: bool,
@@ -79,6 +87,8 @@ impl Default for Args {
             temp_file_path: default_temp_path,
             podman_bin: None,
             no_cache: false,
+            one_shot: false,
+            dry_run: false,
             tui: false,
             tui_rebuild_all: false,
             rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,

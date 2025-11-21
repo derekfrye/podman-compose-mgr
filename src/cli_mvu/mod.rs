@@ -1,4 +1,6 @@
 use crate::args::Args;
+use crate::image_build::buildfile_helpers;
+use crate::image_build::buildfile_types::{BuildChoice, WhatWereBuilding};
 use crate::image_build::container_file::parse_container_file;
 use crate::image_build::rebuild::{Image, build_rebuild_grammars, read_yaml_file};
 use crate::interfaces::DefaultCommandHelper;
@@ -75,6 +77,136 @@ pub fn run_cli_loop(args: &Args, logger: &Logger) {
         if matches!(model.state, State::Done) {
             break;
         }
+    }
+}
+
+/// Run discovery once and automatically build or pull each image.
+pub fn run_one_shot(args: &Args, logger: &Logger) {
+    logger.info(&format!(
+        "One-shot processing images under {}",
+        args.path.display()
+    ));
+
+    let include = compile_regexes(args.include_path_patterns.clone());
+    let exclude = compile_regexes(args.exclude_path_patterns.clone());
+    let items = collect_prompt_items(&args.path, &include, &exclude);
+
+    if items.is_empty() {
+        logger.info("No docker-compose.yml or .container files were discovered.");
+        return;
+    }
+
+    let build_arg_refs: Vec<&str> = args.build_args.iter().map(String::as_str).collect();
+
+    for item in items {
+        process_one_shot_item(args, logger, &build_arg_refs, item);
+    }
+}
+
+fn process_one_shot_item(args: &Args, logger: &Logger, build_arg_refs: &[&str], item: PromptItem) {
+    let entry = find_entry(&item.entry);
+    let build_plan = select_build_plan(&entry, &item.image, build_arg_refs, args.no_cache);
+
+    if args.dry_run {
+        emit_dry_run_message(&item, build_plan.as_ref());
+        return;
+    }
+
+    if let Some(plan) = build_plan {
+        logger.info(&format!(
+            "Building image {} (container {}) via {}",
+            item.image,
+            item.container,
+            describe_build_plan(&plan)
+        ));
+        let cmd_helper = DefaultCommandHelper;
+        if let Err(err) =
+            crate::image_build::buildfile_build::build_image_from_spec(&cmd_helper, &plan)
+        {
+            logger.warn(&format!("Failed to build image {}: {}", item.image, err));
+        }
+    } else {
+        logger.info(&format!(
+            "No Dockerfile or Makefile near {}. Pulling image {}.",
+            item.entry.display(),
+            item.image
+        ));
+        let cmd_helper = DefaultCommandHelper;
+        if let Err(err) = crate::image_build::rebuild::pull_image(&cmd_helper, &item.image) {
+            logger.warn(&format!("Failed to pull image {}: {}", item.image, err));
+        }
+    }
+}
+
+fn select_build_plan(
+    dir: &walkdir::DirEntry,
+    image: &str,
+    build_args: &[&str],
+    no_cache: bool,
+) -> Option<WhatWereBuilding> {
+    let buildfiles = buildfile_helpers::find_buildfile(dir, image, build_args, no_cache)?;
+    let mut available: Vec<_> = buildfiles
+        .into_iter()
+        .filter(|file| file.filepath.is_some())
+        .collect();
+
+    if available.is_empty() {
+        return None;
+    }
+
+    available.sort_by(|a, b| build_priority(&a.filetype).cmp(&build_priority(&b.filetype)));
+    let chosen = available.remove(0);
+
+    Some(WhatWereBuilding {
+        file: chosen,
+        follow_link: false,
+    })
+}
+
+fn build_priority(choice: &BuildChoice) -> u8 {
+    match choice {
+        BuildChoice::Dockerfile => 0,
+        BuildChoice::Makefile => 1,
+    }
+}
+
+fn describe_build_plan(plan: &WhatWereBuilding) -> String {
+    match plan.file.filetype {
+        BuildChoice::Dockerfile => plan
+            .file
+            .filepath
+            .as_ref()
+            .map(|path| format!("Dockerfile at {}", path.display()))
+            .unwrap_or_else(|| "Dockerfile".to_string()),
+        BuildChoice::Makefile => {
+            let dir = if plan.follow_link {
+                plan.file
+                    .link_target_dir
+                    .as_ref()
+                    .and_then(|link| link.parent())
+                    .unwrap_or(&plan.file.parent_dir)
+            } else {
+                &plan.file.parent_dir
+            };
+            format!("Makefile (make -C {})", dir.display())
+        }
+    }
+}
+
+fn emit_dry_run_message(item: &PromptItem, plan: Option<&WhatWereBuilding>) {
+    match plan {
+        Some(plan) => println!(
+            "[dry-run] {} (container {}) -> build via {}",
+            item.image,
+            item.container,
+            describe_build_plan(plan)
+        ),
+        None => println!(
+            "[dry-run] {} (container {}) -> pull (no Dockerfile/Makefile near {})",
+            item.image,
+            item.container,
+            item.entry.display()
+        ),
     }
 }
 

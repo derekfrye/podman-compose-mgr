@@ -16,6 +16,8 @@ To find all `docker-compose.yml` and `.container` files in your `~/docker` direc
 podman-compose-mgr [--tui] --path ~/docker -e "docker/archive" --build-args "USERNAME=$(id -un)"
 ```
 
+To skip the interactive prompts entirely and support a oneshot pass, pass `--one-shot` (and optionally `--dry-run` to preview the actions). In that mode every discovered image is built when a Dockerfile or Makefile is present and otherwise pulled from its registry.
+
 For each image found, you will be prompted with the following options:
 
 -   `p`: Pull the image from its upstream registry.
@@ -35,6 +37,8 @@ For each image found, you will be prompted with the following options:
 -   `--temp-file-path <PATH>`: The directory to use for temporary files. Defaults to `/tmp`.
 -   `--podman-bin <PATH>`: Override the `podman` executable used for discovery and rebuild commands.
 -   `--no-cache`: Pass `--no-cache` to `podman build` to disable the build cache.
+-   `--one-shot`: Skip the TUI and CLI prompts and automatically attempt to build every discovered image (falls back to pulling when no Dockerfile/Makefile exists).
+-   `--dry-run`: Only valid with `--one-shot`. Print which images would be built or pulled without running the commands.
 -   `--tui`: Use the terminal UI mode.
 -   `--tui-rebuild-all`: Automatically select and rebuild every discovered image when the TUI opens.
 
