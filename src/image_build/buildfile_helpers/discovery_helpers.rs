@@ -1,4 +1,5 @@
 use crate::image_build::buildfile_types::{BuildChoice, BuildFile};
+use std::path::{Path, PathBuf};
 use walkdir::DirEntry;
 
 /// Find buildfiles in a directory
@@ -12,49 +13,160 @@ pub fn find_buildfile(
     build_args: &[&str],
     no_cache: bool,
 ) -> Option<Vec<BuildFile>> {
-    let parent_dir = dir.path().to_path_buf().parent().unwrap().to_path_buf();
-    let dockerfile = parent_dir.join("Dockerfile");
-    let makefile = parent_dir.join("Makefile");
-    let mut buildfiles: Option<Vec<BuildFile>> = None;
+    let parent_dir = dir.path().parent()?.to_path_buf();
+    let mut buildfiles: Vec<BuildFile> = Vec::new();
 
-    for file_path in &[&dockerfile, &makefile] {
-        let buildfile = BuildFile {
-            filetype: match file_path {
-                _ if *file_path == &makefile => BuildChoice::Makefile,
-                _ => BuildChoice::Dockerfile,
-            },
-            filepath: if let Ok(metadata) = file_path.symlink_metadata() {
-                if metadata.file_type().is_symlink() {
-                    Some(std::fs::read_link(file_path).unwrap().clone())
-                } else if metadata.is_file() {
-                    Some((*file_path).clone())
-                } else {
-                    None
-                }
-            } else {
-                None
-            },
-            parent_dir: parent_dir.clone(),
-            link_target_dir: if std::fs::read_link(file_path).is_ok() {
-                Some(std::fs::read_link(file_path).unwrap().clone())
-            } else {
-                None
-            },
-            base_image: Some(custom_img_nm.to_string()),
-            custom_img_nm: Some(custom_img_nm.to_string()),
-            build_args: build_args.iter().map(|arg| (*arg).to_string()).collect(),
+    if let Some(candidate) = container_specific_dockerfile(dir) {
+        if let Some(buildfile) = buildfile_from_candidate(
+            &candidate,
+            BuildChoice::Dockerfile,
+            &parent_dir,
+            custom_img_nm,
+            build_args,
             no_cache,
-        };
-
-        match &mut buildfiles {
-            Some(files) => {
-                files.push(buildfile);
-            }
-            None => {
-                buildfiles = Some(vec![buildfile]);
-            }
+        ) {
+            buildfiles.push(buildfile);
         }
     }
 
-    buildfiles
+    for filename in ["Dockerfile", "Makefile"] {
+        let filetype = match filename {
+            "Makefile" => BuildChoice::Makefile,
+            _ => BuildChoice::Dockerfile,
+        };
+        let candidate = parent_dir.join(filename);
+        if let Some(buildfile) = buildfile_from_candidate(
+            &candidate,
+            filetype,
+            &parent_dir,
+            custom_img_nm,
+            build_args,
+            no_cache,
+        ) {
+            buildfiles.push(buildfile);
+        }
+    }
+
+    if buildfiles.is_empty() {
+        None
+    } else {
+        Some(buildfiles)
+    }
+}
+
+fn container_specific_dockerfile(entry: &DirEntry) -> Option<PathBuf> {
+    let path = entry.path();
+    if path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .filter(|ext| *ext == "container")
+        .is_none()
+    {
+        return None;
+    }
+
+    let base_name = path.file_stem()?.to_string_lossy();
+    let parent_dir = path.parent()?;
+    Some(parent_dir.join(format!("Dockerfile.{base_name}")))
+}
+
+fn buildfile_from_candidate(
+    candidate: &Path,
+    filetype: BuildChoice,
+    parent_dir: &Path,
+    custom_img_nm: &str,
+    build_args: &[&str],
+    no_cache: bool,
+) -> Option<BuildFile> {
+    let metadata = candidate.symlink_metadata().ok()?;
+    if !metadata.is_file() && !metadata.file_type().is_symlink() {
+        return None;
+    }
+
+    let (filepath, link_target_dir) = if metadata.file_type().is_symlink() {
+        match std::fs::read_link(candidate) {
+            Ok(target) => (Some(target.clone()), Some(target)),
+            Err(_) => return None,
+        }
+    } else {
+        (
+            Some(candidate.to_path_buf()),
+            std::fs::read_link(candidate).ok(),
+        )
+    };
+
+    Some(BuildFile {
+        filetype,
+        filepath,
+        parent_dir: parent_dir.to_path_buf(),
+        link_target_dir,
+        base_image: Some(custom_img_nm.to_string()),
+        custom_img_nm: Some(custom_img_nm.to_string()),
+        build_args: build_args.iter().map(|arg| (*arg).to_string()).collect(),
+        no_cache,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::Path;
+    use tempfile::tempdir;
+    use walkdir::WalkDir;
+
+    fn quadlet_entry(root: &Path, name: &str) -> DirEntry {
+        let target = root.join(name);
+        WalkDir::new(root)
+            .into_iter()
+            .filter_map(Result::ok)
+            .find(|entry| entry.path() == target)
+            .expect("quadlet entry should exist")
+    }
+
+    #[test]
+    fn prefers_container_specific_dockerfile_when_present() {
+        let tmp = tempdir().unwrap();
+        let quadlet = tmp.path().join("web.container");
+        fs::write(&quadlet, "[Container]\nImage=example\n").unwrap();
+        let specific = tmp.path().join("Dockerfile.web");
+        let generic = tmp.path().join("Dockerfile");
+        fs::write(&specific, "FROM scratch").unwrap();
+        fs::write(&generic, "FROM scratch").unwrap();
+
+        let entry = quadlet_entry(tmp.path(), "web.container");
+        let files = find_buildfile(&entry, "example", &[], false).expect("files found");
+        assert_eq!(files.len(), 2);
+        assert_eq!(
+            files[0].filepath.as_ref().map(PathBuf::as_path),
+            Some(specific.as_path())
+        );
+        assert_eq!(
+            files[1].filepath.as_ref().map(PathBuf::as_path),
+            Some(generic.as_path())
+        );
+    }
+
+    #[test]
+    fn falls_back_to_generic_dockerfile_and_makefile() {
+        let tmp = tempdir().unwrap();
+        let quadlet = tmp.path().join("db.container");
+        fs::write(&quadlet, "[Container]\nImage=example\n").unwrap();
+        let generic = tmp.path().join("Dockerfile");
+        let makefile = tmp.path().join("Makefile");
+        fs::write(&generic, "FROM scratch").unwrap();
+        fs::write(&makefile, "all:\n\techo ok\n").unwrap();
+
+        let entry = quadlet_entry(tmp.path(), "db.container");
+        let files = find_buildfile(&entry, "example", &[], false).expect("files found");
+        assert_eq!(files.len(), 2);
+        assert_eq!(
+            files[0].filepath.as_ref().map(PathBuf::as_path),
+            Some(generic.as_path())
+        );
+        assert_eq!(
+            files[1].filepath.as_ref().map(PathBuf::as_path),
+            Some(makefile.as_path())
+        );
+    }
 }

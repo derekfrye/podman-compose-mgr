@@ -1,6 +1,6 @@
 use crate::args::Args;
 use crate::image_build::buildfile_helpers;
-use crate::image_build::buildfile_types::{BuildChoice, BuildFile, WhatWereBuilding};
+use crate::image_build::buildfile_types::{BuildChoice, WhatWereBuilding};
 use crate::image_build::container_file::parse_container_file;
 use crate::image_build::rebuild::{Image, build_rebuild_grammars, read_yaml_file};
 use crate::interfaces::DefaultCommandHelper;
@@ -144,69 +144,13 @@ fn select_build_plan(
     build_args: &[&str],
     no_cache: bool,
 ) -> Option<WhatWereBuilding> {
-    if let Some(plan) = container_specific_dockerfile_plan(dir, image, build_args, no_cache) {
-        return Some(plan);
-    }
-
     let buildfiles = buildfile_helpers::find_buildfile(dir, image, build_args, no_cache)?;
-    let mut available: Vec<_> = buildfiles
+    let chosen = buildfiles
         .into_iter()
-        .filter(|file| file.filepath.is_some())
-        .collect();
-
-    if available.is_empty() {
-        return None;
-    }
-
-    available.sort_by(|a, b| build_priority(&a.filetype).cmp(&build_priority(&b.filetype)));
-    let chosen = available.remove(0);
+        .find(|file| file.filepath.is_some())?;
 
     Some(WhatWereBuilding {
         file: chosen,
-        follow_link: false,
-    })
-}
-
-fn build_priority(choice: &BuildChoice) -> u8 {
-    match choice {
-        BuildChoice::Dockerfile => 0,
-        BuildChoice::Makefile => 1,
-    }
-}
-
-fn container_specific_dockerfile_plan(
-    dir: &walkdir::DirEntry,
-    image: &str,
-    build_args: &[&str],
-    no_cache: bool,
-) -> Option<WhatWereBuilding> {
-    let path = dir.path();
-    if path.extension().and_then(|ext| ext.to_str()) != Some("container") {
-        return None;
-    }
-
-    let base_name = path.file_stem()?.to_string_lossy();
-    let parent_dir = path.parent()?;
-    let candidate = parent_dir.join(format!("Dockerfile.{base_name}"));
-
-    let metadata = candidate.symlink_metadata().ok()?;
-    if !(metadata.is_file() || metadata.file_type().is_symlink()) {
-        return None;
-    }
-
-    let build_file = BuildFile {
-        filetype: BuildChoice::Dockerfile,
-        filepath: Some(candidate.clone()),
-        parent_dir: parent_dir.to_path_buf(),
-        link_target_dir: std::fs::read_link(&candidate).ok(),
-        base_image: Some(image.to_string()),
-        custom_img_nm: Some(image.to_string()),
-        build_args: build_args.iter().map(|arg| (*arg).to_string()).collect(),
-        no_cache,
-    };
-
-    Some(WhatWereBuilding {
-        file: build_file,
         follow_link: false,
     })
 }

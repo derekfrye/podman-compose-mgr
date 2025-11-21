@@ -93,6 +93,8 @@ impl TestContext {
             temp_file_path: std::env::temp_dir(),
             podman_bin: Some(podman_bin.clone()),
             no_cache: false,
+            one_shot: false,
+            dry_run: false,
             tui: true,
             tui_rebuild_all: true,
             rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,

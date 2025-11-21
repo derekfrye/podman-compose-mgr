@@ -38,6 +38,8 @@ fn view_modal_shows_three_options_and_selects_folder_view() {
         temp_file_path: std::env::temp_dir(),
         podman_bin: None,
         no_cache: false,
+        one_shot: false,
+        dry_run: false,
         tui: true,
         tui_rebuild_all: false,
         rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,

@@ -20,6 +20,8 @@ fn change_view_to_by_image_dedupes_images() {
         temp_file_path: std::env::temp_dir(),
         podman_bin: None,
         no_cache: false,
+        one_shot: false,
+        dry_run: false,
         tui: true,
         tui_rebuild_all: false,
         rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
