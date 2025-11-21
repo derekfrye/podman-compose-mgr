@@ -806,7 +806,7 @@ mod tests {
     #[test]
     fn sanitize_component_removes_chars() {
         let sanitized = sanitize_filename_component("foo/bar:tag name").unwrap();
-        assert_eq!(sanitized, "footagname");
+        assert_eq!(sanitized, "foobartagname");
     }
 
     #[test]
