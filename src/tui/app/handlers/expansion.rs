@@ -40,8 +40,13 @@ fn handle_directory_enter(app: &mut App) -> bool {
 }
 
 fn handle_row_expand(app: &mut App, services: Option<&Services>) {
-    let (image, source_dir, already_expanded) = match app.rows.get(app.selected) {
-        Some(row) => (row.image.clone(), row.source_dir.clone(), row.expanded),
+    let (image, source_dir, entry_path, already_expanded) = match app.rows.get(app.selected) {
+        Some(row) => (
+            row.image.clone(),
+            row.source_dir.clone(),
+            row.entry_path.clone(),
+            row.expanded,
+        ),
         None => return,
     };
 
@@ -55,7 +60,14 @@ fn handle_row_expand(app: &mut App, services: Option<&Services>) {
     }
 
     if let Some(svc) = services {
-        spawn_detail_fetch(svc, app.selected, image, source_dir, app.view_mode);
+        spawn_detail_fetch(
+            svc,
+            app.selected,
+            image,
+            source_dir,
+            entry_path,
+            app.view_mode,
+        );
     }
 }
 
@@ -75,12 +87,14 @@ fn spawn_detail_fetch(
     row_idx: usize,
     image: String,
     source_dir: std::path::PathBuf,
+    entry_path: Option<std::path::PathBuf>,
     view_mode: ViewMode,
 ) {
     let tx = services.tx.clone();
     let core = services.core.clone();
     std::thread::spawn(move || {
-        let details = compute_details_for(&core, &image, &source_dir, view_mode);
+        let entry_path_ref = entry_path.as_deref();
+        let details = compute_details_for(&core, &image, &source_dir, entry_path_ref, view_mode);
         let _ = tx.send(Msg::DetailsReady {
             row: row_idx,
             details,
@@ -92,6 +106,7 @@ fn compute_details_for(
     core: &AppCore,
     image: &str,
     source_dir: &std::path::Path,
+    entry_path: Option<&std::path::Path>,
     view_mode: ViewMode,
 ) -> Vec<String> {
     use crate::domain::ImageDetails;
@@ -103,11 +118,11 @@ fn compute_details_for(
     ) {
         lines.push(format!("Compose dir: {}", source_dir.display()));
     }
-    match core.image_details(image, source_dir) {
+    match core.image_details(image, source_dir, entry_path) {
         Ok(ImageDetails {
             created_time_ago,
             pulled_time_ago,
-            has_dockerfile,
+            dockerfile_name,
             has_makefile,
         }) => {
             if let Some(created) = created_time_ago {
@@ -116,8 +131,9 @@ fn compute_details_for(
             if let Some(pulled) = pulled_time_ago {
                 lines.push(format!("Pulled: {pulled}"));
             }
-            if has_dockerfile {
-                lines.push("Found Dockerfile".to_string());
+            match dockerfile_name {
+                Some(name) => lines.push(format!("Dockerfile: {name}")),
+                None => lines.push("Dockerfile: not found".to_string()),
             }
             if has_makefile {
                 lines.push("Found Makefile".to_string());

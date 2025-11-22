@@ -14,6 +14,6 @@ pub struct DiscoveredImage {
 pub struct ImageDetails {
     pub created_time_ago: Option<String>,
     pub pulled_time_ago: Option<String>,
-    pub has_dockerfile: bool,
+    pub dockerfile_name: Option<String>,
     pub has_makefile: bool,
 }
