@@ -202,6 +202,7 @@ pub struct DockerfileRowExtra {
     pub dockerfile_name: String,
     pub image_name: Option<String>,
     pub created_time_ago: Option<String>,
+    pub note: Option<String>,
 }
 
 impl RebuildState {

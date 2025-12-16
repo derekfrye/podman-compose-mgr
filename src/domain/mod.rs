@@ -23,6 +23,8 @@ pub struct DiscoveredDockerfile {
     pub source_dir: PathBuf,
     pub basename: String,
     pub neighbor_image: Option<(InferenceSource, String)>,
+    pub total_dockerfiles_in_dir: usize,
+    pub neighbor_file_count: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -33,6 +35,9 @@ pub struct DockerfileInference {
     pub inferred_image: Option<String>,
     pub inference_source: InferenceSource,
     pub created_time_ago: Option<String>,
+    pub total_dockerfiles_in_dir: usize,
+    pub neighbor_file_count: usize,
+    pub note: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

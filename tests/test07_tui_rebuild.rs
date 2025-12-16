@@ -98,6 +98,7 @@ impl TestContext {
             tui: true,
             tui_rebuild_all: true,
             rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
+            tui_simulate: None,
         };
 
         podman_compose_mgr::utils::podman_utils::set_podman_binary_override(

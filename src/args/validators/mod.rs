@@ -12,5 +12,8 @@ pub fn validate(args: &Args) -> Result<(), String> {
     if args.dry_run && !args.one_shot {
         return Err("--dry-run requires --one-shot".to_string());
     }
+    if args.tui_simulate.is_some() && !args.dry_run {
+        return Err("--tui-simulate requires --dry-run (and typically --one-shot)".to_string());
+    }
     Ok(())
 }

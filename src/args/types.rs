@@ -68,6 +68,30 @@ pub struct Args {
         value_parser = clap::value_parser!(usize)
     )]
     pub rebuild_view_line_buffer_max: usize,
+
+    /// Simulate a TUI view in dry-run mode (e.g., view-mode-dockerfile)
+    #[arg(long = "tui-simulate", value_parser = parse_sim_view)]
+    pub tui_simulate: Option<SimulateViewMode>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub enum SimulateViewMode {
+    Container,
+    Image,
+    Folder,
+    Dockerfile,
+}
+
+fn parse_sim_view(raw: &str) -> Result<SimulateViewMode, String> {
+    match raw {
+        "view-mode-container" | "container" => Ok(SimulateViewMode::Container),
+        "view-mode-image" | "image" => Ok(SimulateViewMode::Image),
+        "view-mode-folder" | "folder" => Ok(SimulateViewMode::Folder),
+        "view-mode-dockerfile" | "dockerfile" => Ok(SimulateViewMode::Dockerfile),
+        other => Err(format!(
+            "invalid tui-simulate value '{other}', expected one of: view-mode-container, view-mode-image, view-mode-folder, view-mode-dockerfile"
+        )),
+    }
 }
 
 impl Default for Args {
@@ -92,6 +116,7 @@ impl Default for Args {
             tui: false,
             tui_rebuild_all: false,
             rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
+            tui_simulate: None,
         }
     }
 }

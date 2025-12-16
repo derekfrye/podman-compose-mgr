@@ -142,6 +142,9 @@ fn compute_details_for(
                 .unwrap_or_else(|| "unknown".to_string());
             lines.push(format!("Dockerfile: {}", extra.dockerfile_name));
             lines.push(format!("Image: {image_name}"));
+            if let Some(note) = &extra.note {
+                lines.push(note.clone());
+            }
             if let Some(created) = &extra.created_time_ago {
                 lines.push(format!("Created: {created}"));
             }

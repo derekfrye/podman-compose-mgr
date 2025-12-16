@@ -43,6 +43,7 @@ fn view_modal_shows_options_and_selects_folder_view() {
         tui: true,
         tui_rebuild_all: false,
         rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
+        tui_simulate: None,
     };
 
     let backend = TestBackend::new(80, 18);

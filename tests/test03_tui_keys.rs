@@ -43,6 +43,7 @@ fn keys_overlay_is_drawn_with_labels() {
         tui: true,
         tui_rebuild_all: false,
         rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
+        tui_simulate: None,
     };
 
     // Render at a reasonable size

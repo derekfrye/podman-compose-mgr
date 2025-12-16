@@ -174,6 +174,7 @@ impl App {
                     dockerfile_name: df.basename.clone(),
                     image_name: df.inferred_image.clone(),
                     created_time_ago: df.created_time_ago.clone(),
+                    note: df.note.clone(),
                 }),
             })
             .collect()

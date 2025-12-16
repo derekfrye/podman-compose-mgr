@@ -111,11 +111,13 @@ impl AppCore {
             let inference_source;
             let inferred_image;
             let created_time_ago;
+            let note;
 
             if let Some((source, image)) = dockerfile.neighbor_image.clone() {
                 inference_source = source;
                 inferred_image = Some(image.clone());
                 created_time_ago = self.find_created_for(&image, local_images);
+                note = Some("single neighbor file".to_string());
             } else {
                 let suffix = dockerfile
                     .basename
@@ -133,10 +135,16 @@ impl AppCore {
                     created_time_ago = entry
                         .created
                         .map(crate::utils::podman_utils::format_time_ago);
+                    if dockerfile.total_dockerfiles_in_dir > 1 {
+                        note = Some("registry matched (multiple Dockerfiles in dir)".to_string());
+                    } else {
+                        note = Some("registry matched".to_string());
+                    }
                 } else {
                     inference_source = InferenceSource::Unknown;
                     inferred_image = None;
                     created_time_ago = None;
+                    note = None;
                 }
             }
 
@@ -147,6 +155,9 @@ impl AppCore {
                 inferred_image,
                 inference_source,
                 created_time_ago,
+                total_dockerfiles_in_dir: dockerfile.total_dockerfiles_in_dir,
+                neighbor_file_count: dockerfile.neighbor_file_count,
+                note,
             });
         }
 

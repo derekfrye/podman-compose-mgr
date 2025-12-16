@@ -177,6 +177,8 @@ fn build_dockerfile_rows(
                 source_dir: dir.clone(),
                 basename,
                 neighbor_image,
+                total_dockerfiles_in_dir: info.dockerfiles.len(),
+                neighbor_file_count: neighbor_count,
             });
         }
     }
