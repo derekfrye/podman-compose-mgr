@@ -190,15 +190,10 @@ fn collect_from_compose(
     seen: &mut HashSet<(String, Option<String>, std::path::PathBuf)>,
     rows: &mut Vec<DiscoveredImage>,
 ) -> Option<Option<String>> {
-    let Some(yaml) = read_yaml_file_local(path_str) else {
-        return None;
-    };
-    let Some(services) = yaml
+    let yaml = read_yaml_file_local(path_str)?;
+    let services = yaml
         .get(serde_yaml::Value::String("services".into()))
-        .and_then(|value| value.as_mapping())
-    else {
-        return None;
-    };
+        .and_then(|value| value.as_mapping())?;
 
     let mut first_image = None;
     for (svc_name, svc_cfg) in services {

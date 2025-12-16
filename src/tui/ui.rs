@@ -701,16 +701,15 @@ fn draw_export_modal(frame: &mut Frame, full_area: Rect, input: &str, error: Opt
         height: height_final,
     };
 
-    let mut lines = Vec::new();
-    lines.push(Line::from("Enter a filename to export the rebuild log:"));
-    lines.push(Line::from(vec![
-        Span::styled("> ", Style::default().fg(Color::Cyan)),
-        Span::raw(input),
-    ]));
-    lines.push(Line::from(""));
-    lines.push(Line::from(
-        "Esc cancels. Enter saves in the current working directory.",
-    ));
+    let mut lines = vec![
+        Line::from("Enter a filename to export the rebuild log:"),
+        Line::from(vec![
+            Span::styled("> ", Style::default().fg(Color::Cyan)),
+            Span::raw(input),
+        ]),
+        Line::from(""),
+        Line::from("Esc cancels. Enter saves in the current working directory."),
+    ];
     if let Some(err) = error {
         lines.push(Line::from(""));
         lines.push(Line::from(vec![Span::styled(

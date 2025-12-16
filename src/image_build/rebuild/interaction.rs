@@ -123,6 +123,7 @@ fn notify_invalid_choice(logger: &dyn BuildLogger) {
 ///
 /// # Errors
 /// Returns an error if reading input or executing the selected action fails.
+#[allow(clippy::too_many_arguments)]
 pub fn read_val_loop<C: CommandHelper, R: ReadInteractiveInputHelper>(
     cmd_helper: &C,
     read_val_helper: &R,
