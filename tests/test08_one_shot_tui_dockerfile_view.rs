@@ -2,11 +2,11 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use podman_compose_mgr::args::types::{Args, SimulateViewMode};
+use podman_compose_mgr::args::types::{Args, OneShotArgs, SimulateViewMode, TuiArgs};
 use podman_compose_mgr::infra::discovery_adapter::FsDiscovery;
 use podman_compose_mgr::ports::DiscoveryPort;
-use podman_compose_mgr::tui::simulate_view_with_ports;
 use podman_compose_mgr::tui::app::{App, UiState, ViewMode};
+use podman_compose_mgr::tui::simulate_view_with_ports;
 use podman_compose_mgr::tui::ui;
 use podman_compose_mgr::utils::log_utils::Logger;
 use tempfile::tempdir;
@@ -31,10 +31,11 @@ fn simulate_dockerfile_view_emits_registry_matches() {
         temp_file_path: std::env::temp_dir(),
         podman_bin: None,
         no_cache: false,
-        one_shot: true,
-        dry_run: true,
-        tui: false,
-        tui_rebuild_all: false,
+        one_shot: OneShotArgs {
+            one_shot: true,
+            dry_run: true,
+        },
+        tui: TuiArgs::default(),
         rebuild_view_line_buffer_max:
             podman_compose_mgr::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT,
         tui_simulate: Some(SimulateViewMode::Dockerfile),
@@ -96,10 +97,11 @@ fn tui_render_shows_inferred_images_from_json() {
         temp_file_path: std::env::temp_dir(),
         podman_bin: None,
         no_cache: false,
-        one_shot: false,
-        dry_run: false,
-        tui: true,
-        tui_rebuild_all: false,
+        one_shot: OneShotArgs::default(),
+        tui: TuiArgs {
+            enabled: true,
+            ..TuiArgs::default()
+        },
         rebuild_view_line_buffer_max:
             podman_compose_mgr::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT,
         tui_simulate: None,

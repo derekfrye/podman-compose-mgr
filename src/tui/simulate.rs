@@ -3,10 +3,14 @@ use crate::args::types::SimulateViewMode;
 use crate::domain::{InferenceSource, ScanResult};
 use crate::ports::{DiscoveryPort, PodmanPort};
 use crate::utils::log_utils::Logger;
+use std::fmt::Write as FmtWrite;
 use std::io::{self, Write};
 use std::sync::Arc;
 
 /// Run a dry-run style simulation of the TUI view and print rows to stdout.
+///
+/// # Errors
+/// Returns an error if scanning images fails or writing output is not possible.
 pub fn simulate_view(
     args: &crate::args::Args,
     mode: SimulateViewMode,
@@ -24,6 +28,9 @@ pub fn simulate_view(
 }
 
 /// Test hook: run simulation with injected ports and custom writer.
+///
+/// # Errors
+/// Returns an error if scanning images fails or writing output is not possible.
 pub fn simulate_view_with_ports(
     args: &crate::args::Args,
     mode: SimulateViewMode,
@@ -52,6 +59,10 @@ pub fn simulate_view_with_ports(
     Ok(())
 }
 
+/// Build a podman port backed by local JSON.
+///
+/// # Errors
+/// Returns an error if the JSON file cannot be read or parsed.
 pub fn podman_from_json(path: &std::path::Path) -> io::Result<Arc<dyn PodmanPort>> {
     Ok(Arc::new(LocalJsonPodman::from_file(path)?))
 }
@@ -63,9 +74,9 @@ struct LocalJsonPodman {
 impl LocalJsonPodman {
     fn from_file(path: &std::path::Path) -> io::Result<Self> {
         let content = std::fs::read(path)?;
-        let json = crate::infra::podman_adapter::parse_json_output(&content)
-            .map_err(io::Error::other)?;
-        let images = crate::infra::podman_adapter::local_images_from_json(json)
+        let json =
+            crate::infra::podman_adapter::parse_json_output(&content).map_err(io::Error::other)?;
+        let images = crate::infra::podman_adapter::local_images_from_json(&json)
             .map_err(io::Error::other)?;
         Ok(Self { images })
     }
@@ -116,12 +127,12 @@ fn print_dockerfiles(scan: &ScanResult, out: &mut dyn Write) -> io::Result<()> {
             InferenceSource::Unknown => "no inference".to_string(),
         };
         if let Some(note) = &df.note {
-            reason = note.clone();
+            reason.clone_from(note);
         }
 
         let mut line = format!("[dry-run] {} -> {}", df.basename, reason);
         if let Some(img) = &df.inferred_image {
-            line.push_str(&format!(" / registry name matched {img}"));
+            write!(&mut line, " / registry name matched {img}").map_err(io::Error::other)?;
         }
         writeln!(out, "{line}")?;
     }
@@ -150,9 +161,10 @@ fn print_folders(scan: &ScanResult, root: &std::path::Path, out: &mut dyn Write)
     let mut seen = std::collections::BTreeSet::new();
     for img in &scan.images {
         if let Ok(relative) = img.source_dir.strip_prefix(root)
-            && let Some(first) = relative.components().next() {
-                seen.insert(first.as_os_str().to_string_lossy().to_string());
-            }
+            && let Some(first) = relative.components().next()
+        {
+            seen.insert(first.as_os_str().to_string_lossy().to_string());
+        }
     }
     for dir in seen {
         writeln!(out, "[dry-run] folder {dir}")?;

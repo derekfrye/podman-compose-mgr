@@ -46,13 +46,11 @@ pub struct DiscoveryResult {
     pub dockerfiles: Vec<DiscoveredDockerfile>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct ScanResult {
     pub images: Vec<DiscoveredImage>,
     pub dockerfiles: Vec<DockerfileInference>,
 }
-
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LocalImageSummary {

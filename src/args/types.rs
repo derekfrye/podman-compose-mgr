@@ -45,20 +45,12 @@ pub struct Args {
     pub no_cache: bool,
 
     /// Run discovery once and automatically build or pull each image
-    #[arg(long = "one-shot")]
-    pub one_shot: bool,
-
-    /// Print which images would be built or pulled when using --one-shot
-    #[arg(long, requires = "one_shot")]
-    pub dry_run: bool,
+    #[command(flatten)]
+    pub one_shot: OneShotArgs,
 
     /// Use terminal UI mode
-    #[arg(long)]
-    pub tui: bool,
-
-    /// Automatically start rebuild for all discovered images in TUI mode
-    #[arg(long)]
-    pub tui_rebuild_all: bool,
+    #[command(flatten)]
+    pub tui: TuiArgs,
 
     /// Maximum number of lines retained in the rebuild TUI output
     #[arg(
@@ -76,6 +68,52 @@ pub struct Args {
     /// JSON input file to use for podman image listing during TUI simulation
     #[arg(long = "tui-simulate-podman-input-json")]
     pub tui_simulate_podman_input_json: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, clap::Args, Default)]
+pub struct OneShotArgs {
+    /// Run discovery once and automatically build or pull each image
+    #[arg(long = "one-shot")]
+    pub one_shot: bool,
+
+    /// Print which images would be built or pulled when using --one-shot
+    #[arg(long, requires = "one_shot")]
+    pub dry_run: bool,
+}
+
+impl OneShotArgs {
+    #[must_use]
+    pub fn enabled(self) -> bool {
+        self.one_shot
+    }
+
+    #[must_use]
+    pub fn is_dry_run(self) -> bool {
+        self.one_shot && self.dry_run
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, clap::Args, Default)]
+pub struct TuiArgs {
+    /// Use terminal UI mode
+    #[arg(long = "tui")]
+    pub enabled: bool,
+
+    /// Automatically start rebuild for all discovered images in TUI mode
+    #[arg(long = "tui-rebuild-all", requires = "enabled")]
+    pub rebuild_all: bool,
+}
+
+impl TuiArgs {
+    #[must_use]
+    pub fn enabled(self) -> bool {
+        self.enabled
+    }
+
+    #[must_use]
+    pub fn rebuild_all(self) -> bool {
+        self.enabled && self.rebuild_all
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -115,10 +153,8 @@ impl Default for Args {
             temp_file_path: default_temp_path,
             podman_bin: None,
             no_cache: false,
-            one_shot: false,
-            dry_run: false,
-            tui: false,
-            tui_rebuild_all: false,
+            one_shot: OneShotArgs::default(),
+            tui: TuiArgs::default(),
             rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
             tui_simulate: None,
             tui_simulate_podman_input_json: None,

@@ -194,9 +194,10 @@ fn draw_rebuild_output(
 
     let total_lines = job.output.len().max(1);
     let line_digits = count_digits(total_lines).max(3);
-    let mut gutter_width = (line_digits + 1) as u16;
+    let line_digits_u16 = u16::try_from(line_digits).unwrap_or(u16::MAX);
+    let mut gutter_width = u16::try_from(line_digits + 1).unwrap_or(u16::MAX);
     if gutter_width >= inner_area.width {
-        gutter_width = line_digits as u16;
+        gutter_width = line_digits_u16;
         if gutter_width >= inner_area.width {
             gutter_width = 0;
         }
@@ -219,7 +220,7 @@ fn draw_rebuild_output(
 
     let mut prompt_area = None;
     let search_state = rebuild.search.as_ref();
-    let show_prompt = search_state.map(search_prompt_visible).unwrap_or(false);
+    let show_prompt = search_state.is_some_and(search_prompt_visible);
     if show_prompt && text_area.height > 1 {
         let segments = Layout::default()
             .direction(Direction::Vertical)
@@ -303,7 +304,7 @@ fn draw_rebuild_output(
     let visible: Vec<Line> = lines.into_iter().skip(start_index).take(viewport).collect();
 
     if let Some(number_area) = number_area {
-        let separator = if gutter_width > line_digits as u16 {
+        let separator = if gutter_width > line_digits_u16 {
             " "
         } else {
             ""
@@ -348,31 +349,32 @@ fn draw_rebuild_output(
     }
 
     if let Some(scrollbar_area) = scrollbar_area
-        && scrollbar_area.width > 0 {
-            let track_len = usize::from(scrollbar_area.width);
-            let viewport_cols = usize::from(content_width).max(1);
-            let max_offset = max_line_width.saturating_sub(viewport_cols);
-            let total_width = max_line_width.max(viewport_cols);
-            let mut thumb_len = (viewport_cols * track_len) / total_width;
-            thumb_len = thumb_len.clamp(1, track_len);
-            let track_range = track_len.saturating_sub(thumb_len);
-            let scroll_offset = usize::from(rebuild.scroll_x).min(max_offset);
-            let thumb_start = if max_offset == 0 || track_range == 0 {
-                0
+        && scrollbar_area.width > 0
+    {
+        let track_len = usize::from(scrollbar_area.width);
+        let viewport_cols = usize::from(content_width).max(1);
+        let max_offset = max_line_width.saturating_sub(viewport_cols);
+        let total_width = max_line_width.max(viewport_cols);
+        let mut thumb_len = (viewport_cols * track_len) / total_width;
+        thumb_len = thumb_len.clamp(1, track_len);
+        let track_range = track_len.saturating_sub(thumb_len);
+        let scroll_offset = usize::from(rebuild.scroll_x).min(max_offset);
+        let thumb_start = if max_offset == 0 || track_range == 0 {
+            0
+        } else {
+            (scroll_offset * track_range + max_offset / 2) / max_offset
+        };
+        let mut spans = Vec::with_capacity(track_len);
+        for idx in 0..track_len {
+            if idx >= thumb_start && idx < thumb_start + thumb_len {
+                spans.push(Span::styled("⠶", Style::default().fg(Color::Cyan)));
             } else {
-                (scroll_offset * track_range + max_offset / 2) / max_offset
-            };
-            let mut spans = Vec::with_capacity(track_len);
-            for idx in 0..track_len {
-                if idx >= thumb_start && idx < thumb_start + thumb_len {
-                    spans.push(Span::styled("⠶", Style::default().fg(Color::Cyan)));
-                } else {
-                    spans.push(Span::styled("─", Style::default().fg(Color::DarkGray)));
-                }
+                spans.push(Span::styled("─", Style::default().fg(Color::DarkGray)));
             }
-            let bar = Paragraph::new(Line::from(spans));
-            frame.render_widget(bar, scrollbar_area);
         }
+        let bar = Paragraph::new(Line::from(spans));
+        frame.render_widget(bar, scrollbar_area);
+    }
 }
 
 fn draw_rebuild_sidebar(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild: &RebuildState) {
@@ -416,7 +418,7 @@ fn draw_rebuild_sidebar(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild
 //       but i couldn't find a way to get rid of them in the source output
 fn normalize_line(text: &str, _content_width: u16) -> String {
     let segment = text.rsplit('\r').next().unwrap_or(text);
-    
+
     segment.replace('\t', "    ")
 }
 
@@ -487,32 +489,34 @@ fn build_line_with_search(
     let mut spans: Vec<Span<'static>> = Vec::new();
 
     if let Some(search) = search
-        && let Some(indices) = search.matches_for_line(line_idx) {
-            let mut cursor = 0usize;
-            for idx in indices {
-                if let Some(hit) = search.matches.get(*idx) {
-                    let start = hit.start.min(text.len());
-                    let end = hit.end.min(text.len());
-                    if start > cursor {
-                        spans.push(Span::styled(text[cursor..start].to_string(), base_style));
-                    }
-                    let highlight = highlight_style(base_style, search.active == Some(*idx));
-                    spans.push(Span::styled(text[start..end].to_string(), highlight));
-                    cursor = end;
+        && let Some(indices) = search.matches_for_line(line_idx)
+    {
+        let mut cursor = 0usize;
+        for idx in indices {
+            if let Some(hit) = search.matches.get(*idx) {
+                let start = hit.start.min(text.len());
+                let end = hit.end.min(text.len());
+                if start > cursor {
+                    spans.push(Span::styled(text[cursor..start].to_string(), base_style));
                 }
-            }
-            if cursor < text.len() {
-                spans.push(Span::styled(text[cursor..].to_string(), base_style));
-            }
-
-            if !spans.is_empty() {
-                return Line::from(spans);
+                let highlight = highlight_style(base_style, search.active == Some(*idx));
+                spans.push(Span::styled(text[start..end].to_string(), highlight));
+                cursor = end;
             }
         }
+        if cursor < text.len() {
+            spans.push(Span::styled(text[cursor..].to_string(), base_style));
+        }
+
+        if !spans.is_empty() {
+            return Line::from(spans);
+        }
+    }
 
     match stream {
-        OutputStream::Stdout => Line::from(vec![Span::styled(text.to_string(), base_style)]),
-        OutputStream::Stderr => Line::from(vec![Span::styled(text.to_string(), base_style)]),
+        OutputStream::Stdout | OutputStream::Stderr => {
+            Line::from(vec![Span::styled(text.to_string(), base_style)])
+        }
     }
 }
 
@@ -759,8 +763,7 @@ fn row_for_item<'a>(app: &'a App, it: &'a ItemRow) -> Row<'a> {
             let dockerfile_name = it
                 .dockerfile_extra
                 .as_ref()
-                .map(|extra| extra.dockerfile_name.clone())
-                .unwrap_or_else(|| it.image.clone());
+                .map_or_else(|| it.image.clone(), |extra| extra.dockerfile_name.clone());
             Row::new([
                 Cell::from(checkbox),
                 Cell::from(dockerfile_name),
@@ -785,24 +788,16 @@ fn build_rows_with_expansion(app: &App) -> (Vec<Row<'_>>, usize) {
             for line in &it.details {
                 let indented = format!("  {line}");
                 match app.view_mode {
-                    ViewMode::ByContainer => rows.push(Row::new([
-                        Cell::from(""),
-                        Cell::from(indented),
-                        Cell::from(""),
-                    ])),
-                    ViewMode::ByImage => rows.push(Row::new([
-                        Cell::from(""),
-                        Cell::from(indented.clone()),
-                        Cell::from(""),
-                    ])),
+                    ViewMode::ByContainer | ViewMode::ByImage | ViewMode::ByDockerfile => {
+                        rows.push(Row::new([
+                            Cell::from(""),
+                            Cell::from(indented.clone()),
+                            Cell::from(""),
+                        ]));
+                    }
                     ViewMode::ByFolderThenImage => {
                         rows.push(Row::new([Cell::from(""), Cell::from(indented)]));
                     }
-                    ViewMode::ByDockerfile => rows.push(Row::new([
-                        Cell::from(""),
-                        Cell::from(indented.clone()),
-                        Cell::from(""),
-                    ])),
                 }
                 visual_idx += 1;
             }

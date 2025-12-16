@@ -30,8 +30,7 @@ impl DiscoveryPort for FsDiscovery {
             }
 
             if entry.file_name() == "docker-compose.yml" {
-                let first_image =
-                    collect_from_compose(&entry, path_str, &mut seen, &mut rows).flatten();
+                let first_image = collect_from_compose(&entry, path_str, &mut seen, &mut rows);
                 dir_info
                     .entry(
                         entry
@@ -65,19 +64,20 @@ impl DiscoveryPort for FsDiscovery {
             }
 
             if let Some(name) = entry.file_name().to_str()
-                && name.starts_with("Dockerfile") {
-                    dir_info
-                        .entry(
-                            entry
-                                .path()
-                                .parent()
-                                .unwrap_or_else(|| Path::new("/"))
-                                .to_path_buf(),
-                        )
-                        .or_default()
-                        .dockerfiles
-                        .push(entry.path().to_path_buf());
-                }
+                && name.starts_with("Dockerfile")
+            {
+                dir_info
+                    .entry(
+                        entry
+                            .path()
+                            .parent()
+                            .unwrap_or_else(|| Path::new("/"))
+                            .to_path_buf(),
+                    )
+                    .or_default()
+                    .dockerfiles
+                    .push(entry.path().to_path_buf());
+            }
         }
 
         rows.sort_by(|a, b| {
@@ -157,18 +157,19 @@ fn build_dockerfile_rows(
             if info.dockerfiles.len() == 1 && neighbor_count == 1 {
                 if info.container_files.len() == 1 {
                     if let Ok(parsed) = parse_container_file(&info.container_files[0].path) {
-                        neighbor_image = Some((InferenceSource::Quadlet, parsed.image.to_string()));
+                        neighbor_image = Some((InferenceSource::Quadlet, parsed.image.clone()));
                     }
                 } else if info.compose_files.len() == 1
-                    && let Some(image) = info.compose_files[0].first_image.clone() {
-                        neighbor_image = Some((InferenceSource::Compose, image));
-                    }
+                    && let Some(image) = info.compose_files[0].first_image.clone()
+                {
+                    neighbor_image = Some((InferenceSource::Compose, image));
+                }
             }
 
-            let basename = dockerfile_path
-                .file_name()
-                .map(|name| name.to_string_lossy().to_string())
-                .unwrap_or_else(|| "Dockerfile".to_string());
+            let basename = dockerfile_path.file_name().map_or_else(
+                || "Dockerfile".to_string(),
+                |name| name.to_string_lossy().to_string(),
+            );
 
             dockerfiles.push(DiscoveredDockerfile {
                 dockerfile_path: dockerfile_path.clone(),
@@ -189,7 +190,7 @@ fn collect_from_compose(
     path_str: &str,
     seen: &mut HashSet<(String, Option<String>, std::path::PathBuf)>,
     rows: &mut Vec<DiscoveredImage>,
-) -> Option<Option<String>> {
+) -> Option<String> {
     let yaml = read_yaml_file_local(path_str)?;
     let services = yaml
         .get(serde_yaml::Value::String("services".into()))
@@ -206,7 +207,7 @@ fn collect_from_compose(
         }
 
         if first_image.is_none() {
-            first_image = image.clone();
+            first_image.clone_from(&image);
         }
 
         let mut container = yaml_get_string(svc_cfg, "container_name");
@@ -218,7 +219,7 @@ fn collect_from_compose(
 
         add_row(entry, image.unwrap(), container, seen, rows);
     }
-    Some(first_image)
+    first_image
 }
 
 fn collect_from_container(

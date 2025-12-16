@@ -35,7 +35,7 @@ impl AppCore {
         };
         let discovery = self.discovery.scan(&opts)?;
         let local_images = self.podman.list_local_images().unwrap_or_default();
-        let dockerfiles = self.infer_dockerfiles(discovery, &local_images);
+        let dockerfiles = Self::infer_dockerfiles(discovery, &local_images);
         Ok(dockerfiles)
     }
 
@@ -71,9 +71,10 @@ impl AppCore {
     fn locate_dockerfile(&self, source_dir: &Path, entry_path: Option<&Path>) -> Option<String> {
         for candidate in Self::dockerfile_candidates(source_dir, entry_path) {
             if self.podman.file_exists_and_readable(&candidate)
-                && let Some(name) = candidate.file_name() {
-                    return Some(name.to_string_lossy().into_owned());
-                }
+                && let Some(name) = candidate.file_name()
+            {
+                return Some(name.to_string_lossy().into_owned());
+            }
         }
         None
     }
@@ -82,10 +83,11 @@ impl AppCore {
         let mut candidates = Vec::new();
         if let Some(entry) = entry_path {
             if entry.extension().and_then(|ext| ext.to_str()) == Some("container")
-                && let (Some(parent), Some(stem)) = (entry.parent(), entry.file_stem()) {
-                    let suffix = stem.to_string_lossy();
-                    candidates.push(parent.join(format!("Dockerfile.{suffix}")));
-                }
+                && let (Some(parent), Some(stem)) = (entry.parent(), entry.file_stem())
+            {
+                let suffix = stem.to_string_lossy();
+                candidates.push(parent.join(format!("Dockerfile.{suffix}")));
+            }
             if let Some(parent) = entry.parent() {
                 candidates.push(parent.join("Dockerfile"));
             }
@@ -100,7 +102,6 @@ impl AppCore {
     }
 
     fn infer_dockerfiles(
-        &self,
         discovery: DiscoveryResult,
         local_images: &[LocalImageSummary],
     ) -> ScanResult {
@@ -114,7 +115,7 @@ impl AppCore {
             if let Some((source, image)) = dockerfile.neighbor_image.clone() {
                 inference_source = source;
                 inferred_image = Some(image.clone());
-                created_time_ago = self.find_created_for(&image, local_images);
+                created_time_ago = Self::find_created_for(&image, local_images);
                 note = Some("single neighbor file".to_string());
             } else {
                 let suffix = dockerfile
@@ -167,7 +168,7 @@ impl AppCore {
         }
     }
 
-    fn find_created_for(&self, image: &str, local_images: &[LocalImageSummary]) -> Option<String> {
+    fn find_created_for(image: &str, local_images: &[LocalImageSummary]) -> Option<String> {
         match_localhost_image_exact(image, local_images).and_then(|entry| {
             entry
                 .created

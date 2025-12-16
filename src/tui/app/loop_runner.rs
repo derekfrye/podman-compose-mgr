@@ -29,7 +29,7 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     let mut terminal = setup_terminal()?;
     let mut app = App::new();
     app.set_root_path(args.path.clone());
-    app.auto_rebuild_all = args.tui_rebuild_all;
+    app.auto_rebuild_all = args.tui.rebuild_all();
 
     let (tx, rx) = xchan::unbounded::<Msg>();
     let services = build_services(args, tx.clone())?;
@@ -71,13 +71,13 @@ fn setup_terminal() -> io::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
 
 fn build_services(args: &Args, tx: xchan::Sender<Msg>) -> io::Result<Services> {
     let discovery = Arc::new(crate::infra::discovery_adapter::FsDiscovery);
-    let podman: Arc<dyn crate::ports::PodmanPort> =
-        if let Some(json) = &args.tui_simulate_podman_input_json {
-            crate::tui::podman_from_json(json.as_path())
-                .map_err(|e| io::Error::other(e.to_string()))?
-        } else {
-            Arc::new(crate::infra::podman_adapter::PodmanCli)
-        };
+    let podman: Arc<dyn crate::ports::PodmanPort> = if let Some(json) =
+        &args.tui_simulate_podman_input_json
+    {
+        crate::tui::podman_from_json(json.as_path()).map_err(|e| io::Error::other(e.to_string()))?
+    } else {
+        Arc::new(crate::infra::podman_adapter::PodmanCli)
+    };
     let app_core = Arc::new(AppCore::new(discovery, podman));
     let working_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
     Ok(Services {

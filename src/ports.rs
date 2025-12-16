@@ -17,6 +17,10 @@ pub trait PodmanPort: Send + Sync {
     fn image_modified(&self, image: &str)
     -> Result<chrono::DateTime<Local>, PodmanComposeMgrError>;
     fn file_exists_and_readable(&self, file: &Path) -> bool;
+    /// List images present locally.
+    ///
+    /// # Errors
+    /// Returns an error if invoking the container engine fails or the output cannot be parsed.
     fn list_local_images(&self) -> Result<Vec<LocalImageSummary>, PodmanComposeMgrError>;
 }
 

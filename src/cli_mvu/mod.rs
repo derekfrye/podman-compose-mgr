@@ -99,16 +99,16 @@ pub fn run_one_shot(args: &Args, logger: &Logger) {
     let build_arg_refs: Vec<&str> = args.build_args.iter().map(String::as_str).collect();
 
     for item in items {
-        process_one_shot_item(args, logger, &build_arg_refs, item);
+        process_one_shot_item(args, logger, &build_arg_refs, &item);
     }
 }
 
-fn process_one_shot_item(args: &Args, logger: &Logger, build_arg_refs: &[&str], item: PromptItem) {
+fn process_one_shot_item(args: &Args, logger: &Logger, build_arg_refs: &[&str], item: &PromptItem) {
     let entry = find_entry(&item.entry);
     let build_plan = select_build_plan(&entry, &item.image, build_arg_refs, args.no_cache);
 
-    if args.dry_run {
-        emit_dry_run_message(&item, build_plan.as_ref());
+    if args.one_shot.is_dry_run() {
+        emit_dry_run_message(item, build_plan.as_ref());
         return;
     }
 
@@ -157,12 +157,10 @@ fn select_build_plan(
 
 fn describe_build_plan(plan: &WhatWereBuilding) -> String {
     match plan.file.filetype {
-        BuildChoice::Dockerfile => plan
-            .file
-            .filepath
-            .as_ref()
-            .map(|path| format!("Dockerfile at {}", path.display()))
-            .unwrap_or_else(|| "Dockerfile".to_string()),
+        BuildChoice::Dockerfile => plan.file.filepath.as_ref().map_or_else(
+            || "Dockerfile".to_string(),
+            |path| format!("Dockerfile at {}", path.display()),
+        ),
         BuildChoice::Makefile => {
             let dir = if plan.follow_link {
                 plan.file

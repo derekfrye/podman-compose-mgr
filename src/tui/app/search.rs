@@ -158,10 +158,10 @@ impl SearchState {
                 .matches
                 .iter()
                 .position(|hit| hit.line == prev.line && hit.start == prev.start)
-            {
-                self.active = Some(idx);
-                return;
-            }
+        {
+            self.active = Some(idx);
+            return;
+        }
 
         self.active = match self.direction {
             SearchDirection::Forward => self
@@ -200,7 +200,7 @@ mod tests {
         for line in lines {
             output.push_back(RebuildOutputLine {
                 stream: OutputStream::Stdout,
-                text: line.to_string(),
+                text: (*line).to_string(),
             });
         }
         RebuildJob {

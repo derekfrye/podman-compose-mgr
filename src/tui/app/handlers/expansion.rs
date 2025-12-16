@@ -104,7 +104,7 @@ fn spawn_detail_fetch(
             &source_dir,
             entry_path_ref,
             view_mode,
-            dockerfile_extra,
+            dockerfile_extra.as_ref(),
         );
         let _ = tx.send(Msg::DetailsReady {
             row: row_idx,
@@ -119,21 +119,19 @@ fn compute_details_for(
     source_dir: &std::path::Path,
     entry_path: Option<&std::path::Path>,
     view_mode: ViewMode,
-    dockerfile_extra: Option<DockerfileRowExtra>,
+    dockerfile_extra: Option<&DockerfileRowExtra>,
 ) -> Vec<String> {
     use crate::domain::ImageDetails;
 
     let mut lines = Vec::new();
     if view_mode == ViewMode::ByDockerfile {
         let extra = dockerfile_extra.as_ref();
-        let source_label = extra
-            .map(|e| match e.source {
-                crate::domain::InferenceSource::Quadlet => "quadlet",
-                crate::domain::InferenceSource::Compose => "compose",
-                crate::domain::InferenceSource::LocalhostRegistry => "localhost",
-                crate::domain::InferenceSource::Unknown => "unknown",
-            })
-            .unwrap_or("unknown");
+        let source_label = extra.map_or("unknown", |e| match e.source {
+            crate::domain::InferenceSource::Quadlet => "quadlet",
+            crate::domain::InferenceSource::Compose => "compose",
+            crate::domain::InferenceSource::LocalhostRegistry => "localhost",
+            crate::domain::InferenceSource::Unknown => "unknown",
+        });
         lines.push(format!("Image name: inferred from {source_label}"));
         if let Some(extra) = extra {
             let image_name = extra

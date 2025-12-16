@@ -5,7 +5,7 @@ use std::time::Duration;
 use crossbeam_channel::Receiver;
 use podman_compose_mgr::Args;
 use podman_compose_mgr::app::AppCore;
-use podman_compose_mgr::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT;
+use podman_compose_mgr::args::types::{OneShotArgs, REBUILD_VIEW_LINE_BUFFER_DEFAULT, TuiArgs};
 use podman_compose_mgr::infra::discovery_adapter::FsDiscovery;
 use podman_compose_mgr::infra::podman_adapter::PodmanCli;
 use podman_compose_mgr::tui::app::{
@@ -93,10 +93,11 @@ impl TestContext {
             temp_file_path: std::env::temp_dir(),
             podman_bin: Some(podman_bin.clone()),
             no_cache: false,
-            one_shot: false,
-            dry_run: false,
-            tui: true,
-            tui_rebuild_all: true,
+            one_shot: OneShotArgs::default(),
+            tui: TuiArgs {
+                enabled: true,
+                rebuild_all: true,
+            },
             rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
             tui_simulate_podman_input_json: None,
             tui_simulate: None,
@@ -123,7 +124,7 @@ impl TestContext {
 
         let mut app = App::new();
         app.set_root_path(args.path.clone());
-        app.auto_rebuild_all = args.tui_rebuild_all;
+        app.auto_rebuild_all = args.tui.rebuild_all();
 
         let width = 120;
         let height = 32;
@@ -286,8 +287,7 @@ fn rebuild_output_overwrites_trailing_cells() {
     let after_short = short_pos + "short".len();
     let right_border = short_line[after_short..]
         .find('│')
-        .map(|idx| after_short + idx)
-        .unwrap_or_else(|| short_line.len());
+        .map_or_else(|| short_line.len(), |idx| after_short + idx);
     let tail = &short_line[after_short..right_border];
     assert!(
         tail.chars().all(|c| c == ' '),

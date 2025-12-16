@@ -76,11 +76,7 @@ fn handle_start_rebuild(app: &mut App, services: Option<&Services>) {
     }
 
     if let Some(svc) = services {
-        let start_idx = app
-            .rebuild
-            .as_ref()
-            .map(|state| state.jobs.len())
-            .unwrap_or(0);
+        let start_idx = app.rebuild.as_ref().map_or(0, |state| state.jobs.len());
         handle_session_created(app, &specs, services);
         spawn_rebuild_thread(specs, svc, start_idx);
     }
@@ -90,9 +86,9 @@ fn handle_session_created(app: &mut App, jobs: &[RebuildJobSpec], services: Opti
     if jobs.is_empty() {
         return;
     }
-    let limit = services
-        .map(|svc| svc.args.rebuild_view_line_buffer_max)
-        .unwrap_or(REBUILD_VIEW_LINE_BUFFER_DEFAULT);
+    let limit = services.map_or(REBUILD_VIEW_LINE_BUFFER_DEFAULT, |svc| {
+        svc.args.rebuild_view_line_buffer_max
+    });
     let materialized: Vec<RebuildJob> = jobs.iter().map(RebuildJob::from_spec).collect();
 
     match app.rebuild.as_mut() {
@@ -134,7 +130,7 @@ fn handle_job_output(app: &mut App, job_idx: usize, chunk: String, stream: Outpu
         let was_at_bottom = (rebuild.scroll_y as usize) >= bottom_threshold;
         match stream {
             OutputStream::Stdout | OutputStream::Stderr => {
-                job.push_output(stream, chunk, rebuild.output_limit)
+                job.push_output(stream, chunk, rebuild.output_limit);
             }
         }
         if rebuild.auto_scroll || was_at_bottom {
@@ -526,8 +522,7 @@ fn set_vertical_scroll(app: &mut App, value: u16) {
             rebuild
                 .jobs
                 .get(rebuild.active_idx)
-                .map(|job| job.output.len().saturating_sub(viewport))
-                .unwrap_or(0),
+                .map_or(0, |job| job.output.len().saturating_sub(viewport)),
         );
         rebuild.scroll_y = value.min(max_scroll);
         rebuild.auto_scroll = false;
@@ -719,9 +714,10 @@ fn set_export_error(app: &mut App, message: Option<String>) {
 
 fn write_lines(path: &Path, lines: &[String]) -> Result<(), String> {
     if let Some(parent) = path.parent()
-        && let Err(err) = std::fs::create_dir_all(parent) {
-            return Err(format!("Failed creating directory: {err}"));
-        }
+        && let Err(err) = std::fs::create_dir_all(parent)
+    {
+        return Err(format!("Failed creating directory: {err}"));
+    }
 
     let mut file = File::create(path).map_err(|err| format!("Could not create file: {err}"))?;
     for line in lines {
@@ -749,11 +745,12 @@ fn split_image_name_and_tag(image: &str) -> (&str, &str) {
 
     let last_slash = image.rfind('/');
     if let Some(colon_pos) = image.rfind(':')
-        && last_slash.is_none_or(|slash_pos| slash_pos < colon_pos) {
-            let name = &image[..colon_pos];
-            let tag = &image[colon_pos + 1..];
-            return (name, tag);
-        }
+        && last_slash.is_none_or(|slash_pos| slash_pos < colon_pos)
+    {
+        let name = &image[..colon_pos];
+        let tag = &image[colon_pos + 1..];
+        return (name, tag);
+    }
 
     (image, "latest")
 }

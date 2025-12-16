@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use podman_compose_mgr::Args;
-use podman_compose_mgr::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT;
+use podman_compose_mgr::args::types::{OneShotArgs, REBUILD_VIEW_LINE_BUFFER_DEFAULT, TuiArgs};
 use podman_compose_mgr::tui::app::{self, App, Msg, ViewMode};
 use podman_compose_mgr::tui::ui;
 use ratatui::Terminal;
@@ -20,10 +20,11 @@ fn change_view_to_by_image_dedupes_images() {
         temp_file_path: std::env::temp_dir(),
         podman_bin: None,
         no_cache: false,
-        one_shot: false,
-        dry_run: false,
-        tui: true,
-        tui_rebuild_all: false,
+        one_shot: OneShotArgs::default(),
+        tui: TuiArgs {
+            enabled: true,
+            ..TuiArgs::default()
+        },
         rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
         tui_simulate_podman_input_json: None,
         tui_simulate: None,

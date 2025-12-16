@@ -153,6 +153,7 @@ impl App {
         rows
     }
 
+    #[must_use]
     pub fn build_rows_for_dockerfile_view(&self) -> Vec<ItemRow> {
         self.dockerfile_items
             .iter()

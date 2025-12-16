@@ -24,9 +24,10 @@ pub fn find_buildfile(
             custom_img_nm,
             build_args,
             no_cache,
-        ) {
-            buildfiles.push(buildfile);
-        }
+        )
+    {
+        buildfiles.push(buildfile);
+    }
 
     for filename in ["Dockerfile", "Makefile"] {
         let filetype = match filename {
@@ -55,8 +56,7 @@ pub fn find_buildfile(
 
 fn container_specific_dockerfile(entry: &DirEntry) -> Option<PathBuf> {
     let path = entry.path();
-    path
-        .extension()
+    path.extension()
         .and_then(|ext| ext.to_str())
         .filter(|ext| *ext == "container")?;
 
@@ -132,14 +132,8 @@ mod tests {
         let entry = quadlet_entry(tmp.path(), "web.container");
         let files = find_buildfile(&entry, "example", &[], false).expect("files found");
         assert_eq!(files.len(), 2);
-        assert_eq!(
-            files[0].filepath.as_deref(),
-            Some(specific.as_path())
-        );
-        assert_eq!(
-            files[1].filepath.as_deref(),
-            Some(generic.as_path())
-        );
+        assert_eq!(files[0].filepath.as_deref(), Some(specific.as_path()));
+        assert_eq!(files[1].filepath.as_deref(), Some(generic.as_path()));
     }
 
     #[test]
@@ -155,13 +149,7 @@ mod tests {
         let entry = quadlet_entry(tmp.path(), "db.container");
         let files = find_buildfile(&entry, "example", &[], false).expect("files found");
         assert_eq!(files.len(), 2);
-        assert_eq!(
-            files[0].filepath.as_deref(),
-            Some(generic.as_path())
-        );
-        assert_eq!(
-            files[1].filepath.as_deref(),
-            Some(makefile.as_path())
-        );
+        assert_eq!(files[0].filepath.as_deref(), Some(generic.as_path()));
+        assert_eq!(files[1].filepath.as_deref(), Some(makefile.as_path()));
     }
 }

@@ -53,7 +53,7 @@ pub fn run_app(args: &args::Args) -> io::Result<()> {
 
     match args.podman_bin.as_ref() {
         Some(path) => {
-            crate::utils::podman_utils::set_podman_binary_override(path.clone().into_os_string())
+            crate::utils::podman_utils::set_podman_binary_override(path.clone().into_os_string());
         }
         None => crate::utils::podman_utils::clear_podman_binary_override(),
     }
@@ -67,13 +67,13 @@ pub fn run_app(args: &args::Args) -> io::Result<()> {
         return Ok(());
     }
 
-    if args.one_shot {
+    if args.one_shot.enabled() {
         crate::cli_mvu::run_one_shot(args, &logger);
         logger.info("Done.");
         return Ok(());
     }
 
-    if args.tui {
+    if args.tui.enabled() {
         crate::tui::run(args, &logger)?;
         logger.info("Done.");
         return Ok(());

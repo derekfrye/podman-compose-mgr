@@ -39,7 +39,7 @@ impl PodmanPort for PodmanCli {
 
         let json = parse_json_output(&output.stdout)
             .map_err(|e| PodmanComposeMgrError::CommandExecution(Box::new(e)))?;
-        let mapped = local_images_from_json(json)
+        let mapped = local_images_from_json(&json)
             .map_err(|e| PodmanComposeMgrError::CommandExecution(Box::new(e)))?;
         Ok(mapped)
     }
@@ -63,9 +63,9 @@ pub(crate) fn parse_json_output(bytes: &[u8]) -> Result<serde_json::Value, Serde
     })
 }
 
-/// Convert parsed JSON into the simplified LocalImageSummary collection the app uses.
+/// Convert parsed JSON into the simplified `LocalImageSummary` collection the app uses.
 pub(crate) fn local_images_from_json(
-    json: serde_json::Value,
+    json: &serde_json::Value,
 ) -> Result<Vec<LocalImageSummary>, SerdeError> {
     let arr = json
         .as_array()
@@ -84,14 +84,14 @@ pub(crate) fn local_images_from_json(
             if let (Some(repo), Some(tag)) = (
                 obj.get("Repository").and_then(|v| v.as_str()),
                 obj.get("Tag").and_then(|v| v.as_str()),
-            )
-                && repo.starts_with("localhost/") {
-                    images.push(LocalImageSummary {
-                        repository: repo.to_string(),
-                        tag: tag.to_string(),
-                        created,
-                    });
-                }
+            ) && repo.starts_with("localhost/")
+            {
+                images.push(LocalImageSummary {
+                    repository: repo.to_string(),
+                    tag: tag.to_string(),
+                    created,
+                });
+            }
         }
     }
 
@@ -106,13 +106,14 @@ fn parse_refs(
     if let Some(arr) = value.and_then(|v| v.as_array()) {
         for tag_val in arr {
             if let Some(tag_str) = tag_val.as_str()
-                && let Some((repository, tag)) = split_repo_tag(tag_str) {
-                    out.push(LocalImageSummary {
-                        repository,
-                        tag,
-                        created,
-                    });
-                }
+                && let Some((repository, tag)) = split_repo_tag(tag_str)
+            {
+                out.push(LocalImageSummary {
+                    repository,
+                    tag,
+                    created,
+                });
+            }
         }
     }
 }
@@ -129,10 +130,10 @@ fn parse_digest_refs(
                 if !without_digest.starts_with("localhost/") {
                     continue;
                 }
-                let (repository, tag) = without_digest
-                    .rsplit_once(':')
-                    .map(|(r, t)| (r.to_string(), t.to_string()))
-                    .unwrap_or_else(|| (without_digest.to_string(), "latest".to_string()));
+                let (repository, tag) = without_digest.rsplit_once(':').map_or_else(
+                    || (without_digest.to_string(), "latest".to_string()),
+                    |(r, t)| (r.to_string(), t.to_string()),
+                );
                 out.push(LocalImageSummary {
                     repository,
                     tag,
@@ -163,7 +164,7 @@ mod tests {
     fn parses_names_and_digests_for_localhost_images() {
         let bytes = fs::read("tests/test08/golden.json").expect("fixture");
         let json = parse_json_output(&bytes).expect("parse json");
-        let images = local_images_from_json(json).expect("parse images");
+        let images = local_images_from_json(&json).expect("parse images");
         let names: Vec<String> = images
             .into_iter()
             .map(|i| format!("{}:{}", i.repository, i.tag))

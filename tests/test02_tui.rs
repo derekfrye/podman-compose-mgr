@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use podman_compose_mgr::Args;
-use podman_compose_mgr::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT;
+use podman_compose_mgr::args::types::{OneShotArgs, REBUILD_VIEW_LINE_BUFFER_DEFAULT, TuiArgs};
 
 #[test]
 fn discovery_finds_expected_images_in_test1() {
@@ -14,10 +14,11 @@ fn discovery_finds_expected_images_in_test1() {
         temp_file_path: std::env::temp_dir(),
         podman_bin: None,
         no_cache: false,
-        one_shot: false,
-        dry_run: false,
-        tui: true,
-        tui_rebuild_all: false,
+        one_shot: OneShotArgs::default(),
+        tui: TuiArgs {
+            enabled: true,
+            ..TuiArgs::default()
+        },
         rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
         tui_simulate_podman_input_json: None,
         tui_simulate: None,
@@ -111,10 +112,11 @@ fn ui_snapshot_renders_table_with_rows() {
         temp_file_path: std::env::temp_dir(),
         podman_bin: None,
         no_cache: false,
-        one_shot: false,
-        dry_run: false,
-        tui: true,
-        tui_rebuild_all: false,
+        one_shot: OneShotArgs::default(),
+        tui: TuiArgs {
+            enabled: true,
+            ..TuiArgs::default()
+        },
         rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
         tui_simulate_podman_input_json: None,
         tui_simulate: None,
