@@ -40,7 +40,7 @@ pub fn simulate_view_with_ports(
             args.include_path_patterns.clone(),
             args.exclude_path_patterns.clone(),
         )
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+        .map_err(|e| io::Error::other(e.to_string()))?;
 
     match mode {
         SimulateViewMode::Dockerfile => print_dockerfiles(&scan, out)?,
@@ -64,9 +64,9 @@ impl LocalJsonPodman {
     fn from_file(path: &std::path::Path) -> io::Result<Self> {
         let content = std::fs::read(path)?;
         let json = crate::infra::podman_adapter::parse_json_output(&content)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .map_err(io::Error::other)?;
         let images = crate::infra::podman_adapter::local_images_from_json(json)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .map_err(io::Error::other)?;
         Ok(Self { images })
     }
 }
@@ -77,7 +77,7 @@ impl PodmanPort for LocalJsonPodman {
         _image: &str,
     ) -> Result<chrono::DateTime<chrono::Local>, crate::errors::PodmanComposeMgrError> {
         Err(crate::errors::PodmanComposeMgrError::CommandExecution(
-            Box::new(io::Error::new(io::ErrorKind::Other, "not supported")),
+            Box::new(io::Error::other("not supported")),
         ))
     }
 
@@ -86,7 +86,7 @@ impl PodmanPort for LocalJsonPodman {
         _image: &str,
     ) -> Result<chrono::DateTime<chrono::Local>, crate::errors::PodmanComposeMgrError> {
         Err(crate::errors::PodmanComposeMgrError::CommandExecution(
-            Box::new(io::Error::new(io::ErrorKind::Other, "not supported")),
+            Box::new(io::Error::other("not supported")),
         ))
     }
 
@@ -149,11 +149,10 @@ fn print_containers(scan: &ScanResult, out: &mut dyn Write) -> io::Result<()> {
 fn print_folders(scan: &ScanResult, root: &std::path::Path, out: &mut dyn Write) -> io::Result<()> {
     let mut seen = std::collections::BTreeSet::new();
     for img in &scan.images {
-        if let Ok(relative) = img.source_dir.strip_prefix(root) {
-            if let Some(first) = relative.components().next() {
+        if let Ok(relative) = img.source_dir.strip_prefix(root)
+            && let Some(first) = relative.components().next() {
                 seen.insert(first.as_os_str().to_string_lossy().to_string());
             }
-        }
     }
     for dir in seen {
         writeln!(out, "[dry-run] folder {dir}")?;

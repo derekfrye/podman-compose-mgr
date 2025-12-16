@@ -64,8 +64,8 @@ impl DiscoveryPort for FsDiscovery {
                 continue;
             }
 
-            if let Some(name) = entry.file_name().to_str() {
-                if name.starts_with("Dockerfile") {
+            if let Some(name) = entry.file_name().to_str()
+                && name.starts_with("Dockerfile") {
                     dir_info
                         .entry(
                             entry
@@ -78,7 +78,6 @@ impl DiscoveryPort for FsDiscovery {
                         .dockerfiles
                         .push(entry.path().to_path_buf());
                 }
-            }
         }
 
         rows.sort_by(|a, b| {
@@ -160,11 +159,10 @@ fn build_dockerfile_rows(
                     if let Ok(parsed) = parse_container_file(&info.container_files[0].path) {
                         neighbor_image = Some((InferenceSource::Quadlet, parsed.image.to_string()));
                     }
-                } else if info.compose_files.len() == 1 {
-                    if let Some(image) = info.compose_files[0].first_image.clone() {
+                } else if info.compose_files.len() == 1
+                    && let Some(image) = info.compose_files[0].first_image.clone() {
                         neighbor_image = Some((InferenceSource::Compose, image));
                     }
-                }
             }
 
             let basename = dockerfile_path

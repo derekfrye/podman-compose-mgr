@@ -33,7 +33,7 @@ impl PodmanPort for PodmanCli {
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
             return Err(PodmanComposeMgrError::CommandExecution(Box::new(
-                std::io::Error::new(std::io::ErrorKind::Other, stderr),
+                std::io::Error::other(stderr),
             )));
         }
 
@@ -84,15 +84,14 @@ pub(crate) fn local_images_from_json(
             if let (Some(repo), Some(tag)) = (
                 obj.get("Repository").and_then(|v| v.as_str()),
                 obj.get("Tag").and_then(|v| v.as_str()),
-            ) {
-                if repo.starts_with("localhost/") {
+            )
+                && repo.starts_with("localhost/") {
                     images.push(LocalImageSummary {
                         repository: repo.to_string(),
                         tag: tag.to_string(),
                         created,
                     });
                 }
-            }
         }
     }
 
@@ -106,15 +105,14 @@ fn parse_refs(
 ) {
     if let Some(arr) = value.and_then(|v| v.as_array()) {
         for tag_val in arr {
-            if let Some(tag_str) = tag_val.as_str() {
-                if let Some((repository, tag)) = split_repo_tag(tag_str) {
+            if let Some(tag_str) = tag_val.as_str()
+                && let Some((repository, tag)) = split_repo_tag(tag_str) {
                     out.push(LocalImageSummary {
                         repository,
                         tag,
                         created,
                     });
                 }
-            }
         }
     }
 }

@@ -74,7 +74,7 @@ fn build_services(args: &Args, tx: xchan::Sender<Msg>) -> io::Result<Services> {
     let podman: Arc<dyn crate::ports::PodmanPort> =
         if let Some(json) = &args.tui_simulate_podman_input_json {
             crate::tui::podman_from_json(json.as_path())
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?
+                .map_err(|e| io::Error::other(e.to_string()))?
         } else {
             Arc::new(crate::infra::podman_adapter::PodmanCli)
         };

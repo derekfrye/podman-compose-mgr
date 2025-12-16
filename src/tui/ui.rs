@@ -347,8 +347,8 @@ fn draw_rebuild_output(
         }
     }
 
-    if let Some(scrollbar_area) = scrollbar_area {
-        if scrollbar_area.width > 0 {
+    if let Some(scrollbar_area) = scrollbar_area
+        && scrollbar_area.width > 0 {
             let track_len = usize::from(scrollbar_area.width);
             let viewport_cols = usize::from(content_width).max(1);
             let max_offset = max_line_width.saturating_sub(viewport_cols);
@@ -373,7 +373,6 @@ fn draw_rebuild_output(
             let bar = Paragraph::new(Line::from(spans));
             frame.render_widget(bar, scrollbar_area);
         }
-    }
 }
 
 fn draw_rebuild_sidebar(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild: &RebuildState) {
@@ -417,8 +416,8 @@ fn draw_rebuild_sidebar(frame: &mut Frame, area: ratatui::prelude::Rect, rebuild
 //       but i couldn't find a way to get rid of them in the source output
 fn normalize_line(text: &str, _content_width: u16) -> String {
     let segment = text.rsplit('\r').next().unwrap_or(text);
-    let expanded = segment.replace('\t', "    ");
-    expanded
+    
+    segment.replace('\t', "    ")
 }
 
 fn count_digits(mut n: usize) -> usize {
@@ -487,8 +486,8 @@ fn build_line_with_search(
     let base_style = style_for_stream(stream);
     let mut spans: Vec<Span<'static>> = Vec::new();
 
-    if let Some(search) = search {
-        if let Some(indices) = search.matches_for_line(line_idx) {
+    if let Some(search) = search
+        && let Some(indices) = search.matches_for_line(line_idx) {
             let mut cursor = 0usize;
             for idx in indices {
                 if let Some(hit) = search.matches.get(*idx) {
@@ -510,7 +509,6 @@ fn build_line_with_search(
                 return Line::from(spans);
             }
         }
-    }
 
     match stream {
         OutputStream::Stdout => Line::from(vec![Span::styled(text.to_string(), base_style)]),

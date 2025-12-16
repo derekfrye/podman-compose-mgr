@@ -16,8 +16,8 @@ pub fn find_buildfile(
     let parent_dir = dir.path().parent()?.to_path_buf();
     let mut buildfiles: Vec<BuildFile> = Vec::new();
 
-    if let Some(candidate) = container_specific_dockerfile(dir) {
-        if let Some(buildfile) = buildfile_from_candidate(
+    if let Some(candidate) = container_specific_dockerfile(dir)
+        && let Some(buildfile) = buildfile_from_candidate(
             &candidate,
             BuildChoice::Dockerfile,
             &parent_dir,
@@ -27,7 +27,6 @@ pub fn find_buildfile(
         ) {
             buildfiles.push(buildfile);
         }
-    }
 
     for filename in ["Dockerfile", "Makefile"] {
         let filetype = match filename {
@@ -56,14 +55,10 @@ pub fn find_buildfile(
 
 fn container_specific_dockerfile(entry: &DirEntry) -> Option<PathBuf> {
     let path = entry.path();
-    if path
+    path
         .extension()
         .and_then(|ext| ext.to_str())
-        .filter(|ext| *ext == "container")
-        .is_none()
-    {
-        return None;
-    }
+        .filter(|ext| *ext == "container")?;
 
     let base_name = path.file_stem()?.to_string_lossy();
     let parent_dir = path.parent()?;
@@ -138,11 +133,11 @@ mod tests {
         let files = find_buildfile(&entry, "example", &[], false).expect("files found");
         assert_eq!(files.len(), 2);
         assert_eq!(
-            files[0].filepath.as_ref().map(PathBuf::as_path),
+            files[0].filepath.as_deref(),
             Some(specific.as_path())
         );
         assert_eq!(
-            files[1].filepath.as_ref().map(PathBuf::as_path),
+            files[1].filepath.as_deref(),
             Some(generic.as_path())
         );
     }
@@ -161,11 +156,11 @@ mod tests {
         let files = find_buildfile(&entry, "example", &[], false).expect("files found");
         assert_eq!(files.len(), 2);
         assert_eq!(
-            files[0].filepath.as_ref().map(PathBuf::as_path),
+            files[0].filepath.as_deref(),
             Some(generic.as_path())
         );
         assert_eq!(
-            files[1].filepath.as_ref().map(PathBuf::as_path),
+            files[1].filepath.as_deref(),
             Some(makefile.as_path())
         );
     }

@@ -70,11 +70,10 @@ impl AppCore {
 
     fn locate_dockerfile(&self, source_dir: &Path, entry_path: Option<&Path>) -> Option<String> {
         for candidate in Self::dockerfile_candidates(source_dir, entry_path) {
-            if self.podman.file_exists_and_readable(&candidate) {
-                if let Some(name) = candidate.file_name() {
+            if self.podman.file_exists_and_readable(&candidate)
+                && let Some(name) = candidate.file_name() {
                     return Some(name.to_string_lossy().into_owned());
                 }
-            }
         }
         None
     }
@@ -82,12 +81,11 @@ impl AppCore {
     fn dockerfile_candidates(source_dir: &Path, entry_path: Option<&Path>) -> Vec<PathBuf> {
         let mut candidates = Vec::new();
         if let Some(entry) = entry_path {
-            if entry.extension().and_then(|ext| ext.to_str()) == Some("container") {
-                if let (Some(parent), Some(stem)) = (entry.parent(), entry.file_stem()) {
+            if entry.extension().and_then(|ext| ext.to_str()) == Some("container")
+                && let (Some(parent), Some(stem)) = (entry.parent(), entry.file_stem()) {
                     let suffix = stem.to_string_lossy();
                     candidates.push(parent.join(format!("Dockerfile.{suffix}")));
                 }
-            }
             if let Some(parent) = entry.parent() {
                 candidates.push(parent.join("Dockerfile"));
             }
@@ -187,7 +185,7 @@ fn match_localhost_image<'a>(
         .filter(|img| {
             img.repository.starts_with("localhost")
                 && (img.repository.ends_with(&format!("/{suffix}"))
-                    || img.repository.split('/').last() == Some(suffix))
+                    || img.repository.split('/').next_back() == Some(suffix))
         })
         .collect();
     candidates.sort_by(|a, b| b.created.cmp(&a.created));

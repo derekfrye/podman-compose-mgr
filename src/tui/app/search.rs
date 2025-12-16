@@ -153,8 +153,8 @@ impl SearchState {
             return;
         }
 
-        if let Some(prev) = previous_selection {
-            if let Some(idx) = self
+        if let Some(prev) = previous_selection
+            && let Some(idx) = self
                 .matches
                 .iter()
                 .position(|hit| hit.line == prev.line && hit.start == prev.start)
@@ -162,7 +162,6 @@ impl SearchState {
                 self.active = Some(idx);
                 return;
             }
-        }
 
         self.active = match self.direction {
             SearchDirection::Forward => self

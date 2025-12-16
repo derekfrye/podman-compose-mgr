@@ -718,11 +718,10 @@ fn set_export_error(app: &mut App, message: Option<String>) {
 }
 
 fn write_lines(path: &Path, lines: &[String]) -> Result<(), String> {
-    if let Some(parent) = path.parent() {
-        if let Err(err) = std::fs::create_dir_all(parent) {
+    if let Some(parent) = path.parent()
+        && let Err(err) = std::fs::create_dir_all(parent) {
             return Err(format!("Failed creating directory: {err}"));
         }
-    }
 
     let mut file = File::create(path).map_err(|err| format!("Could not create file: {err}"))?;
     for line in lines {
@@ -749,13 +748,12 @@ fn split_image_name_and_tag(image: &str) -> (&str, &str) {
     }
 
     let last_slash = image.rfind('/');
-    if let Some(colon_pos) = image.rfind(':') {
-        if last_slash.map_or(true, |slash_pos| slash_pos < colon_pos) {
+    if let Some(colon_pos) = image.rfind(':')
+        && last_slash.is_none_or(|slash_pos| slash_pos < colon_pos) {
             let name = &image[..colon_pos];
             let tag = &image[colon_pos + 1..];
             return (name, tag);
         }
-    }
 
     (image, "latest")
 }

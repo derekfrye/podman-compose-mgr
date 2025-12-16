@@ -47,19 +47,12 @@ pub struct DiscoveryResult {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Default)]
 pub struct ScanResult {
     pub images: Vec<DiscoveredImage>,
     pub dockerfiles: Vec<DockerfileInference>,
 }
 
-impl Default for ScanResult {
-    fn default() -> Self {
-        Self {
-            images: Vec::new(),
-            dockerfiles: Vec::new(),
-        }
-    }
-}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LocalImageSummary {
