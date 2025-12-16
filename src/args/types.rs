@@ -72,6 +72,10 @@ pub struct Args {
     /// Simulate a TUI view in dry-run mode (e.g., view-mode-dockerfile)
     #[arg(long = "tui-simulate", value_parser = parse_sim_view)]
     pub tui_simulate: Option<SimulateViewMode>,
+
+    /// JSON input file to use for podman image listing during TUI simulation
+    #[arg(long = "tui-simulate-podman-input-json")]
+    pub tui_simulate_podman_input_json: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -117,6 +121,7 @@ impl Default for Args {
             tui_rebuild_all: false,
             rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
             tui_simulate: None,
+            tui_simulate_podman_input_json: None,
         }
     }
 }

@@ -136,7 +136,9 @@ impl AppCore {
                         .created
                         .map(crate::utils::podman_utils::format_time_ago);
                     if dockerfile.total_dockerfiles_in_dir > 1 {
-                        note = Some("registry matched (multiple Dockerfiles in dir)".to_string());
+                        note = Some(
+                            "registry matched (more than one Dockerfile in the dir)".to_string(),
+                        );
                     } else {
                         note = Some("registry matched".to_string());
                     }

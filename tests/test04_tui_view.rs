@@ -25,6 +25,7 @@ fn change_view_to_by_image_dedupes_images() {
         tui: true,
         tui_rebuild_all: false,
         rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
+        tui_simulate_podman_input_json: None,
         tui_simulate: None,
     };
     let discovery = std::sync::Arc::new(podman_compose_mgr::infra::discovery_adapter::FsDiscovery);

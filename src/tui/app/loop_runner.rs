@@ -32,7 +32,7 @@ pub fn run(args: &Args, logger: &Logger) -> io::Result<()> {
     app.auto_rebuild_all = args.tui_rebuild_all;
 
     let (tx, rx) = xchan::unbounded::<Msg>();
-    let services = build_services(args, tx.clone());
+    let services = build_services(args, tx.clone())?;
     let interrupt_rx = spawn_interrupt_listener();
     let tick_rx = xchan::tick(Duration::from_millis(TICK_RATE_MS));
 
@@ -69,12 +69,18 @@ fn setup_terminal() -> io::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
     Terminal::new(backend)
 }
 
-fn build_services(args: &Args, tx: xchan::Sender<Msg>) -> Services {
+fn build_services(args: &Args, tx: xchan::Sender<Msg>) -> io::Result<Services> {
     let discovery = Arc::new(crate::infra::discovery_adapter::FsDiscovery);
-    let podman = Arc::new(crate::infra::podman_adapter::PodmanCli);
+    let podman: Arc<dyn crate::ports::PodmanPort> =
+        if let Some(json) = &args.tui_simulate_podman_input_json {
+            crate::tui::podman_from_json(json.as_path())
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?
+        } else {
+            Arc::new(crate::infra::podman_adapter::PodmanCli)
+        };
     let app_core = Arc::new(AppCore::new(discovery, podman));
     let working_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    Services {
+    Ok(Services {
         core: app_core,
         root: args.path.clone(),
         include: args.include_path_patterns.clone(),
@@ -82,7 +88,7 @@ fn build_services(args: &Args, tx: xchan::Sender<Msg>) -> Services {
         tx,
         args: args.clone(),
         working_dir,
-    }
+    })
 }
 
 fn spawn_key_forwarder(tx: xchan::Sender<Msg>) {

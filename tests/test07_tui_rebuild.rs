@@ -98,6 +98,7 @@ impl TestContext {
             tui: true,
             tui_rebuild_all: true,
             rebuild_view_line_buffer_max: REBUILD_VIEW_LINE_BUFFER_DEFAULT,
+            tui_simulate_podman_input_json: None,
             tui_simulate: None,
         };
 
