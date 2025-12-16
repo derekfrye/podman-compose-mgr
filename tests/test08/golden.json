@@ -1,0 +1,2423 @@
+[
+    {
+        "Id": "ccc61e2e1c058ab330290d98f63212350e93695e9953dd0be8d50bc16d01df5a",
+        "ParentId": "b89a3d7c24f5026de65a660e17d36e028d2c4c3322dc009a4cecae3af95664fb",
+        "RepoTags": null,
+        "RepoDigests": [
+            "localhost/djf/helper_x@sha256:215e629db35532539aae439d2552ecf9c1b3278eda2e71e1c01f9fa1d1513357"
+        ],
+        "Size": 3737942135,
+        "SharedSize": 0,
+        "VirtualSize": 3737942135,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "43",
+            "vendor": "Fedora Project",
+            "version": "43"
+        },
+        "Containers": 1,
+        "Digest": "sha256:215e629db35532539aae439d2552ecf9c1b3278eda2e71e1c01f9fa1d1513357",
+        "History": [
+            "localhost/djf/helper_x:latest"
+        ],
+        "Names": [
+            "localhost/djf/helper_x:latest"
+        ],
+        "Created": 1765846240,
+        "CreatedAt": "2025-12-16T00:50:40Z"
+    },
+    {
+        "Id": "ef4ef1ef5bfff29ec901502405390bdd08e6f9e7d1f9b0864580c74524f385b8",
+        "ParentId": "6e998a7519efbca5482daef2ca839a9d1241e45487e2d70d49483af98f5c7419",
+        "RepoTags": null,
+        "RepoDigests": [
+            "localhost/djf/ffmpeg@sha256:fd9b38b2709cc57d6a77be48b478b33bcba7f2c8bf38f0fb68d0a7de96105424"
+        ],
+        "Size": 1443275138,
+        "SharedSize": 0,
+        "VirtualSize": 1443275138,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "43",
+            "vendor": "Fedora Project",
+            "version": "43"
+        },
+        "Containers": 0,
+        "Digest": "sha256:fd9b38b2709cc57d6a77be48b478b33bcba7f2c8bf38f0fb68d0a7de96105424",
+        "History": [
+            "localhost/djf/ffmpeg:latest"
+        ],
+        "Names": [
+            "localhost/djf/ffmpeg:latest"
+        ],
+        "Created": 1765845813,
+        "CreatedAt": "2025-12-16T00:43:33Z"
+    },
+    {
+        "Id": "3b3e728b7c30cf07dde982db50c589a72f24aca019396a96685a9be79a813f6d",
+        "ParentId": "6926e72528ac98b5c115b2e4d7fd3ac11b8111d3f39a11d9927d38a09bf8c1f8",
+        "RepoTags": null,
+        "RepoDigests": [
+            "localhost/djf/ffmpeg_base@sha256:9dc2acf17c61f5068a61456b6fa800e13aa8bd9252bca023ecac049e98ae5186"
+        ],
+        "Size": 1009687354,
+        "SharedSize": 0,
+        "VirtualSize": 1009687354,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "43",
+            "vendor": "Fedora Project",
+            "version": "43"
+        },
+        "Containers": 1,
+        "Digest": "sha256:9dc2acf17c61f5068a61456b6fa800e13aa8bd9252bca023ecac049e98ae5186",
+        "History": [
+            "localhost/djf/ffmpeg_base:latest",
+            "docker.io/library/6641616f8a18bfc78657520c40b2b0a976ed3e733ada4c6b791a090d8b37ac61-tmp:latest"
+        ],
+        "Names": [
+            "localhost/djf/ffmpeg_base:latest"
+        ],
+        "Created": 1765845657,
+        "CreatedAt": "2025-12-16T00:40:57Z"
+    },
+    {
+        "Id": "56a61605f2d27d7b328dd47a09fb9172bc2f33704c64b57650367e478ee458b2",
+        "ParentId": "6aa522f78bb1c6b390b4858762819ba268fb586fdcbffb584bfa9ca162af00a4",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 3738158192,
+        "SharedSize": 0,
+        "VirtualSize": 3738158192,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "43",
+            "vendor": "Fedora Project",
+            "version": "43"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:af0f4c6b62754f7d53d0b279da1a8d23ea954f65c8923a2922938f2a68a36680",
+        "History": [
+            "localhost/djf/helper_x:latest"
+        ],
+        "Created": 1765843515,
+        "CreatedAt": "2025-12-16T00:05:15Z"
+    },
+    {
+        "Id": "bec1b65dd725d8314615474c2c0b69621daf676a9f24be5f0e22f10f5c2649d6",
+        "ParentId": "458adf8aedd87ddd2a41e2d0f02d193c3512555315965970e78b0f418b0569be",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 3625766223,
+        "SharedSize": 0,
+        "VirtualSize": 3625766223,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "43",
+            "vendor": "Fedora Project",
+            "version": "43"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:9c49bdb7a3fc35e9a5a662659ad3600edf19cd73b11d37a158bca0f5486585a8",
+        "History": [
+            "docker.io/library/65def4302ff60dafdaddc683cb7c12f4ae2cf63cd192bea1c665cca5902628f1-tmp:latest"
+        ],
+        "Created": 1765843368,
+        "CreatedAt": "2025-12-16T00:02:48Z"
+    },
+    {
+        "Id": "9da2d00a2800fd172b7944d6e6314521611a70da7024d700372952d287fc5701",
+        "ParentId": "ca3aa08ab8c6dc13c2f81e59e8ff94afc9d63d80d3550d9aec8cd9d3f3c663de",
+        "RepoTags": null,
+        "RepoDigests": [
+            "localhost/djf/openssh@sha256:d005e6cac2400f1b3b29560d408f98f7827b5acca04b76b56ff2111b8468a8b0"
+        ],
+        "Size": 718875134,
+        "SharedSize": 0,
+        "VirtualSize": 718875134,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "43",
+            "vendor": "Fedora Project",
+            "version": "43"
+        },
+        "Containers": 0,
+        "Digest": "sha256:d005e6cac2400f1b3b29560d408f98f7827b5acca04b76b56ff2111b8468a8b0",
+        "History": [
+            "localhost/djf/openssh:latest"
+        ],
+        "Names": [
+            "localhost/djf/openssh:latest"
+        ],
+        "Created": 1765843207,
+        "CreatedAt": "2025-12-16T00:00:07Z"
+    },
+    {
+        "Id": "53569cc1691b3afdbeb833a97a0828131da420ba6986fa8f16f873f0b8e432e9",
+        "ParentId": "34202dd2ac9836979a4ee2c0b43b00c3fbbff41d9677981d545bee717cb8a2e1",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 2192845448,
+        "SharedSize": 0,
+        "VirtualSize": 2192845448,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "43",
+            "vendor": "Fedora Project",
+            "version": "43"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:21f0bcf8818b29a3d904d45aa54f91579a664671e98070320acebe2a803efe9b",
+        "History": [
+            "docker.io/library/f6904659c03ac4e7baa7c2f773861e8cb657de3879085d2a2f9b5f9aba259327-tmp:latest"
+        ],
+        "Created": 1765846395,
+        "CreatedAt": "2025-12-16T00:53:15Z"
+    },
+    {
+        "Id": "5031d83fe45441ed0613fd1bc002f8a016be3f5d7a859c4fceb84a65a88fd703",
+        "ParentId": "bef91aa1a6cf265aa19bddabc5bce1a10e498873b795d0f81e020a1e5afd70d2",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 653760092,
+        "SharedSize": 0,
+        "VirtualSize": 653760092,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "43",
+            "vendor": "Fedora Project",
+            "version": "43"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:f41902d7aada3bd2af2a534c072899e042fc0455d44cf885ae919896e57ce8cd",
+        "History": [
+            "docker.io/library/e42ba943e3886a7b8d454561ed308826a7a1279bc56546b90c963c88211dfdf2-tmp:latest"
+        ],
+        "Created": 1765846395,
+        "CreatedAt": "2025-12-16T00:53:15Z"
+    },
+    {
+        "Id": "07d1283c0a1a8beec8661dc3d4753a6317eaff175979ed5ddc78b8d5759529ac",
+        "ParentId": "513616aeb0daf26348c5b4fb3f9956220a2aebaa2e96c821000fe8c4dfba4cbc",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 653772381,
+        "SharedSize": 0,
+        "VirtualSize": 653772381,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "43",
+            "vendor": "Fedora Project",
+            "version": "43"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:e7c204044006d4bacf94e73a1a99074e374175f639139b429afd7dd99f643fbe",
+        "History": [
+            "docker.io/library/1a0cae7a02b69004bcb4348255ba723aa108ac7965b93172a3304440f77d932a-tmp:latest"
+        ],
+        "Created": 1765846257,
+        "CreatedAt": "2025-12-16T00:50:57Z"
+    },
+    {
+        "Id": "a1c493dabb134de34e27d085c160a2e6316fa2e7659f135e9b47ac43e2c38878",
+        "ParentId": "cf66163f2322b98972c56635e8cbeae028fae410703597c2078340eef62455a2",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1439132221,
+        "SharedSize": 0,
+        "VirtualSize": 1439132221,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "43",
+            "vendor": "Fedora Project",
+            "version": "43"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:ea186c618bf19286f8a54b2748ff85a63d21cc4fd079d1af78662ce96b8457e4",
+        "History": [
+            "localhost/djf/ffmpeg:latest"
+        ],
+        "Created": 1765846222,
+        "CreatedAt": "2025-12-16T00:50:22Z"
+    },
+    {
+        "Id": "32662f8bfbec034f0ddecd7992d139e10ab217218ae25992616855f0a31436fd",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "registry.fedoraproject.org/fedora@sha256:3532685eacdb15895ec1b4023781c2f192c401acb9414c94cacef21dcb73a8f7",
+            "registry.fedoraproject.org/fedora@sha256:b56f5ee228ad496c0f2e28a175eafdfe6f1512e20e0b8942e9d135ccea82846d"
+        ],
+        "Size": 186294136,
+        "SharedSize": 0,
+        "VirtualSize": 186294136,
+        "Labels": {
+            "io.buildah.version": "1.42.2",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "43",
+            "vendor": "Fedora Project",
+            "version": "43"
+        },
+        "Containers": 1,
+        "Digest": "sha256:3532685eacdb15895ec1b4023781c2f192c401acb9414c94cacef21dcb73a8f7",
+        "History": [
+            "registry.fedoraproject.org/fedora:43"
+        ],
+        "Names": [
+            "registry.fedoraproject.org/fedora:43"
+        ],
+        "Created": 1765846008,
+        "CreatedAt": "2025-12-16T00:46:48Z"
+    },
+    {
+        "Id": "2454ad4487d50cfd7e46e65031422cff4953c1784d310cee29beb0aea2738ef5",
+        "ParentId": "8f58a5fcd62756dccdd840caef0d76ac1cee84de748e023c4222c4eb3be3130a",
+        "RepoTags": null,
+        "RepoDigests": [
+            "localhost/djf/rustygolfrun@sha256:e8e6090f9459ca937f72d4771eaa4a64d91b375244638ccce1529b7e90f1ffa0"
+        ],
+        "Size": 193069361,
+        "SharedSize": 0,
+        "VirtualSize": 193069361,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 1,
+        "Digest": "sha256:e8e6090f9459ca937f72d4771eaa4a64d91b375244638ccce1529b7e90f1ffa0",
+        "History": [
+            "localhost/djf/rustygolfrun:latest"
+        ],
+        "Names": [
+            "localhost/djf/rustygolfrun:latest"
+        ],
+        "Created": 1764894493,
+        "CreatedAt": "2025-12-05T00:28:13Z"
+    },
+    {
+        "Id": "2786173337e77ed71dc7a4b5142d397a3dad40e4f9561df5025a6a489c492cbd",
+        "ParentId": "f817cc8c1f0c6da74366b45682adbb3fe44ef27a7aedc0429e8ceca157413c61",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1715066064,
+        "SharedSize": 0,
+        "VirtualSize": 1715066064,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:3605c39c3b38ab9df715ed89750aaa271961782f7e82755258119880c6477d56",
+        "History": [
+            "docker.io/library/28441fcd81aff173b2aab4c16d01b6e01aaca80b0aeedb646d4a55281a9e8a5d-tmp:latest"
+        ],
+        "Created": 1764894479,
+        "CreatedAt": "2025-12-05T00:27:59Z"
+    },
+    {
+        "Id": "40d1589ac14d28f31714c17d5296eee0a4344df7c1a097886e2b1541168ff911",
+        "ParentId": "dd57b427cb8644ca98e52b7adf3365c9f6aed7eea08ad7a1f74a040a0c921a3b",
+        "RepoTags": null,
+        "RepoDigests": [
+            "localhost/djf/ddns@sha256:f364b900e24aed800fa85d9eb38c905735a6ac7bfbc2f6ed862dee6f0af9882b"
+        ],
+        "Size": 297819646,
+        "SharedSize": 0,
+        "VirtualSize": 297819646,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 1,
+        "Digest": "sha256:f364b900e24aed800fa85d9eb38c905735a6ac7bfbc2f6ed862dee6f0af9882b",
+        "History": [
+            "localhost/djf/ddns:latest"
+        ],
+        "Names": [
+            "localhost/djf/ddns:latest"
+        ],
+        "Created": 1764894469,
+        "CreatedAt": "2025-12-05T00:27:49Z"
+    },
+    {
+        "Id": "55e02ef7e02d983614e321c4c0130b3706c3a01ce30d51bb407614cb2cba0c22",
+        "ParentId": "f9514051dd469d0a5200bf829a56068edfbdabf2841852e78cfc3c44a7ae2597",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1451435175,
+        "SharedSize": 0,
+        "VirtualSize": 1451435175,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:37706a3eff752bb9a14a368f72590788c7d94c2b00556bf3be73ada2ed5c7886",
+        "History": [
+            "docker.io/library/031d2a47b87faed003b170955a6391c9b838e28baa4132a81b7632423e4546c2-tmp:latest"
+        ],
+        "Created": 1764894452,
+        "CreatedAt": "2025-12-05T00:27:32Z"
+    },
+    {
+        "Id": "0c9895338cf07f795d80b0d4d981fabb209ad8014c6951451f95632f95af8c46",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "docker.io/linuxserver/wireguard@sha256:14d1da065306c97d0a7171901221027dcbaa4be6c8731a3d8bdc54d57a92bbfe",
+            "docker.io/linuxserver/wireguard@sha256:96816c7f64fd092d6e290b8707f066569b82d0a55b8356b43cfb4a47e69b456a"
+        ],
+        "Size": 120125318,
+        "SharedSize": 0,
+        "VirtualSize": 120125318,
+        "Labels": {
+            "build_version": "Linuxserver.io version:- 1.0.20250521-r0-ls93 Build-date:- 2025-12-04T11:30:28+00:00",
+            "maintainer": "thespad",
+            "org.opencontainers.image.authors": "linuxserver.io",
+            "org.opencontainers.image.created": "2025-12-04T11:30:28+00:00",
+            "org.opencontainers.image.description": "[WireGuard\u00ae](https://www.wireguard.com/) is an extremely simple yet fast and modern VPN that utilizes state-of-the-art cryptography. It aims to be faster, simpler, leaner, and more useful than IPsec, while avoiding the massive headache. It intends to be considerably more performant than OpenVPN. WireGuard is designed as a general purpose VPN for running on embedded interfaces and super computers alike, fit for many different circumstances. Initially released for the Linux kernel, it is now cross-platform (Windows, macOS, BSD, iOS, Android) and widely deployable. It is currently under heavy development, but already it might be regarded as the most secure, easiest to use, and simplest VPN solution in the industry.",
+            "org.opencontainers.image.documentation": "https://docs.linuxserver.io/images/docker-wireguard",
+            "org.opencontainers.image.licenses": "GPL-3.0-only",
+            "org.opencontainers.image.ref.name": "eb8e95e5a1f1f7af42903f6fb01b9da310c7db34",
+            "org.opencontainers.image.revision": "eb8e95e5a1f1f7af42903f6fb01b9da310c7db34",
+            "org.opencontainers.image.source": "https://github.com/linuxserver/docker-wireguard",
+            "org.opencontainers.image.title": "Wireguard",
+            "org.opencontainers.image.url": "https://github.com/linuxserver/docker-wireguard/packages",
+            "org.opencontainers.image.vendor": "linuxserver.io",
+            "org.opencontainers.image.version": "1.0.20250521-r0-ls93"
+        },
+        "Containers": 1,
+        "Digest": "sha256:14d1da065306c97d0a7171901221027dcbaa4be6c8731a3d8bdc54d57a92bbfe",
+        "History": [
+            "docker.io/linuxserver/wireguard:latest"
+        ],
+        "Names": [
+            "docker.io/linuxserver/wireguard:latest"
+        ],
+        "Created": 1764894703,
+        "CreatedAt": "2025-12-05T00:31:43Z"
+    },
+    {
+        "Id": "7acffee03fe864cd6b88219a1028855d6c912e7cf6fac633aa4307529fd0cc08",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "docker.io/library/alpine@sha256:51183f2cfa6320055da30872f211093f9ff1d3cf06f39a0bdb212314c5dc7375",
+            "docker.io/library/alpine@sha256:a107a3c031732299dd9dd607bb13787834db2de38cfa13f1993b7105e4814c60"
+        ],
+        "Size": 8736353,
+        "SharedSize": 0,
+        "VirtualSize": 8736353,
+        "Labels": null,
+        "Containers": 0,
+        "Digest": "sha256:51183f2cfa6320055da30872f211093f9ff1d3cf06f39a0bdb212314c5dc7375",
+        "History": [
+            "docker.io/library/alpine:latest"
+        ],
+        "Names": [
+            "docker.io/library/alpine:latest"
+        ],
+        "Created": 1764808218,
+        "CreatedAt": "2025-12-04T00:30:18Z"
+    },
+    {
+        "Id": "d2581969bea7e1800f9f940f0941108d8967f3f82ac20106f5204962e2e5e762",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "registry.fedoraproject.org/fedora@sha256:1890c0f9c40d7f5ef290952d2af57f21361822ea3929ae24eb17d2c319c57fcd",
+            "registry.fedoraproject.org/fedora@sha256:454cc770e2404871f5a010224ef4679987ee12df13119b38707b6bdfc22bacef"
+        ],
+        "Size": 170021240,
+        "SharedSize": 0,
+        "VirtualSize": 170021240,
+        "Labels": {
+            "io.buildah.version": "1.42.1",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Digest": "sha256:1890c0f9c40d7f5ef290952d2af57f21361822ea3929ae24eb17d2c319c57fcd",
+        "History": [
+            "registry.fedoraproject.org/fedora:42"
+        ],
+        "Names": [
+            "registry.fedoraproject.org/fedora:42"
+        ],
+        "Created": 1764741104,
+        "CreatedAt": "2025-12-03T05:51:44Z"
+    },
+    {
+        "Id": "aaad62f1b46fff1d521933f6214310de3d048cb58fb49e89f2b8d545ac9ff091",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "docker.io/jellyfin/jellyfin@sha256:a3da55fbb758cc377bce0eed02cd2fa9ea1397dc7f04dfc8e1146595f3bd2e5f",
+            "docker.io/jellyfin/jellyfin@sha256:aab0b50a3ce43a41621fc7040a379cc57174059aec8f9c17a90176649a0c1ab1"
+        ],
+        "Size": 1551919693,
+        "SharedSize": 0,
+        "VirtualSize": 1551919693,
+        "Labels": {
+            "org.opencontainers.image.description": "The Free Software Media System",
+            "org.opencontainers.image.documentation": "https://jellyfin.org/docs/",
+            "org.opencontainers.image.source": "https://github.com/jellyfin/jellyfin-packaging",
+            "org.opencontainers.image.title": "Jellyfin",
+            "org.opencontainers.image.url": "https://jellyfin.org",
+            "org.opencontainers.image.version": "10.11.4"
+        },
+        "Containers": 1,
+        "Digest": "sha256:aab0b50a3ce43a41621fc7040a379cc57174059aec8f9c17a90176649a0c1ab1",
+        "History": [
+            "docker.io/jellyfin/jellyfin:latest"
+        ],
+        "Names": [
+            "docker.io/jellyfin/jellyfin:latest"
+        ],
+        "Created": 1764557900,
+        "CreatedAt": "2025-12-01T02:58:20Z"
+    },
+    {
+        "Id": "145c5e196b3f05c3e44bf30d029a7d7323f82ef104bd487a30e729fdbfb5540d",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "docker.io/pihole/pihole@sha256:848cf5af61397e6976e2fc356aa00aaa3d3a53b2ac90a956675779ff1f4bdf34",
+            "docker.io/pihole/pihole@sha256:91dc91ddd413bf461c283204558f8f21839851e9824799075a7ceff7c77eea40"
+        ],
+        "Size": 98669592,
+        "SharedSize": 0,
+        "VirtualSize": 98669592,
+        "Labels": {
+            "org.opencontainers.image.created": "2025-11-27T18:41:55.252Z",
+            "org.opencontainers.image.description": "The official Pi-hole Docker image from pi-hole.net",
+            "org.opencontainers.image.licenses": "NOASSERTION",
+            "org.opencontainers.image.revision": "8d7671af35eaf75069e1de88678690ac1abd5a9c",
+            "org.opencontainers.image.source": "https://github.com/pi-hole/docker-pi-hole",
+            "org.opencontainers.image.title": "docker-pi-hole",
+            "org.opencontainers.image.url": "https://github.com/pi-hole/docker-pi-hole",
+            "org.opencontainers.image.version": "2025.11.1"
+        },
+        "Containers": 1,
+        "Digest": "sha256:91dc91ddd413bf461c283204558f8f21839851e9824799075a7ceff7c77eea40",
+        "History": [
+            "docker.io/pihole/pihole:latest"
+        ],
+        "Names": [
+            "docker.io/pihole/pihole:latest"
+        ],
+        "Created": 1764268938,
+        "CreatedAt": "2025-11-27T18:42:18Z"
+    },
+    {
+        "Id": "3b02285319769a9e7ee8a929b531a851f9957b4cf9d4c97944f90534e1c3a2d6",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 120125321,
+        "SharedSize": 0,
+        "VirtualSize": 120125321,
+        "Labels": {
+            "build_version": "Linuxserver.io version:- 1.0.20250521-r0-ls91 Build-date:- 2025-11-20T11:26:34+00:00",
+            "maintainer": "thespad",
+            "org.opencontainers.image.authors": "linuxserver.io",
+            "org.opencontainers.image.created": "2025-11-20T11:26:34+00:00",
+            "org.opencontainers.image.description": "[WireGuard\u00ae](https://www.wireguard.com/) is an extremely simple yet fast and modern VPN that utilizes state-of-the-art cryptography. It aims to be faster, simpler, leaner, and more useful than IPsec, while avoiding the massive headache. It intends to be considerably more performant than OpenVPN. WireGuard is designed as a general purpose VPN for running on embedded interfaces and super computers alike, fit for many different circumstances. Initially released for the Linux kernel, it is now cross-platform (Windows, macOS, BSD, iOS, Android) and widely deployable. It is currently under heavy development, but already it might be regarded as the most secure, easiest to use, and simplest VPN solution in the industry.",
+            "org.opencontainers.image.documentation": "https://docs.linuxserver.io/images/docker-wireguard",
+            "org.opencontainers.image.licenses": "GPL-3.0-only",
+            "org.opencontainers.image.ref.name": "ceae06959ad36be06015a7ad69e57ecf261c9a4e",
+            "org.opencontainers.image.revision": "ceae06959ad36be06015a7ad69e57ecf261c9a4e",
+            "org.opencontainers.image.source": "https://github.com/linuxserver/docker-wireguard",
+            "org.opencontainers.image.title": "Wireguard",
+            "org.opencontainers.image.url": "https://github.com/linuxserver/docker-wireguard/packages",
+            "org.opencontainers.image.vendor": "linuxserver.io",
+            "org.opencontainers.image.version": "1.0.20250521-r0-ls91"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:e93cfa43a087a6853c9f8090d7de25cea4cf6f8dc4dc576c70756188a301c4a6",
+        "History": [
+            "docker.io/linuxserver/wireguard:latest"
+        ],
+        "Created": 1763684868,
+        "CreatedAt": "2025-11-21T00:27:48Z"
+    },
+    {
+        "Id": "28d88012698f6fc66784dd762c55ab89f4086508e4a3baf43a60b28fec383b8b",
+        "ParentId": "94e61a017fa4becd2bfc5e6582b54f11e1a8755157f0ba1476bc963e8012ec86",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 3663036935,
+        "SharedSize": 0,
+        "VirtualSize": 3663036935,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "43",
+            "vendor": "Fedora Project",
+            "version": "43"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:8fb8cc2eb10f24315b985e452c9b9d6e21a8f12d120b6931abeb810a2d1d6adf",
+        "History": [
+            "localhost/djf/helper_x:latest"
+        ],
+        "Created": 1763597214,
+        "CreatedAt": "2025-11-20T00:06:54Z"
+    },
+    {
+        "Id": "c2de152811b72620959d2b3911cdf77601590c4c7dcfe189d12eb2aeab52a31c",
+        "ParentId": "fa43be340320bf5804e7c3ebf7588d2d57188dc5280db1bdc7c688fa1a5390a5",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 713767576,
+        "SharedSize": 0,
+        "VirtualSize": 713767576,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "43",
+            "vendor": "Fedora Project",
+            "version": "43"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:ebbef39223d610114550443399a102e1627acc490684261493d4d52906f37b7d",
+        "History": [
+            "docker.io/library/c1d3ab1216a60bcd468c8e6f9e15c730f5c6e0ba24eb00dee9e5586e450a1052-tmp:latest"
+        ],
+        "Created": 1763597131,
+        "CreatedAt": "2025-11-20T00:05:31Z"
+    },
+    {
+        "Id": "6cc1cd695c02fe94c859f0dce65b2b521b45d46bdb6dcfeadd66f922bb10eef8",
+        "ParentId": "11598841dfd94cbe0bab3c69d68ff11d41ddafcc0985ac9bd5c1ee12c93f245f",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1443015501,
+        "SharedSize": 0,
+        "VirtualSize": 1443015501,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "43",
+            "vendor": "Fedora Project",
+            "version": "43"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:1a1882176d4bf9e0e785546fa39c7b4cf62d7c612dd8b83114ef79715f1cec36",
+        "History": [
+            "docker.io/library/cf1aab95f84511b0c0ec8cc4c0112a6d2cd588369d1744813f0e3eee90227b8c-tmp:latest"
+        ],
+        "Created": 1763597045,
+        "CreatedAt": "2025-11-20T00:04:05Z"
+    },
+    {
+        "Id": "a71a5913f4ac9332faeb5f1393432b4192950533a6c75aa85360074f14e6850b",
+        "ParentId": "f0504b7b2d7b973fbb6017be136f57dc22dbca7b535f92b1f0f911a729cd2029",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1473818447,
+        "SharedSize": 0,
+        "VirtualSize": 1473818447,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:82a73aa1925804f4f5e13ed3abd79e2b6a0b0418e18db35d7e6776d1e045e633",
+        "History": [
+            "docker.io/library/d20437ec5186e92af73b6fd70eb20eebcdbe05fe4ab4f1b4ebb7a1f92b3e5231-tmp:latest"
+        ],
+        "Created": 1763600322,
+        "CreatedAt": "2025-11-20T00:58:42Z"
+    },
+    {
+        "Id": "2943535d9ed86bbfea935b9de78c7a3a95f882e7e1cd8d8773c9af903d23edcd",
+        "ParentId": "5b3bcb5f434ddad24ba8a97b8a77bb190e16905cdee411dec0c97d945a2aaaa8",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 757913239,
+        "SharedSize": 0,
+        "VirtualSize": 757913239,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 1,
+        "Dangling": true,
+        "Digest": "sha256:d63fb001f7d20fc68472c89f4e62ab59b1be967b3d63b0a0de6f0770cde4caa3",
+        "History": [
+            "docker.io/library/a0882ec4413b4924e8823756f7e48f4488169bc44580573fc6638fad1bed30cb-tmp:latest"
+        ],
+        "Created": 1763600208,
+        "CreatedAt": "2025-11-20T00:56:48Z"
+    },
+    {
+        "Id": "e101faab2f41ff6036051c0f6e05d0824a217cec21ee753a2fc00b3ff90e3514",
+        "ParentId": "22a9b9addd4fa713cb4416eb80b109d327fa06542ebe24d9a9ec7f5c70574376",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 194913076,
+        "SharedSize": 0,
+        "VirtualSize": 194913076,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:7ae79fc6d85ddeb206f4e12aa5751803c8108dfd556c3571ec21756e5ec15546",
+        "History": [
+            "localhost/djf/rustygolfrun:latest"
+        ],
+        "Created": 1763513233,
+        "CreatedAt": "2025-11-19T00:47:13Z"
+    },
+    {
+        "Id": "4bf2fc2da3f65dfa5ea4f07a02d4aaa9de96920baa51dccc592126e7fe63c256",
+        "ParentId": "f04cd2d82a1e4d3b518e23e197fc9d13a4b6062a4a27f5533eb0eb14eb2fa15f",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1722884303,
+        "SharedSize": 0,
+        "VirtualSize": 1722884303,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:1ea68e7acdeb6486bf26bfe2c5b94b10a0981bc47d075d69b94f6f5b5cd4587d",
+        "History": [
+            "docker.io/library/632a5ff9ff93f540b41cbfe06b1080748e7934a52d5745d5d1c090f369d5ab1a-tmp:latest"
+        ],
+        "Created": 1763513187,
+        "CreatedAt": "2025-11-19T00:46:27Z"
+    },
+    {
+        "Id": "e61cb7e586d1d85aef4af80446be50c7787425f48f8d9f0cb6fca9355041c64d",
+        "ParentId": "aac7b89e9dc1f72d770f275e3a38980a8055220545fe4a5373ef93be652a1d64",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 194912563,
+        "SharedSize": 0,
+        "VirtualSize": 194912563,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:f81d5d2e24efb6af7fd0c03dc14b063d277a6a9317719ff2c620bc4bab84edea",
+        "History": [
+            "localhost/djf/rustygolfrun:latest"
+        ],
+        "Created": 1763511649,
+        "CreatedAt": "2025-11-19T00:20:49Z"
+    },
+    {
+        "Id": "a114267327278512ceeb589f8941222e4e53b8f4274524e1466fb9e1d960d438",
+        "ParentId": "7770fff1d420b4cefb1236f676c65e824969bb57d99358a41a822116c385cebe",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1771616466,
+        "SharedSize": 0,
+        "VirtualSize": 1771616466,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:efd84f92dcb1af6a5f360936b55ccc486b444d63918bb6a500af32666cf665da",
+        "History": [
+            "docker.io/library/b2ad2d9a88a1b4daf8b0f18a56da6950db229d3b2f35e2d01900f02feb2876d6-tmp:latest"
+        ],
+        "Created": 1763511636,
+        "CreatedAt": "2025-11-19T00:20:36Z"
+    },
+    {
+        "Id": "34bfd69acf48bcdc081797a4c4f3af35aa05986e92663b2c8c932318dae290b7",
+        "ParentId": "79cb2b56da470af7dbd2e63d76b04a2374296c4a91ca1bbb1bfe155a63bd9bd1",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1004577956,
+        "SharedSize": 0,
+        "VirtualSize": 1004577956,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:836f113ecf698ef5a0d04132a2d8b839dc0db3595258d468d21fb36f3dd79a7e",
+        "History": [
+            "docker.io/library/4b4da403633336cf97098787cff3171f2d8bed2d2dfe12eba7978041401eb15d-tmp:latest"
+        ],
+        "Created": 1763510755,
+        "CreatedAt": "2025-11-19T00:05:55Z"
+    },
+    {
+        "Id": "04d55604305b69731a54497f4a0b1178e8588b7fec1b097143227304e080e112",
+        "ParentId": "19c35f331eecf2c60c82cfe9a978927815c4e03d62d482f484ad9975068c43cf",
+        "RepoTags": null,
+        "RepoDigests": [
+            "localhost/djf/squid-helper@sha256:a6d214621de982166de8811e38de95edacbdb7f11d6154ea582227d07c9884d8"
+        ],
+        "Size": 20247893,
+        "SharedSize": 0,
+        "VirtualSize": 20247893,
+        "Labels": {
+            "io.buildah.version": "1.41.5"
+        },
+        "Containers": 0,
+        "Digest": "sha256:a6d214621de982166de8811e38de95edacbdb7f11d6154ea582227d07c9884d8",
+        "History": [
+            "localhost/djf/squid-helper:latest"
+        ],
+        "Names": [
+            "localhost/djf/squid-helper:latest"
+        ],
+        "Created": 1763510540,
+        "CreatedAt": "2025-11-19T00:02:20Z"
+    },
+    {
+        "Id": "50dac23b3b1c4c0b6d30a9ef1b6c4f290f2cf527ec630eade3173a84f0b96cee",
+        "ParentId": "28bdd5823c4b36276fd22a9f06d891d94944d351336c07725bf9238719a27fab",
+        "RepoTags": null,
+        "RepoDigests": [
+            "localhost/djf/pi-helper@sha256:0f3a9d7ae45122a72c651d555ecc0dfcbd4378aa0f9a409ffae1d7f3e8c65d5f"
+        ],
+        "Size": 96716502,
+        "SharedSize": 0,
+        "VirtualSize": 96716502,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "org.opencontainers.image.created": "2025-11-05T00:43:23.766Z",
+            "org.opencontainers.image.description": "Pi-hole in a docker container",
+            "org.opencontainers.image.licenses": "NOASSERTION",
+            "org.opencontainers.image.revision": "b379813daae78855ec690268ceb5b3e144d858d8",
+            "org.opencontainers.image.source": "https://github.com/pi-hole/docker-pi-hole",
+            "org.opencontainers.image.title": "docker-pi-hole",
+            "org.opencontainers.image.url": "https://github.com/pi-hole/docker-pi-hole",
+            "org.opencontainers.image.version": "2025.11.0"
+        },
+        "Containers": 0,
+        "Digest": "sha256:0f3a9d7ae45122a72c651d555ecc0dfcbd4378aa0f9a409ffae1d7f3e8c65d5f",
+        "History": [
+            "localhost/djf/pi-helper:latest"
+        ],
+        "Names": [
+            "localhost/djf/pi-helper:latest"
+        ],
+        "Created": 1763510497,
+        "CreatedAt": "2025-11-19T00:01:37Z"
+    },
+    {
+        "Id": "80c0891f5de95d70f2fd664165fa6b8aa246b805a5c13c97824c4bd0970f4c8e",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "docker.io/library/postgres@sha256:5ec39c188013123927f30a006987c6b0e20f3ef2b54b140dfa96dac6844d883f",
+            "docker.io/library/postgres@sha256:babcdb287bd9087f2fa7e6d59b26f90922e3fd6a9d5d944b6a737eb360ad97b1"
+        ],
+        "Size": 463178246,
+        "SharedSize": 0,
+        "VirtualSize": 463178246,
+        "Labels": null,
+        "Containers": 1,
+        "Digest": "sha256:5ec39c188013123927f30a006987c6b0e20f3ef2b54b140dfa96dac6844d883f",
+        "History": [
+            "docker.io/library/postgres:18"
+        ],
+        "Names": [
+            "docker.io/library/postgres:18"
+        ],
+        "Created": 1763441924,
+        "CreatedAt": "2025-11-18T04:58:44Z"
+    },
+    {
+        "Id": "e6119bb6a8eed1583e12e5898d4308f45771b45e7c75026a08a9febc99f3bf07",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1560068686,
+        "SharedSize": 0,
+        "VirtualSize": 1560068686,
+        "Labels": {
+            "org.opencontainers.image.description": "The Free Software Media System",
+            "org.opencontainers.image.documentation": "https://jellyfin.org/docs/",
+            "org.opencontainers.image.source": "https://github.com/jellyfin/jellyfin-packaging",
+            "org.opencontainers.image.title": "Jellyfin",
+            "org.opencontainers.image.url": "https://jellyfin.org",
+            "org.opencontainers.image.version": "10.11.3"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:1edf3f17997acbe139718f252a7d2ded2706762390d787a34204668498dbc5f6",
+        "History": [
+            "docker.io/jellyfin/jellyfin:latest"
+        ],
+        "Created": 1763333130,
+        "CreatedAt": "2025-11-16T22:45:30Z"
+    },
+    {
+        "Id": "f2e7123fceea807fbf9fd9aa4bdfdbdaf80597a91a6ce48fff8090ee13ab3b9c",
+        "ParentId": "f326e31eb0eb698635b88ca0f62b4fff78518bfb3521b23a596f1d79f9296625",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 296944637,
+        "SharedSize": 0,
+        "VirtualSize": 296944637,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:29b96e7a95553bbe1d73cbb55cdcd4b94783d92dcb0c42d68130fff508e5bf3e",
+        "History": [
+            "localhost/djf/ddns:latest"
+        ],
+        "Created": 1763166160,
+        "CreatedAt": "2025-11-15T00:22:40Z"
+    },
+    {
+        "Id": "0eb7deeb2876d4bd264bfa1558b2ab1b27a4d949a746ef08715494c29335685b",
+        "ParentId": "d44e71e470019191a4333cd38832d7b53f5d950b930604a81d19f39104cd3fe2",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1450239654,
+        "SharedSize": 0,
+        "VirtualSize": 1450239654,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:d3d5ee972458d06cc920fad7eb44c75fd0f3345426703440c3c918754bce34f1",
+        "History": [
+            "docker.io/library/11da0ccc66c5dd091c351d830cdfab1eee124ba2c870d92588de6fd49a7aecc3-tmp:latest"
+        ],
+        "Created": 1763166148,
+        "CreatedAt": "2025-11-15T00:22:28Z"
+    },
+    {
+        "Id": "b680115bafc8b9d2f8b9fb67995a44955e93f2192556372d63aefef4c53eb0a2",
+        "ParentId": "5a4b2bf1048aed3ed52f54e109b729ffa81c629d9f711d08c3b1dd7cc28a2c00",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 296801787,
+        "SharedSize": 0,
+        "VirtualSize": 296801787,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:dfa865ac8762bf8e113ecccc36b4a0ccd83470d645de1ce36dc85c8bff780e4a",
+        "History": [
+            "localhost/djf/ddns:latest"
+        ],
+        "Created": 1763080964,
+        "CreatedAt": "2025-11-14T00:42:44Z"
+    },
+    {
+        "Id": "99cf457ec97b547658f3253318601b93698a7bf67d8ad870338b138acfb40196",
+        "ParentId": "4315e082682de21c701ef10a595a06800a318086dc13bedd67f7cc7ba6a549d1",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1447200934,
+        "SharedSize": 0,
+        "VirtualSize": 1447200934,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:647317bbdd68adf37c34b78ec782d84a45ddd365fb38b3bfecba09d1c3513ca8",
+        "History": [
+            "docker.io/library/ab5be9469c2a269e6f9b9792d9adb6d46b659976b68b38dc6a3df451cfaf2b43-tmp:latest"
+        ],
+        "Created": 1763080892,
+        "CreatedAt": "2025-11-14T00:41:32Z"
+    },
+    {
+        "Id": "6b520b8849d47b4b61cf85ebf811cdbaf8c7f04a4758c7bb4570541bae38a093",
+        "ParentId": "7c52c8b2820369d616801ce6b16431001f05d0f5d75811e7312e38ed851e53c2",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 24809286,
+        "SharedSize": 0,
+        "VirtualSize": 24809286,
+        "Labels": {
+            "io.buildah.version": "1.41.5"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:99be9a03857ecf5fce8b43a9ffd5814a3f22e178f51c3eeec801f7e8427029ac",
+        "History": [
+            "localhost/djf/ddns:latest"
+        ],
+        "Created": 1762994559,
+        "CreatedAt": "2025-11-13T00:42:39Z"
+    },
+    {
+        "Id": "0914f7653b627df7ce3a38e1c4916ed47377bb09c0953d6869f06d6dfc001606",
+        "ParentId": "2c09f3a76d3933f26c6e35a660e99c86b69198092f111e1583e02d20f5c4d541",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 24809285,
+        "SharedSize": 0,
+        "VirtualSize": 24809285,
+        "Labels": {
+            "io.buildah.version": "1.41.5"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:875ad5a6392c1dd5feebb732f45055e4648a8bb1ab362ee7f1cbdecf892b3042",
+        "History": [
+            "localhost/djf/ddns:latest"
+        ],
+        "Created": 1762994185,
+        "CreatedAt": "2025-11-13T00:36:25Z"
+    },
+    {
+        "Id": "88eef47494da2a3e8ad16f3ff372731b255161501240be7bd8845baab716d941",
+        "ParentId": "c5aa1e4217bf44029f7e5a6fcf5d978a7fda18bcbd00e42df339b1109362ce52",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 24809286,
+        "SharedSize": 0,
+        "VirtualSize": 24809286,
+        "Labels": {
+            "io.buildah.version": "1.41.5"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:0cb09602622aea3729e76a9037ea192b0e8bef329886ad7fd7fa96a61e336543",
+        "History": [
+            "localhost/djf/ddns:latest"
+        ],
+        "Created": 1762993909,
+        "CreatedAt": "2025-11-13T00:31:49Z"
+    },
+    {
+        "Id": "c580de128e348d02cc6e2b0a0d4351a69da3f3a96ae55bd9acc3d706724da67a",
+        "ParentId": "7c9652ed34441e0105f9c355239e25f42265676981ab72591776c75a43dd9137",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 24808774,
+        "SharedSize": 0,
+        "VirtualSize": 24808774,
+        "Labels": {
+            "io.buildah.version": "1.41.5"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:c0e2a9c98c5fa8d49b4cae7acd74c06f6f7d1d659241971785e7d645d7228e68",
+        "History": [
+            "localhost/djf/ddns:latest"
+        ],
+        "Created": 1762993838,
+        "CreatedAt": "2025-11-13T00:30:38Z"
+    },
+    {
+        "Id": "67a4842b797bce9bf2f314dfece364cd9af600c2df31abe1aa63deaed05fea9e",
+        "ParentId": "7bf85989039f6744111bc81ff9eeb223658c3e477231431732efcf6da3be70dc",
+        "RepoTags": null,
+        "RepoDigests": [
+            "localhost/djf/rclone@sha256:e6530ee1b010f51cef022492b51839a5e1a48fb3d942911e39d9b9a945898e0d"
+        ],
+        "Size": 2062966037,
+        "SharedSize": 0,
+        "VirtualSize": 2062966037,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 1,
+        "Digest": "sha256:e6530ee1b010f51cef022492b51839a5e1a48fb3d942911e39d9b9a945898e0d",
+        "History": [
+            "localhost/djf/rclone:latest"
+        ],
+        "Names": [
+            "localhost/djf/rclone:latest"
+        ],
+        "Created": 1762889353,
+        "CreatedAt": "2025-11-11T19:29:13Z"
+    },
+    {
+        "Id": "5ba25cd330cc0df0ec797006515a3473d7a36e7ebdf0fcd42072e68a35ad752e",
+        "ParentId": "5798c05231a9af2847617bb98e825cb618583819e4df282f07f2e73e53cc089e",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 194849077,
+        "SharedSize": 0,
+        "VirtualSize": 194849077,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:b16664818b11b8289a1ae606e15a65a9dc0bd8d471ee446289a05bcf7c066fe7",
+        "History": [
+            "localhost/djf/rustygolfrun:latest"
+        ],
+        "Created": 1762388709,
+        "CreatedAt": "2025-11-06T00:25:09Z"
+    },
+    {
+        "Id": "e48f6edb00873bf5bb538dd6e5b754b05ff39971cd7849ae92e85ab1fb73b518",
+        "ParentId": "e4a75171d78d18b4cc63d36befe4da3a2b1289a70bbf3d655c071f26504d9ae6",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1772947192,
+        "SharedSize": 0,
+        "VirtualSize": 1772947192,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:472188cfbbe27a8499126e60d9e804e63b311f48ca03de45575875219b881504",
+        "History": [
+            "docker.io/library/99776e543ad818c7de69fd15da577a8c9ba82939fbb560c38f38e566cee4a77e-tmp:latest"
+        ],
+        "Created": 1762388703,
+        "CreatedAt": "2025-11-06T00:25:03Z"
+    },
+    {
+        "Id": "350d3cae3bdd430e85ade8a87b224336af98fffa109ae0ebc9556bb538d9c80a",
+        "ParentId": "573ae764f9248afa899ba5950d97f3744abffe6e8466d442aa2abc91895b6d6c",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 194835765,
+        "SharedSize": 0,
+        "VirtualSize": 194835765,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:8da55645a1a9fc0b4907eb30eefddc347f3945758637a126760357495dca8a9f",
+        "History": [
+            "localhost/djf/rustygolfrun:latest"
+        ],
+        "Created": 1762389855,
+        "CreatedAt": "2025-11-06T00:44:15Z"
+    },
+    {
+        "Id": "2791767a943663200dd894e2bf541a84032adf4075e970bc0638a974c487ad31",
+        "ParentId": "18d6998dde074ec39c7abef1ef2ecb438fd045b8f1db2167c5bcbd3c29d40b8d",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1773792504,
+        "SharedSize": 0,
+        "VirtualSize": 1773792504,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 1,
+        "Dangling": true,
+        "Digest": "sha256:273d05f6e82eba0f8f74439580979cfda655298e6b41c045fbc406467c8e7d7e",
+        "History": [
+            "docker.io/library/9864de68e78886f665ffab2cd5ef33cb41cf38d7abd8755fbf1bf52669e0dbd6-tmp:latest"
+        ],
+        "Created": 1762389849,
+        "CreatedAt": "2025-11-06T00:44:09Z"
+    },
+    {
+        "Id": "7cdbc44fa0cd04d22cf13bb6ce11d4e6d1db5e6dff127a237174601db2e7b769",
+        "ParentId": "0df354f9bfe1a54e25570e18462460bc33f2fffc03b6dcf9d8bfdc662925cda7",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1005274314,
+        "SharedSize": 0,
+        "VirtualSize": 1005274314,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:db5a7a0174fab2251bf5bd4419178363317e8fae49098286a0ac9f265e254ee6",
+        "History": [
+            "docker.io/library/4ce127afa15413f42719955f5d57f8ed4279f2c21b9830e81dc9bd47c1f7ac61-tmp:latest"
+        ],
+        "Created": 1762389411,
+        "CreatedAt": "2025-11-06T00:36:51Z"
+    },
+    {
+        "Id": "e773f1dafdfadbca2468288a00ff8aa08630339380e2a3cc89c9941c699bce1e",
+        "ParentId": "4c9de709c5d38ac83f430f0a4951be3b144c6ac8fd36f56289557cd4d106a883",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1755105165,
+        "SharedSize": 0,
+        "VirtualSize": 1755105165,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:c27deb8bba3e83da53919e5785165e3d4b9e51be6d50e4c84b896e031867aaf3",
+        "History": [
+            "docker.io/library/0ad5954a63b0705aeaf953aedf8b4ddd2e29777a6d21d9ffd15d991b6d722c30-tmp:latest"
+        ],
+        "Created": 1762389228,
+        "CreatedAt": "2025-11-06T00:33:48Z"
+    },
+    {
+        "Id": "171972d458381ceefa860ec162880bb74c7d27162479154d669befa992154efe",
+        "ParentId": "fb52cbb9dc8c3a7d1aa409a3163cdd097adfd3ff9de59c672c7ffc051b2fe337",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1755105165,
+        "SharedSize": 0,
+        "VirtualSize": 1755105165,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:a8c755da241cb31ff83f6bd52d6ed8810d349f973fb81204fc66e527d0c2aeae",
+        "History": [
+            "docker.io/library/a8d54023706a8f7de4511d77e22153676257fdc9c045e1ac30e16a2d4466c9eb-tmp:latest"
+        ],
+        "Created": 1762389117,
+        "CreatedAt": "2025-11-06T00:31:57Z"
+    },
+    {
+        "Id": "6ceb69feb4be95625e72f8576d1c5958d2335e39f39f2401781155e44a988d95",
+        "ParentId": "765956d5c2316eb362ec37b68c50970f29f82cebb982855086bf1daeeeba835a",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1867909062,
+        "SharedSize": 0,
+        "VirtualSize": 1867909062,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:5a7b982712098b7c452dad134b5b35fed266160d99b5dedde8c77d6f6ac4714f",
+        "History": [
+            "docker.io/library/2fde50e3091395cf6fc17e3dc0172d221cf42c70eaea53d6ddde45e41ccf5727-tmp:latest"
+        ],
+        "Created": 1762389062,
+        "CreatedAt": "2025-11-06T00:31:02Z"
+    },
+    {
+        "Id": "a9c3fcf5254a3dec696154b8dbbd9d8d525d59431179bb34529dbd45f0721233",
+        "ParentId": "1144862e87c42f37cf185a519385f2f12f35594e0aca6d8734278b72ea2ca776",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1789063601,
+        "SharedSize": 0,
+        "VirtualSize": 1789063601,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 1,
+        "Dangling": true,
+        "Digest": "sha256:f7b57321a2c1eec3843cfd77bd83da4d18465db70aee5740e80f140dc807e25d",
+        "History": [
+            "docker.io/library/bd87ba1deeba81b1a71b290e291fd10f899dbe1dddc77672fbfb3574d4f2fb73-tmp:latest"
+        ],
+        "Created": 1762388026,
+        "CreatedAt": "2025-11-06T00:13:46Z"
+    },
+    {
+        "Id": "26090c1d5dd4c0b85f5c93daed70d7dfca15887f68aed7f6c51773ce8106b69b",
+        "ParentId": "e3b042c21c33e0fb89443d5cc91f208a993fc9358ee028b3ce766fc7cbd303cb",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 193069874,
+        "SharedSize": 0,
+        "VirtualSize": 193069874,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:a8d73f70e7a17b53980d77a7be7041ac5a71442da0c07f7693688e6dff8aecae",
+        "History": [
+            "localhost/djf/rustygolfrun:latest"
+        ],
+        "Created": 1762390206,
+        "CreatedAt": "2025-11-06T00:50:06Z"
+    },
+    {
+        "Id": "de3ae813ecbf888f10650d1d29791d7a4d437eb2ec598edc597a5aa296b33e13",
+        "ParentId": "0359df96ef6b8b7138e2b2352c93984db50a5028f1535b0f5e465857d1d092f4",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1806553883,
+        "SharedSize": 0,
+        "VirtualSize": 1806553883,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:d26e8396980e72d52cd051312bcd3fc8b94795c1d3a8394a211d76042b324a6d",
+        "History": [
+            "docker.io/library/153831d51372d0b901749d01bd3c3d4f864e42a75d58f1e5f1339cd72a6186c9-tmp:latest"
+        ],
+        "Created": 1762390199,
+        "CreatedAt": "2025-11-06T00:49:59Z"
+    },
+    {
+        "Id": "e9811219a1274b64bcffed7db76e6510bf7cae6ef63b2046942de7b9d1330b15",
+        "ParentId": "5859d123b4f634901a9735385e5bfd67eefaeb94f05b2c380d67f343baccbdee",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1005039341,
+        "SharedSize": 0,
+        "VirtualSize": 1005039341,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 1,
+        "Dangling": true,
+        "Digest": "sha256:a722a22ad6b0ab8f1befe8b572586105ff3128abe82e95edd0e32870c8b27a55",
+        "History": [
+            "docker.io/library/61d195d6ccd6504615c99b5f94695d11a039dc015e0107c57bcf2d64426da07c-tmp:latest"
+        ],
+        "Created": 1762389279,
+        "CreatedAt": "2025-11-06T00:34:39Z"
+    },
+    {
+        "Id": "2278c3fd1364c5dee72019dc7939c2547b390133677f58599802d13763471b42",
+        "ParentId": "27eaa2c8c6cab831521663d34de3fa922c878553f224d529300c318f9e3e034a",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1773789972,
+        "SharedSize": 0,
+        "VirtualSize": 1773789972,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:b2a0ca75663c52ca21a08fb256995d26cb56f63659427d55d1acbdedaff83e34",
+        "History": [
+            "docker.io/library/9d3e843ec48ff35a3b666102513cfa0a84fa4113ce2852f00c28f34161fbb67d-tmp:latest"
+        ],
+        "Created": 1762389145,
+        "CreatedAt": "2025-11-06T00:32:25Z"
+    },
+    {
+        "Id": "1139328f117243395910d05021e75f172ae99081f1367be7613e0b11fafce7e8",
+        "ParentId": "7244017faa08b61fc8cb7f275e4ef548a0d8c8378692fe604b9ed0f3b0861725",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 194808629,
+        "SharedSize": 0,
+        "VirtualSize": 194808629,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:c8a98f22eefeccd28d7c39dc4545a1a7546d7279bb673052cc94ee880b85551f",
+        "History": [
+            "localhost/djf/rustygolfrun:latest"
+        ],
+        "Created": 1762388340,
+        "CreatedAt": "2025-11-06T00:19:00Z"
+    },
+    {
+        "Id": "2baf16410367d8cde51fe977fa207ffab0445937855243474b99975221b6fa27",
+        "ParentId": "1242e35fe5f09b0892552b0906d46c22f5290942245a500808e5bd21b5456937",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1773513996,
+        "SharedSize": 0,
+        "VirtualSize": 1773513996,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:c92a089c3c677d64ed1a5ab0bb85ea4e378ca34fdd3afb064c0bde3ff858d33e",
+        "History": [
+            "docker.io/library/d148046963baea777b528922c8ca6f20d3acf28db865a25063e87820e1228123-tmp:latest"
+        ],
+        "Created": 1762388333,
+        "CreatedAt": "2025-11-06T00:18:53Z"
+    },
+    {
+        "Id": "074fa56a820085065251e2fb8281a0a627f929fbfa2bd2e1df24784419a391d7",
+        "ParentId": "94fa75332c16292a1dc966074b44793cdac41ca7352cd3c157538e5e6d8dd8fc",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 194808628,
+        "SharedSize": 0,
+        "VirtualSize": 194808628,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:35d3721e4e04078c7ad84bf2c01f5c16aa2f4ad08ab331eab0d21f517adcff02",
+        "History": [
+            "localhost/djf/rustygolfrun:latest"
+        ],
+        "Created": 1762387408,
+        "CreatedAt": "2025-11-06T00:03:28Z"
+    },
+    {
+        "Id": "00356835a935361606014729b3c3186c65c647e1c81109d932333456c883cb8c",
+        "ParentId": "a089ea8e4ed13cced54c54981ea804cf1ec8637e962da73f69754e02cb9d93f1",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1773504274,
+        "SharedSize": 0,
+        "VirtualSize": 1773504274,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:2667019ae25cf8189bef308e5d917d1421b5669b21ba878d6ad58b65162dd317",
+        "History": [
+            "docker.io/library/55fa53dd0663747fc05629c900c8f2338f737db5a629515a896f00ca354929ae-tmp:latest"
+        ],
+        "Created": 1762387362,
+        "CreatedAt": "2025-11-06T00:02:42Z"
+    },
+    {
+        "Id": "270fc8ae061da919ee14325e373814ab1cc4f98bae004ab0e8ea59e7fe699641",
+        "ParentId": "eac798753623b2bb7689f6bd14d8c8d23698ddb6d96087c4682cd3f1bd1c4499",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1005060836,
+        "SharedSize": 0,
+        "VirtualSize": 1005060836,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 1,
+        "Dangling": true,
+        "Digest": "sha256:fb7d552b266abd6f72477897264ca18866c0be57a8b2a65a12f4f755516cdf9b",
+        "History": [
+            "docker.io/library/e0920c7514d73c8e29a916e5ae7f456ca18eade9b8569b9eda465507b562f2c8-tmp:latest"
+        ],
+        "Created": 1762387239,
+        "CreatedAt": "2025-11-06T00:00:39Z"
+    },
+    {
+        "Id": "95cadb94853a49a4a00bfa2b08dd92e8bf1dbec6b4db55a8e5434b2bf618a35e",
+        "ParentId": "5a0fc432609af6e71cea48126153db51c4ec60a74aac0f16073fb5fab0d70801",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 194714384,
+        "SharedSize": 0,
+        "VirtualSize": 194714384,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:ecee8b41bbd8b629a0fdb78973195b714b3549e90fab8f86c01210d34b16dbf6",
+        "History": [
+            "localhost/djf/rustygolfrun:latest"
+        ],
+        "Created": 1762315956,
+        "CreatedAt": "2025-11-05T04:12:36Z"
+    },
+    {
+        "Id": "42557df8092cce81acee80a546aaa2bc5fdf42033247009aa14ccef9cda3e6ee",
+        "ParentId": "c153aedd98058a201b89ffb55b118411861866cec812ab7eb1c16d26b3b49bc7",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1756866282,
+        "SharedSize": 0,
+        "VirtualSize": 1756866282,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:6732903a1dd5a44d0c1d66c720c8f42d83e30f19420f7060c3adc5c1bb0f449e",
+        "History": [
+            "docker.io/library/7b6340782c53727deeceff98a66f10473ab240ade574b8bd2f552b3addadb659-tmp:latest"
+        ],
+        "Created": 1762315405,
+        "CreatedAt": "2025-11-05T04:03:25Z"
+    },
+    {
+        "Id": "92a9f4c8b5468c9c8971a913f53f0c4ed144abcd6d6825abbc8b7fc304a4890f",
+        "ParentId": "5a0fc432609af6e71cea48126153db51c4ec60a74aac0f16073fb5fab0d70801",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 194714459,
+        "SharedSize": 0,
+        "VirtualSize": 194714459,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:1d63ace33d672209c76fc05c995dcfbc3828e757e6667bc168f0f3f32e32e8a3",
+        "History": [
+            "localhost/djf/rustygolfrun:latest"
+        ],
+        "Created": 1762315260,
+        "CreatedAt": "2025-11-05T04:01:00Z"
+    },
+    {
+        "Id": "12df0b38021be036ce963a490feb136c064866ffad569033939627c4d5906308",
+        "ParentId": "5a0fc432609af6e71cea48126153db51c4ec60a74aac0f16073fb5fab0d70801",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 194714461,
+        "SharedSize": 0,
+        "VirtualSize": 194714461,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:fbd60f7c3136207b85fede5a061ee079d5d1ce04e5dc1ef0c63a6ef7dea738fc",
+        "History": [
+            "localhost/djf/rustygolfrun:latest"
+        ],
+        "Created": 1762314061,
+        "CreatedAt": "2025-11-05T03:41:01Z"
+    },
+    {
+        "Id": "63ac9440b12236f11068634f98d0f9781cc583b8b92ebc5244e9b519d3e86aa6",
+        "ParentId": "5a0fc432609af6e71cea48126153db51c4ec60a74aac0f16073fb5fab0d70801",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 194714146,
+        "SharedSize": 0,
+        "VirtualSize": 194714146,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:964c2319bd83e82f9301954ca2a602f6e368531960069e5ec74343bb0c12939d",
+        "History": [
+            "docker.io/library/2d3138d46a94335a8c4f5fa9c22ac38e2c40a73b9b234cdcdccb061aa5d154f2-tmp:latest"
+        ],
+        "Created": 1762314004,
+        "CreatedAt": "2025-11-05T03:40:04Z"
+    },
+    {
+        "Id": "0196fbf184c3e1a6b7f4c9213251bc1158be8e38128fba6316ce94fca1ef02ba",
+        "ParentId": "046bdbbe25e53ae4e2c71af0c731a496a3589b69b53e010541e4cbfcfc9c7044",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1756847301,
+        "SharedSize": 0,
+        "VirtualSize": 1756847301,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:4eb791e25d506d7fb5df1d22bbfa107940af24e99eebb0a615c24fe139411cd7",
+        "History": [
+            "docker.io/library/50824749ce85d56800ffdd60bdbe50a566a9252ecf54943a203b5fbdd857d89d-tmp:latest"
+        ],
+        "Created": 1762313991,
+        "CreatedAt": "2025-11-05T03:39:51Z"
+    },
+    {
+        "Id": "cf9a07329d5b7c8ba5c3605d82277b4ea5b474ae9dd30f4efe401c7e7510edb4",
+        "ParentId": "73ea6926ea28fad30af5b8b2c1567b66d0150083e8f12762c23c19a2622a4949",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1005165719,
+        "SharedSize": 0,
+        "VirtualSize": 1005165719,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:e6dc1c3b752125fc5e8b93f45508c33d422e1ec8205630135cf55cdd8583f13b",
+        "History": [
+            "docker.io/library/0e14ff84a8d234005fccb98f39ecc50c8fe3afbea7b5fa617d296e9ea1f3b6b3-tmp:latest"
+        ],
+        "Created": 1762313776,
+        "CreatedAt": "2025-11-05T03:36:16Z"
+    },
+    {
+        "Id": "4548247de636e674521bced481445133e49b66a834717115d8671cd62821eb4d",
+        "ParentId": "2f14a4090b62e6d775fb4ff12ab2d6ca6d48e3c9b5f082db84252e6f27d4edc3",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1004721814,
+        "SharedSize": 0,
+        "VirtualSize": 1004721814,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:4d1b66b663af804c56dbc87e67dd59f3609b5871b9254120700dadcf892096f2",
+        "History": [
+            "docker.io/library/4667a5538e51843f46025427bb540d9250c418b6ff2cc5389f1dce2b21564e09-tmp:latest"
+        ],
+        "Created": 1762313543,
+        "CreatedAt": "2025-11-05T03:32:23Z"
+    },
+    {
+        "Id": "09a157ce19f72abbe50036ebfa054fac3f9d51ce6f4ecaffabd7893ac6ad9dd7",
+        "ParentId": "2733537d081a32e397baa31f98cc5a4e5be52a4ef2cbe7e82c8dba728b832621",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1004720024,
+        "SharedSize": 0,
+        "VirtualSize": 1004720024,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:b3133f1fc5526f1dc238832e3eb3cc9089119a6d1eb07536a72342f89f4c16b9",
+        "History": [
+            "docker.io/library/f01965194a40fbf2a0bf528d53f0bc0fa57f99ff97c1ec8f442b90f72a74b038-tmp:latest"
+        ],
+        "Created": 1762313439,
+        "CreatedAt": "2025-11-05T03:30:39Z"
+    },
+    {
+        "Id": "6e8ba5bcc5dba3be91df7090e5afa16d607686c2e039eca9bc3baa7c97db3d36",
+        "ParentId": "2733537d081a32e397baa31f98cc5a4e5be52a4ef2cbe7e82c8dba728b832621",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1003614185,
+        "SharedSize": 0,
+        "VirtualSize": 1003614185,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:0b32fd59488f7f65f7d1dff262354855c9a33e239ba311687b79e9c0b282672d",
+        "History": [
+            "docker.io/library/c800190616e1918c13f5b79651e8aa2dec2735245edcc342ec85a5b4c85e3b1f-tmp:latest"
+        ],
+        "Created": 1762313245,
+        "CreatedAt": "2025-11-05T03:27:25Z"
+    },
+    {
+        "Id": "53523f48ffbb80303732ddb8c704950f9b236f241c07dfc17a68a71917ebbf56",
+        "ParentId": "c5981c93ae1aeb6c1c11383e314669ab5385e4a5c33f393f57489bb51f2b0ef2",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 772313349,
+        "SharedSize": 0,
+        "VirtualSize": 772313349,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:a242935f1c031318f2c36c3a92f7f7abaa36e2d04127c963b1e89aa10c973c6d",
+        "History": [
+            "docker.io/library/cf4b8517b5e3fc70697178726d6141b02536671a4d609d9281f5e298ea6801e4-tmp:latest"
+        ],
+        "Created": 1762312913,
+        "CreatedAt": "2025-11-05T03:21:53Z"
+    },
+    {
+        "Id": "a5fe08ca330921e2678d161801c0e291d8b71a52b7e8055f1145e479c3f34e66",
+        "ParentId": "e466f2f2e3160e6c6fa335b04e3c508445db457eb07373d5c4ede3a1f3373b0e",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 20247916,
+        "SharedSize": 0,
+        "VirtualSize": 20247916,
+        "Labels": {
+            "io.buildah.version": "1.41.5"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:9e4ef3ee6e4abe903247c8054c4f808f1fa4b5d443b88dfdcf1f80ce29c09372",
+        "History": [
+            "localhost/djf/squid-helper:latest"
+        ],
+        "Created": 1762301896,
+        "CreatedAt": "2025-11-05T00:18:16Z"
+    },
+    {
+        "Id": "1a063a80e41e93b1ffb58ea72314b042db434ba69189ecab3a932dabf1fcf54d",
+        "ParentId": "5e6c9bb0f298b93c426a51e806a699362c729a7a478d2c7b5ec2d1aa1bee28dc",
+        "RepoTags": null,
+        "RepoDigests": [
+            "localhost/djf/squid@sha256:c6e2fa7ff46ee54e96931e983798de7eaf397ed1c317c108e8882ddf53e17aea"
+        ],
+        "Size": 20237854,
+        "SharedSize": 0,
+        "VirtualSize": 20237854,
+        "Labels": {
+            "io.buildah.version": "1.41.5"
+        },
+        "Containers": 1,
+        "Digest": "sha256:c6e2fa7ff46ee54e96931e983798de7eaf397ed1c317c108e8882ddf53e17aea",
+        "History": [
+            "localhost/djf/squid:latest"
+        ],
+        "Names": [
+            "localhost/djf/squid:latest"
+        ],
+        "Created": 1762301885,
+        "CreatedAt": "2025-11-05T00:18:05Z"
+    },
+    {
+        "Id": "a3719f745420ef1dda0a405076f8166c4b2912fd354fad1a104be83a6689d2f3",
+        "ParentId": "e6b32a706f6d9b7c4c667d02d38ad29f22a3f04ef3e32bdbe3fae46ed6eafcdd",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 96710871,
+        "SharedSize": 0,
+        "VirtualSize": 96710871,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "org.opencontainers.image.created": "2025-10-28T17:10:32.964Z",
+            "org.opencontainers.image.description": "Pi-hole in a docker container",
+            "org.opencontainers.image.licenses": "NOASSERTION",
+            "org.opencontainers.image.revision": "41627256841ca1a765817be8c20d9ea166902de0",
+            "org.opencontainers.image.source": "https://github.com/pi-hole/docker-pi-hole",
+            "org.opencontainers.image.title": "docker-pi-hole",
+            "org.opencontainers.image.url": "https://github.com/pi-hole/docker-pi-hole",
+            "org.opencontainers.image.version": "2025.10.3"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:eee795ed302ea5f57a39c008ace7ad98844f77e02a179ce8c07f5844b49c2f09",
+        "History": [
+            "localhost/djf/pi-helper:latest"
+        ],
+        "Created": 1762301867,
+        "CreatedAt": "2025-11-05T00:17:47Z"
+    },
+    {
+        "Id": "da81c3353e15fae66e79d02f27d94b92e7c5c7c8815a4d24edb58de7eb1de90c",
+        "ParentId": "77893120ea7c32fd939970dde31e17eada095a0ba5036a79f655d719050db0fe",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 2817548736,
+        "SharedSize": 0,
+        "VirtualSize": 2817548736,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:804c2831c644127ba9483158b59883076913851eb0e8d6cd39e0145b9d2f9333",
+        "History": [
+            "localhost/djf/helper_x:latest"
+        ],
+        "Created": 1762302725,
+        "CreatedAt": "2025-11-05T00:32:05Z"
+    },
+    {
+        "Id": "a57efb19efa4ca06f22fe6b610638159596a50bd3e3a8aad575580a1a0f437e4",
+        "ParentId": "c76f9b0825dcca7df38c250f78d6940055bf9de071635ad0e01a66f2fcb394a9",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 756599960,
+        "SharedSize": 0,
+        "VirtualSize": 756599960,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:9f038a9e424122c1f4634fdfa66931b9d40d36c1dec73f5225887437b57a25b6",
+        "History": [
+            "docker.io/library/9fd8314f8a853a0fbde373fc31274762fc6e76cfd8c8891ec837a4a5c6ec3ab9-tmp:latest"
+        ],
+        "Created": 1762302700,
+        "CreatedAt": "2025-11-05T00:31:40Z"
+    },
+    {
+        "Id": "998f3910145a8eb1f4785980473f2d01cf078c2d5f0f01622b1d3f1bdc52a85d",
+        "ParentId": "b6e17e1cc27debfb2abf00d4802bda1c83ef35e45f143e1780eaba90a4ef5c9e",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1472898383,
+        "SharedSize": 0,
+        "VirtualSize": 1472898383,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:82ce7b293e26509dd13d79908fa9e82a4d79a536cb78a09bf073011c6511f65d",
+        "History": [
+            "docker.io/library/48536805e65f3a0585bb407ecbf749756a8192a136c8e567e2eaa12fbbed7a71-tmp:latest"
+        ],
+        "Created": 1762302624,
+        "CreatedAt": "2025-11-05T00:30:24Z"
+    },
+    {
+        "Id": "053297fbafea1d8761f7f8d410b8ea2bb077ffe9fb037c70ea1bfa6127cc20e9",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "quay.io/fedora/fedora@sha256:ba08a6cb7d3470f03586d634472e2604b19f991881b1fa0ec4a291f81047985e",
+            "quay.io/fedora/fedora@sha256:cd5930247cb36f74a11a262edd9b1cb1a45dd11468dca27f205226d05ab81f98"
+        ],
+        "Size": 170217336,
+        "SharedSize": 0,
+        "VirtualSize": 170217336,
+        "Labels": {
+            "io.buildah.version": "1.41.5",
+            "license": "MIT",
+            "name": "fedora",
+            "org.opencontainers.image.license": "MIT",
+            "org.opencontainers.image.name": "fedora",
+            "org.opencontainers.image.url": "https://fedoraproject.org/",
+            "org.opencontainers.image.vendor": "Fedora Project",
+            "org.opencontainers.image.version": "42",
+            "vendor": "Fedora Project",
+            "version": "42"
+        },
+        "Containers": 1,
+        "Digest": "sha256:cd5930247cb36f74a11a262edd9b1cb1a45dd11468dca27f205226d05ab81f98",
+        "History": [
+            "registry.fedoraproject.org/fedora:42",
+            "quay.io/fedora/fedora:42"
+        ],
+        "Names": [
+            "quay.io/fedora/fedora:42"
+        ],
+        "Created": 1762235274,
+        "CreatedAt": "2025-11-04T05:47:54Z"
+    },
+    {
+        "Id": "132c9d07e0077ab41a22b911db3a7793bf366dc086ee3b035b1d5514aa3bf373",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1551887436,
+        "SharedSize": 0,
+        "VirtualSize": 1551887436,
+        "Labels": {
+            "org.opencontainers.image.description": "The Free Software Media System",
+            "org.opencontainers.image.documentation": "https://jellyfin.org/docs/",
+            "org.opencontainers.image.source": "https://github.com/jellyfin/jellyfin-packaging",
+            "org.opencontainers.image.title": "Jellyfin",
+            "org.opencontainers.image.url": "https://jellyfin.org",
+            "org.opencontainers.image.version": "10.11.2"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:d43a8878689311f841a1967f899f54db56877bf6b426fd7ff870ac1a6fd1dce4",
+        "History": [
+            "docker.io/jellyfin/jellyfin:latest"
+        ],
+        "Created": 1762137691,
+        "CreatedAt": "2025-11-03T02:41:31Z"
+    },
+    {
+        "Id": "74f2df46cfde50ee4f5fefb9730a0f53b653370eb582cf99d3c87e68d14ccb93",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "docker.io/jonasal/nginx-certbot@sha256:3448bdd48b74366052f011c57bd491237c11f0556b6032202300027a29ba0b8b",
+            "docker.io/jonasal/nginx-certbot@sha256:b644c47fd3d92b429ca9e43cc3ef66e90fd1647f1c059b2759def9d114b9700b"
+        ],
+        "Size": 384847029,
+        "SharedSize": 0,
+        "VirtualSize": 384847029,
+        "Labels": {
+            "maintainer": "Jonas Alfredsson <jonas.alfredsson@protonmail.com>"
+        },
+        "Containers": 1,
+        "Digest": "sha256:3448bdd48b74366052f011c57bd491237c11f0556b6032202300027a29ba0b8b",
+        "History": [
+            "docker.io/jonasal/nginx-certbot:6"
+        ],
+        "Names": [
+            "docker.io/jonasal/nginx-certbot:6"
+        ],
+        "Created": 1761784353,
+        "CreatedAt": "2025-10-30T00:32:33Z"
+    },
+    {
+        "Id": "55c3fe0f8428be3d5d5e009739e900b8e7ec3759c111613409d65f0cfcd8464b",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "mcr.microsoft.com/mssql/server@sha256:54b23ca766287dab5f6f55162923325f07cdec6ccb42108f37c55c87e7688ebd"
+        ],
+        "Size": 1798850669,
+        "SharedSize": 0,
+        "VirtualSize": 1798850669,
+        "Labels": {
+            "com.microsoft.product": "Microsoft SQL Server",
+            "com.microsoft.version": "17.0.1000.7",
+            "org.opencontainers.image.ref.name": "ubuntu",
+            "org.opencontainers.image.version": "22.04",
+            "vendor": "Microsoft"
+        },
+        "Containers": 1,
+        "Digest": "sha256:54b23ca766287dab5f6f55162923325f07cdec6ccb42108f37c55c87e7688ebd",
+        "History": [
+            "mcr.microsoft.com/mssql/server:2025-latest"
+        ],
+        "Names": [
+            "mcr.microsoft.com/mssql/server:2025-latest"
+        ],
+        "Created": 1761350503,
+        "CreatedAt": "2025-10-25T00:01:43Z"
+    },
+    {
+        "Id": "bb8553ab0efe4b205734408fbd790684dfba22985f1fdef43453ba055fbb2339",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "docker.io/jellyfin/jellyfin@sha256:3b38dae4c3ddd6ebc7378538fba4d3f314070ebefbdb3d688166b7c8658fb123",
+            "docker.io/jellyfin/jellyfin@sha256:7ae36aab93ef9b6aaff02b37f8bb23df84bb2d7a3f6054ec8fc466072a648ce2"
+        ],
+        "Size": 1252819383,
+        "SharedSize": 0,
+        "VirtualSize": 1252819383,
+        "Labels": {
+            "org.opencontainers.image.description": "The Free Software Media System",
+            "org.opencontainers.image.documentation": "https://jellyfin.org/docs/",
+            "org.opencontainers.image.source": "https://github.com/jellyfin/jellyfin-packaging",
+            "org.opencontainers.image.title": "Jellyfin",
+            "org.opencontainers.image.url": "https://jellyfin.org",
+            "org.opencontainers.image.version": "10.10.7"
+        },
+        "Containers": 0,
+        "Digest": "sha256:7ae36aab93ef9b6aaff02b37f8bb23df84bb2d7a3f6054ec8fc466072a648ce2",
+        "History": [
+            "docker.io/jellyfin/jellyfin:10.10.7"
+        ],
+        "Names": [
+            "docker.io/jellyfin/jellyfin:10.10.7"
+        ],
+        "Created": 1743880811,
+        "CreatedAt": "2025-04-05T19:20:11Z"
+    }
+]
