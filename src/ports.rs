@@ -1,4 +1,4 @@
-use crate::domain::DiscoveredImage;
+use crate::domain::{DiscoveryResult, LocalImageSummary};
 use crate::errors::PodmanComposeMgrError;
 use chrono::Local;
 use std::path::{Path, PathBuf};
@@ -17,6 +17,7 @@ pub trait PodmanPort: Send + Sync {
     fn image_modified(&self, image: &str)
     -> Result<chrono::DateTime<Local>, PodmanComposeMgrError>;
     fn file_exists_and_readable(&self, file: &Path) -> bool;
+    fn list_local_images(&self) -> Result<Vec<LocalImageSummary>, PodmanComposeMgrError>;
 }
 
 pub struct ScanOptions {
@@ -30,7 +31,7 @@ pub trait DiscoveryPort: Send + Sync {
     ///
     /// # Errors
     /// Returns an error if pattern compilation or file IO fails.
-    fn scan(&self, opts: &ScanOptions) -> Result<Vec<DiscoveredImage>, PodmanComposeMgrError>;
+    fn scan(&self, opts: &ScanOptions) -> Result<DiscoveryResult, PodmanComposeMgrError>;
 }
 
 // Interrupt port for graceful shutdown without OS signals in tests.

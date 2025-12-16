@@ -1,20 +1,18 @@
-use crate::domain::DiscoveredImage;
+use crate::domain::ScanResult;
 use crate::tui::app::state::{App, Msg, SPINNER_FRAMES, Services, UiState, ViewMode};
 
 pub fn handle_tick(app: &mut App) {
     app.spinner_idx = (app.spinner_idx + 1) % SPINNER_FRAMES.len();
 }
 
-pub fn handle_scan_results(
-    app: &mut App,
-    discovered: Vec<DiscoveredImage>,
-    services: Option<&Services>,
-) {
-    app.all_items = discovered;
+pub fn handle_scan_results(app: &mut App, discovered: ScanResult, services: Option<&Services>) {
+    app.all_items = discovered.images;
+    app.dockerfile_items = discovered.dockerfiles;
     app.rows = match app.view_mode {
         ViewMode::ByContainer => app.build_rows_for_container_view(),
         ViewMode::ByImage => app.build_rows_for_view_mode(ViewMode::ByImage),
         ViewMode::ByFolderThenImage => app.build_rows_for_folder_view(),
+        ViewMode::ByDockerfile => app.build_rows_for_dockerfile_view(),
     };
     app.state = UiState::Ready;
     app.selected = 0;

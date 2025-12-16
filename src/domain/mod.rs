@@ -1,3 +1,4 @@
+use chrono::{DateTime, Local};
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -6,6 +7,60 @@ pub struct DiscoveredImage {
     pub container: Option<String>,
     pub source_dir: PathBuf,
     pub entry_path: PathBuf,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum InferenceSource {
+    Quadlet,
+    Compose,
+    LocalhostRegistry,
+    Unknown,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DiscoveredDockerfile {
+    pub dockerfile_path: PathBuf,
+    pub source_dir: PathBuf,
+    pub basename: String,
+    pub neighbor_image: Option<(InferenceSource, String)>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DockerfileInference {
+    pub dockerfile_path: PathBuf,
+    pub source_dir: PathBuf,
+    pub basename: String,
+    pub inferred_image: Option<String>,
+    pub inference_source: InferenceSource,
+    pub created_time_ago: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DiscoveryResult {
+    pub images: Vec<DiscoveredImage>,
+    pub dockerfiles: Vec<DiscoveredDockerfile>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ScanResult {
+    pub images: Vec<DiscoveredImage>,
+    pub dockerfiles: Vec<DockerfileInference>,
+}
+
+impl Default for ScanResult {
+    fn default() -> Self {
+        Self {
+            images: Vec::new(),
+            dockerfiles: Vec::new(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LocalImageSummary {
+    pub repository: String,
+    pub tag: String,
+    pub created: Option<DateTime<Local>>,
 }
 
 // Data returned when asking for details about an image.

@@ -37,11 +37,6 @@ fn folder_view_lists_subfolders_even_with_duplicate_images() {
     );
     app::update_with_services(
         &mut app,
-        Msg::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)),
-        None,
-    );
-    app::update_with_services(
-        &mut app,
         Msg::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
         None,
     );

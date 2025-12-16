@@ -1,7 +1,10 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use crate::domain::{DiscoveredImage, ImageDetails};
+use crate::domain::{
+    DiscoveryResult, DockerfileInference, ImageDetails, InferenceSource, LocalImageSummary,
+    ScanResult,
+};
 use crate::errors::PodmanComposeMgrError;
 use crate::ports::{DiscoveryPort, PodmanPort, ScanOptions};
 
@@ -24,13 +27,16 @@ impl AppCore {
         root: PathBuf,
         include: Vec<String>,
         exclude: Vec<String>,
-    ) -> Result<Vec<DiscoveredImage>, PodmanComposeMgrError> {
+    ) -> Result<ScanResult, PodmanComposeMgrError> {
         let opts = ScanOptions {
             root,
             include_patterns: include,
             exclude_patterns: exclude,
         };
-        self.discovery.scan(&opts)
+        let discovery = self.discovery.scan(&opts)?;
+        let local_images = self.podman.list_local_images().unwrap_or_default();
+        let dockerfiles = self.infer_dockerfiles(discovery, &local_images);
+        Ok(dockerfiles)
     }
 
     /// Get image details for display.
@@ -94,4 +100,92 @@ impl AppCore {
 
         candidates
     }
+
+    fn infer_dockerfiles(
+        &self,
+        discovery: DiscoveryResult,
+        local_images: &[LocalImageSummary],
+    ) -> ScanResult {
+        let mut inferred = Vec::new();
+        for dockerfile in discovery.dockerfiles {
+            let inference_source;
+            let inferred_image;
+            let created_time_ago;
+
+            if let Some((source, image)) = dockerfile.neighbor_image.clone() {
+                inference_source = source;
+                inferred_image = Some(image.clone());
+                created_time_ago = self.find_created_for(&image, local_images);
+            } else {
+                let suffix = dockerfile
+                    .basename
+                    .strip_prefix("Dockerfile")
+                    .unwrap_or(&dockerfile.basename);
+                let suffix = suffix.trim_start_matches('.');
+                let match_entry = if suffix.is_empty() {
+                    None
+                } else {
+                    match_localhost_image(suffix, local_images)
+                };
+                if let Some(entry) = match_entry {
+                    inference_source = InferenceSource::LocalhostRegistry;
+                    inferred_image = Some(format!("{}:{}", entry.repository, entry.tag));
+                    created_time_ago = entry
+                        .created
+                        .map(crate::utils::podman_utils::format_time_ago);
+                } else {
+                    inference_source = InferenceSource::Unknown;
+                    inferred_image = None;
+                    created_time_ago = None;
+                }
+            }
+
+            inferred.push(DockerfileInference {
+                dockerfile_path: dockerfile.dockerfile_path,
+                source_dir: dockerfile.source_dir,
+                basename: dockerfile.basename,
+                inferred_image,
+                inference_source,
+                created_time_ago,
+            });
+        }
+
+        ScanResult {
+            images: discovery.images,
+            dockerfiles: inferred,
+        }
+    }
+
+    fn find_created_for(&self, image: &str, local_images: &[LocalImageSummary]) -> Option<String> {
+        match_localhost_image_exact(image, local_images).and_then(|entry| {
+            entry
+                .created
+                .map(crate::utils::podman_utils::format_time_ago)
+        })
+    }
+}
+
+fn match_localhost_image<'a>(
+    suffix: &str,
+    local_images: &'a [LocalImageSummary],
+) -> Option<&'a LocalImageSummary> {
+    let mut candidates: Vec<&LocalImageSummary> = local_images
+        .iter()
+        .filter(|img| {
+            img.repository.starts_with("localhost")
+                && (img.repository.ends_with(&format!("/{suffix}"))
+                    || img.repository.split('/').last() == Some(suffix))
+        })
+        .collect();
+    candidates.sort_by(|a, b| b.created.cmp(&a.created));
+    candidates.into_iter().next()
+}
+
+fn match_localhost_image_exact<'a>(
+    name: &str,
+    local_images: &'a [LocalImageSummary],
+) -> Option<&'a LocalImageSummary> {
+    local_images
+        .iter()
+        .find(|img| format!("{}:{}", img.repository, img.tag) == name)
 }

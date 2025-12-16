@@ -25,6 +25,7 @@ fn keys_overlay_is_drawn_with_labels() {
         details: Vec::new(),
         is_dir: false,
         dir_name: None,
+        dockerfile_extra: None,
     }];
 
     // Minimal args
@@ -120,6 +121,7 @@ fn page_navigation_moves_by_screenful() {
             details: Vec::new(),
             is_dir: false,
             dir_name: None,
+            dockerfile_extra: None,
         })
         .collect();
 

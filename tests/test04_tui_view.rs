@@ -37,18 +37,20 @@ fn change_view_to_by_image_dedupes_images() {
         )
         .unwrap();
     // Inject a duplicate image with different container if possible
-    if let Some(first) = discovered.first().cloned() {
+    if let Some(first) = discovered.images.first().cloned() {
         let mut dup = first.clone();
         dup.container = Some("duplicate-container".to_string());
-        discovered.push(dup);
+        discovered.images.push(dup);
     }
-    let unique_images: HashSet<String> = discovered.iter().map(|d| d.image.clone()).collect();
+    let unique_images: HashSet<String> =
+        discovered.images.iter().map(|d| d.image.clone()).collect();
 
     // Seed app and switch view via modal flow: 'v', Down, Enter
     let mut app = App::new();
     app.state = podman_compose_mgr::tui::app::UiState::Ready;
     app.view_mode = ViewMode::ByContainer;
-    app.all_items = discovered;
+    app.all_items = discovered.images;
+    app.dockerfile_items = discovered.dockerfiles;
 
     // Open modal
     app::update_with_services(

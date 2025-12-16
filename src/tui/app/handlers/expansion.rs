@@ -1,5 +1,5 @@
 use crate::app::AppCore;
-use crate::tui::app::state::{App, Msg, Services, ViewMode};
+use crate::tui::app::state::{App, DockerfileRowExtra, Msg, Services, ViewMode};
 
 pub fn handle_expand_or_enter(app: &mut App, services: Option<&Services>) {
     if app.view_mode == ViewMode::ByFolderThenImage && handle_directory_enter(app) {
@@ -40,15 +40,17 @@ fn handle_directory_enter(app: &mut App) -> bool {
 }
 
 fn handle_row_expand(app: &mut App, services: Option<&Services>) {
-    let (image, source_dir, entry_path, already_expanded) = match app.rows.get(app.selected) {
-        Some(row) => (
-            row.image.clone(),
-            row.source_dir.clone(),
-            row.entry_path.clone(),
-            row.expanded,
-        ),
-        None => return,
-    };
+    let (image, source_dir, entry_path, dockerfile_extra, already_expanded) =
+        match app.rows.get(app.selected) {
+            Some(row) => (
+                row.image.clone(),
+                row.source_dir.clone(),
+                row.entry_path.clone(),
+                row.dockerfile_extra.clone(),
+                row.expanded,
+            ),
+            None => return,
+        };
 
     if already_expanded {
         return;
@@ -67,6 +69,7 @@ fn handle_row_expand(app: &mut App, services: Option<&Services>) {
             source_dir,
             entry_path,
             app.view_mode,
+            dockerfile_extra,
         );
     }
 }
@@ -89,12 +92,20 @@ fn spawn_detail_fetch(
     source_dir: std::path::PathBuf,
     entry_path: Option<std::path::PathBuf>,
     view_mode: ViewMode,
+    dockerfile_extra: Option<DockerfileRowExtra>,
 ) {
     let tx = services.tx.clone();
     let core = services.core.clone();
     std::thread::spawn(move || {
         let entry_path_ref = entry_path.as_deref();
-        let details = compute_details_for(&core, &image, &source_dir, entry_path_ref, view_mode);
+        let details = compute_details_for(
+            &core,
+            &image,
+            &source_dir,
+            entry_path_ref,
+            view_mode,
+            dockerfile_extra,
+        );
         let _ = tx.send(Msg::DetailsReady {
             row: row_idx,
             details,
@@ -108,10 +119,36 @@ fn compute_details_for(
     source_dir: &std::path::Path,
     entry_path: Option<&std::path::Path>,
     view_mode: ViewMode,
+    dockerfile_extra: Option<DockerfileRowExtra>,
 ) -> Vec<String> {
     use crate::domain::ImageDetails;
 
     let mut lines = Vec::new();
+    if view_mode == ViewMode::ByDockerfile {
+        let extra = dockerfile_extra.as_ref();
+        let source_label = extra
+            .map(|e| match e.source {
+                crate::domain::InferenceSource::Quadlet => "quadlet",
+                crate::domain::InferenceSource::Compose => "compose",
+                crate::domain::InferenceSource::LocalhostRegistry => "localhost",
+                crate::domain::InferenceSource::Unknown => "unknown",
+            })
+            .unwrap_or("unknown");
+        lines.push(format!("Image name: inferred from {source_label}"));
+        if let Some(extra) = extra {
+            let image_name = extra
+                .image_name
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string());
+            lines.push(format!("Dockerfile: {}", extra.dockerfile_name));
+            lines.push(format!("Image: {image_name}"));
+            if let Some(created) = &extra.created_time_ago {
+                lines.push(format!("Created: {created}"));
+            }
+        }
+        return lines;
+    }
+
     if matches!(
         view_mode,
         ViewMode::ByContainer | ViewMode::ByFolderThenImage

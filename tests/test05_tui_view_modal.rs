@@ -8,7 +8,7 @@ use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 
 #[test]
-fn view_modal_shows_three_options_and_selects_folder_view() {
+fn view_modal_shows_options_and_selects_folder_view() {
     let mut app = App::new();
     app.state = UiState::Ready;
     app.title = "Podman Compose Manager".into();
@@ -48,7 +48,7 @@ fn view_modal_shows_three_options_and_selects_folder_view() {
     let backend = TestBackend::new(80, 18);
     let mut terminal = Terminal::new(backend).expect("terminal");
 
-    // Open modal (v), then move to 3rd item (Down, Down), then Enter
+    // Open modal (v), then move to folder item (Down), then Enter
     app::update_with_services(
         &mut app,
         Msg::Key(KeyEvent::new(KeyCode::Char('v'), KeyModifiers::NONE)),
@@ -69,11 +69,6 @@ fn view_modal_shows_three_options_and_selects_folder_view() {
     assert!(all.contains("List by folder, then image"));
 
     // Navigate to third option and select it
-    app::update_with_services(
-        &mut app,
-        Msg::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)),
-        None,
-    );
     app::update_with_services(
         &mut app,
         Msg::Key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)),

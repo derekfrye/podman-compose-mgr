@@ -18,6 +18,10 @@ impl App {
                 self.rows = self.build_rows_for_folder_view();
                 self.selected = 0;
             }
+            ViewMode::ByDockerfile => {
+                self.rows = self.build_rows_for_dockerfile_view();
+                self.selected = 0;
+            }
         }
     }
 
@@ -29,6 +33,7 @@ impl App {
             ViewMode::ByContainer => clone.build_rows_for_container_view(),
             ViewMode::ByImage => clone.build_rows_for_image_view(),
             ViewMode::ByFolderThenImage => clone.build_rows_for_folder_view(),
+            ViewMode::ByDockerfile => clone.build_rows_for_dockerfile_view(),
         }
     }
 
@@ -46,6 +51,7 @@ impl App {
                 details: Vec::new(),
                 is_dir: false,
                 dir_name: None,
+                dockerfile_extra: None,
             })
             .collect()
     }
@@ -89,6 +95,7 @@ impl App {
                     details: Vec::new(),
                     is_dir: false,
                     dir_name: None,
+                    dockerfile_extra: None,
                 });
             }
         }
@@ -121,6 +128,7 @@ impl App {
                 details: Vec::new(),
                 is_dir: true,
                 dir_name: Some(dir),
+                dockerfile_extra: None,
             });
         }
         for image in images {
@@ -139,9 +147,36 @@ impl App {
                 details: Vec::new(),
                 is_dir: false,
                 dir_name: None,
+                dockerfile_extra: None,
             });
         }
         rows
+    }
+
+    pub fn build_rows_for_dockerfile_view(&self) -> Vec<ItemRow> {
+        self.dockerfile_items
+            .iter()
+            .map(|df| ItemRow {
+                checked: false,
+                image: df
+                    .inferred_image
+                    .clone()
+                    .unwrap_or_else(|| "unknown".to_string()),
+                container: None,
+                source_dir: df.source_dir.clone(),
+                entry_path: Some(df.dockerfile_path.clone()),
+                expanded: false,
+                details: Vec::new(),
+                is_dir: false,
+                dir_name: None,
+                dockerfile_extra: Some(super::state::DockerfileRowExtra {
+                    source: df.inference_source.clone(),
+                    dockerfile_name: df.basename.clone(),
+                    image_name: df.inferred_image.clone(),
+                    created_time_ago: df.created_time_ago.clone(),
+                }),
+            })
+            .collect()
     }
 
     fn current_root(&self) -> PathBuf {
@@ -160,6 +195,7 @@ impl App {
             view_mode: self.view_mode,
             modal: None,
             all_items: self.all_items.clone(),
+            dockerfile_items: self.dockerfile_items.clone(),
             root_path: self.root_path.clone(),
             current_path: self.current_path.clone(),
             rebuild: None,

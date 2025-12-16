@@ -1,8 +1,9 @@
-use crate::domain::DiscoveredImage;
+use crate::domain::{DiscoveredDockerfile, DiscoveredImage, DiscoveryResult, InferenceSource};
 use crate::errors::PodmanComposeMgrError;
 use crate::image_build::container_file::parse_container_file;
 use crate::ports::{DiscoveryPort, ScanOptions};
 use regex::Regex;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -10,11 +11,12 @@ use walkdir::WalkDir;
 pub struct FsDiscovery;
 
 impl DiscoveryPort for FsDiscovery {
-    fn scan(&self, opts: &ScanOptions) -> Result<Vec<DiscoveredImage>, PodmanComposeMgrError> {
+    fn scan(&self, opts: &ScanOptions) -> Result<DiscoveryResult, PodmanComposeMgrError> {
         let exclude_patterns = compile_regexes(&opts.exclude_patterns)?;
         let include_patterns = compile_regexes(&opts.include_patterns)?;
         let mut seen: HashSet<(String, Option<String>, std::path::PathBuf)> = HashSet::new();
         let mut rows: Vec<DiscoveredImage> = Vec::new();
+        let mut dir_info: HashMap<std::path::PathBuf, DirInfo> = HashMap::new();
 
         for entry in walk_entries(&opts.root) {
             if !entry.file_type().is_file() {
@@ -28,11 +30,55 @@ impl DiscoveryPort for FsDiscovery {
             }
 
             if entry.file_name() == "docker-compose.yml" {
-                collect_from_compose(&entry, path_str, &mut seen, &mut rows);
+                let first_image =
+                    collect_from_compose(&entry, path_str, &mut seen, &mut rows).flatten();
+                dir_info
+                    .entry(
+                        entry
+                            .path()
+                            .parent()
+                            .unwrap_or_else(|| Path::new("/"))
+                            .to_path_buf(),
+                    )
+                    .or_default()
+                    .compose_files
+                    .push(ComposeInfo { first_image });
                 continue;
             }
 
-            collect_from_container(&entry, &mut seen, &mut rows);
+            if entry.path().extension().and_then(|s| s.to_str()) == Some("container") {
+                collect_from_container(&entry, &mut seen, &mut rows);
+                dir_info
+                    .entry(
+                        entry
+                            .path()
+                            .parent()
+                            .unwrap_or_else(|| Path::new("/"))
+                            .to_path_buf(),
+                    )
+                    .or_default()
+                    .container_files
+                    .push(ContainerInfo {
+                        path: entry.path().to_path_buf(),
+                    });
+                continue;
+            }
+
+            if let Some(name) = entry.file_name().to_str() {
+                if name.starts_with("Dockerfile") {
+                    dir_info
+                        .entry(
+                            entry
+                                .path()
+                                .parent()
+                                .unwrap_or_else(|| Path::new("/"))
+                                .to_path_buf(),
+                        )
+                        .or_default()
+                        .dockerfiles
+                        .push(entry.path().to_path_buf());
+                }
+            }
         }
 
         rows.sort_by(|a, b| {
@@ -40,8 +86,29 @@ impl DiscoveryPort for FsDiscovery {
                 .cmp(&b.image)
                 .then_with(|| a.container.cmp(&b.container))
         });
-        Ok(rows)
+
+        let dockerfiles = build_dockerfile_rows(dir_info);
+
+        Ok(DiscoveryResult {
+            images: rows,
+            dockerfiles,
+        })
     }
+}
+
+#[derive(Default)]
+struct DirInfo {
+    dockerfiles: Vec<std::path::PathBuf>,
+    compose_files: Vec<ComposeInfo>,
+    container_files: Vec<ContainerInfo>,
+}
+
+struct ComposeInfo {
+    first_image: Option<String>,
+}
+
+struct ContainerInfo {
+    path: std::path::PathBuf,
 }
 
 fn compile_regexes(patterns: &[String]) -> Result<Vec<Regex>, PodmanComposeMgrError> {
@@ -76,22 +143,64 @@ fn should_keep_path(path: &str, exclude_patterns: &[Regex], include_patterns: &[
     true
 }
 
+fn build_dockerfile_rows(
+    dir_info: HashMap<std::path::PathBuf, DirInfo>,
+) -> Vec<DiscoveredDockerfile> {
+    let mut dockerfiles = Vec::new();
+    for (dir, info) in dir_info {
+        if info.dockerfiles.is_empty() {
+            continue;
+        }
+
+        let neighbor_count = info.compose_files.len() + info.container_files.len();
+        for dockerfile_path in &info.dockerfiles {
+            let mut neighbor_image = None;
+            if info.dockerfiles.len() == 1 && neighbor_count == 1 {
+                if info.container_files.len() == 1 {
+                    if let Ok(parsed) = parse_container_file(&info.container_files[0].path) {
+                        neighbor_image = Some((InferenceSource::Quadlet, parsed.image.to_string()));
+                    }
+                } else if info.compose_files.len() == 1 {
+                    if let Some(image) = info.compose_files[0].first_image.clone() {
+                        neighbor_image = Some((InferenceSource::Compose, image));
+                    }
+                }
+            }
+
+            let basename = dockerfile_path
+                .file_name()
+                .map(|name| name.to_string_lossy().to_string())
+                .unwrap_or_else(|| "Dockerfile".to_string());
+
+            dockerfiles.push(DiscoveredDockerfile {
+                dockerfile_path: dockerfile_path.clone(),
+                source_dir: dir.clone(),
+                basename,
+                neighbor_image,
+            });
+        }
+    }
+    dockerfiles.sort_by(|a, b| a.basename.cmp(&b.basename));
+    dockerfiles
+}
+
 fn collect_from_compose(
     entry: &walkdir::DirEntry,
     path_str: &str,
     seen: &mut HashSet<(String, Option<String>, std::path::PathBuf)>,
     rows: &mut Vec<DiscoveredImage>,
-) {
+) -> Option<Option<String>> {
     let Some(yaml) = read_yaml_file_local(path_str) else {
-        return;
+        return None;
     };
     let Some(services) = yaml
         .get(serde_yaml::Value::String("services".into()))
         .and_then(|value| value.as_mapping())
     else {
-        return;
+        return None;
     };
 
+    let mut first_image = None;
     for (svc_name, svc_cfg) in services {
         let Some(svc_cfg) = svc_cfg.as_mapping() else {
             continue;
@@ -99,6 +208,10 @@ fn collect_from_compose(
         let image = yaml_get_string(svc_cfg, "image");
         if image.is_none() {
             continue;
+        }
+
+        if first_image.is_none() {
+            first_image = image.clone();
         }
 
         let mut container = yaml_get_string(svc_cfg, "container_name");
@@ -110,6 +223,7 @@ fn collect_from_compose(
 
         add_row(entry, image.unwrap(), container, seen, rows);
     }
+    Some(first_image)
 }
 
 fn collect_from_container(

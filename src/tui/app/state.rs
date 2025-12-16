@@ -2,7 +2,7 @@ use super::keymap::map_keycode_to_msg;
 use super::search::SearchState;
 use crate::Args;
 use crate::app::AppCore;
-use crate::domain::DiscoveredImage;
+use crate::domain::{DiscoveredImage, DockerfileInference, InferenceSource};
 use crate::utils::log_utils::Logger;
 use crossbeam_channel as xchan;
 use std::collections::VecDeque;
@@ -21,6 +21,7 @@ pub struct ItemRow {
     pub details: Vec<String>,
     pub is_dir: bool,
     pub dir_name: Option<String>,
+    pub dockerfile_extra: Option<DockerfileRowExtra>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -35,6 +36,7 @@ pub enum ViewMode {
     ByContainer,
     ByImage,
     ByFolderThenImage,
+    ByDockerfile,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -76,7 +78,7 @@ pub enum Msg {
     CloseModal,
     Interrupt,
     Tick,
-    ScanResults(Vec<DiscoveredImage>),
+    ScanResults(crate::domain::ScanResult),
     DetailsReady {
         row: usize,
         details: Vec<String>,
@@ -149,6 +151,7 @@ pub struct App {
     pub view_mode: ViewMode,
     pub modal: Option<ModalState>,
     pub all_items: Vec<DiscoveredImage>,
+    pub dockerfile_items: Vec<DockerfileInference>,
     pub root_path: PathBuf,
     pub current_path: Vec<String>,
     pub rebuild: Option<RebuildState>,
@@ -168,6 +171,7 @@ impl Default for App {
             view_mode: ViewMode::ByImage,
             modal: None,
             all_items: Vec::new(),
+            dockerfile_items: Vec::new(),
             root_path: PathBuf::new(),
             current_path: Vec::new(),
             rebuild: None,
@@ -190,6 +194,14 @@ pub struct RebuildState {
     pub viewport_width: u16,
     pub output_limit: usize,
     pub search: Option<SearchState>,
+}
+
+#[derive(Clone, Debug)]
+pub struct DockerfileRowExtra {
+    pub source: InferenceSource,
+    pub dockerfile_name: String,
+    pub image_name: Option<String>,
+    pub created_time_ago: Option<String>,
 }
 
 impl RebuildState {

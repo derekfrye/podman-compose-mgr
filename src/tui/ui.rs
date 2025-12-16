@@ -117,6 +117,19 @@ fn draw_table(frame: &mut Frame, area: ratatui::prelude::Rect, app: &App) {
                 .style(Style::default().add_modifier(Modifier::BOLD)),
             vec![Constraint::Length(6), Constraint::Percentage(94)],
         ),
+        ViewMode::ByDockerfile => (
+            Row::new([
+                Cell::from("Select"),
+                Cell::from("Dockerfile"),
+                Cell::from("Image"),
+            ])
+            .style(Style::default().add_modifier(Modifier::BOLD)),
+            vec![
+                Constraint::Length(6),
+                Constraint::Percentage(45),
+                Constraint::Percentage(49),
+            ],
+        ),
     };
 
     let (rows, selected_visual_idx) = build_rows_with_expansion(app);
@@ -745,6 +758,18 @@ fn row_for_item<'a>(app: &'a App, it: &'a ItemRow) -> Row<'a> {
                 Row::new([Cell::from(checkbox), Cell::from(it.image.clone())])
             }
         }
+        ViewMode::ByDockerfile => {
+            let dockerfile_name = it
+                .dockerfile_extra
+                .as_ref()
+                .map(|extra| extra.dockerfile_name.clone())
+                .unwrap_or_else(|| it.image.clone());
+            Row::new([
+                Cell::from(checkbox),
+                Cell::from(dockerfile_name),
+                Cell::from(it.image.clone()),
+            ])
+        }
     }
 }
 
@@ -776,6 +801,11 @@ fn build_rows_with_expansion(app: &App) -> (Vec<Row<'_>>, usize) {
                     ViewMode::ByFolderThenImage => {
                         rows.push(Row::new([Cell::from(""), Cell::from(indented)]));
                     }
+                    ViewMode::ByDockerfile => rows.push(Row::new([
+                        Cell::from(""),
+                        Cell::from(indented.clone()),
+                        Cell::from(""),
+                    ])),
                 }
                 visual_idx += 1;
             }
@@ -867,7 +897,7 @@ fn help_overlay_block() -> Block<'static> {
 
 fn draw_view_picker(frame: &mut Frame, full_area: Rect, selected_idx: usize, current: ViewMode) {
     // Popup size
-    let height: u16 = 8; // title + 3 items + padding
+    let height: u16 = 9; // title + 4 items + padding
     let width: u16 = 40;
     let width_final = width.min(full_area.width);
     let height_final = height.min(full_area.height);
@@ -885,6 +915,7 @@ fn draw_view_picker(frame: &mut Frame, full_area: Rect, selected_idx: usize, cur
         ("List by container runtime name", ViewMode::ByContainer),
         ("List by image", ViewMode::ByImage),
         ("List by folder, then image", ViewMode::ByFolderThenImage),
+        ("List by Dockerfile", ViewMode::ByDockerfile),
     ];
     let mut lines: Vec<Line> = Vec::new();
     for (i, (label, mode)) in items.iter().enumerate() {

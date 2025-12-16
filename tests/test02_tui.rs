@@ -32,6 +32,7 @@ fn discovery_finds_expected_images_in_test1() {
         .unwrap();
 
     let got: HashSet<(String, Option<String>)> = found
+        .images
         .iter()
         .map(|d| (d.image.clone(), d.container.clone()))
         .collect();
@@ -82,6 +83,7 @@ fn ui_snapshot_renders_table_with_rows() {
             details: Vec::new(),
             is_dir: false,
             dir_name: None,
+            dockerfile_extra: None,
         },
         ItemRow {
             checked: true,
@@ -93,6 +95,7 @@ fn ui_snapshot_renders_table_with_rows() {
             details: Vec::new(),
             is_dir: false,
             dir_name: None,
+            dockerfile_extra: None,
         },
     ];
 
