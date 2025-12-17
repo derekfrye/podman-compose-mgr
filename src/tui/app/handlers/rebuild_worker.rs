@@ -2,22 +2,14 @@ use crate::args::Args;
 use crate::image_build::buildfile_build::build_dockerfile_image;
 use crate::image_build::buildfile_types::{BuildChoice, BuildFile, WhatWereBuilding};
 use crate::image_build::rebuild::RebuildManager;
-use crate::interfaces::CommandHelper;
-use crate::interfaces::DefaultCommandHelper;
-use crate::interfaces::ReadInteractiveInputHelper;
-use crate::read_interactive_input::{
-    GrammarFragment, ReadValResult,
-    format::{do_prompt_formatting, unroll_grammar_into_string},
-};
+mod read_helper;
+mod tui_command_helper;
+
 use crate::tui::app::state::{Msg, OutputStream, RebuildJobSpec, RebuildResult, Services};
-use crate::utils::{
-    build_logger::{BuildLogger, TuiBuildLogger},
-    error_utils, podman_utils,
-};
+use crate::utils::build_logger::{BuildLogger, TuiBuildLogger};
 use crossbeam_channel::Sender;
-use std::error::Error;
-use std::io::{BufRead, BufReader};
-use std::process::{Command, Stdio};
+use read_helper::NonInteractiveReadHelper;
+use tui_command_helper::TuiCommandHelper;
 use walkdir::{DirEntry, WalkDir};
 
 pub fn spawn_rebuild_thread(specs: Vec<RebuildJobSpec>, services: &Services, start_idx: usize) {
@@ -138,157 +130,4 @@ fn rebuild_dockerfile(
     };
 
     build_dockerfile_image(cmd_helper, &build_spec).map_err(|e| e.to_string())
-}
-
-struct TuiCommandHelper {
-    tx: Sender<Msg>,
-    job_idx: usize,
-    default: DefaultCommandHelper,
-}
-
-impl TuiCommandHelper {
-    fn new(tx: Sender<Msg>, job_idx: usize) -> Self {
-        Self {
-            tx,
-            job_idx,
-            default: DefaultCommandHelper,
-        }
-    }
-
-    fn send_line(&self, stream: OutputStream, line: String) {
-        let _ = self.tx.send(Msg::RebuildJobOutput {
-            job_idx: self.job_idx,
-            chunk: line,
-            stream,
-        });
-    }
-}
-
-impl CommandHelper for TuiCommandHelper {
-    fn exec_cmd(&self, cmd: &str, args: Vec<String>) -> Result<(), Box<dyn Error>> {
-        if args.is_empty() {
-            self.send_line(OutputStream::Stdout, format!("$ {cmd}"));
-        } else {
-            self.send_line(
-                OutputStream::Stdout,
-                format!("$ {} {}", cmd, args.join(" ")),
-            );
-        }
-
-        let resolved_cmd = if cmd == "podman" {
-            podman_utils::resolve_podman_binary()
-        } else {
-            std::ffi::OsString::from(cmd)
-        };
-
-        let mut child = Command::new(resolved_cmd)
-            .args(&args)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
-
-        let stdout = child.stdout.take();
-        let stderr = child.stderr.take();
-
-        let tx_out = self.tx.clone();
-        let tx_err = self.tx.clone();
-        let job_idx = self.job_idx;
-
-        let stdout_handle = stdout.map(|pipe| {
-            std::thread::spawn(move || {
-                let reader = BufReader::new(pipe);
-                for line in reader.lines().map_while(Result::ok) {
-                    let _ = tx_out.send(Msg::RebuildJobOutput {
-                        job_idx,
-                        chunk: line,
-                        stream: OutputStream::Stdout,
-                    });
-                }
-            })
-        });
-
-        let stderr_handle = stderr.map(|pipe| {
-            std::thread::spawn(move || {
-                let reader = BufReader::new(pipe);
-                for line in reader.lines().map_while(Result::ok) {
-                    let _ = tx_err.send(Msg::RebuildJobOutput {
-                        job_idx,
-                        chunk: line,
-                        stream: OutputStream::Stderr,
-                    });
-                }
-            })
-        });
-
-        let status = child.wait()?;
-
-        if let Some(handle) = stdout_handle {
-            let _ = handle.join();
-        }
-        if let Some(handle) = stderr_handle {
-            let _ = handle.join();
-        }
-
-        if !status.success() {
-            return Err(error_utils::new_error(&format!(
-                "Command '{cmd}' failed with status {status}"
-            )));
-        }
-
-        Ok(())
-    }
-
-    fn pull_base_image(&self, dockerfile: &std::path::Path) -> Result<(), Box<dyn Error>> {
-        self.send_line(
-            OutputStream::Stdout,
-            format!("Pulling base image for {}", dockerfile.display()),
-        );
-        self.default.pull_base_image(dockerfile)
-    }
-
-    fn get_terminal_display_width(&self, specify_size: Option<usize>) -> usize {
-        self.default.get_terminal_display_width(specify_size)
-    }
-
-    fn file_exists_and_readable(&self, file: &std::path::Path) -> bool {
-        self.default.file_exists_and_readable(file)
-    }
-}
-
-struct NonInteractiveReadHelper {
-    tx: Sender<Msg>,
-    job_idx: usize,
-}
-
-impl NonInteractiveReadHelper {
-    fn new(tx: Sender<Msg>, job_idx: usize) -> Self {
-        Self { tx, job_idx }
-    }
-}
-
-impl ReadInteractiveInputHelper for NonInteractiveReadHelper {
-    fn read_val_from_cmd_line_and_proceed(
-        &self,
-        grammars: &mut [GrammarFragment],
-        size: Option<usize>,
-    ) -> ReadValResult {
-        if let Some(width) = size {
-            do_prompt_formatting(grammars, width);
-        }
-        let prompt = unroll_grammar_into_string(grammars, false, true);
-        let _ = self.tx.send(Msg::RebuildJobOutput {
-            job_idx: self.job_idx,
-            chunk: prompt,
-            stream: OutputStream::Stdout,
-        });
-        let _ = self.tx.send(Msg::RebuildJobOutput {
-            job_idx: self.job_idx,
-            chunk: "Auto-selecting 'b' (build)".to_string(),
-            stream: OutputStream::Stdout,
-        });
-        ReadValResult {
-            user_entered_val: Some("b".to_string()),
-            was_interrupted: false,
-        }
-    }
 }

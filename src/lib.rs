@@ -5,6 +5,8 @@ pub mod errors;
 pub mod ports;
 pub mod infra {
     pub mod discovery_adapter;
+    pub mod discovery_helpers;
+    pub mod discovery_types;
     pub mod interrupt_adapter;
     pub mod podman_adapter;
 }

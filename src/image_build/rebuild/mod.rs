@@ -5,6 +5,8 @@ mod grammar;
 mod image_ops;
 mod interaction;
 mod manager;
+#[cfg(test)]
+pub mod recording_logger;
 mod types;
 mod utils;
 

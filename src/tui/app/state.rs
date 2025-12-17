@@ -1,12 +1,20 @@
+mod messages;
+mod rebuild_state;
+
 use super::keymap::map_keycode_to_msg;
-use super::search::SearchState;
 use crate::Args;
 use crate::app::AppCore;
-use crate::domain::{DiscoveredImage, DockerfileInference, InferenceSource};
+use crate::domain::{DiscoveredImage, DockerfileInference};
 use crate::utils::log_utils::Logger;
 use crossbeam_channel as xchan;
-use std::collections::VecDeque;
 use std::path::PathBuf;
+
+pub use rebuild_state::{
+    DockerfileNameEntry, DockerfileRowExtra, OutputStream, RebuildJob, RebuildJobSpec,
+    RebuildResult, RebuildState, RebuildStatus,
+};
+#[cfg(test)]
+pub use rebuild_state::RebuildOutputLine;
 
 pub const SPINNER_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
@@ -58,87 +66,7 @@ pub enum ModalState {
     },
 }
 
-#[derive(Clone, Debug)]
-pub enum Msg {
-    Init,
-    Key(crossterm::event::KeyEvent),
-    Quit,
-    MoveUp,
-    MoveDown,
-    MovePageUp,
-    MovePageDown,
-    ToggleCheck,
-    ToggleCheckAll,
-    ExpandOrEnter,
-    CollapseOrBack,
-    OpenViewPicker,
-    ViewPickerUp,
-    ViewPickerDown,
-    ViewPickerAccept,
-    ViewPickerCancel,
-    WorkQueueUp,
-    WorkQueueDown,
-    WorkQueueSelect,
-    OpenWorkQueue,
-    CloseModal,
-    Interrupt,
-    Tick,
-    ScanResults(crate::domain::ScanResult),
-    DetailsReady {
-        row: usize,
-        details: Vec<String>,
-    },
-    StartRebuild,
-    ShowRebuild,
-    RebuildSessionCreated {
-        jobs: Vec<RebuildJobSpec>,
-    },
-    RebuildJobStarted {
-        job_idx: usize,
-    },
-    RebuildJobOutput {
-        job_idx: usize,
-        chunk: String,
-        stream: OutputStream,
-    },
-    RebuildJobFinished {
-        job_idx: usize,
-        result: RebuildResult,
-    },
-    RebuildAdvance,
-    RebuildAborted(String),
-    RebuildAllDone,
-    ScrollOutputUp,
-    ScrollOutputDown,
-    ScrollOutputPageUp,
-    ScrollOutputPageDown,
-    ScrollOutputTop,
-    ScrollOutputBottom,
-    ScrollOutputLeft,
-    ScrollOutputRight,
-    StartSearchForward,
-    StartSearchBackward,
-    SearchInput(char),
-    SearchBackspace,
-    SearchSubmit,
-    SearchCancel,
-    SearchNext,
-    SearchPrev,
-    ExitRebuild,
-    OpenExportLog,
-    ExportInput(char),
-    ExportBackspace,
-    ExportSubmit,
-    ExportCancel,
-    DockerfileNameUp,
-    DockerfileNameDown,
-    DockerfileNameInput(char),
-    DockerfileNameLeft,
-    DockerfileNameRight,
-    DockerfileNameBackspace,
-    DockerfileNameAccept,
-    DockerfileNameCancel,
-}
+pub use messages::Msg;
 
 pub struct Services {
     pub core: std::sync::Arc<AppCore>,
@@ -192,156 +120,6 @@ impl Default for App {
             auto_rebuild_triggered: false,
         }
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct RebuildState {
-    pub jobs: Vec<RebuildJob>,
-    pub active_idx: usize,
-    pub scroll_y: u16,
-    pub scroll_x: u16,
-    pub work_queue_selected: usize,
-    pub finished: bool,
-    pub auto_scroll: bool,
-    pub viewport_height: u16,
-    pub viewport_width: u16,
-    pub output_limit: usize,
-    pub search: Option<SearchState>,
-}
-
-#[derive(Clone, Debug)]
-pub struct DockerfileRowExtra {
-    pub source: InferenceSource,
-    pub dockerfile_name: String,
-    pub image_name: Option<String>,
-    pub created_time_ago: Option<String>,
-    pub note: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DockerfileNameEntry {
-    pub dockerfile_path: PathBuf,
-    pub source_dir: PathBuf,
-    pub dockerfile_name: String,
-    pub image_name: String,
-    pub cursor: usize,
-}
-
-impl RebuildState {
-    #[must_use]
-    pub fn new(jobs: Vec<RebuildJob>, output_limit: usize) -> Self {
-        Self {
-            jobs,
-            active_idx: 0,
-            scroll_y: 0,
-            scroll_x: 0,
-            work_queue_selected: 0,
-            finished: false,
-            auto_scroll: true,
-            viewport_height: 0,
-            viewport_width: 0,
-            output_limit: output_limit.max(1),
-            search: None,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct RebuildJob {
-    pub image: String,
-    pub container: Option<String>,
-    pub entry_path: PathBuf,
-    pub source_dir: PathBuf,
-    pub status: RebuildStatus,
-    pub output: VecDeque<RebuildOutputLine>,
-    pub error: Option<String>,
-}
-
-impl RebuildJob {
-    #[must_use]
-    pub fn new(
-        image: String,
-        container: Option<String>,
-        entry_path: PathBuf,
-        source_dir: PathBuf,
-    ) -> Self {
-        Self {
-            image,
-            container,
-            entry_path,
-            source_dir,
-            status: RebuildStatus::Pending,
-            output: VecDeque::new(),
-            error: None,
-        }
-    }
-
-    #[must_use]
-    pub fn from_spec(spec: &RebuildJobSpec) -> Self {
-        Self::new(
-            spec.image.clone(),
-            spec.container.clone(),
-            spec.entry_path.clone(),
-            spec.source_dir.clone(),
-        )
-    }
-
-    pub fn push_output(&mut self, stream: OutputStream, chunk: String, limit: usize) {
-        let max_lines = limit.max(1);
-        push_with_limit(
-            &mut self.output,
-            RebuildOutputLine {
-                stream,
-                text: chunk,
-            },
-            max_lines,
-        );
-    }
-}
-
-fn push_with_limit<T>(buf: &mut VecDeque<T>, line: T, limit: usize) {
-    buf.push_back(line);
-    if buf.len() > limit {
-        let overflow = buf.len() - limit;
-        for _ in 0..overflow {
-            buf.pop_front();
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct RebuildOutputLine {
-    pub stream: OutputStream,
-    pub text: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct RebuildJobSpec {
-    pub image: String,
-    pub container: Option<String>,
-    pub entry_path: PathBuf,
-    pub source_dir: PathBuf,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RebuildStatus {
-    Pending,
-    Running,
-    Succeeded,
-    Failed,
-}
-
-#[derive(Clone, Debug)]
-pub enum RebuildResult {
-    Success,
-    Failure(String),
-    Cancelled,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OutputStream {
-    Stdout,
-    Stderr,
 }
 
 impl App {

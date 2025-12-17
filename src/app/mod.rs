@@ -153,6 +153,7 @@ impl AppCore {
                 dockerfile_path: dockerfile.dockerfile_path,
                 source_dir: dockerfile.source_dir,
                 basename: dockerfile.basename,
+                quadlet_basename: dockerfile.quadlet_basename,
                 inferred_image,
                 inference_source,
                 created_time_ago,

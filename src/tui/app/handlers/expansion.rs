@@ -121,30 +121,35 @@ fn compute_details_for(
     view_mode: ViewMode,
     dockerfile_extra: Option<&DockerfileRowExtra>,
 ) -> Vec<String> {
-    use crate::domain::ImageDetails;
+    use crate::domain::{ImageDetails, InferenceSource};
 
     let mut lines = Vec::new();
     if view_mode == ViewMode::ByDockerfile {
-        let extra = dockerfile_extra.as_ref();
-        let source_label = extra.map_or("unknown", |e| match e.source {
-            crate::domain::InferenceSource::Quadlet => "quadlet",
-            crate::domain::InferenceSource::Compose => "compose",
-            crate::domain::InferenceSource::LocalhostRegistry => "localhost",
-            crate::domain::InferenceSource::Unknown => "unknown",
-        });
-        lines.push(format!("Image name: inferred from {source_label}"));
-        if let Some(extra) = extra {
+        if let Some(extra) = dockerfile_extra {
+            match extra.source {
+                InferenceSource::Quadlet => {
+                    if let Some(name) = &extra.quadlet_basename {
+                        lines.push(format!("Inferred from quadlet: {name}"));
+                    } else {
+                        lines.push("Inferred from quadlet".to_string());
+                    }
+                }
+                InferenceSource::Compose => lines.push("Inferred from compose".to_string()),
+                InferenceSource::LocalhostRegistry => {
+                    lines.push("Inferred from localhost registry".to_string())
+                }
+                InferenceSource::Unknown => lines.push("Inferred from unknown source".to_string()),
+            }
             let image_name = extra
                 .image_name
                 .clone()
                 .unwrap_or_else(|| "unknown".to_string());
-            lines.push(format!("Dockerfile: {}", extra.dockerfile_name));
             lines.push(format!("Image: {image_name}"));
-            if let Some(note) = &extra.note {
-                lines.push(note.clone());
-            }
             if let Some(created) = &extra.created_time_ago {
                 lines.push(format!("Created: {created}"));
+            }
+            if let Some(note) = &extra.note {
+                lines.push(note.clone());
             }
         }
         return lines;

@@ -173,6 +173,7 @@ impl App {
                 dockerfile_extra: Some(super::state::DockerfileRowExtra {
                     source: df.inference_source.clone(),
                     dockerfile_name: df.basename.clone(),
+                    quadlet_basename: df.quadlet_basename.clone(),
                     image_name: df.inferred_image.clone(),
                     created_time_ago: df.created_time_ago.clone(),
                     note: df.note.clone(),
