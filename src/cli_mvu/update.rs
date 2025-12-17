@@ -1,6 +1,6 @@
 use crate::args::Args;
 use crate::image_build::buildfile;
-use crate::image_build::rebuild::{build_rebuild_grammars, Image};
+use crate::image_build::rebuild::{Image, build_rebuild_grammars};
 use crate::interfaces::DefaultCommandHelper;
 use crate::utils::build_logger::CliBuildLogger;
 use crossbeam_channel as xchan;

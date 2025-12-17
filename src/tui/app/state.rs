@@ -9,12 +9,12 @@ use crate::utils::log_utils::Logger;
 use crossbeam_channel as xchan;
 use std::path::PathBuf;
 
+#[cfg(test)]
+pub use rebuild_state::RebuildOutputLine;
 pub use rebuild_state::{
     DockerfileNameEntry, DockerfileRowExtra, OutputStream, RebuildJob, RebuildJobSpec,
     RebuildResult, RebuildState, RebuildStatus,
 };
-#[cfg(test)]
-pub use rebuild_state::RebuildOutputLine;
 
 pub const SPINNER_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
