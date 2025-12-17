@@ -47,6 +47,11 @@ pub enum ModalState {
     WorkQueue {
         selected_idx: usize,
     },
+    DockerfileNameEdit {
+        entries: Vec<DockerfileNameEntry>,
+        selected_idx: usize,
+        error: Option<String>,
+    },
     ExportLog {
         input: String,
         error: Option<String>,
@@ -125,6 +130,14 @@ pub enum Msg {
     ExportBackspace,
     ExportSubmit,
     ExportCancel,
+    DockerfileNameUp,
+    DockerfileNameDown,
+    DockerfileNameInput(char),
+    DockerfileNameLeft,
+    DockerfileNameRight,
+    DockerfileNameBackspace,
+    DockerfileNameAccept,
+    DockerfileNameCancel,
 }
 
 pub struct Services {
@@ -203,6 +216,15 @@ pub struct DockerfileRowExtra {
     pub image_name: Option<String>,
     pub created_time_ago: Option<String>,
     pub note: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DockerfileNameEntry {
+    pub dockerfile_path: PathBuf,
+    pub source_dir: PathBuf,
+    pub dockerfile_name: String,
+    pub image_name: String,
+    pub cursor: usize,
 }
 
 impl RebuildState {

@@ -63,6 +63,14 @@ pub fn handle_message(app: &mut App, msg: Msg, services: Option<&Services>) {
         | Msg::ExportBackspace
         | Msg::ExportSubmit
         | Msg::ExportCancel
+        | Msg::DockerfileNameUp
+        | Msg::DockerfileNameDown
+        | Msg::DockerfileNameLeft
+        | Msg::DockerfileNameRight
+        | Msg::DockerfileNameInput(_)
+        | Msg::DockerfileNameBackspace
+        | Msg::DockerfileNameAccept
+        | Msg::DockerfileNameCancel
         | Msg::ShowRebuild
         | Msg::ExitRebuild
         | Msg::ToggleCheckAll => handle_rebuild_message(app, msg, services),

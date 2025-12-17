@@ -27,6 +27,17 @@ pub fn map_keycode_to_msg(app: &App, key: KeyCode) -> Option<Msg> {
                 KeyCode::Enter => Msg::WorkQueueSelect,
                 _ => return None,
             }),
+            ModalState::DockerfileNameEdit { .. } => Some(match key {
+                KeyCode::Esc => Msg::DockerfileNameCancel,
+                KeyCode::Up => Msg::DockerfileNameUp,
+                KeyCode::Down => Msg::DockerfileNameDown,
+                KeyCode::Left => Msg::DockerfileNameLeft,
+                KeyCode::Right => Msg::DockerfileNameRight,
+                KeyCode::Enter => Msg::DockerfileNameAccept,
+                KeyCode::Backspace => Msg::DockerfileNameBackspace,
+                KeyCode::Char(ch) if !ch.is_control() => Msg::DockerfileNameInput(ch),
+                _ => return None,
+            }),
             ModalState::ExportLog { .. } => Some(match key {
                 KeyCode::Esc => Msg::ExportCancel,
                 KeyCode::Enter => Msg::ExportSubmit,

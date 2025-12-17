@@ -1,4 +1,6 @@
 use crate::args::Args;
+use crate::image_build::buildfile_build::build_dockerfile_image;
+use crate::image_build::buildfile_types::{BuildChoice, BuildFile, WhatWereBuilding};
 use crate::image_build::rebuild::RebuildManager;
 use crate::interfaces::CommandHelper;
 use crate::interfaces::DefaultCommandHelper;
@@ -8,12 +10,15 @@ use crate::read_interactive_input::{
     format::{do_prompt_formatting, unroll_grammar_into_string},
 };
 use crate::tui::app::state::{Msg, OutputStream, RebuildJobSpec, RebuildResult, Services};
-use crate::utils::{build_logger::TuiBuildLogger, error_utils, podman_utils};
+use crate::utils::{
+    build_logger::{BuildLogger, TuiBuildLogger},
+    error_utils, podman_utils,
+};
 use crossbeam_channel::Sender;
 use std::error::Error;
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 
 pub fn spawn_rebuild_thread(specs: Vec<RebuildJobSpec>, services: &Services, start_idx: usize) {
     if specs.is_empty() {
@@ -75,9 +80,64 @@ fn run_job(
     let cmd_helper = TuiCommandHelper::new(tx.clone(), job_idx);
     let read_helper = NonInteractiveReadHelper::new(tx.clone(), job_idx);
     let build_logger = TuiBuildLogger::new(tx.clone(), job_idx);
+
+    if is_dockerfile_entry(&entry) {
+        return rebuild_dockerfile(&cmd_helper, &build_logger, &entry, spec, args);
+    }
+
     let mut manager = RebuildManager::new(&cmd_helper, &read_helper, &build_logger);
 
     manager.rebuild(&entry, args).map_err(|e| e.to_string())
+}
+
+fn is_dockerfile_entry(entry: &DirEntry) -> bool {
+    entry
+        .file_name()
+        .to_string_lossy()
+        .starts_with("Dockerfile")
+}
+
+fn rebuild_dockerfile(
+    cmd_helper: &TuiCommandHelper,
+    logger: &TuiBuildLogger,
+    entry: &DirEntry,
+    spec: &RebuildJobSpec,
+    args: &Args,
+) -> Result<(), String> {
+    let image = spec.image.trim();
+    if image.is_empty() {
+        return Err("Image name is required for Dockerfile rebuild".to_string());
+    }
+
+    let path = entry.path();
+    let parent_dir = path
+        .parent()
+        .ok_or_else(|| format!("No parent directory for {}", path.display()))?
+        .to_path_buf();
+
+    logger.info(&format!(
+        "Building image {} from {}",
+        image,
+        entry.path().display()
+    ));
+
+    let build_file = BuildFile {
+        filetype: BuildChoice::Dockerfile,
+        filepath: Some(path.to_path_buf()),
+        parent_dir,
+        link_target_dir: std::fs::read_link(path).ok(),
+        base_image: Some(image.to_string()),
+        custom_img_nm: Some(image.to_string()),
+        build_args: args.build_args.clone(),
+        no_cache: args.no_cache,
+    };
+
+    let build_spec = WhatWereBuilding {
+        file: build_file,
+        follow_link: false,
+    };
+
+    build_dockerfile_image(cmd_helper, &build_spec).map_err(|e| e.to_string())
 }
 
 struct TuiCommandHelper {

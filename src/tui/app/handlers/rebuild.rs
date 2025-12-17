@@ -2,8 +2,8 @@ use super::rebuild_worker::spawn_rebuild_thread;
 use crate::args::types::REBUILD_VIEW_LINE_BUFFER_DEFAULT;
 use crate::tui::app::search::{SearchDirection, SearchState};
 use crate::tui::app::state::{
-    App, ModalState, Msg, OutputStream, RebuildJob, RebuildJobSpec, RebuildResult, RebuildState,
-    RebuildStatus, Services, UiState,
+    App, DockerfileNameEntry, ModalState, Msg, OutputStream, RebuildJob, RebuildJobSpec,
+    RebuildResult, RebuildState, RebuildStatus, Services, UiState, ViewMode,
 };
 use chrono::Local;
 use std::fs::File;
@@ -54,6 +54,14 @@ pub fn handle_rebuild_message(app: &mut App, msg: Msg, services: Option<&Service
         Msg::SearchPrev => handle_search_prev(app),
         Msg::ShowRebuild => handle_show_rebuild(app),
         Msg::ExitRebuild => handle_exit_rebuild(app),
+        Msg::DockerfileNameUp => handle_dockerfile_modal_move(app, -1),
+        Msg::DockerfileNameDown => handle_dockerfile_modal_move(app, 1),
+        Msg::DockerfileNameInput(ch) => handle_dockerfile_modal_input(app, ch),
+        Msg::DockerfileNameLeft => handle_dockerfile_modal_left(app),
+        Msg::DockerfileNameRight => handle_dockerfile_modal_right(app),
+        Msg::DockerfileNameBackspace => handle_dockerfile_modal_backspace(app),
+        Msg::DockerfileNameAccept => handle_dockerfile_modal_accept(app, services),
+        Msg::DockerfileNameCancel => handle_dockerfile_modal_cancel(app),
         _ => {}
     }
 }
@@ -63,23 +71,18 @@ fn handle_start_rebuild(app: &mut App, services: Option<&Services>) {
         return;
     }
 
+    if app.view_mode == ViewMode::ByDockerfile && open_dockerfile_modal(app) {
+        return;
+    }
+
     let specs = collect_selected_specs(app);
     if specs.is_empty() {
         return;
     }
 
-    // Clear checkboxes so the selection is obvious when returning
-    for row in &mut app.rows {
-        if row.checked {
-            row.checked = false;
-        }
-    }
+    clear_checked_rows(app);
 
-    if let Some(svc) = services {
-        let start_idx = app.rebuild.as_ref().map_or(0, |state| state.jobs.len());
-        handle_session_created(app, &specs, services);
-        spawn_rebuild_thread(specs, svc, start_idx);
-    }
+    queue_rebuild_jobs(app, services, specs);
 }
 
 fn handle_session_created(app: &mut App, jobs: &[RebuildJobSpec], services: Option<&Services>) {
@@ -279,6 +282,66 @@ fn collect_selected_specs(app: &App) -> Vec<RebuildJobSpec> {
         .collect()
 }
 
+fn open_dockerfile_modal(app: &mut App) -> bool {
+    if app.view_mode != ViewMode::ByDockerfile {
+        return false;
+    }
+
+    let mut entries: Vec<DockerfileNameEntry> = Vec::new();
+    for row in &app.rows {
+        if !row.checked || row.is_dir {
+            continue;
+        }
+        let Some(entry_path) = row.entry_path.as_ref() else {
+            continue;
+        };
+        let dockerfile_name = row
+            .dockerfile_extra
+            .as_ref()
+            .map(|extra| extra.dockerfile_name.clone())
+            .or_else(|| {
+                entry_path
+                    .file_name()
+                    .map(|name| name.to_string_lossy().to_string())
+            })
+            .unwrap_or_else(|| "Dockerfile".to_string());
+        entries.push(DockerfileNameEntry {
+            dockerfile_path: entry_path.clone(),
+            source_dir: row.source_dir.clone(),
+            dockerfile_name,
+            image_name: row.image.clone(),
+            cursor: row.image.len(),
+        });
+    }
+
+    if entries.is_empty() {
+        return false;
+    }
+
+    app.modal = Some(ModalState::DockerfileNameEdit {
+        entries,
+        selected_idx: 0,
+        error: None,
+    });
+    true
+}
+
+fn clear_checked_rows(app: &mut App) {
+    for row in &mut app.rows {
+        if row.checked {
+            row.checked = false;
+        }
+    }
+}
+
+fn queue_rebuild_jobs(app: &mut App, services: Option<&Services>, specs: Vec<RebuildJobSpec>) {
+    if let Some(svc) = services {
+        let start_idx = app.rebuild.as_ref().map_or(0, |state| state.jobs.len());
+        handle_session_created(app, &specs, services);
+        spawn_rebuild_thread(specs, svc, start_idx);
+    }
+}
+
 fn handle_scroll_message(app: &mut App, msg: &Msg) {
     match msg {
         Msg::ScrollOutputUp => adjust_vertical_scroll(app, -1),
@@ -291,6 +354,142 @@ fn handle_scroll_message(app: &mut App, msg: &Msg) {
         Msg::ScrollOutputRight => adjust_horizontal_scroll(app, 4),
         _ => {}
     }
+}
+
+fn handle_dockerfile_modal_move(app: &mut App, delta: i32) {
+    let Some(ModalState::DockerfileNameEdit {
+        entries,
+        selected_idx,
+        ..
+    }) = app.modal.as_mut()
+    else {
+        return;
+    };
+    if entries.is_empty() {
+        return;
+    }
+    let len = entries.len() as i32;
+    let current = *selected_idx as i32;
+    let next = (current + delta).clamp(0, len.saturating_sub(1));
+    *selected_idx = next as usize;
+    if let Some(entry) = entries.get_mut(*selected_idx) {
+        if entry.cursor > entry.image_name.len() {
+            entry.cursor = entry.image_name.len();
+        }
+    }
+}
+
+fn handle_dockerfile_modal_input(app: &mut App, ch: char) {
+    let Some(ModalState::DockerfileNameEdit {
+        entries,
+        selected_idx,
+        error,
+    }) = app.modal.as_mut()
+    else {
+        return;
+    };
+    if let Some(entry) = entries.get_mut(*selected_idx) {
+        let pos = entry.cursor.min(entry.image_name.len());
+        entry.image_name.insert(pos, ch);
+        entry.cursor = pos.saturating_add(1);
+    }
+    *error = None;
+}
+
+fn handle_dockerfile_modal_backspace(app: &mut App) {
+    let Some(ModalState::DockerfileNameEdit {
+        entries,
+        selected_idx,
+        error,
+    }) = app.modal.as_mut()
+    else {
+        return;
+    };
+    if let Some(entry) = entries.get_mut(*selected_idx) {
+        let pos = entry.cursor.min(entry.image_name.len());
+        if pos > 0 {
+            let remove_at = pos - 1;
+            entry.image_name.remove(remove_at);
+            entry.cursor = remove_at;
+        }
+    }
+    *error = None;
+}
+
+fn handle_dockerfile_modal_left(app: &mut App) {
+    let Some(ModalState::DockerfileNameEdit {
+        entries,
+        selected_idx,
+        ..
+    }) = app.modal.as_mut()
+    else {
+        return;
+    };
+    if let Some(entry) = entries.get_mut(*selected_idx) {
+        entry.cursor = entry.cursor.saturating_sub(1);
+    }
+}
+
+fn handle_dockerfile_modal_right(app: &mut App) {
+    let Some(ModalState::DockerfileNameEdit {
+        entries,
+        selected_idx,
+        ..
+    }) = app.modal.as_mut()
+    else {
+        return;
+    };
+    if let Some(entry) = entries.get_mut(*selected_idx) {
+        let len = entry.image_name.len();
+        entry.cursor = (entry.cursor + 1).min(len);
+    }
+}
+
+fn handle_dockerfile_modal_accept(app: &mut App, services: Option<&Services>) {
+    let Some(ModalState::DockerfileNameEdit {
+        entries,
+        selected_idx: _selected_idx,
+        error: _error,
+    }) = app.modal.take()
+    else {
+        return;
+    };
+
+    let invalid = entries
+        .iter()
+        .position(|entry| is_invalid_image_name(&entry.image_name));
+    if let Some(idx) = invalid {
+        app.modal = Some(ModalState::DockerfileNameEdit {
+            entries,
+            selected_idx: idx,
+            error: Some("Set image names before rebuilding".to_string()),
+        });
+        return;
+    }
+
+    let specs: Vec<RebuildJobSpec> = entries
+        .into_iter()
+        .map(|entry| RebuildJobSpec {
+            image: entry.image_name.trim().to_string(),
+            container: None,
+            entry_path: entry.dockerfile_path,
+            source_dir: entry.source_dir,
+        })
+        .collect();
+
+    clear_checked_rows(app);
+    queue_rebuild_jobs(app, services, specs);
+}
+
+fn handle_dockerfile_modal_cancel(app: &mut App) {
+    if matches!(app.modal, Some(ModalState::DockerfileNameEdit { .. })) {
+        app.modal = None;
+    }
+}
+
+fn is_invalid_image_name(image: &str) -> bool {
+    let trimmed = image.trim();
+    trimmed.is_empty() || trimmed.eq_ignore_ascii_case("unknown")
 }
 
 fn handle_search_start(app: &mut App, direction: SearchDirection) {
