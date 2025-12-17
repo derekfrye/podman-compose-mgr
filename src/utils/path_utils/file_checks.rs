@@ -4,7 +4,11 @@ use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-/// Checks if a file is readable
+/// Checks if a file is readable.
+///
+/// # Errors
+///
+/// Returns an error if the file does not exist, cannot be expanded, or cannot be read.
 pub fn check_readable_file(file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file);
     let expanded_path = expand_tilde(&path)?;
@@ -16,7 +20,11 @@ pub fn check_readable_file(file: &str) -> Result<PathBuf, String> {
     }
 }
 
-/// Checks if a file is readable (`PathBuf` version)
+/// Checks if a file is readable (`PathBuf` version).
+///
+/// # Errors
+///
+/// Returns an error if the path is not valid UTF-8 or the file cannot be read.
 pub fn check_readable_path(file: &Path) -> Result<PathBuf, String> {
     if let Some(file_str) = file.to_str() {
         check_readable_file(file_str)
@@ -25,7 +33,11 @@ pub fn check_readable_path(file: &Path) -> Result<PathBuf, String> {
     }
 }
 
-/// Checks if a file is a valid JSON file
+/// Checks if a file is a valid JSON file.
+///
+/// # Errors
+///
+/// Returns an error if the file cannot be opened, read, expanded, or parsed as JSON.
 pub fn check_valid_json_file(file: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file);
     let expanded_path = expand_tilde(&path)?;
@@ -47,7 +59,11 @@ pub fn check_valid_json_file(file: &str) -> Result<PathBuf, String> {
     Ok(expanded_path)
 }
 
-/// Checks if a `PathBuf` is a valid JSON file
+/// Checks if a `PathBuf` is a valid JSON file.
+///
+/// # Errors
+///
+/// Returns an error if the path is not valid UTF-8 or the file fails JSON validation.
 pub fn check_valid_json_path(file: &Path) -> Result<PathBuf, String> {
     if let Some(file_str) = file.to_str() {
         check_valid_json_file(file_str)
@@ -56,7 +72,11 @@ pub fn check_valid_json_path(file: &Path) -> Result<PathBuf, String> {
     }
 }
 
-/// Checks if a file is writable (or can be created and written to)
+/// Checks if a file is writable (or can be created and written to).
+///
+/// # Errors
+///
+/// Returns an error if the parent directory is invalid or the file cannot be opened for writing.
 pub fn check_file_writable(file_path: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(file_path);
     let expanded_path = expand_tilde(&path)?;
@@ -92,7 +112,11 @@ pub fn check_file_writable(file_path: &str) -> Result<PathBuf, String> {
     }
 }
 
-/// Checks if a `PathBuf` is writable (or can be created and written to)
+/// Checks if a `PathBuf` is writable (or can be created and written to).
+///
+/// # Errors
+///
+/// Returns an error if the path is not valid UTF-8 or the file cannot be opened for writing.
 pub fn check_file_writable_path(file_path: &Path) -> Result<PathBuf, String> {
     if let Some(path_str) = file_path.to_str() {
         check_file_writable(path_str)

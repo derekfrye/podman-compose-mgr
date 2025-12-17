@@ -2,7 +2,11 @@ use super::expansion::expand_tilde;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Checks if a directory is readable
+/// Checks if a directory is readable.
+///
+/// # Errors
+///
+/// Returns an error if the directory does not exist, cannot be read, or metadata lookups fail.
 pub fn check_readable_dir(dir: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(dir);
     let expanded_path = expand_tilde(&path)?;
@@ -17,7 +21,11 @@ pub fn check_readable_dir(dir: &str) -> Result<PathBuf, String> {
     }
 }
 
-/// Checks if a directory `PathBuf` is readable
+/// Checks if a directory `PathBuf` is readable.
+///
+/// # Errors
+///
+/// Returns an error if the path is not valid UTF-8 or the directory cannot be read.
 pub fn check_readable_dir_path(dir: &Path) -> Result<PathBuf, String> {
     if let Some(dir_str) = dir.to_str() {
         check_readable_dir(dir_str)
@@ -27,6 +35,11 @@ pub fn check_readable_dir_path(dir: &Path) -> Result<PathBuf, String> {
 }
 
 /// Checks if a directory is writable, creating it if it doesn't exist.
+///
+/// # Errors
+///
+/// Returns an error if the directory cannot be created, does not resolve to a directory,
+/// or a test write fails.
 pub fn check_writable_dir(dir: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(dir);
     let expanded_path = expand_tilde(&path)?;

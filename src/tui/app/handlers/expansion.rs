@@ -136,7 +136,7 @@ fn compute_details_for(
                 }
                 InferenceSource::Compose => lines.push("Inferred from compose".to_string()),
                 InferenceSource::LocalhostRegistry => {
-                    lines.push("Inferred from localhost registry".to_string())
+                    lines.push("Inferred from localhost registry".to_string());
                 }
                 InferenceSource::Unknown => lines.push("Inferred from unknown source".to_string()),
             }

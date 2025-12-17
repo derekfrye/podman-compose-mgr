@@ -12,8 +12,8 @@ use ratatui::{
 use unicode_width::UnicodeWidthStr;
 
 use crate::tui::app::{
-    App, DockerfileNameEntry, ItemRow, ModalState, OutputStream, RebuildState, RebuildStatus,
-    SearchDirection, SearchState, UiState, ViewMode,
+    App, DockerfileNameEntry, ItemRow, ModalState, OutputStream, RebuildJob, RebuildState,
+    RebuildStatus, SearchDirection, SearchState, UiState, ViewMode,
 };
 
 pub fn draw(frame: &mut Frame, app: &mut App, args: &Args) {
@@ -183,19 +183,17 @@ fn draw_rebuild_output(
     area: ratatui::prelude::Rect,
     rebuild: &mut RebuildState,
 ) {
-    let Some(job) = rebuild.jobs.get(rebuild.active_idx) else {
+    let Some((header, output_len)) = rebuild
+        .jobs
+        .get(rebuild.active_idx)
+        .map(|job| (job_header(job), job.output.len()))
+    else {
         let empty = Paragraph::new("Waiting for jobs...")
             .block(Block::default().title("Output").borders(Borders::ALL));
         frame.render_widget(empty, area);
         return;
     };
 
-    let header = match &job.container {
-        Some(container) => format!("{} ({container})", job.image),
-        None => job.image.clone(),
-    };
-
-    // Ensure no stale table rows remain when switching from the list view into the rebuild pane.
     frame.render_widget(Clear, area);
     let block = Block::default().title(header).borders(Borders::ALL);
     let inner_area = block.inner(area);
@@ -205,36 +203,105 @@ fn draw_rebuild_output(
         return;
     }
 
-    let total_lines = job.output.len().max(1);
-    let line_digits = count_digits(total_lines).max(3);
+    let search_state = rebuild.search.clone();
+    let search_ref = search_state.as_ref();
+    let Some(mut layout) = base_output_layout(inner_area, output_len, search_ref) else {
+        return;
+    };
+
+    let (lines, max_line_width) = {
+        let job = &rebuild.jobs[rebuild.active_idx];
+        build_output_lines(job, search_ref, layout.text_area.width)
+    };
+
+    let ScrollbarAreas { text, numbers, bar } =
+        adjust_for_scrollbar(layout.text_area, layout.number_area, max_line_width);
+    layout.text_area = text;
+    layout.number_area = numbers;
+
+    if layout.text_area.width == 0 || layout.text_area.height == 0 {
+        clear_prompt(frame, layout.prompt_area);
+        return;
+    }
+
+    let (start_index, visible) =
+        visible_output_lines(lines, layout.text_area, rebuild, output_len);
+
+    render_gutter(
+        frame,
+        layout.number_area,
+        start_index,
+        visible.len(),
+        layout.line_digits,
+        layout.gutter_width,
+        output_len,
+    );
+
+    let paragraph = Paragraph::new(visible).scroll((0, rebuild.scroll_x));
+    frame.render_widget(paragraph, layout.text_area);
+
+    if let Some(prompt_area) = layout.prompt_area {
+        if let Some(search) = search_ref {
+            draw_search_prompt(frame, prompt_area, search);
+        } else {
+            frame.render_widget(Clear, prompt_area);
+        }
+    }
+
+    if let Some(scrollbar_area) = bar {
+        render_scrollbar(
+            frame,
+            scrollbar_area,
+            max_line_width,
+            layout.text_area.width,
+            rebuild,
+        );
+    }
+}
+
+struct OutputLayout {
+    text_area: Rect,
+    number_area: Option<Rect>,
+    prompt_area: Option<Rect>,
+    gutter_width: u16,
+    line_digits: usize,
+}
+
+fn job_header(job: &RebuildJob) -> String {
+    match &job.container {
+        Some(container) => format!("{} ({container})", job.image),
+        None => job.image.clone(),
+    }
+}
+
+fn base_output_layout(area: Rect, total_lines: usize, search_state: Option<&SearchState>) -> Option<OutputLayout> {
+    let line_digits = count_digits(total_lines.max(1)).max(3);
     let line_digits_u16 = u16::try_from(line_digits).unwrap_or(u16::MAX);
     let mut gutter_width = u16::try_from(line_digits + 1).unwrap_or(u16::MAX);
-    if gutter_width >= inner_area.width {
+    if gutter_width >= area.width {
         gutter_width = line_digits_u16;
-        if gutter_width >= inner_area.width {
+        if gutter_width >= area.width {
             gutter_width = 0;
         }
     }
 
-    let mut text_area = inner_area;
+    let mut text_area = area;
     let mut number_area = None;
     if gutter_width > 0 {
         let split = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Length(gutter_width), Constraint::Min(1)])
-            .split(inner_area);
+            .split(area);
         number_area = Some(split[0]);
         text_area = split[1];
     }
 
     if text_area.width == 0 || text_area.height == 0 {
-        return;
+        return None;
     }
 
     let mut prompt_area = None;
-    let search_state = rebuild.search.as_ref();
-    let show_prompt = search_state.is_some_and(search_prompt_visible);
-    if show_prompt && text_area.height > 1 {
+    if search_state.is_some_and(search_prompt_visible) && text_area.height > 1 {
         let segments = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Min(1), Constraint::Length(1)])
@@ -250,58 +317,88 @@ fn draw_rebuild_output(
     }
 
     if text_area.width == 0 || text_area.height == 0 {
-        if let Some(prompt_area) = prompt_area {
-            frame.render_widget(Clear, prompt_area);
-        }
-        return;
+        return None;
     }
 
+    Some(OutputLayout {
+        text_area,
+        number_area,
+        prompt_area,
+        gutter_width,
+        line_digits,
+    })
+}
+
+fn build_output_lines(
+    job: &RebuildJob,
+    search_state: Option<&SearchState>,
+    text_width: u16,
+) -> (Vec<Line<'static>>, usize) {
     let mut lines: Vec<Line> = Vec::with_capacity(job.output.len());
     let mut max_line_width: usize = 0;
     for (line_idx, entry) in job.output.iter().enumerate() {
-        let normalized = normalize_line(&entry.text, text_area.width);
+        let normalized = normalize_line(&entry.text, text_width);
         max_line_width = max_line_width.max(UnicodeWidthStr::width(normalized.as_str()));
         let line = build_line_with_search(&normalized, entry.stream, search_state, line_idx);
         lines.push(line);
     }
+    (lines, max_line_width)
+}
 
-    let mut scrollbar_area = None;
-    let needs_scrollbar = max_line_width > usize::from(text_area.width);
-    if needs_scrollbar && text_area.height > 1 {
-        let segments = Layout::default()
+struct ScrollbarAreas {
+    text: Rect,
+    numbers: Option<Rect>,
+    bar: Option<Rect>,
+}
+
+fn adjust_for_scrollbar(
+    text_area: Rect,
+    number_area: Option<Rect>,
+    max_line_width: usize,
+) -> ScrollbarAreas {
+    if max_line_width <= usize::from(text_area.width) || text_area.height <= 1 {
+        return ScrollbarAreas {
+            text: text_area,
+            numbers: number_area,
+            bar: None,
+        };
+    }
+
+    let segments = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(1)])
+        .split(text_area);
+    let text_area = segments[0];
+    let scrollbar_area = segments[1];
+    let number_area = number_area.map(|rect| {
+        Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Min(1), Constraint::Length(1)])
-            .split(text_area);
-        text_area = segments[0];
-        scrollbar_area = Some(segments[1]);
-        number_area = number_area.map(|rect| {
-            Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Min(1), Constraint::Length(1)])
-                .split(rect)[0]
-        });
-    }
+            .split(rect)[0]
+    });
 
-    if text_area.width == 0 || text_area.height == 0 {
-        if let Some(prompt_area) = prompt_area {
-            frame.render_widget(Clear, prompt_area);
-        }
-        return;
-    }
+    ScrollbarAreas { text: text_area, numbers: number_area, bar: Some(scrollbar_area) }
+}
 
+fn visible_output_lines(
+    mut lines: Vec<Line<'static>>,
+    text_area: Rect,
+    rebuild: &mut RebuildState,
+    total_lines: usize,
+) -> (usize, Vec<Line<'static>>) {
     let content_height = text_area.height.max(1);
     let content_width = text_area.width;
     rebuild.viewport_height = content_height;
     rebuild.viewport_width = content_width;
 
     let viewport = usize::from(content_height);
-    let max_start = job.output.len().saturating_sub(viewport);
+    let max_start = total_lines.saturating_sub(viewport);
     let mut scroll_top = rebuild.scroll_y as usize;
-    if rebuild.auto_scroll {
-        scroll_top = max_start;
+    scroll_top = if rebuild.auto_scroll {
+        max_start
     } else {
-        scroll_top = scroll_top.min(max_start);
-    }
+        scroll_top.min(max_start)
+    };
     rebuild.scroll_y = u16::try_from(scroll_top).unwrap_or(u16::MAX);
 
     if lines.len() < viewport {
@@ -314,79 +411,94 @@ fn draw_rebuild_output(
     }
 
     let start_index = scroll_top.min(max_start);
-    let visible: Vec<Line> = lines.into_iter().skip(start_index).take(viewport).collect();
+    let visible = lines.into_iter().skip(start_index).take(viewport).collect();
+    (start_index, visible)
+}
 
-    if let Some(number_area) = number_area {
-        let separator = if gutter_width > line_digits_u16 {
-            " "
+fn render_gutter(
+    frame: &mut Frame,
+    number_area: Option<Rect>,
+    start_index: usize,
+    visible_len: usize,
+    line_digits: usize,
+    gutter_width: u16,
+    total_lines: usize,
+) {
+    let Some(number_area) = number_area else {
+        return;
+    };
+
+    let separator = if gutter_width > u16::try_from(line_digits).unwrap_or(0) {
+        " "
+    } else {
+        ""
+    };
+    let blank_label = format!(
+        "{:>width$}{separator}",
+        "",
+        width = line_digits,
+        separator = separator
+    );
+    let mut number_lines: Vec<Line> = Vec::with_capacity(visible_len);
+    for offset in 0..visible_len {
+        let idx = start_index + offset;
+        let label = if idx < total_lines {
+            format!(
+                "{:>width$}{separator}",
+                idx + 1,
+                width = line_digits,
+                separator = separator
+            )
         } else {
-            ""
+            blank_label.clone()
         };
-        let blank_label = format!(
-            "{:>width$}{separator}",
-            "",
-            width = line_digits,
-            separator = separator
-        );
-        let mut number_lines: Vec<Line> = Vec::with_capacity(visible.len());
-        for (offset, _) in visible.iter().enumerate() {
-            let idx = start_index + offset;
-            let label = if idx < job.output.len() {
-                format!(
-                    "{:>width$}{separator}",
-                    idx + 1,
-                    width = line_digits,
-                    separator = separator
-                )
-            } else {
-                blank_label.clone()
-            };
-            number_lines.push(Line::from(vec![Span::styled(
-                label,
-                Style::default().fg(Color::DarkGray),
-            )]));
-        }
-        let gutter = Paragraph::new(number_lines);
-        frame.render_widget(gutter, number_area);
+        number_lines.push(Line::from(vec![Span::styled(
+            label,
+            Style::default().fg(Color::DarkGray),
+        )]));
+    }
+    frame.render_widget(Paragraph::new(number_lines), number_area);
+}
+
+fn render_scrollbar(
+    frame: &mut Frame,
+    scrollbar_area: Rect,
+    max_line_width: usize,
+    content_width: u16,
+    rebuild: &RebuildState,
+) {
+    if scrollbar_area.width == 0 {
+        return;
     }
 
-    let paragraph = Paragraph::new(visible).scroll((0, rebuild.scroll_x));
-    frame.render_widget(paragraph, text_area);
+    let track_len = usize::from(scrollbar_area.width);
+    let viewport_cols = usize::from(content_width).max(1);
+    let max_offset = max_line_width.saturating_sub(viewport_cols);
+    let total_width = max_line_width.max(viewport_cols);
+    let mut thumb_len = (viewport_cols * track_len) / total_width;
+    thumb_len = thumb_len.clamp(1, track_len);
+    let track_range = track_len.saturating_sub(thumb_len);
+    let scroll_offset = usize::from(rebuild.scroll_x).min(max_offset);
+    let thumb_start = if max_offset == 0 || track_range == 0 {
+        0
+    } else {
+        (scroll_offset * track_range + max_offset / 2) / max_offset
+    };
+    let mut spans = Vec::with_capacity(track_len);
+    for idx in 0..track_len {
+        if idx >= thumb_start && idx < thumb_start + thumb_len {
+            spans.push(Span::styled("⠶", Style::default().fg(Color::Cyan)));
+        } else {
+            spans.push(Span::styled("─", Style::default().fg(Color::DarkGray)));
+        }
+    }
+    let bar = Paragraph::new(Line::from(spans));
+    frame.render_widget(bar, scrollbar_area);
+}
 
+fn clear_prompt(frame: &mut Frame, prompt_area: Option<Rect>) {
     if let Some(prompt_area) = prompt_area {
-        if let Some(search) = search_state {
-            draw_search_prompt(frame, prompt_area, search);
-        } else {
-            frame.render_widget(Clear, prompt_area);
-        }
-    }
-
-    if let Some(scrollbar_area) = scrollbar_area
-        && scrollbar_area.width > 0
-    {
-        let track_len = usize::from(scrollbar_area.width);
-        let viewport_cols = usize::from(content_width).max(1);
-        let max_offset = max_line_width.saturating_sub(viewport_cols);
-        let total_width = max_line_width.max(viewport_cols);
-        let mut thumb_len = (viewport_cols * track_len) / total_width;
-        thumb_len = thumb_len.clamp(1, track_len);
-        let track_range = track_len.saturating_sub(thumb_len);
-        let scroll_offset = usize::from(rebuild.scroll_x).min(max_offset);
-        let thumb_start = if max_offset == 0 || track_range == 0 {
-            0
-        } else {
-            (scroll_offset * track_range + max_offset / 2) / max_offset
-        };
-        let mut spans = Vec::with_capacity(track_len);
-        for idx in 0..track_len {
-            if idx >= thumb_start && idx < thumb_start + thumb_len {
-                spans.push(Span::styled("⠶", Style::default().fg(Color::Cyan)));
-            } else {
-                spans.push(Span::styled("─", Style::default().fg(Color::DarkGray)));
-            }
-        }
-        let bar = Paragraph::new(Line::from(spans));
-        frame.render_widget(bar, scrollbar_area);
+        frame.render_widget(Clear, prompt_area);
     }
 }
 

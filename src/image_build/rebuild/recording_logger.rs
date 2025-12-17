@@ -16,6 +16,12 @@ impl BuildLogger for RecordingLogger {
 }
 
 impl RecordingLogger {
+    /// Return collected log messages.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal mutex is poisoned.
+    #[must_use]
     pub fn logs(&self) -> Vec<(BuildLogLevel, String)> {
         self.messages.lock().unwrap().clone()
     }
