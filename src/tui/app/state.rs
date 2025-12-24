@@ -4,7 +4,7 @@ mod rebuild_state;
 use super::keymap::map_keycode_to_msg;
 use crate::Args;
 use crate::app::AppCore;
-use crate::domain::{DiscoveredImage, DockerfileInference};
+use crate::domain::{DiscoveredImage, DockerfileInference, MakefileInference};
 use crate::utils::log_utils::Logger;
 use crossbeam_channel as xchan;
 use std::path::PathBuf;
@@ -12,8 +12,8 @@ use std::path::PathBuf;
 #[cfg(test)]
 pub use rebuild_state::RebuildOutputLine;
 pub use rebuild_state::{
-    DockerfileNameEntry, DockerfileRowExtra, OutputStream, RebuildJob, RebuildJobSpec,
-    RebuildResult, RebuildState, RebuildStatus,
+    DockerfileNameEntry, DockerfileRowExtra, MakefileRowExtra, OutputStream, RebuildJob,
+    RebuildJobSpec, RebuildResult, RebuildState, RebuildStatus,
 };
 
 pub const SPINNER_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -30,6 +30,7 @@ pub struct ItemRow {
     pub is_dir: bool,
     pub dir_name: Option<String>,
     pub dockerfile_extra: Option<DockerfileRowExtra>,
+    pub makefile_extra: Option<MakefileRowExtra>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -45,6 +46,7 @@ pub enum ViewMode {
     ByImage,
     ByFolderThenImage,
     ByDockerfile,
+    ByMakefile,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -93,6 +95,7 @@ pub struct App {
     pub modal: Option<ModalState>,
     pub all_items: Vec<DiscoveredImage>,
     pub dockerfile_items: Vec<DockerfileInference>,
+    pub makefile_items: Vec<MakefileInference>,
     pub root_path: PathBuf,
     pub current_path: Vec<String>,
     pub rebuild: Option<RebuildState>,
@@ -113,6 +116,7 @@ impl Default for App {
             modal: None,
             all_items: Vec::new(),
             dockerfile_items: Vec::new(),
+            makefile_items: Vec::new(),
             root_path: PathBuf::new(),
             current_path: Vec::new(),
             rebuild: None,

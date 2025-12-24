@@ -1,5 +1,5 @@
 use crate::args::Args;
-use crate::image_build::buildfile_build::build_dockerfile_image;
+use crate::image_build::buildfile_build::{build_dockerfile_image, build_makefile_image};
 use crate::image_build::buildfile_types::{BuildChoice, BuildFile, WhatWereBuilding};
 use crate::image_build::rebuild::RebuildManager;
 mod read_helper;
@@ -77,6 +77,10 @@ fn run_job(
         return rebuild_dockerfile(&cmd_helper, &build_logger, &entry, spec, args);
     }
 
+    if is_makefile_entry(&entry) {
+        return rebuild_makefile(&cmd_helper, &build_logger, &entry, spec, args);
+    }
+
     let mut manager = RebuildManager::new(&cmd_helper, &read_helper, &build_logger);
 
     manager.rebuild(&entry, args).map_err(|e| e.to_string())
@@ -87,6 +91,10 @@ fn is_dockerfile_entry(entry: &DirEntry) -> bool {
         .file_name()
         .to_string_lossy()
         .starts_with("Dockerfile")
+}
+
+fn is_makefile_entry(entry: &DirEntry) -> bool {
+    entry.file_name().to_string_lossy() == "Makefile"
 }
 
 fn rebuild_dockerfile(
@@ -130,4 +138,47 @@ fn rebuild_dockerfile(
     };
 
     build_dockerfile_image(cmd_helper, &build_spec).map_err(|e| e.to_string())
+}
+
+fn rebuild_makefile(
+    cmd_helper: &TuiCommandHelper,
+    logger: &TuiBuildLogger,
+    entry: &DirEntry,
+    spec: &RebuildJobSpec,
+    _args: &Args,
+) -> Result<(), String> {
+    let path = entry.path();
+    let parent_dir = path
+        .parent()
+        .ok_or_else(|| format!("No parent directory for {}", path.display()))?
+        .to_path_buf();
+
+    let image = spec.image.trim();
+    if image.is_empty() {
+        logger.info(&format!("Running make in {}", parent_dir.display()));
+    } else {
+        logger.info(&format!(
+            "Running make for {} in {}",
+            image,
+            parent_dir.display()
+        ));
+    }
+
+    let build_file = BuildFile {
+        filetype: BuildChoice::Makefile,
+        filepath: Some(path.to_path_buf()),
+        parent_dir,
+        link_target_dir: std::fs::read_link(path).ok(),
+        base_image: None,
+        custom_img_nm: None,
+        build_args: Vec::new(),
+        no_cache: false,
+    };
+
+    let build_spec = WhatWereBuilding {
+        file: build_file,
+        follow_link: false,
+    };
+
+    build_makefile_image(cmd_helper, &build_spec).map_err(|e| e.to_string())
 }

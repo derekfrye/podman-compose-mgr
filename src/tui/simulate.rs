@@ -51,6 +51,7 @@ pub fn simulate_view_with_ports(
 
     match mode {
         SimulateViewMode::Dockerfile => print_dockerfiles(&scan, out)?,
+        SimulateViewMode::Makefile => print_makefiles(&scan, out)?,
         SimulateViewMode::Image => print_images(&scan, out)?,
         SimulateViewMode::Container => print_containers(&scan, out)?,
         SimulateViewMode::Folder => print_folders(&scan, &args.path, out)?,
@@ -132,6 +133,27 @@ fn print_dockerfiles(scan: &ScanResult, out: &mut dyn Write) -> io::Result<()> {
 
         let mut line = format!("[dry-run] {} -> {}", df.basename, reason);
         if let Some(img) = &df.inferred_image {
+            write!(&mut line, " / registry name matched {img}").map_err(io::Error::other)?;
+        }
+        writeln!(out, "{line}")?;
+    }
+    Ok(())
+}
+
+fn print_makefiles(scan: &ScanResult, out: &mut dyn Write) -> io::Result<()> {
+    for mf in &scan.makefiles {
+        let mut reason = match mf.inference_source {
+            InferenceSource::Quadlet => "quadlet neighbor".to_string(),
+            InferenceSource::Compose => "compose neighbor".to_string(),
+            InferenceSource::LocalhostRegistry => "registry matched".to_string(),
+            InferenceSource::Unknown => "no inference".to_string(),
+        };
+        if let Some(note) = &mf.note {
+            reason.clone_from(note);
+        }
+
+        let mut line = format!("[dry-run] {} -> {}", mf.basename, reason);
+        if let Some(img) = &mf.inferred_image {
             write!(&mut line, " / registry name matched {img}").map_err(io::Error::other)?;
         }
         writeln!(out, "{line}")?;

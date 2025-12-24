@@ -1,4 +1,4 @@
-use crate::domain::{DiscoveredDockerfile, DiscoveredImage, InferenceSource};
+use crate::domain::{DiscoveredDockerfile, DiscoveredImage, DiscoveredMakefile, InferenceSource};
 use crate::errors::PodmanComposeMgrError;
 use crate::image_build::container_file::parse_container_file;
 use crate::infra::discovery_types::DirInfo;
@@ -52,7 +52,7 @@ pub fn should_keep_path(
 
 #[must_use]
 pub fn build_dockerfile_rows<S: BuildHasher>(
-    dir_info: HashMap<std::path::PathBuf, DirInfo, S>,
+    dir_info: &HashMap<std::path::PathBuf, DirInfo, S>,
 ) -> Vec<DiscoveredDockerfile> {
     let mut dockerfiles = Vec::new();
     for (dir, info) in dir_info {
@@ -98,6 +98,56 @@ pub fn build_dockerfile_rows<S: BuildHasher>(
     }
     dockerfiles.sort_by(|a, b| a.basename.cmp(&b.basename));
     dockerfiles
+}
+
+#[must_use]
+pub fn build_makefile_rows<S: BuildHasher>(
+    dir_info: &HashMap<std::path::PathBuf, DirInfo, S>,
+) -> Vec<DiscoveredMakefile> {
+    let mut makefiles = Vec::new();
+    for (dir, info) in dir_info {
+        if info.makefiles.is_empty() {
+            continue;
+        }
+
+        let neighbor_count = info.compose_files.len() + info.container_files.len();
+        for makefile_path in &info.makefiles {
+            let mut neighbor_image = None;
+            let mut quadlet_basename = None;
+            if info.makefiles.len() == 1 && neighbor_count == 1 {
+                if info.container_files.len() == 1 {
+                    if let Ok(parsed) = parse_container_file(&info.container_files[0].path) {
+                        neighbor_image = Some((InferenceSource::Quadlet, parsed.image.clone()));
+                        quadlet_basename = info.container_files[0]
+                            .path
+                            .file_name()
+                            .map(|name| name.to_string_lossy().to_string());
+                    }
+                } else if info.compose_files.len() == 1
+                    && let Some(image) = info.compose_files[0].first_image.clone()
+                {
+                    neighbor_image = Some((InferenceSource::Compose, image));
+                }
+            }
+
+            let basename = makefile_path.file_name().map_or_else(
+                || "Makefile".to_string(),
+                |name| name.to_string_lossy().to_string(),
+            );
+
+            makefiles.push(DiscoveredMakefile {
+                makefile_path: makefile_path.clone(),
+                source_dir: dir.clone(),
+                basename,
+                quadlet_basename,
+                neighbor_image,
+                total_makefiles_in_dir: info.makefiles.len(),
+                neighbor_file_count: neighbor_count,
+            });
+        }
+    }
+    makefiles.sort_by(|a, b| a.basename.cmp(&b.basename));
+    makefiles
 }
 
 /// Collect rows from a docker-compose.yml entry.

@@ -1,5 +1,5 @@
 use crate::app::AppCore;
-use crate::tui::app::state::{App, DockerfileRowExtra, Msg, Services, ViewMode};
+use crate::tui::app::state::{App, DockerfileRowExtra, MakefileRowExtra, Msg, Services, ViewMode};
 
 pub fn handle_expand_or_enter(app: &mut App, services: Option<&Services>) {
     if app.view_mode == ViewMode::ByFolderThenImage && handle_directory_enter(app) {
@@ -40,13 +40,14 @@ fn handle_directory_enter(app: &mut App) -> bool {
 }
 
 fn handle_row_expand(app: &mut App, services: Option<&Services>) {
-    let (image, source_dir, entry_path, dockerfile_extra, already_expanded) =
+    let (image, source_dir, entry_path, dockerfile_extra, makefile_extra, already_expanded) =
         match app.rows.get(app.selected) {
             Some(row) => (
                 row.image.clone(),
                 row.source_dir.clone(),
                 row.entry_path.clone(),
                 row.dockerfile_extra.clone(),
+                row.makefile_extra.clone(),
                 row.expanded,
             ),
             None => return,
@@ -70,6 +71,7 @@ fn handle_row_expand(app: &mut App, services: Option<&Services>) {
             entry_path,
             app.view_mode,
             dockerfile_extra,
+            makefile_extra,
         );
     }
 }
@@ -93,6 +95,7 @@ fn spawn_detail_fetch(
     entry_path: Option<std::path::PathBuf>,
     view_mode: ViewMode,
     dockerfile_extra: Option<DockerfileRowExtra>,
+    makefile_extra: Option<MakefileRowExtra>,
 ) {
     let tx = services.tx.clone();
     let core = services.core.clone();
@@ -105,6 +108,7 @@ fn spawn_detail_fetch(
             entry_path_ref,
             view_mode,
             dockerfile_extra.as_ref(),
+            makefile_extra.as_ref(),
         );
         let _ = tx.send(Msg::DetailsReady {
             row: row_idx,
@@ -120,12 +124,43 @@ fn compute_details_for(
     entry_path: Option<&std::path::Path>,
     view_mode: ViewMode,
     dockerfile_extra: Option<&DockerfileRowExtra>,
+    makefile_extra: Option<&MakefileRowExtra>,
 ) -> Vec<String> {
     use crate::domain::{ImageDetails, InferenceSource};
 
     let mut lines = Vec::new();
     if view_mode == ViewMode::ByDockerfile {
         if let Some(extra) = dockerfile_extra {
+            match extra.source {
+                InferenceSource::Quadlet => {
+                    if let Some(name) = &extra.quadlet_basename {
+                        lines.push(format!("Inferred from quadlet: {name}"));
+                    } else {
+                        lines.push("Inferred from quadlet".to_string());
+                    }
+                }
+                InferenceSource::Compose => lines.push("Inferred from compose".to_string()),
+                InferenceSource::LocalhostRegistry => {
+                    lines.push("Inferred from localhost registry".to_string());
+                }
+                InferenceSource::Unknown => lines.push("Inferred from unknown source".to_string()),
+            }
+            let image_name = extra
+                .image_name
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string());
+            lines.push(format!("Image: {image_name}"));
+            if let Some(created) = &extra.created_time_ago {
+                lines.push(format!("Created: {created}"));
+            }
+            if let Some(note) = &extra.note {
+                lines.push(note.clone());
+            }
+        }
+        return lines;
+    }
+    if view_mode == ViewMode::ByMakefile {
+        if let Some(extra) = makefile_extra {
             match extra.source {
                 InferenceSource::Quadlet => {
                     if let Some(name) = &extra.quadlet_basename {

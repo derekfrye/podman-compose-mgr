@@ -1,8 +1,8 @@
 use crate::domain::{DiscoveredImage, DiscoveryResult};
 use crate::errors::PodmanComposeMgrError;
 use crate::infra::discovery_helpers::{
-    build_dockerfile_rows, collect_from_compose, collect_from_container, compile_regexes,
-    should_keep_path, walk_entries,
+    build_dockerfile_rows, build_makefile_rows, collect_from_compose, collect_from_container,
+    compile_regexes, should_keep_path, walk_entries,
 };
 use crate::infra::discovery_types::{ComposeInfo, ContainerInfo, DirInfo};
 use crate::ports::{DiscoveryPort, ScanOptions};
@@ -64,20 +64,34 @@ impl DiscoveryPort for FsDiscovery {
                 continue;
             }
 
-            if let Some(name) = entry.file_name().to_str()
-                && name.starts_with("Dockerfile")
-            {
-                dir_info
-                    .entry(
-                        entry
-                            .path()
-                            .parent()
-                            .unwrap_or_else(|| Path::new("/"))
-                            .to_path_buf(),
-                    )
-                    .or_default()
-                    .dockerfiles
-                    .push(entry.path().to_path_buf());
+            if let Some(name) = entry.file_name().to_str() {
+                if name.starts_with("Dockerfile") {
+                    dir_info
+                        .entry(
+                            entry
+                                .path()
+                                .parent()
+                                .unwrap_or_else(|| Path::new("/"))
+                                .to_path_buf(),
+                        )
+                        .or_default()
+                        .dockerfiles
+                        .push(entry.path().to_path_buf());
+                    continue;
+                }
+                if name == "Makefile" {
+                    dir_info
+                        .entry(
+                            entry
+                                .path()
+                                .parent()
+                                .unwrap_or_else(|| Path::new("/"))
+                                .to_path_buf(),
+                        )
+                        .or_default()
+                        .makefiles
+                        .push(entry.path().to_path_buf());
+                }
             }
         }
 
@@ -87,11 +101,13 @@ impl DiscoveryPort for FsDiscovery {
                 .then_with(|| a.container.cmp(&b.container))
         });
 
-        let dockerfiles = build_dockerfile_rows(dir_info);
+        let dockerfiles = build_dockerfile_rows(&dir_info);
+        let makefiles = build_makefile_rows(&dir_info);
 
         Ok(DiscoveryResult {
             images: rows,
             dockerfiles,
+            makefiles,
         })
     }
 }

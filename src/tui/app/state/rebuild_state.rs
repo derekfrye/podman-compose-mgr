@@ -28,6 +28,16 @@ pub struct DockerfileRowExtra {
     pub note: Option<String>,
 }
 
+#[derive(Clone, Debug)]
+pub struct MakefileRowExtra {
+    pub source: InferenceSource,
+    pub makefile_name: String,
+    pub quadlet_basename: Option<String>,
+    pub image_name: Option<String>,
+    pub created_time_ago: Option<String>,
+    pub note: Option<String>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DockerfileNameEntry {
     pub dockerfile_path: PathBuf,

@@ -22,6 +22,10 @@ impl App {
                 self.rows = self.build_rows_for_dockerfile_view();
                 self.selected = 0;
             }
+            ViewMode::ByMakefile => {
+                self.rows = self.build_rows_for_makefile_view();
+                self.selected = 0;
+            }
         }
     }
 
@@ -34,6 +38,7 @@ impl App {
             ViewMode::ByImage => clone.build_rows_for_image_view(),
             ViewMode::ByFolderThenImage => clone.build_rows_for_folder_view(),
             ViewMode::ByDockerfile => clone.build_rows_for_dockerfile_view(),
+            ViewMode::ByMakefile => clone.build_rows_for_makefile_view(),
         }
     }
 
@@ -52,6 +57,7 @@ impl App {
                 is_dir: false,
                 dir_name: None,
                 dockerfile_extra: None,
+                makefile_extra: None,
             })
             .collect()
     }
@@ -96,6 +102,7 @@ impl App {
                     is_dir: false,
                     dir_name: None,
                     dockerfile_extra: None,
+                    makefile_extra: None,
                 });
             }
         }
@@ -129,6 +136,7 @@ impl App {
                 is_dir: true,
                 dir_name: Some(dir),
                 dockerfile_extra: None,
+                makefile_extra: None,
             });
         }
         for image in images {
@@ -148,6 +156,7 @@ impl App {
                 is_dir: false,
                 dir_name: None,
                 dockerfile_extra: None,
+                makefile_extra: None,
             });
         }
         rows
@@ -178,6 +187,37 @@ impl App {
                     created_time_ago: df.created_time_ago.clone(),
                     note: df.note.clone(),
                 }),
+                makefile_extra: None,
+            })
+            .collect()
+    }
+
+    #[must_use]
+    pub fn build_rows_for_makefile_view(&self) -> Vec<ItemRow> {
+        self.makefile_items
+            .iter()
+            .map(|mf| ItemRow {
+                checked: false,
+                image: mf
+                    .inferred_image
+                    .clone()
+                    .unwrap_or_else(|| "unknown".to_string()),
+                container: None,
+                source_dir: mf.source_dir.clone(),
+                entry_path: Some(mf.makefile_path.clone()),
+                expanded: false,
+                details: Vec::new(),
+                is_dir: false,
+                dir_name: None,
+                dockerfile_extra: None,
+                makefile_extra: Some(super::state::MakefileRowExtra {
+                    source: mf.inference_source.clone(),
+                    makefile_name: mf.basename.clone(),
+                    quadlet_basename: mf.quadlet_basename.clone(),
+                    image_name: mf.inferred_image.clone(),
+                    created_time_ago: mf.created_time_ago.clone(),
+                    note: mf.note.clone(),
+                }),
             })
             .collect()
     }
@@ -199,6 +239,7 @@ impl App {
             modal: None,
             all_items: self.all_items.clone(),
             dockerfile_items: self.dockerfile_items.clone(),
+            makefile_items: self.makefile_items.clone(),
             root_path: self.root_path.clone(),
             current_path: self.current_path.clone(),
             rebuild: None,

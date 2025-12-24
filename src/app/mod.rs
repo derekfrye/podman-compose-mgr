@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::domain::{
     DiscoveryResult, DockerfileInference, ImageDetails, InferenceSource, LocalImageSummary,
-    ScanResult,
+    MakefileInference, ScanResult,
 };
 use crate::errors::PodmanComposeMgrError;
 use crate::ports::{DiscoveryPort, PodmanPort, ScanOptions};
@@ -35,8 +35,13 @@ impl AppCore {
         };
         let discovery = self.discovery.scan(&opts)?;
         let local_images = self.podman.list_local_images().unwrap_or_default();
-        let dockerfiles = Self::infer_dockerfiles(discovery, &local_images);
-        Ok(dockerfiles)
+        let dockerfiles = Self::infer_dockerfiles(&discovery, &local_images);
+        let makefiles = Self::infer_makefiles(&discovery, &local_images);
+        Ok(ScanResult {
+            images: discovery.images,
+            dockerfiles,
+            makefiles,
+        })
     }
 
     /// Get image details for display.
@@ -102,11 +107,11 @@ impl AppCore {
     }
 
     fn infer_dockerfiles(
-        discovery: DiscoveryResult,
+        discovery: &DiscoveryResult,
         local_images: &[LocalImageSummary],
-    ) -> ScanResult {
+    ) -> Vec<DockerfileInference> {
         let mut inferred = Vec::new();
-        for dockerfile in discovery.dockerfiles {
+        for dockerfile in discovery.dockerfiles.iter() {
             let inference_source;
             let inferred_image;
             let created_time_ago;
@@ -150,10 +155,10 @@ impl AppCore {
             }
 
             inferred.push(DockerfileInference {
-                dockerfile_path: dockerfile.dockerfile_path,
-                source_dir: dockerfile.source_dir,
-                basename: dockerfile.basename,
-                quadlet_basename: dockerfile.quadlet_basename,
+                dockerfile_path: dockerfile.dockerfile_path.clone(),
+                source_dir: dockerfile.source_dir.clone(),
+                basename: dockerfile.basename.clone(),
+                quadlet_basename: dockerfile.quadlet_basename.clone(),
                 inferred_image,
                 inference_source,
                 created_time_ago,
@@ -163,10 +168,47 @@ impl AppCore {
             });
         }
 
-        ScanResult {
-            images: discovery.images,
-            dockerfiles: inferred,
+        inferred
+    }
+
+    fn infer_makefiles(
+        discovery: &DiscoveryResult,
+        local_images: &[LocalImageSummary],
+    ) -> Vec<MakefileInference> {
+        let mut inferred = Vec::new();
+        for makefile in discovery.makefiles.iter() {
+            let inference_source;
+            let inferred_image;
+            let created_time_ago;
+            let note;
+
+            if let Some((source, image)) = makefile.neighbor_image.clone() {
+                inference_source = source;
+                inferred_image = Some(image.clone());
+                created_time_ago = Self::find_created_for(&image, local_images);
+                note = Some("single neighbor file".to_string());
+            } else {
+                inference_source = InferenceSource::Unknown;
+                inferred_image = None;
+                created_time_ago = None;
+                note = None;
+            }
+
+            inferred.push(MakefileInference {
+                makefile_path: makefile.makefile_path.clone(),
+                source_dir: makefile.source_dir.clone(),
+                basename: makefile.basename.clone(),
+                quadlet_basename: makefile.quadlet_basename.clone(),
+                inferred_image,
+                inference_source,
+                created_time_ago,
+                total_makefiles_in_dir: makefile.total_makefiles_in_dir,
+                neighbor_file_count: makefile.neighbor_file_count,
+                note,
+            });
         }
+
+        inferred
     }
 
     fn find_created_for(image: &str, local_images: &[LocalImageSummary]) -> Option<String> {

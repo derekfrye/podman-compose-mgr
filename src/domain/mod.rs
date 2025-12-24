@@ -29,6 +29,17 @@ pub struct DiscoveredDockerfile {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DiscoveredMakefile {
+    pub makefile_path: PathBuf,
+    pub source_dir: PathBuf,
+    pub basename: String,
+    pub quadlet_basename: Option<String>,
+    pub neighbor_image: Option<(InferenceSource, String)>,
+    pub total_makefiles_in_dir: usize,
+    pub neighbor_file_count: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DockerfileInference {
     pub dockerfile_path: PathBuf,
     pub source_dir: PathBuf,
@@ -43,15 +54,31 @@ pub struct DockerfileInference {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MakefileInference {
+    pub makefile_path: PathBuf,
+    pub source_dir: PathBuf,
+    pub basename: String,
+    pub quadlet_basename: Option<String>,
+    pub inferred_image: Option<String>,
+    pub inference_source: InferenceSource,
+    pub created_time_ago: Option<String>,
+    pub total_makefiles_in_dir: usize,
+    pub neighbor_file_count: usize,
+    pub note: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DiscoveryResult {
     pub images: Vec<DiscoveredImage>,
     pub dockerfiles: Vec<DiscoveredDockerfile>,
+    pub makefiles: Vec<DiscoveredMakefile>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct ScanResult {
     pub images: Vec<DiscoveredImage>,
     pub dockerfiles: Vec<DockerfileInference>,
+    pub makefiles: Vec<MakefileInference>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

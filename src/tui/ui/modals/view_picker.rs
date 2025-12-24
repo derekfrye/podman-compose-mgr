@@ -14,7 +14,7 @@ pub(crate) fn draw_view_picker(
     selected_idx: usize,
     current: ViewMode,
 ) {
-    let height: u16 = 9;
+    let height: u16 = 10;
     let width: u16 = 40;
     let width_final = width.min(full_area.width);
     let height_final = height.min(full_area.height);
@@ -32,6 +32,7 @@ pub(crate) fn draw_view_picker(
         ("List by image", ViewMode::ByImage),
         ("List by folder, then image", ViewMode::ByFolderThenImage),
         ("List by Dockerfile", ViewMode::ByDockerfile),
+        ("List by Makefile", ViewMode::ByMakefile),
     ];
     let mut lines: Vec<Line> = Vec::new();
     for (i, (label, mode)) in items.iter().enumerate() {

@@ -8,11 +8,13 @@ pub fn handle_tick(app: &mut App) {
 pub fn handle_scan_results(app: &mut App, discovered: ScanResult, services: Option<&Services>) {
     app.all_items = discovered.images;
     app.dockerfile_items = discovered.dockerfiles;
+    app.makefile_items = discovered.makefiles;
     app.rows = match app.view_mode {
         ViewMode::ByContainer => app.build_rows_for_container_view(),
         ViewMode::ByImage => app.build_rows_for_view_mode(ViewMode::ByImage),
         ViewMode::ByFolderThenImage => app.build_rows_for_folder_view(),
         ViewMode::ByDockerfile => app.build_rows_for_dockerfile_view(),
+        ViewMode::ByMakefile => app.build_rows_for_makefile_view(),
     };
     app.state = UiState::Ready;
     app.selected = 0;

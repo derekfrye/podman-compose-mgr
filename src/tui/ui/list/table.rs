@@ -53,6 +53,19 @@ pub(crate) fn draw_table(frame: &mut Frame, area: Rect, app: &App) {
                 Constraint::Percentage(49),
             ],
         ),
+        ViewMode::ByMakefile => (
+            Row::new([
+                Cell::from("Select"),
+                Cell::from("Makefile"),
+                Cell::from("Image"),
+            ])
+            .style(Style::default().add_modifier(Modifier::BOLD)),
+            vec![
+                Constraint::Length(6),
+                Constraint::Percentage(45),
+                Constraint::Percentage(49),
+            ],
+        ),
     };
 
     let (rows, selected_visual_idx) = build_rows_with_expansion(app);
@@ -108,6 +121,17 @@ fn row_for_item<'a>(app: &'a App, it: &'a ItemRow) -> Row<'a> {
                 Cell::from(it.image.clone()),
             ])
         }
+        ViewMode::ByMakefile => {
+            let makefile_name = it
+                .makefile_extra
+                .as_ref()
+                .map_or_else(|| it.image.clone(), |extra| extra.makefile_name.clone());
+            Row::new([
+                Cell::from(checkbox),
+                Cell::from(makefile_name),
+                Cell::from(it.image.clone()),
+            ])
+        }
     }
 }
 
@@ -125,7 +149,10 @@ fn build_rows_with_expansion(app: &App) -> (Vec<Row<'_>>, usize) {
             for line in &it.details {
                 let indented = format!("  {line}");
                 match app.view_mode {
-                    ViewMode::ByContainer | ViewMode::ByImage | ViewMode::ByDockerfile => {
+                    ViewMode::ByContainer
+                    | ViewMode::ByImage
+                    | ViewMode::ByDockerfile
+                    | ViewMode::ByMakefile => {
                         rows.push(Row::new([
                             Cell::from(""),
                             Cell::from(indented.clone()),

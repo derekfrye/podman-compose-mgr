@@ -6,6 +6,7 @@ pub fn handle_open_view_picker(app: &mut App) {
         ViewMode::ByImage => 1,
         ViewMode::ByFolderThenImage => 2,
         ViewMode::ByDockerfile => 3,
+        ViewMode::ByMakefile => 4,
     };
     app.modal = Some(ModalState::ViewPicker {
         selected_idx: default_idx,
@@ -22,7 +23,7 @@ pub fn handle_view_picker_up(app: &mut App) {
 
 pub fn handle_view_picker_down(app: &mut App) {
     if let Some(ModalState::ViewPicker { selected_idx }) = &mut app.modal
-        && *selected_idx < 3
+        && *selected_idx < 4
     {
         *selected_idx += 1;
     }
@@ -34,6 +35,7 @@ pub fn handle_view_picker_accept(app: &mut App) {
             1 => ViewMode::ByImage,
             2 => ViewMode::ByFolderThenImage,
             3 => ViewMode::ByDockerfile,
+            4 => ViewMode::ByMakefile,
             _ => ViewMode::ByContainer,
         };
         app.rebuild_rows_for_view();

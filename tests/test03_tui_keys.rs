@@ -26,6 +26,7 @@ fn keys_overlay_is_drawn_with_labels() {
         is_dir: false,
         dir_name: None,
         dockerfile_extra: None,
+        makefile_extra: None,
     }];
 
     // Minimal args
@@ -125,6 +126,7 @@ fn page_navigation_moves_by_screenful() {
             is_dir: false,
             dir_name: None,
             dockerfile_extra: None,
+            makefile_extra: None,
         })
         .collect();
 

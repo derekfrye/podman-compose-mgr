@@ -122,6 +122,7 @@ pub enum SimulateViewMode {
     Image,
     Folder,
     Dockerfile,
+    Makefile,
 }
 
 fn parse_sim_view(raw: &str) -> Result<SimulateViewMode, String> {
@@ -130,8 +131,9 @@ fn parse_sim_view(raw: &str) -> Result<SimulateViewMode, String> {
         "view-mode-image" | "image" => Ok(SimulateViewMode::Image),
         "view-mode-folder" | "folder" => Ok(SimulateViewMode::Folder),
         "view-mode-dockerfile" | "dockerfile" => Ok(SimulateViewMode::Dockerfile),
+        "view-mode-makefile" | "makefile" => Ok(SimulateViewMode::Makefile),
         other => Err(format!(
-            "invalid tui-simulate value '{other}', expected one of: view-mode-container, view-mode-image, view-mode-folder, view-mode-dockerfile"
+            "invalid tui-simulate value '{other}', expected one of: view-mode-container, view-mode-image, view-mode-folder, view-mode-dockerfile, view-mode-makefile"
         )),
     }
 }

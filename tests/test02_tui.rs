@@ -87,6 +87,7 @@ fn ui_snapshot_renders_table_with_rows() {
             is_dir: false,
             dir_name: None,
             dockerfile_extra: None,
+            makefile_extra: None,
         },
         ItemRow {
             checked: true,
@@ -99,6 +100,7 @@ fn ui_snapshot_renders_table_with_rows() {
             is_dir: false,
             dir_name: None,
             dockerfile_extra: None,
+            makefile_extra: None,
         },
     ];
 
