@@ -85,6 +85,7 @@ impl TestContext {
             podman_bin.display()
         );
         let args = Args {
+            config_toml: None,
             path: manifest_dir.join("tests").join("test07"),
             verbose: 0,
             exclude_path_patterns: vec![],

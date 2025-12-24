@@ -6,6 +6,7 @@ use podman_compose_mgr::args::types::{OneShotArgs, REBUILD_VIEW_LINE_BUFFER_DEFA
 #[test]
 fn discovery_finds_expected_images_in_test1() {
     let args = Args {
+        config_toml: None,
         path: std::path::PathBuf::from("tests/test1"),
         verbose: 0,
         exclude_path_patterns: vec![],
@@ -106,6 +107,7 @@ fn ui_snapshot_renders_table_with_rows() {
 
     // Minimal args for draw
     let args = Args {
+        config_toml: None,
         path: std::path::PathBuf::from("."),
         verbose: 0,
         exclude_path_patterns: vec![],

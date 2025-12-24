@@ -3,7 +3,8 @@ use crate::errors::PodmanComposeMgrError;
 use crate::image_build::container_file::parse_container_file;
 use crate::infra::discovery_types::DirInfo;
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
+use std::fs;
 use std::hash::BuildHasher;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -130,24 +131,90 @@ pub fn build_makefile_rows<S: BuildHasher>(
                 }
             }
 
-            let basename = makefile_path.file_name().map_or_else(
-                || "Makefile".to_string(),
-                |name| name.to_string_lossy().to_string(),
-            );
+            let parent_label = makefile_parent_label(makefile_path);
+            let targets = parse_makefile_targets(makefile_path);
+            if targets.is_empty() {
+                let basename = format!("{parent_label}: (default)");
+                makefiles.push(DiscoveredMakefile {
+                    makefile_path: makefile_path.clone(),
+                    source_dir: dir.clone(),
+                    basename,
+                    make_target: None,
+                    quadlet_basename,
+                    neighbor_image,
+                    total_makefiles_in_dir: info.makefiles.len(),
+                    neighbor_file_count: neighbor_count,
+                });
+                continue;
+            }
 
-            makefiles.push(DiscoveredMakefile {
-                makefile_path: makefile_path.clone(),
-                source_dir: dir.clone(),
-                basename,
-                quadlet_basename,
-                neighbor_image,
-                total_makefiles_in_dir: info.makefiles.len(),
-                neighbor_file_count: neighbor_count,
-            });
+            for target in targets {
+                let basename = format!("{parent_label}: {target}");
+                makefiles.push(DiscoveredMakefile {
+                    makefile_path: makefile_path.clone(),
+                    source_dir: dir.clone(),
+                    basename,
+                    make_target: Some(target),
+                    quadlet_basename: quadlet_basename.clone(),
+                    neighbor_image: neighbor_image.clone(),
+                    total_makefiles_in_dir: info.makefiles.len(),
+                    neighbor_file_count: neighbor_count,
+                });
+            }
         }
     }
-    makefiles.sort_by(|a, b| a.basename.cmp(&b.basename));
+    makefiles.sort_by(|a, b| {
+        a.basename
+            .cmp(&b.basename)
+            .then_with(|| a.makefile_path.cmp(&b.makefile_path))
+    });
     makefiles
+}
+
+fn makefile_parent_label(makefile_path: &Path) -> String {
+    makefile_path
+        .parent()
+        .and_then(|parent| parent.file_name())
+        .map(|name| name.to_string_lossy().to_string())
+        .or_else(|| {
+            makefile_path
+                .parent()
+                .map(|parent| parent.display().to_string())
+        })
+        .unwrap_or_else(|| "Makefile".to_string())
+}
+
+fn parse_makefile_targets(path: &Path) -> Vec<String> {
+    let Ok(content) = fs::read_to_string(path) else {
+        return Vec::new();
+    };
+    let mut targets = BTreeSet::new();
+    for line in content.lines() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        if line.starts_with('\t') || line.starts_with(' ') {
+            continue;
+        }
+        let line = line.split('#').next().unwrap_or("").trim_end();
+        if line.is_empty() || line.contains(":=") || line.contains("::=") {
+            continue;
+        }
+        let Some((left, _)) = line.split_once(':') else {
+            continue;
+        };
+        for target in left.split_whitespace() {
+            if target.is_empty()
+                || target.starts_with('.')
+                || target.contains('%')
+                || target.contains('$')
+            {
+                continue;
+            }
+            targets.insert(target.to_string());
+        }
+    }
+    targets.into_iter().collect()
 }
 
 /// Collect rows from a docker-compose.yml entry.

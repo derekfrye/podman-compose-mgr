@@ -16,6 +16,7 @@ fn job_with_lines(lines: &[&str]) -> RebuildJob {
         container: None,
         entry_path: std::path::PathBuf::from("."),
         source_dir: std::path::PathBuf::from("."),
+        make_target: None,
         status: crate::tui::app::RebuildStatus::Running,
         output,
         error: None,

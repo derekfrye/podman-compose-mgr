@@ -8,6 +8,7 @@ pub struct BuildFile {
     pub link_target_dir: Option<PathBuf>,
     pub base_image: Option<String>,
     pub custom_img_nm: Option<String>,
+    pub make_target: Option<String>,
     pub build_args: Vec<String>,
     pub no_cache: bool,
 }

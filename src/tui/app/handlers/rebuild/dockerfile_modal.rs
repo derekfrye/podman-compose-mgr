@@ -166,6 +166,7 @@ pub(super) fn handle_dockerfile_modal_accept(app: &mut App, services: Option<&Se
             container: None,
             entry_path: entry.dockerfile_path,
             source_dir: entry.source_dir,
+            make_target: None,
         })
         .collect();
 

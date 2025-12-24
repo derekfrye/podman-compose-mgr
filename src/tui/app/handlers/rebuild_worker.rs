@@ -128,6 +128,7 @@ fn rebuild_dockerfile(
         link_target_dir: std::fs::read_link(path).ok(),
         base_image: Some(image.to_string()),
         custom_img_nm: Some(image.to_string()),
+        make_target: None,
         build_args: args.build_args.clone(),
         no_cache: args.no_cache,
     };
@@ -155,13 +156,28 @@ fn rebuild_makefile(
 
     let image = spec.image.trim();
     if image.is_empty() {
-        logger.info(&format!("Running make in {}", parent_dir.display()));
+        if let Some(target) = spec.make_target.as_ref() {
+            logger.info(&format!(
+                "Running make target {target} in {}",
+                parent_dir.display()
+            ));
+        } else {
+            logger.info(&format!("Running make in {}", parent_dir.display()));
+        }
     } else {
-        logger.info(&format!(
-            "Running make for {} in {}",
-            image,
-            parent_dir.display()
-        ));
+        if let Some(target) = spec.make_target.as_ref() {
+            logger.info(&format!(
+                "Running make target {target} for {} in {}",
+                image,
+                parent_dir.display()
+            ));
+        } else {
+            logger.info(&format!(
+                "Running make for {} in {}",
+                image,
+                parent_dir.display()
+            ));
+        }
     }
 
     let build_file = BuildFile {
@@ -171,6 +187,7 @@ fn rebuild_makefile(
         link_target_dir: std::fs::read_link(path).ok(),
         base_image: None,
         custom_img_nm: None,
+        make_target: spec.make_target.clone(),
         build_args: Vec::new(),
         no_cache: false,
     };

@@ -155,6 +155,10 @@ fn collect_selected_specs(app: &App) -> Vec<RebuildJobSpec> {
                 container: row.container.clone(),
                 entry_path: entry_path.clone(),
                 source_dir: row.source_dir.clone(),
+                make_target: row
+                    .makefile_extra
+                    .as_ref()
+                    .and_then(|extra| extra.make_target.clone()),
             })
         })
         .collect()

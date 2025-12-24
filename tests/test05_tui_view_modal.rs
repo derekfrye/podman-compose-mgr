@@ -30,6 +30,7 @@ fn view_modal_shows_options_and_selects_folder_view() {
     // rows get built after selection; no-op here
 
     let args = Args {
+        config_toml: None,
         path: app.root_path.clone(),
         verbose: 0,
         exclude_path_patterns: vec![],

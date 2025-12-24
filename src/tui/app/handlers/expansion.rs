@@ -180,6 +180,11 @@ fn compute_details_for(
                 .clone()
                 .unwrap_or_else(|| "unknown".to_string());
             lines.push(format!("Image: {image_name}"));
+            if let Some(target) = &extra.make_target {
+                lines.push(format!("Target: {target}"));
+            } else {
+                lines.push("Target: (default)".to_string());
+            }
             if let Some(created) = &extra.created_time_ago {
                 lines.push(format!("Created: {created}"));
             }

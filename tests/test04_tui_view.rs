@@ -12,6 +12,7 @@ use ratatui::backend::TestBackend;
 fn change_view_to_by_image_dedupes_images() {
     // Discover rows from fixtures
     let args = Args {
+        config_toml: None,
         path: std::path::PathBuf::from("tests/test1"),
         verbose: 0,
         exclude_path_patterns: vec![],

@@ -3,7 +3,7 @@ use super::rebuild::handle_rebuild_message;
 use super::scan::{handle_details_ready, handle_scan_results, handle_tick};
 use super::view_picker::{
     handle_open_view_picker, handle_view_picker_accept, handle_view_picker_cancel,
-    handle_view_picker_down, handle_view_picker_up,
+    handle_view_picker_down, handle_view_picker_select, handle_view_picker_up,
 };
 use crate::tui::app::keymap::map_key_event_to_msg;
 use crate::tui::app::state::{App, Msg, Services, UiState};
@@ -25,6 +25,7 @@ pub fn handle_message(app: &mut App, msg: Msg, services: Option<&Services>) {
         Msg::ViewPickerUp => handle_view_picker_up(app),
         Msg::ViewPickerDown => handle_view_picker_down(app),
         Msg::ViewPickerAccept => handle_view_picker_accept(app),
+        Msg::ViewPickerSelect(mode) => handle_view_picker_select(app, mode),
         Msg::ViewPickerCancel => handle_view_picker_cancel(app),
         Msg::Tick => handle_tick(app),
         Msg::ScanResults(discovered) => handle_scan_results(app, discovered, services),

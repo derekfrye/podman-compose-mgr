@@ -2,13 +2,17 @@ use clap::Parser;
 use std::path::PathBuf;
 
 use super::validators::validate;
-use crate::utils::path_utils::{check_readable_dir, check_writable_dir};
+use crate::utils::path_utils::{check_readable_dir, check_readable_file, check_writable_dir};
 
 pub const REBUILD_VIEW_LINE_BUFFER_DEFAULT: usize = 4_096;
 
 #[derive(Parser, Debug, Clone, serde::Serialize)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
+    /// Optional TOML configuration file
+    #[arg(long = "config-toml", value_name = "FILE", value_parser = check_readable_file)]
+    pub config_toml: Option<PathBuf>,
+
     /// Search path for docker-compose files
     #[arg(
         short = 'p',
@@ -116,12 +120,17 @@ impl TuiArgs {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SimulateViewMode {
+    #[serde(rename = "container", alias = "view-mode-container")]
     Container,
+    #[serde(rename = "image", alias = "view-mode-image")]
     Image,
+    #[serde(rename = "folder", alias = "view-mode-folder")]
     Folder,
+    #[serde(rename = "dockerfile", alias = "view-mode-dockerfile")]
     Dockerfile,
+    #[serde(rename = "makefile", alias = "view-mode-makefile")]
     Makefile,
 }
 
@@ -147,6 +156,7 @@ impl Default for Args {
             .expect("Default temporary directory '/tmp' must be writable or creatable.");
 
         Self {
+            config_toml: None,
             path: PathBuf::from("."),
             verbose: 0,
             exclude_path_patterns: Vec::new(),

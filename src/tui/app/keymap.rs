@@ -1,4 +1,4 @@
-use super::state::{App, ModalState, Msg};
+use super::state::{App, ModalState, Msg, ViewMode};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 #[must_use]
@@ -18,6 +18,11 @@ pub fn map_keycode_to_msg(app: &App, key: KeyCode) -> Option<Msg> {
                 KeyCode::Up => Msg::ViewPickerUp,
                 KeyCode::Down => Msg::ViewPickerDown,
                 KeyCode::Enter => Msg::ViewPickerAccept,
+                KeyCode::Char('c' | 'C') => Msg::ViewPickerSelect(ViewMode::ByContainer),
+                KeyCode::Char('i' | 'I') => Msg::ViewPickerSelect(ViewMode::ByImage),
+                KeyCode::Char('f' | 'F') => Msg::ViewPickerSelect(ViewMode::ByFolderThenImage),
+                KeyCode::Char('d' | 'D') => Msg::ViewPickerSelect(ViewMode::ByDockerfile),
+                KeyCode::Char('m' | 'M') => Msg::ViewPickerSelect(ViewMode::ByMakefile),
                 _ => return None,
             }),
             ModalState::WorkQueue { .. } => Some(match key {

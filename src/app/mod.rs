@@ -198,6 +198,7 @@ impl AppCore {
                 makefile_path: makefile.makefile_path.clone(),
                 source_dir: makefile.source_dir.clone(),
                 basename: makefile.basename.clone(),
+                make_target: makefile.make_target.clone(),
                 quadlet_basename: makefile.quadlet_basename.clone(),
                 inferred_image,
                 inference_source,

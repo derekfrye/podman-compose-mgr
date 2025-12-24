@@ -31,6 +31,7 @@ fn keys_overlay_is_drawn_with_labels() {
 
     // Minimal args
     let args = Args {
+        config_toml: None,
         path: std::path::PathBuf::from("."),
         verbose: 0,
         exclude_path_patterns: vec![],
@@ -281,12 +282,14 @@ fn rebuild_session_created_appends_jobs() {
         container: Some("container-a".into()),
         entry_path: PathBuf::from("tests/test1/docker-compose.yml"),
         source_dir: PathBuf::from("tests/test1"),
+        make_target: None,
     };
     let job_b = RebuildJobSpec {
         image: "img-b".into(),
         container: Some("container-b".into()),
         entry_path: PathBuf::from("tests/test1/docker-compose.yml"),
         source_dir: PathBuf::from("tests/test1"),
+        make_target: None,
     };
 
     podman_compose_mgr::tui::app::update_with_services(

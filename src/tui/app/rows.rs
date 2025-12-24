@@ -213,6 +213,7 @@ impl App {
                 makefile_extra: Some(super::state::MakefileRowExtra {
                     source: mf.inference_source.clone(),
                     makefile_name: mf.basename.clone(),
+                    make_target: mf.make_target.clone(),
                     quadlet_basename: mf.quadlet_basename.clone(),
                     image_name: mf.inferred_image.clone(),
                     created_time_ago: mf.created_time_ago.clone(),

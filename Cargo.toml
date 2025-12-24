@@ -27,6 +27,7 @@ ctrlc = "3"
 rust-ini = "0"
 crossbeam-channel = "0"
 unicode-width = "0"
+toml = "0"
 
 
 [dev-dependencies]

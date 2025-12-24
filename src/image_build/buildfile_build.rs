@@ -102,8 +102,13 @@ pub fn build_makefile_image<C: CommandHelper>(
         )
         .map_err(PodmanComposeMgrError::from)?;
 
+    let mut make_args = vec!["-C".to_string(), chg_dir];
+    if let Some(target) = build_config.file.make_target.as_ref() {
+        make_args.push(target.clone());
+    }
+
     cmd_helper
-        .exec_cmd("make", vec!["-C".to_string(), chg_dir])
+        .exec_cmd("make", make_args)
         .map_err(PodmanComposeMgrError::from)
 }
 
@@ -165,6 +170,7 @@ mod tests {
             link_target_dir: None,
             base_image: Some("example".to_string()),
             custom_img_nm: Some("example".to_string()),
+            make_target: None,
             build_args: Vec::new(),
             no_cache: true,
         };

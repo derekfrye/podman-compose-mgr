@@ -17,6 +17,7 @@ pub enum Msg {
     ViewPickerUp,
     ViewPickerDown,
     ViewPickerAccept,
+    ViewPickerSelect(super::ViewMode),
     ViewPickerCancel,
     WorkQueueUp,
     WorkQueueDown,

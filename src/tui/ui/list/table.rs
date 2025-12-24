@@ -56,7 +56,7 @@ pub(crate) fn draw_table(frame: &mut Frame, area: Rect, app: &App) {
         ViewMode::ByMakefile => (
             Row::new([
                 Cell::from("Select"),
-                Cell::from("Makefile"),
+                Cell::from("Target"),
                 Cell::from("Image"),
             ])
             .style(Style::default().add_modifier(Modifier::BOLD)),

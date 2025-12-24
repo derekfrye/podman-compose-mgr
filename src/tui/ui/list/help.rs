@@ -10,7 +10,7 @@ use super::super::common::styled_key;
 
 pub(crate) fn draw_help_overlay(frame: &mut Frame, full_area: Rect) {
     let lines = help_overlay_lines();
-    let area = help_overlay_area(full_area);
+    let area = help_overlay_area(full_area, lines.len());
     let widget = Paragraph::new(lines).block(help_overlay_block());
 
     frame.render_widget(ratatui::widgets::Clear, area);
@@ -22,14 +22,16 @@ fn help_overlay_lines() -> Vec<Line<'static>> {
         Line::from(vec![
             styled_key("↑/↓", Color::Yellow),
             Span::raw(" scroll  "),
+            styled_key("b/f", Color::Yellow),
+            Span::raw(" page  "),
             styled_key("←/→", Color::Yellow),
-            Span::raw(" details  "),
-            styled_key("x/<space>", Color::Green),
+            Span::raw(" details"),
+        ]),
+        Line::from(vec![
+            styled_key("x/<space>/Enter", Color::Green),
             Span::raw(" select  "),
-            styled_key("q", Color::Red),
-            Span::raw("/"),
-            styled_key("Esc", Color::Red),
-            Span::raw(" quit"),
+            styled_key("a", Color::Green),
+            Span::raw(" toggle all"),
         ]),
         Line::from(vec![
             styled_key("r", Color::Green),
@@ -37,12 +39,19 @@ fn help_overlay_lines() -> Vec<Line<'static>> {
             styled_key("j", Color::Green),
             Span::raw(" show rebuild jobs"),
         ]),
-        Line::from(vec![styled_key("v", Color::Cyan), Span::raw(" View")]),
+        Line::from(vec![
+            styled_key("v", Color::Cyan),
+            Span::raw(" view options  "),
+            styled_key("w", Color::Cyan),
+            Span::raw(" work queue  "),
+            styled_key("q/Esc", Color::Red),
+            Span::raw(" quit"),
+        ]),
     ]
 }
 
-fn help_overlay_area(full_area: Rect) -> Rect {
-    let help_height: u16 = 4;
+fn help_overlay_area(full_area: Rect, line_count: usize) -> Rect {
+    let help_height: u16 = u16::try_from(line_count).unwrap_or(0).saturating_add(2);
     let content_width: u16 = 55;
     let help_width: u16 = content_width + 2;
     let width_final = help_width.min(full_area.width);

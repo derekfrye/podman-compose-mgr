@@ -43,6 +43,14 @@ pub fn handle_view_picker_accept(app: &mut App) {
     }
 }
 
+pub fn handle_view_picker_select(app: &mut App, mode: ViewMode) {
+    if matches!(app.modal, Some(ModalState::ViewPicker { .. })) {
+        app.view_mode = mode;
+        app.rebuild_rows_for_view();
+        app.modal = None;
+    }
+}
+
 pub fn handle_view_picker_cancel(app: &mut App) {
     app.modal = None;
 }

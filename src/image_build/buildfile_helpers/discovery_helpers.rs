@@ -97,6 +97,7 @@ fn buildfile_from_candidate(
         link_target_dir,
         base_image: Some(custom_img_nm.to_string()),
         custom_img_nm: Some(custom_img_nm.to_string()),
+        make_target: None,
         build_args: build_args.iter().map(|arg| (*arg).to_string()).collect(),
         no_cache,
     })

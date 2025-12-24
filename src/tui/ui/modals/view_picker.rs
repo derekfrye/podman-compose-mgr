@@ -28,17 +28,17 @@ pub(crate) fn draw_view_picker(
     };
 
     let items = [
-        ("List by container runtime name", ViewMode::ByContainer),
-        ("List by image", ViewMode::ByImage),
-        ("List by folder, then image", ViewMode::ByFolderThenImage),
-        ("List by Dockerfile", ViewMode::ByDockerfile),
-        ("List by Makefile", ViewMode::ByMakefile),
+        ('c', "List by container runtime name", ViewMode::ByContainer),
+        ('i', "List by image", ViewMode::ByImage),
+        ('f', "List by folder, then image", ViewMode::ByFolderThenImage),
+        ('d', "List by Dockerfile", ViewMode::ByDockerfile),
+        ('m', "List by Makefile", ViewMode::ByMakefile),
     ];
     let mut lines: Vec<Line> = Vec::new();
-    for (i, (label, mode)) in items.iter().enumerate() {
+    for (i, (hotkey, label, mode)) in items.iter().enumerate() {
         let active = if *mode == current { "▶" } else { " " };
         let marker = if i == selected_idx { ">" } else { " " };
-        let styled = Line::from(vec![
+        let mut spans = vec![
             Span::styled(
                 marker,
                 Style::default()
@@ -48,9 +48,15 @@ pub(crate) fn draw_view_picker(
             Span::raw(" "),
             Span::styled(active, Style::default().fg(Color::Cyan)),
             Span::raw(" "),
-            Span::raw(*label),
-        ]);
-        lines.push(styled);
+        ];
+        spans.push(Span::raw(*label));
+        spans.push(Span::raw(" ("));
+        spans.push(Span::styled(
+            hotkey.to_string(),
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+        ));
+        spans.push(Span::raw(")"));
+        lines.push(Line::from(spans));
     }
 
     let widget = Paragraph::new(lines).block(

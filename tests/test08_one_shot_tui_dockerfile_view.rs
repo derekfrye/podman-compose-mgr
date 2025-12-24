@@ -23,6 +23,7 @@ fn simulate_dockerfile_view_emits_registry_matches() {
     let include = format!("^{}", regex::escape(help_dir.to_str().unwrap()));
 
     let args = Args {
+        config_toml: None,
         path: root.to_path_buf(),
         verbose: 0,
         exclude_path_patterns: vec![],
@@ -89,6 +90,7 @@ fn tui_render_shows_inferred_images_from_json() {
     let include = format!("^{}", regex::escape(help_dir.to_str().unwrap()));
 
     let args = Args {
+        config_toml: None,
         path: root.to_path_buf(),
         verbose: 0,
         exclude_path_patterns: vec![],

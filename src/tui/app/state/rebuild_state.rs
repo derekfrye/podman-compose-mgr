@@ -32,6 +32,7 @@ pub struct DockerfileRowExtra {
 pub struct MakefileRowExtra {
     pub source: InferenceSource,
     pub makefile_name: String,
+    pub make_target: Option<String>,
     pub quadlet_basename: Option<String>,
     pub image_name: Option<String>,
     pub created_time_ago: Option<String>,
@@ -72,6 +73,7 @@ pub struct RebuildJob {
     pub container: Option<String>,
     pub entry_path: PathBuf,
     pub source_dir: PathBuf,
+    pub make_target: Option<String>,
     pub status: RebuildStatus,
     pub output: VecDeque<RebuildOutputLine>,
     pub error: Option<String>,
@@ -90,6 +92,7 @@ impl RebuildJob {
             container,
             entry_path,
             source_dir,
+            make_target: None,
             status: RebuildStatus::Pending,
             output: VecDeque::new(),
             error: None,
@@ -98,12 +101,14 @@ impl RebuildJob {
 
     #[must_use]
     pub fn from_spec(spec: &RebuildJobSpec) -> Self {
-        Self::new(
+        let mut job = Self::new(
             spec.image.clone(),
             spec.container.clone(),
             spec.entry_path.clone(),
             spec.source_dir.clone(),
-        )
+        );
+        job.make_target = spec.make_target.clone();
+        job
     }
 
     pub fn push_output(&mut self, stream: OutputStream, chunk: String, limit: usize) {
@@ -141,6 +146,7 @@ pub struct RebuildJobSpec {
     pub container: Option<String>,
     pub entry_path: PathBuf,
     pub source_dir: PathBuf,
+    pub make_target: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
