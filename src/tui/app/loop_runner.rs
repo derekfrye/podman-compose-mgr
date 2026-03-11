@@ -124,7 +124,10 @@ pub fn run_loop<B: Backend>(
     app: &mut App,
     chans: &LoopChans<'_>,
     env: &Env<'_>,
-) -> io::Result<()> {
+) -> io::Result<()>
+where
+    B::Error: std::error::Error + Send + Sync + 'static,
+{
     env.logger.debug("TUI is running");
 
     while !app.should_quit {
@@ -134,15 +137,20 @@ pub fn run_loop<B: Backend>(
             recv(chans.tick_rx.expect("tick channel must be provided")) -> _ => update_with_services(app, Msg::Tick, Some(env.services)),
         }
 
-        terminal.draw(|frame| crate::tui::ui::draw(frame, app, env.args))?;
+        terminal
+            .draw(|frame| crate::tui::ui::draw(frame, app, env.args))
+            .map_err(io::Error::other)?;
     }
 
     Ok(())
 }
 
-fn cleanup_terminal<B: Backend + std::io::Write>(terminal: &mut Terminal<B>) -> io::Result<()> {
+fn cleanup_terminal<B: Backend + std::io::Write>(terminal: &mut Terminal<B>) -> io::Result<()>
+where
+    B::Error: std::error::Error + Send + Sync + 'static,
+{
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
+    terminal.show_cursor().map_err(io::Error::other)?;
     Ok(())
 }
