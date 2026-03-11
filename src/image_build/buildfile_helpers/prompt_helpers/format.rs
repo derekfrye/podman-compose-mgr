@@ -70,15 +70,10 @@ pub fn handle_display_info(
         println!("D = Build an image from a Dockerfile.");
         println!("M = Execute `make` on a Makefile.");
     } else {
-        if buildfile.link_target_dir.is_some() {
-            let location1 = match buildfile.link_target_dir.as_ref().unwrap().parent() {
+        if let Some(link_target_dir) = &buildfile.link_target_dir {
+            let location1 = match link_target_dir.parent() {
                 Some(parent) => parent.display().to_string(),
-                None => buildfile
-                    .link_target_dir
-                    .as_ref()
-                    .unwrap()
-                    .display()
-                    .to_string(),
+                None => link_target_dir.display().to_string(),
             };
             println!("1 = Set build working dir to:\n\t{location1}");
         }

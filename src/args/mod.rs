@@ -64,83 +64,83 @@ fn apply_config_toml(args: &mut Args, matches: &clap::ArgMatches) -> Result<(), 
     };
     let config = read_config_toml(config_path)?;
 
-    if !is_cli_set(matches, "path") {
-        if let Some(path) = config.path {
-            args.path = check_readable_dir_path(&path)?;
-        }
+    if !is_cli_set(matches, "path")
+        && let Some(path) = config.path
+    {
+        args.path = check_readable_dir_path(&path)?;
     }
-    if !is_cli_set(matches, "verbose") {
-        if let Some(verbose) = config.verbose {
-            args.verbose = verbose;
-        }
+    if !is_cli_set(matches, "verbose")
+        && let Some(verbose) = config.verbose
+    {
+        args.verbose = verbose;
     }
-    if !is_cli_set(matches, "exclude-path-patterns") {
-        if let Some(patterns) = config.exclude_path_patterns {
-            args.exclude_path_patterns = patterns;
-        }
+    if !is_cli_set(matches, "exclude-path-patterns")
+        && let Some(patterns) = config.exclude_path_patterns
+    {
+        args.exclude_path_patterns = patterns;
     }
-    if !is_cli_set(matches, "include-path-patterns") {
-        if let Some(patterns) = config.include_path_patterns {
-            args.include_path_patterns = patterns;
-        }
+    if !is_cli_set(matches, "include-path-patterns")
+        && let Some(patterns) = config.include_path_patterns
+    {
+        args.include_path_patterns = patterns;
     }
-    if !is_cli_set(matches, "build-args") {
-        if let Some(build_args) = config.build_args {
-            args.build_args = build_args;
-        }
+    if !is_cli_set(matches, "build-args")
+        && let Some(build_args) = config.build_args
+    {
+        args.build_args = build_args;
     }
-    if !is_cli_set(matches, "temp-file-path") {
-        if let Some(temp_path) = config.temp_file_path {
-            let temp_str = temp_path
-                .to_str()
-                .ok_or_else(|| "Invalid temp path: contains non-UTF-8 characters".to_string())?;
-            args.temp_file_path = check_writable_dir(temp_str)?;
-        }
+    if !is_cli_set(matches, "temp-file-path")
+        && let Some(temp_path) = config.temp_file_path
+    {
+        let temp_str = temp_path
+            .to_str()
+            .ok_or_else(|| "Invalid temp path: contains non-UTF-8 characters".to_string())?;
+        args.temp_file_path = check_writable_dir(temp_str)?;
     }
-    if !is_cli_set(matches, "podman-bin") {
-        if let Some(podman_bin) = config.podman_bin {
-            args.podman_bin = Some(podman_bin);
-        }
+    if !is_cli_set(matches, "podman-bin")
+        && let Some(podman_bin) = config.podman_bin
+    {
+        args.podman_bin = Some(podman_bin);
     }
-    if !is_cli_set(matches, "no-cache") {
-        if let Some(no_cache) = config.no_cache {
-            args.no_cache = no_cache;
-        }
+    if !is_cli_set(matches, "no-cache")
+        && let Some(no_cache) = config.no_cache
+    {
+        args.no_cache = no_cache;
     }
-    if !is_cli_set(matches, "one-shot") {
-        if let Some(one_shot) = config.one_shot {
-            args.one_shot.one_shot = one_shot;
-        }
+    if !is_cli_set(matches, "one-shot")
+        && let Some(one_shot) = config.one_shot
+    {
+        args.one_shot.one_shot = one_shot;
     }
-    if !is_cli_set(matches, "dry-run") {
-        if let Some(dry_run) = config.dry_run {
-            args.one_shot.dry_run = dry_run;
-        }
+    if !is_cli_set(matches, "dry-run")
+        && let Some(dry_run) = config.dry_run
+    {
+        args.one_shot.dry_run = dry_run;
     }
-    if !is_cli_set(matches, "tui") {
-        if let Some(tui) = config.tui {
-            args.tui.enabled = tui;
-        }
+    if !is_cli_set(matches, "tui")
+        && let Some(tui) = config.tui
+    {
+        args.tui.enabled = tui;
     }
-    if !is_cli_set(matches, "tui-rebuild-all") {
-        if let Some(rebuild_all) = config.tui_rebuild_all {
-            args.tui.rebuild_all = rebuild_all;
-        }
+    if !is_cli_set(matches, "tui-rebuild-all")
+        && let Some(rebuild_all) = config.tui_rebuild_all
+    {
+        args.tui.rebuild_all = rebuild_all;
     }
-    if !is_cli_set(matches, "rebuild-view-line-buffer-max") {
-        if let Some(max) = config.rebuild_view_line_buffer_max {
-            args.rebuild_view_line_buffer_max = max;
-        }
+    if !is_cli_set(matches, "rebuild-view-line-buffer-max")
+        && let Some(max) = config.rebuild_view_line_buffer_max
+    {
+        args.rebuild_view_line_buffer_max = max;
     }
-    if !is_cli_set(matches, "tui-simulate") {
-        if let Some(sim_mode) = config.tui_simulate {
-            args.tui_simulate = Some(sim_mode);
-        }
+    if !is_cli_set(matches, "tui-simulate")
+        && let Some(sim_mode) = config.tui_simulate
+    {
+        args.tui_simulate = Some(sim_mode);
     }
-    if !is_cli_set(matches, "tui-simulate-podman-input-json") {
-        if let Some(path) = config.tui_simulate_podman_input_json {
-            args.tui_simulate_podman_input_json = Some(path);
-        }
+    if !is_cli_set(matches, "tui-simulate-podman-input-json")
+        && let Some(path) = config.tui_simulate_podman_input_json
+    {
+        args.tui_simulate_podman_input_json = Some(path);
     }
 
     Ok(())

@@ -38,8 +38,8 @@ pub fn unroll_grammar_into_string(
             return_result.push_str(prefix);
         }
 
-        if use_shortened_val && grammar.shortened_val_for_prompt.is_some() {
-            return_result.push_str(grammar.shortened_val_for_prompt.as_ref().unwrap().as_str());
+        if use_shortened_val && let Some(shortened) = &grammar.shortened_val_for_prompt {
+            return_result.push_str(shortened.as_str());
         } else {
             return_result.push_str(grammar.original_val_for_prompt.as_ref().unwrap().as_str());
         }

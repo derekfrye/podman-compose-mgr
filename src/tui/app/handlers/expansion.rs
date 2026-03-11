@@ -40,20 +40,21 @@ fn handle_directory_enter(app: &mut App) -> bool {
 }
 
 fn handle_row_expand(app: &mut App, services: Option<&Services>) {
-    let (image, source_dir, entry_path, dockerfile_extra, makefile_extra, already_expanded) =
-        match app.rows.get(app.selected) {
-            Some(row) => (
-                row.image.clone(),
-                row.source_dir.clone(),
-                row.entry_path.clone(),
-                row.dockerfile_extra.clone(),
-                row.makefile_extra.clone(),
-                row.expanded,
-            ),
-            None => return,
-        };
+    let expansion = match app.rows.get(app.selected) {
+        Some(row) => RowExpansionRequest {
+            row_idx: app.selected,
+            image: row.image.clone(),
+            source_dir: row.source_dir.clone(),
+            entry_path: row.entry_path.clone(),
+            view_mode: app.view_mode,
+            dockerfile_extra: row.dockerfile_extra.clone(),
+            makefile_extra: row.makefile_extra.clone(),
+            already_expanded: row.expanded,
+        },
+        None => return,
+    };
 
-    if already_expanded {
+    if expansion.already_expanded {
         return;
     }
 
@@ -63,16 +64,7 @@ fn handle_row_expand(app: &mut App, services: Option<&Services>) {
     }
 
     if let Some(svc) = services {
-        spawn_detail_fetch(
-            svc,
-            app.selected,
-            image,
-            source_dir,
-            entry_path,
-            app.view_mode,
-            dockerfile_extra,
-            makefile_extra,
-        );
+        spawn_detail_fetch(svc, expansion);
     }
 }
 
@@ -87,8 +79,8 @@ fn collapse_selected_row(app: &mut App) -> bool {
     false
 }
 
-fn spawn_detail_fetch(
-    services: &Services,
+#[derive(Clone)]
+struct RowExpansionRequest {
     row_idx: usize,
     image: String,
     source_dir: std::path::PathBuf,
@@ -96,22 +88,25 @@ fn spawn_detail_fetch(
     view_mode: ViewMode,
     dockerfile_extra: Option<DockerfileRowExtra>,
     makefile_extra: Option<MakefileRowExtra>,
-) {
+    already_expanded: bool,
+}
+
+fn spawn_detail_fetch(services: &Services, request: RowExpansionRequest) {
     let tx = services.tx.clone();
     let core = services.core.clone();
     std::thread::spawn(move || {
-        let entry_path_ref = entry_path.as_deref();
+        let entry_path_ref = request.entry_path.as_deref();
         let details = compute_details_for(
             &core,
-            &image,
-            &source_dir,
+            &request.image,
+            &request.source_dir,
             entry_path_ref,
-            view_mode,
-            dockerfile_extra.as_ref(),
-            makefile_extra.as_ref(),
+            request.view_mode,
+            request.dockerfile_extra.as_ref(),
+            request.makefile_extra.as_ref(),
         );
         let _ = tx.send(Msg::DetailsReady {
-            row: row_idx,
+            row: request.row_idx,
             details,
         });
     });

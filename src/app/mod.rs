@@ -111,7 +111,7 @@ impl AppCore {
         local_images: &[LocalImageSummary],
     ) -> Vec<DockerfileInference> {
         let mut inferred = Vec::new();
-        for dockerfile in discovery.dockerfiles.iter() {
+        for dockerfile in &discovery.dockerfiles {
             let inference_source;
             let inferred_image;
             let created_time_ago;
@@ -176,7 +176,7 @@ impl AppCore {
         local_images: &[LocalImageSummary],
     ) -> Vec<MakefileInference> {
         let mut inferred = Vec::new();
-        for makefile in discovery.makefiles.iter() {
+        for makefile in &discovery.makefiles {
             let inference_source;
             let inferred_image;
             let created_time_ago;

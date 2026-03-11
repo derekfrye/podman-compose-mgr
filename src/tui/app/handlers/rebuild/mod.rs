@@ -14,7 +14,7 @@ pub fn handle_rebuild_message(app: &mut App, msg: Msg, services: Option<&Service
     match msg {
         Msg::StartRebuild => session::handle_start_rebuild(app, services),
         Msg::RebuildSessionCreated { jobs } => {
-            session::handle_session_created(app, &jobs, services)
+            session::handle_session_created(app, &jobs, services);
         }
         Msg::RebuildJobStarted { job_idx } => session::handle_job_started(app, job_idx),
         Msg::RebuildJobOutput {

@@ -107,7 +107,7 @@ impl RebuildJob {
             spec.entry_path.clone(),
             spec.source_dir.clone(),
         );
-        job.make_target = spec.make_target.clone();
+        job.make_target.clone_from(&spec.make_target);
         job
     }
 
