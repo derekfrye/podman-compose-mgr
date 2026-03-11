@@ -6,8 +6,8 @@ mod validators;
 pub use types::*;
 pub use validators::*;
 
-use clap::{CommandFactory, FromArgMatches};
 use clap::parser::ValueSource;
+use clap::{CommandFactory, FromArgMatches};
 use std::fs;
 use std::path::Path;
 use std::process;
@@ -49,8 +49,7 @@ struct ConfigFileArgs {
 fn read_config_toml(path: &Path) -> Result<ConfigFileArgs, String> {
     let contents = fs::read_to_string(path)
         .map_err(|e| format!("Unable to read config TOML '{}': {e}", path.display()))?;
-    toml::from_str(&contents)
-        .map_err(|e| format!("Invalid TOML in '{}': {e}", path.display()))
+    toml::from_str(&contents).map_err(|e| format!("Invalid TOML in '{}': {e}", path.display()))
 }
 
 fn is_cli_set(matches: &clap::ArgMatches, id: &str) -> bool {

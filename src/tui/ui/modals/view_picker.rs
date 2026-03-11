@@ -30,7 +30,11 @@ pub(crate) fn draw_view_picker(
     let items = [
         ('c', "List by container runtime name", ViewMode::ByContainer),
         ('i', "List by image", ViewMode::ByImage),
-        ('f', "List by folder, then image", ViewMode::ByFolderThenImage),
+        (
+            'f',
+            "List by folder, then image",
+            ViewMode::ByFolderThenImage,
+        ),
         ('d', "List by Dockerfile", ViewMode::ByDockerfile),
         ('m', "List by Makefile", ViewMode::ByMakefile),
     ];
@@ -53,7 +57,9 @@ pub(crate) fn draw_view_picker(
         spans.push(Span::raw(" ("));
         spans.push(Span::styled(
             hotkey.to_string(),
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
         ));
         spans.push(Span::raw(")"));
         lines.push(Line::from(spans));
