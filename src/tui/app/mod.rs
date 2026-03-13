@@ -1,6 +1,7 @@
 mod handlers;
 mod keymap;
 mod loop_runner;
+mod row_builders;
 mod rows;
 mod search;
 mod state;

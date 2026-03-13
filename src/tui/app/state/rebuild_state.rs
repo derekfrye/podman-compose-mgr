@@ -35,6 +35,7 @@ pub struct MakefileRowExtra {
     pub make_target: Option<String>,
     pub quadlet_basename: Option<String>,
     pub image_name: Option<String>,
+    pub image_names: Vec<String>,
     pub created_time_ago: Option<String>,
     pub note: Option<String>,
 }

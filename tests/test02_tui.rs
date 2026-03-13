@@ -126,8 +126,10 @@ fn ui_snapshot_renders_table_with_rows() {
         tui_simulate: None,
     };
 
-    let width: u16 = 60;
-    let height: u16 = 10;
+    // Keep this viewport tall enough for the table title and rows to remain
+    // visible after the keys overlay is rendered at the bottom of the frame.
+    let width: u16 = 100;
+    let height: u16 = 16;
     let backend = TestBackend::new(width, height);
     let mut terminal = Terminal::new(backend).expect("terminal");
     terminal
@@ -151,4 +153,6 @@ fn ui_snapshot_renders_table_with_rows() {
 
     // Check for key substrings
     assert!(all.contains("Images"));
+    assert!(all.contains("djf/rusty-golf"));
+    assert!(all.contains("djf/squid"));
 }
