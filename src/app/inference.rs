@@ -164,7 +164,7 @@ fn match_localhost_image<'a>(
                     || img.repository.split('/').next_back() == Some(suffix))
         })
         .collect();
-    candidates.sort_by(|a, b| b.created.cmp(&a.created));
+    candidates.sort_by_key(|candidate| std::cmp::Reverse(candidate.created));
     candidates.into_iter().next()
 }
 
